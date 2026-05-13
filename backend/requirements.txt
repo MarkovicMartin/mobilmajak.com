@@ -1,0 +1,52 @@
+# Django a základní frameworky
+Django==4.2.23
+djangorestframework==3.16.0
+django-cors-headers==4.7.0
+
+# Databáze
+PyMySQL==1.1.1
+
+# HTTP knihovny a requests
+requests==2.32.4
+urllib3==2.5.0
+certifi==2025.7.14
+charset-normalizer==3.4.2
+idna==3.10
+python-dateutil==2.9.0.post0
+
+# Image processing (pro media soubory)
+Pillow==11.3.0
+
+# SQL parsing
+sqlparse==0.5.3
+
+# Async support
+asgiref==3.9.1
+
+# Produkční web server
+gunicorn==21.2.0
+
+# Typing extensions
+typing-extensions==4.14.1
+
+# Google API pro Google Sheets
+google-api-python-client==2.90.0
+google-auth==2.17.3
+google-auth-oauthlib==1.0.0
+google-auth-httplib2==0.1.0
+
+# Další užitečné knihovny
+python-dotenv==1.0.0
+whitenoise==6.6.0
+
+# Pro parsing a validaci
+six==1.16.0
+
+# Cache a optimalizace
+redis==4.5.4
+
+# Pro monitoring a metriky (optional)
+psutil==5.9.5 
+
+# Excel export
+openpyxl==3.1.2

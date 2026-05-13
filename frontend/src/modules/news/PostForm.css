@@ -1,0 +1,351 @@
+.post-form-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+}
+
+.post-form {
+    background: white;
+    border-radius: 16px;
+    padding: 30px;
+    width: 100%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+.post-form-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #f0f0f0;
+}
+
+.post-form-header h3 {
+    margin: 0;
+    color: #333;
+    font-size: 24px;
+    font-weight: 700;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #666;
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.close-btn:hover {
+    background: #f0f0f0;
+    color: #333;
+}
+
+.post-author {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 12px;
+}
+
+.author-avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #ff6b9d, #c44569);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 18px;
+    margin-right: 15px;
+}
+
+.author-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.author-name {
+    font-weight: 600;
+    color: #333;
+    font-size: 16px;
+}
+
+.post-content {
+    margin-bottom: 20px;
+}
+
+.post-content textarea {
+    width: 100%;
+    border: 2px solid #e9ecef;
+    border-radius: 12px;
+    padding: 15px;
+    font-size: 16px;
+    font-family: inherit;
+    resize: vertical;
+    min-height: 120px;
+    transition: border-color 0.3s ease;
+}
+
+.post-content textarea:focus {
+    outline: none;
+    border-color: #ff6b9d;
+    box-shadow: 0 0 0 3px rgba(255, 107, 157, 0.1);
+}
+
+.content-counter {
+    text-align: right;
+    margin-top: 8px;
+    font-size: 14px;
+    color: #666;
+}
+
+.selected-files {
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 12px;
+}
+
+.selected-files h4 {
+    margin: 0 0 10px 0;
+    color: #333;
+    font-size: 16px;
+}
+
+.file-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: white;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    border: 1px solid #e9ecef;
+}
+
+.file-name {
+    font-weight: 500;
+    color: #333;
+    flex: 1;
+}
+
+.file-size {
+    color: #666;
+    font-size: 14px;
+    margin: 0 10px;
+}
+
+.remove-file-btn {
+    background: #ff4757;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 12px;
+    transition: background 0.2s ease;
+}
+
+.remove-file-btn:hover {
+    background: #ff3742;
+}
+
+.post-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.file-upload {
+    flex: 1;
+}
+
+.upload-btn {
+    background: #6c757d;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 25px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.upload-btn:hover {
+    background: #5a6268;
+    transform: translateY(-1px);
+}
+
+.form-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.cancel-btn {
+    background: #6c757d;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 25px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.cancel-btn:hover {
+    background: #5a6268;
+}
+
+.submit-btn {
+    background: linear-gradient(135deg, #ff6b9d, #c44569);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 25px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(255, 107, 157, 0.3);
+}
+
+.submit-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 107, 157, 0.4);
+}
+
+.submit-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .post-form {
+        margin: 10px;
+        padding: 20px;
+        max-height: 95vh;
+    }
+    
+    .post-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .form-buttons {
+        flex-direction: column;
+    }
+    
+    .file-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    
+    .file-size {
+        margin: 0;
+    }
+}
+
+/* Kategorie styly */
+.category-selector {
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 12px;
+}
+
+.category-selector h4 {
+    margin: 0 0 12px 0;
+    color: #333;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.category-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.category-option {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+}
+
+.category-option input[type="checkbox"] {
+    display: none;
+}
+
+.category-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    border-radius: 20px;
+    color: white;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    border: 2px solid transparent;
+}
+
+.category-option input[type="checkbox"]:checked + .category-badge {
+    border-color: #333;
+    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+    transform: scale(1.05);
+}
+
+.category-option:hover .category-badge {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.category-badge i {
+    font-size: 12px;
+}
+
+/* Responsive kategorie */
+@media (max-width: 768px) {
+    .category-options {
+        gap: 8px;
+    }
+    
+    .category-badge {
+        padding: 6px 10px;
+        font-size: 13px;
+    }
+} 

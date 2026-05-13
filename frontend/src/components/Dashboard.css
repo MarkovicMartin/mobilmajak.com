@@ -1,0 +1,307 @@
+.dashboard {
+    min-height: 100vh;
+    background: var(--bg-secondary);
+}
+
+.dashboard-main {
+    padding: 1.25rem 2rem 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+@media (min-width: 769px) {
+    .dashboard-main {
+        padding-top: 0.75rem;
+    }
+}
+
+/* Seller dashboard minimal overrides */
+.seller-dashboard .module-btn { 
+    background: linear-gradient(90deg,#ff72b6,#9b6bff); 
+    color:#fff; border:0; padding:8px 12px; border-radius:10px 
+}
+
+.welcome-section {
+    background: white;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    margin-bottom: 2rem;
+    text-align: center;
+}
+
+.welcome-section h2 {
+    color: #333;
+    margin: 0 0 0.5rem 0;
+    font-size: 2rem;
+}
+
+.welcome-section p {
+    color: #666;
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+.modules-section {
+    margin-bottom: 2rem;
+}
+
+.modules-section h3 {
+    color: #333;
+    margin-bottom: 1.5rem;
+    font-size: 1.5rem;
+}
+
+.modules-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+.module-card {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.module-card.accessible {
+    border-left: 4px solid #28a745;
+}
+
+.module-card.locked {
+    border-left: 4px solid #dc3545;
+    opacity: 0.7;
+}
+
+.module-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.module-card h4 {
+    color: #333;
+    margin: 0 0 0.5rem 0;
+    font-size: 1.3rem;
+}
+
+.module-card p {
+    color: #666;
+    margin: 0 0 1rem 0;
+}
+
+.module-btn {
+    background: linear-gradient(90deg, #ff6b9d 0%, #c44569 100%);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.module-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px rgba(255, 107, 157, 0.3);
+}
+
+.locked-text {
+    color: #dc3545;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.admin-section {
+    background: white;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.admin-section h3 {
+    color: #333;
+    margin-bottom: 1.5rem;
+    font-size: 1.5rem;
+}
+
+.admin-actions {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.admin-btn {
+    background: #6c757d;
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.admin-btn:hover {
+    background: #5a6268;
+    transform: translateY(-1px);
+}
+
+/* Mobilní drawer (DockNavbar) – skrytý mimo mobil */
+.mobile-nav-backdrop,
+.mobile-nav-drawer {
+    display: none;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .dashboard-main {
+        padding: 1rem;
+    }
+    
+    .modules-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .admin-actions {
+        flex-direction: column;
+    }
+    
+    /* Drawer backdrop – nad dock-navbar (1100) */
+    .mobile-nav-backdrop {
+        display: block;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0);
+        z-index: 1300;
+        pointer-events: none;
+        transition: background 0.25s ease;
+    }
+    
+    .mobile-nav-backdrop.open {
+        background: rgba(0, 0, 0, 0.4);
+        pointer-events: auto;
+    }
+    
+    /* Drawer panel */
+    .mobile-nav-drawer {
+        display: block;
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 280px;
+        max-width: 85vw;
+        background: var(--bg-header);
+        box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15);
+        z-index: 1310;
+        transform: translateX(-100%);
+        transition: transform 0.25s ease;
+        overflow-y: auto;
+    }
+    
+    .mobile-nav-drawer.open {
+        transform: translateX(0);
+    }
+    
+    .mobile-nav-close {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        width: 40px;
+        height: 40px;
+        font-size: 1.75rem;
+        line-height: 1;
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: var(--text-header);
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .mobile-nav-close:hover {
+        background-color: var(--hover-bg);
+        border-radius: 8px;
+    }
+    
+    .mobile-nav-user-banner {
+        padding: 3.25rem 1rem 0.65rem;
+        font-weight: 600;
+        font-size: 0.95rem;
+        color: var(--text-header);
+        border-bottom: 1px solid var(--border-secondary);
+    }
+
+    .mobile-nav-list {
+        list-style: none;
+        margin: 0;
+        padding: 3rem 1rem 1.5rem;
+    }
+
+    .mobile-nav-list.mobile-nav-list--with-user {
+        padding-top: 0.5rem;
+    }
+    
+    .mobile-nav-list li {
+        margin: 0;
+    }
+    
+    .mobile-nav-link {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        padding: 14px 16px;
+        text-align: left;
+        background: none;
+        border: none;
+        font-size: 1rem;
+        font-weight: 500;
+        color: var(--text-header);
+        cursor: pointer;
+        border-radius: 8px;
+        transition: background 0.2s ease;
+    }
+    
+    .mobile-nav-link:hover {
+        background: var(--hover-bg);
+    }
+    
+    .mobile-nav-link.active {
+        background: var(--accent-secondary);
+        color: var(--text-inverse);
+    }
+}
+
+/* Section Content */
+.section-content {
+    width: 100%;
+}
+
+.section-header {
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #eee;
+}
+
+.back-btn {
+    background: #6c757d;
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.3s ease;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.back-btn:hover {
+    background: #5a6268;
+}

@@ -1,0 +1,413 @@
+.admin-dashboard { padding: 16px; box-sizing: border-box; }
+.admin-dashboard * { box-sizing: inherit; }
+.admin-dashboard .container { max-width: 1280px; margin: 0 auto; }
+.tiles-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 16px; align-items: stretch; }
+.tile { background: #fff; border: 1px solid #eee; border-radius: 10px; padding: 16px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); min-height: 96px; display: flex; flex-direction: column; justify-content: center; }
+.tile--clickable {
+    cursor: pointer;
+    transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.tile--clickable:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    border-color: #d1d5db;
+}
+.tile--clickable:focus-visible {
+    outline: 2px solid #0066cc;
+    outline-offset: 2px;
+}
+.tile-title { font-size: 12px; color: #6b7280; margin-bottom: 6px; }
+.tile-value { font-size: 22px; font-weight: 700; color: #111827; font-variant-numeric: tabular-nums; }
+.tile-sub { font-size: 12px; color: #6b7280; margin-top: 4px; }
+
+/* Dlaždice plnění plánu (nad finančními statistikami) */
+.plan-tiles-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 16px;
+    align-items: stretch;
+}
+
+.tile--plan {
+    border-left: 3px solid #a78bfa;
+}
+
+.plan-tile-pct {
+    font-size: 1.35rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.plan-tile-pct--ok { color: #166534; }
+.plan-tile-pct--warn { color: #a16207; }
+.plan-tile-pct--bad { color: #b91c1c; }
+
+.plan-tile-trend--ok { color: #166534; }
+.plan-tile-trend--warn { color: #a16207; }
+.plan-tile-trend--bad { color: #b91c1c; }
+
+.tile-sub--ellipsis {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    line-height: 1.35;
+}
+
+.content-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* „Kdo je dnes v práci“ – rozbalovací panel + minimalistické dlaždice */
+.shifts-section {
+    margin: 0;
+}
+
+.shifts-details {
+    border: 1px solid #ececec;
+    border-radius: 10px;
+    background: #fafafa;
+    overflow: hidden;
+}
+
+.shifts-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 12px 14px;
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+}
+
+.shifts-summary::-webkit-details-marker {
+    display: none;
+}
+
+.shifts-summary::before {
+    content: '▸';
+    flex-shrink: 0;
+    margin-right: 8px;
+    color: #9ca3af;
+    transition: transform 0.15s ease;
+}
+
+.shifts-details[open] .shifts-summary::before {
+    transform: rotate(90deg);
+}
+
+.shifts-section-title {
+    margin: 0;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #6b7280;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    flex: 1;
+    min-width: 0;
+}
+
+.shifts-summary-meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.shifts-count-pill {
+    font-size: 11px;
+    font-weight: 600;
+    color: #6b7280;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 999px;
+    padding: 2px 8px;
+}
+
+.badge--minimal {
+    background: #f3f4f6;
+    color: #4b5563;
+    font-weight: 500;
+}
+
+.shifts-details[open] .shifts-summary {
+    border-bottom: 1px solid #ececec;
+    background: #fff;
+}
+
+.shifts-tiles-wrap {
+    padding: 12px 10px 14px;
+    background: #fff;
+}
+
+.shifts-tiles {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: stretch;
+    gap: 8px;
+}
+
+.shift-tile {
+    background: #fff;
+    border: 1px solid #ececec;
+    border-radius: 8px;
+    padding: 10px 12px;
+    min-height: 72px;
+    min-width: 148px;
+    max-width: 200px;
+    flex: 0 1 160px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+    box-shadow: none;
+}
+
+.shift-tile-store {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #9ca3af;
+    line-height: 1.2;
+}
+
+.shift-tile-people {
+    font-size: 13px;
+    font-weight: 500;
+    color: #374151;
+    line-height: 1.35;
+}
+
+.shifts-empty {
+    width: 100%;
+    text-align: center;
+    padding: 12px 4px;
+}
+
+.card { background: #fff; border: 1px solid #eee; border-radius: 10px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); overflow: hidden; }
+.card-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid #f0f0f0; }
+.card-title { font-weight: 700; color: #111827; }
+.badge { background: #e8f5e9; color: #166534; border-radius: 999px; padding: 2px 10px; font-size: 12px; }
+.card--tasks .card-header { border-bottom: 1px solid #f0f0f0; }
+.news-list { padding: 10px; }
+.news-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 8px; border-bottom: 1px solid #f5f5f5; }
+.btn-link { background: transparent; border: 0; color: #2563eb; cursor: pointer; }
+.task-form { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 16px; max-width: none; margin: 0; flex-wrap: wrap; }
+.task-input { flex: 1; min-width: 200px; }
+.input, .select { border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px 12px; width: 100%; height: 38px; font-size: 14px; }
+.select { min-width: 160px; flex: 0 1 220px; }
+.btn-primary { background: linear-gradient(90deg, #f472b6, #a78bfa); color: white; border: 0; border-radius: 8px; padding: 0 16px; cursor: pointer; height: 38px; white-space: nowrap; font-size: 14px; font-weight: 500; }
+.btn-outline { background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 6px 10px; cursor: pointer; }
+.tasks-list { padding: 8px 12px; display: grid; gap: 8px; }
+.task-item { display: flex; align-items: center; justify-content: space-between; border: 1px solid #f2f2f2; border-radius: 8px; padding: 10px; gap: 10px; }
+.task-item > div:first-child {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+.task-item--preview { border-color: #e8e8e8; }
+
+.tasks-more {
+    border: 1px solid #ececec;
+    border-radius: 8px;
+    background: #fafafa;
+    overflow: hidden;
+}
+
+.tasks-more-summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 10px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #4b5563;
+    user-select: none;
+}
+
+.tasks-more-summary::-webkit-details-marker {
+    display: none;
+}
+
+.tasks-more-summary::before {
+    content: '▸';
+    display: inline-block;
+    margin-right: 8px;
+    transition: transform 0.15s ease;
+    color: #9ca3af;
+}
+
+.tasks-more[open] .tasks-more-summary::before {
+    transform: rotate(90deg);
+}
+
+.tasks-more-list {
+    padding: 0 8px 10px;
+    display: grid;
+    gap: 8px;
+    border-top: 1px solid #eee;
+    padding-top: 10px;
+    margin: 0 6px 8px;
+    background: #fff;
+    border-radius: 0 0 6px 6px;
+}
+.task-title {
+    font-weight: 600;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+.task-meta { font-size: 12px; color: #6b7280; }
+.muted { color: #9ca3af; padding: 12px; }
+
+@media (max-width: 1100px) {
+  .tiles-row,
+  .plan-tiles-row { grid-template-columns: repeat(2, 1fr); }
+  .shift-tile { max-width: none; flex: 1 1 140px; }
+  .task-form { flex-direction: column; align-items: stretch; }
+  .task-input { width: 100%; min-width: 0; }
+  .select { min-width: 100%; flex: 1 1 auto; }
+}
+
+/* Telefony – sekce Úkoly a dlaždice čitelné na úzké šířce */
+@media (max-width: 768px) {
+  .admin-dashboard {
+    padding: 10px 12px 16px;
+  }
+
+  .tiles-row,
+  .plan-tiles-row {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .tile {
+    min-height: 0;
+    padding: 12px 14px;
+  }
+
+  .tile-value {
+    font-size: 1.25rem;
+  }
+
+  .content-stack {
+    gap: 12px;
+  }
+
+  .card--tasks .card-header {
+    padding: 10px 12px;
+  }
+
+  .card--tasks .task-form {
+    padding: 12px;
+    gap: 10px;
+  }
+
+  /* iOS: 16px+ na inputech snižuje nechtěné přiblížení při focusu */
+  .card--tasks .input,
+  .card--tasks .select {
+    font-size: 16px;
+    min-height: 44px;
+    height: auto;
+  }
+
+  .card--tasks .btn-primary {
+    width: 100%;
+    min-height: 44px;
+    height: auto;
+    padding: 10px 16px;
+  }
+
+  .card--tasks .tasks-list {
+    padding: 6px 10px 12px;
+    gap: 10px;
+  }
+
+  .card--tasks .task-item,
+  .card--tasks .tasks-more-list .task-item {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .card--tasks .task-item > div:first-child,
+  .card--tasks .tasks-more-list .task-item > div:first-child {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .card--tasks .task-title {
+    font-size: 0.9375rem;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    hyphens: auto;
+  }
+
+  .card--tasks .task-meta {
+    font-size: 11px;
+    line-height: 1.45;
+    overflow-wrap: break-word;
+    margin-top: 4px;
+  }
+
+  .card--tasks .task-item .btn-outline {
+    width: 100%;
+    align-self: stretch;
+    min-height: 44px;
+    padding: 10px 14px;
+    font-size: 14px;
+  }
+
+  .tasks-more {
+    border-radius: 8px;
+  }
+
+  .tasks-more-summary {
+    padding: 12px 14px;
+    font-size: 0.875rem;
+    line-height: 1.35;
+    overflow-wrap: break-word;
+  }
+
+  .tasks-more-list {
+    margin: 0 4px 8px;
+    padding: 8px 6px 10px;
+  }
+
+  .shifts-summary {
+    padding: 12px;
+    align-items: center;
+  }
+
+  .shifts-section-title {
+    line-height: 1.3;
+  }
+
+  .shifts-summary-meta {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+  }
+
+  .shifts-tiles-wrap {
+    padding: 10px 8px 12px;
+  }
+
+  .shift-tile {
+    min-width: 0;
+    flex: 1 1 calc(50% - 4px);
+    max-width: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .shift-tile {
+    flex: 1 1 100%;
+  }
+}

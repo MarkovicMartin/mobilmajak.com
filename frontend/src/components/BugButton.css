@@ -1,0 +1,232 @@
+.bug-dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.bug-toggle {
+    background: none;
+    border: none;
+    font-size: 1.4rem;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+    color: var(--text-inverse);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+}
+
+.bug-toggle:hover {
+    background-color: var(--hover-bg);
+    transform: scale(1.1);
+}
+
+.bug-toggle.active {
+    background-color: var(--hover-bg);
+    transform: scale(1.15);
+}
+
+.bug-toggle.bug-toggle-has-unread {
+    position: relative;
+}
+
+.bug-toggle.bug-toggle-has-unread::after {
+    content: '';
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #e74c3c;
+    box-shadow: 0 0 0 2px var(--bg-header, #1a1a2e);
+}
+
+.bug-dropdown-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: var(--bg-dropdown);
+    border-radius: 12px;
+    box-shadow: var(--shadow-dropdown);
+    min-width: 260px;
+    z-index: 1000;
+    margin-top: 8px;
+    border: 1px solid var(--border-primary);
+    overflow: hidden;
+    animation: slideDown 0.25s ease;
+}
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.bug-dropdown-header {
+    background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+    color: white;
+    padding: 14px 18px;
+}
+
+.bug-title {
+    display: block;
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+
+.bug-subtitle {
+    display: block;
+    font-size: 0.8rem;
+    opacity: 0.9;
+}
+
+.bug-options {
+    padding: 6px 0;
+}
+
+.bug-option {
+    display: flex;
+    align-items: center;
+    padding: 12px 18px;
+    background: none;
+    border: none;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border-secondary);
+    gap: 0.75rem;
+}
+
+.bug-option:last-child {
+    border-bottom: none;
+}
+
+.bug-option:hover {
+    background-color: var(--bg-secondary);
+    transform: translateX(3px);
+}
+
+.bug-option-icon {
+    font-size: 1.3rem;
+    width: 24px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.bug-option-content {
+    display: flex;
+    flex-direction: column;
+}
+
+.bug-option-name {
+    font-weight: 600;
+    font-size: 0.92rem;
+}
+
+.bug-option-desc {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    margin-top: 1px;
+}
+
+/* Desktop / mobilní větvení */
+.bug-desktop-only {
+    display: block;
+}
+
+.bug-mobile-only {
+    display: none;
+}
+
+@media (min-width: 769px) {
+    .bug-mobile-only {
+        display: none !important;
+    }
+}
+
+/* Portál na body: musí být NAD .dock-navbar (1100), jinak je celý subtree pod hlavičkou */
+.bug-mobile-drawer-root {
+    position: relative;
+    z-index: 1400;
+}
+
+@media (max-width: 768px) {
+    .bug-desktop-only {
+        display: none !important;
+    }
+
+    .bug-mobile-only {
+        display: block;
+    }
+
+    /* Drawer backdrop – nad dock-navbar (z-index 1100) */
+    .bug-drawer-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0);
+        z-index: 1300;
+        pointer-events: none;
+        transition: background 0.25s ease;
+    }
+
+    .bug-drawer-backdrop.open {
+        background: rgba(0, 0, 0, 0.4);
+        pointer-events: auto;
+    }
+
+    /* Drawer panel – stejný design jako hamburger menu */
+    .bug-drawer-panel {
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 280px;
+        max-width: 85vw;
+        background: var(--bg-header);
+        box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15);
+        z-index: 1310;
+        transform: translateX(-100%);
+        transition: transform 0.25s ease;
+        overflow-y: auto;
+        border: none;
+        border-radius: 0;
+        margin: 0;
+        animation: none;
+    }
+
+    .bug-drawer-panel.open {
+        transform: translateX(0);
+    }
+
+    .bug-drawer-panel .mobile-nav-close {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+    }
+}
+
+.bug-success-toast {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    background: #27ae60;
+    color: white;
+    padding: 14px 20px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+    z-index: 10000;
+    animation: toastIn 0.3s ease;
+}
+
+@keyframes toastIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+}

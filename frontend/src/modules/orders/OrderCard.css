@@ -1,0 +1,275 @@
+.order-card {
+    background: white;
+    border-radius: 12px;
+    padding: 15px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    cursor: grab;
+    position: relative;
+    border-left: 4px solid #e1e5e9;
+}
+
+.order-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.order-card.dragging {
+    transform: rotate(5deg);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+    cursor: grabbing;
+    z-index: 1000;
+}
+
+/* Prioritní styling */
+.order-card.priority-high {
+    border-left-color: #ff6b6b;
+    background: linear-gradient(135deg, #fff5f5 0%, #ffffff 100%);
+}
+
+.order-card.priority-medium {
+    border-left-color: #ffa726;
+    background: linear-gradient(135deg, #fffbf0 0%, #ffffff 100%);
+}
+
+.order-card.priority-normal {
+    border-left-color: #4caf50;
+    background: linear-gradient(135deg, #f8fff8 0%, #ffffff 100%);
+}
+
+/* Header karty */
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.card-id {
+    font-weight: 700;
+    font-size: 14px;
+    color: #667eea;
+    background: linear-gradient(135deg, #e8f2ff 0%, #f0f8ff 100%);
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid #667eea;
+}
+
+.card-actions {
+    display: flex;
+    gap: 6px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.order-card:hover .card-actions {
+    opacity: 1;
+}
+
+.card-action-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    font-size: 14px;
+}
+
+.card-action-btn.info {
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+}
+
+.card-action-btn.info:hover {
+    transform: scale(1.1);
+    background: linear-gradient(135deg, #bbdefb 0%, #90caf9 100%);
+}
+
+.card-action-btn.delete {
+    background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
+}
+
+.card-action-btn.delete:hover {
+    transform: scale(1.1);
+    background: linear-gradient(135deg, #ffcdd2 0%, #ef9a9a 100%);
+}
+
+/* Informace o zákazníkovi */
+.card-customer {
+    margin-bottom: 12px;
+    padding: 10px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+}
+
+.customer-name {
+    font-weight: 600;
+    font-size: 14px;
+    color: #333;
+    margin-bottom: 4px;
+}
+
+.customer-phone {
+    font-size: 12px;
+    color: #666;
+    font-family: 'Courier New', monospace;
+}
+
+/* Informace o dílu */
+.card-item {
+    margin-bottom: 12px;
+    padding: 10px;
+    background: linear-gradient(135deg, #f0f8ff 0%, #e6f3ff 100%);
+    border-radius: 8px;
+    border: 1px solid #b3d9ff;
+}
+
+.item-device {
+    font-weight: 600;
+    font-size: 13px;
+    color: #1976d2;
+    margin-bottom: 4px;
+}
+
+.item-part {
+    font-size: 12px;
+    color: #555;
+}
+
+.item-color {
+    font-style: italic;
+    color: #777;
+}
+
+/* Metadata */
+.card-metadata {
+    margin-bottom: 10px;
+    font-size: 11px;
+    color: #666;
+}
+
+.metadata-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 3px;
+}
+
+.metadata-label {
+    font-weight: 500;
+}
+
+.metadata-value {
+    font-weight: 600;
+    text-align: right;
+}
+
+/* Cena */
+.card-price {
+    background: linear-gradient(135deg, #e8f5e8 0%, #c8e6c8 100%);
+    padding: 8px 12px;
+    border-radius: 20px;
+    font-weight: 700;
+    font-size: 13px;
+    color: #2e7d32;
+    text-align: center;
+    margin-bottom: 8px;
+    border: 1px solid #4caf50;
+}
+
+/* Poznámka */
+.card-note {
+    background: linear-gradient(135deg, #fffbf0 0%, #fff8e1 100%);
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    color: #e65100;
+    margin-bottom: 8px;
+    border-left: 3px solid #ff9800;
+    font-style: italic;
+}
+
+/* Servisní číslo */
+.card-service-number {
+    background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
+    padding: 6px 10px;
+    border-radius: 15px;
+    font-size: 11px;
+    color: #7b1fa2;
+    text-align: center;
+    font-weight: 600;
+    font-family: 'Courier New', monospace;
+    margin-bottom: 8px;
+    border: 1px solid #9c27b0;
+}
+
+/* Drag handle */
+.drag-handle {
+    position: absolute;
+    top: 50%;
+    right: 8px;
+    transform: translateY(-50%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+
+.order-card:hover .drag-handle {
+    opacity: 0.3;
+}
+
+.drag-icon {
+    color: #999;
+    font-size: 16px;
+    font-weight: bold;
+    line-height: 1;
+}
+
+/* Responzivní design */
+@media (max-width: 768px) {
+    .order-card {
+        padding: 12px;
+    }
+
+    .card-actions {
+        opacity: 1; /* Na mobilech zobrazujeme tlačítka stále */
+    }
+
+    .metadata-row {
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .metadata-value {
+        text-align: left;
+        font-weight: 500;
+    }
+
+    .drag-handle {
+        display: none; /* Na mobilech skryjeme drag handle */
+    }
+}
+
+@media (max-width: 480px) {
+    .order-card {
+        padding: 10px;
+    }
+
+    .card-header {
+        margin-bottom: 10px;
+    }
+
+    .card-customer,
+    .card-item {
+        padding: 8px;
+        margin-bottom: 10px;
+    }
+
+    .customer-name {
+        font-size: 13px;
+    }
+
+    .item-device {
+        font-size: 12px;
+    }
+} 

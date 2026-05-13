@@ -1,0 +1,32 @@
+2025-07-20 19:07:12 - Spouštím automatické ukládání analytických dat
+/Users/martinsimek/Desktop/WEB/backend/venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+/Users/martinsimek/Desktop/WEB/backend/venv/lib/python3.9/site-packages/django/db/models/fields/__init__.py:1595: RuntimeWarning: DateTimeField ProdejniDataDenni.timestamp received a naive datetime (2025-07-20 17:07:16.696569) while time zone support is active.
+  warnings.warn(
+/Users/martinsimek/Desktop/WEB/backend/venv/lib/python3.9/site-packages/django/db/models/fields/__init__.py:1595: RuntimeWarning: DateTimeField ProdejniDataMesicni.timestamp received a naive datetime (2025-07-20 17:07:20.302385) while time zone support is active.
+  warnings.warn(
+🚀 Začínám automatické ukládání dat - 20.07.2025 17:07:12
+📥 Načítám daily data z Google Sheets...
+✅ Načteno 6 záznamů
+💾 Ukládám daily data do databáze...
+📥 Načítám monthly data z Google Sheets...
+✅ Načteno 21 záznamů
+💾 Ukládám monthly data do databáze...
+
+==================================================
+📊 SOUHRN AUTOMATICKÉHO UKLÁDÁNÍ
+==================================================
+✅ Denní data: Aktualizováno 6 existujících záznamů
+   • Zpracováno: 6 záznamů
+   • Aktualizováno: 6 záznamů
+   • Vytvořeno: 0 záznamů
+   • Tabulka: WEB_PRODEJNI_DATA_DENNI
+✅ Měsíční data: Aktualizováno 21 existujících záznamů
+   • Zpracováno: 21 záznamů
+   • Aktualizováno: 21 záznamů
+   • Vytvořeno: 0 záznamů
+   • Tabulka: WEB_PRODEJNI_DATA_MESICNI
+
+🎉 Automatické ukládání dokončeno!
+2025-07-20 19:07:23 - Automatické ukládání dokončeno úspěšně
+-------------------------------------------

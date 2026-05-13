@@ -1,0 +1,460 @@
+.tickets-module {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem;
+}
+
+.tickets-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.tickets-header h2 {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 1.5rem;
+}
+
+.tickets-filter {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.tickets-filter label {
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.tickets-filter select {
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border-primary);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+.btn-refresh {
+    padding: 6px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border-primary);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+}
+
+.btn-refresh:hover {
+    background: var(--bg-hover, #e0e0e0);
+}
+
+.tickets-avg {
+    background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+}
+
+.tickets-avg strong {
+    font-size: 0.95rem;
+}
+
+.tickets-avg-count {
+    opacity: 0.85;
+    font-size: 0.78rem;
+}
+
+.ticket-resolved-time {
+    color: #27ae60;
+    font-weight: 600;
+}
+
+.ticket-open-time {
+    color: #f39c12;
+}
+
+.tickets-loading,
+.tickets-error,
+.tickets-empty {
+    text-align: center;
+    padding: 3rem;
+    color: var(--text-secondary);
+    font-size: 1.05rem;
+}
+
+.tickets-error {
+    color: #e74c3c;
+}
+
+.tickets-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.ticket-card {
+    background: var(--bg-primary);
+    border-radius: 12px;
+    border: 1px solid var(--border-primary);
+    overflow: hidden;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+    transition: box-shadow 0.2s;
+}
+
+.ticket-card:hover {
+    box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+}
+
+.ticket-card.stav-novy {
+    border-left: 4px solid #e74c3c;
+}
+
+.ticket-card.stav-makam {
+    border-left: 4px solid #f39c12;
+}
+
+.ticket-card.stav-opraveno {
+    border-left: 4px solid #27ae60;
+}
+
+.ticket-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    cursor: pointer;
+    user-select: none;
+    gap: 1rem;
+}
+
+.ticket-card-left {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex: 1;
+    min-width: 0;
+}
+
+.ticket-id {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    font-family: monospace;
+}
+
+.ticket-card-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.ticket-nazev {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 1rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ticket-meta {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-top: 2px;
+}
+
+.ticket-img-count {
+    color: var(--text-secondary);
+}
+
+.ticket-card-right {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-shrink: 0;
+}
+
+.ticket-badge {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #fff;
+    white-space: nowrap;
+}
+
+.ticket-expand {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.ticket-card-body {
+    padding: 0 18px 18px;
+    border-top: 1px solid var(--border-secondary, #eee);
+}
+
+.ticket-url {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    margin: 14px 0 8px;
+    font-size: 0.82rem;
+}
+
+.ticket-url span {
+    color: var(--text-secondary);
+    white-space: nowrap;
+    font-weight: 500;
+}
+
+.ticket-url a {
+    color: var(--accent-primary, #667eea);
+    text-decoration: none;
+    word-break: break-all;
+}
+
+.ticket-url a:hover {
+    text-decoration: underline;
+}
+
+.ticket-popis {
+    color: var(--text-primary);
+    margin: 14px 0;
+    line-height: 1.6;
+    white-space: pre-wrap;
+}
+
+.ticket-images {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.ticket-thumb {
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 1px solid var(--border-primary);
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.ticket-thumb:hover {
+    transform: scale(1.08);
+}
+
+.ticket-actions {
+    margin-bottom: 1.25rem;
+}
+
+.ticket-actions label {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    display: block;
+    margin-bottom: 8px;
+}
+
+.stav-buttons {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.75rem;
+}
+
+.btn-stav {
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 2px solid var(--stav-color);
+    background: transparent;
+    color: var(--stav-color);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-stav:hover:not(:disabled) {
+    background: var(--stav-color);
+    color: #fff;
+}
+
+.btn-stav.active {
+    background: var(--stav-color);
+    color: #fff;
+}
+
+.btn-stav:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.btn-delete {
+    padding: 6px 14px;
+    border-radius: 8px;
+    border: 1px solid #e74c3c;
+    background: transparent;
+    color: #e74c3c;
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-delete:hover {
+    background: #e74c3c;
+    color: #fff;
+}
+
+.ticket-comments h4 {
+    margin: 0 0 10px;
+    font-size: 0.95rem;
+    color: var(--text-primary);
+}
+
+.comment-item {
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 8px;
+}
+
+.comment-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+    font-size: 0.8rem;
+}
+
+.comment-header strong {
+    color: var(--text-primary);
+}
+
+.comment-header span {
+    color: var(--text-secondary);
+}
+
+.comment-item p,
+.comment-body-text {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+}
+
+.comment-edited-hint {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.comment-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.btn-comment-edit,
+.btn-comment-delete,
+.btn-comment-save,
+.btn-comment-cancel {
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    border: 1px solid var(--border-primary);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+.btn-comment-delete {
+    border-color: #e74c3c;
+    color: #e74c3c;
+}
+
+.btn-comment-delete:hover:not(:disabled) {
+    background: #e74c3c;
+    color: #fff;
+}
+
+.btn-comment-save {
+    background: var(--accent-primary, #667eea);
+    color: #fff;
+    border: none;
+}
+
+.comment-edit-textarea {
+    width: 100%;
+    margin-top: 8px;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border-primary);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 0.9rem;
+    resize: vertical;
+    box-sizing: border-box;
+}
+
+.comment-item-editing .comment-header {
+    flex-wrap: wrap;
+}
+
+.comment-form {
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.comment-form textarea {
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border-primary);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 0.9rem;
+    resize: vertical;
+}
+
+.comment-form button {
+    align-self: flex-end;
+    padding: 8px 18px;
+    border-radius: 8px;
+    border: none;
+    background: var(--accent-primary, #667eea);
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.comment-form button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.comment-form button:hover:not(:disabled) {
+    opacity: 0.85;
+}

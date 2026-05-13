@@ -1,0 +1,391 @@
+.points-leaderboard {
+    padding: 20px;
+}
+
+/* Statistiky */
+.leaderboard-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 40px;
+}
+
+.stat-card {
+    background: linear-gradient(135deg, #f8f9ff, #e8eeff);
+    border: 2px solid #e1e8ff;
+    border-radius: 15px;
+    padding: 25px;
+    text-align: center;
+    transition: all 0.3s ease;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    border-color: #c7d2fe;
+}
+
+.stat-card h4 {
+    font-size: 1rem;
+    color: #5a67d8;
+    margin: 0 0 15px 0;
+    font-weight: 600;
+}
+
+.stat-value {
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: #2d3748;
+    margin-bottom: 8px;
+}
+
+.stat-change {
+    font-size: 0.9rem;
+    color: #718096;
+    margin: 0;
+}
+
+.stat-change.positive {
+    color: #38a169;
+    font-weight: 600;
+}
+
+/* TOP 3 sekce */
+.top-three-section {
+    margin-bottom: 40px;
+    text-align: center;
+}
+
+.top-three-section h3 {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin: 0 0 10px 0;
+}
+
+.top-three-section p {
+    color: #718096;
+    font-size: 1.1rem;
+    margin: 0 0 30px 0;
+}
+
+.top-three-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 25px;
+    margin-top: 30px;
+}
+
+.top-seller-card {
+    background: white;
+    border-radius: 20px;
+    padding: 30px 25px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    border: 3px solid transparent;
+}
+
+.top-seller-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+}
+
+.top-seller-card.current-user {
+    border-color: #667eea;
+    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+}
+
+.top-seller-card.winner {
+    background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+    border-color: #f6ad55;
+}
+
+.top-seller-card.second {
+    background: linear-gradient(135deg, #e8f4f8 0%, #d6edf2 100%);
+    border-color: #81c5d4;
+}
+
+.top-seller-card.third {
+    background: linear-gradient(135deg, #f4e6d7 0%, #e8d5c4 100%);
+    border-color: #cd9777;
+}
+
+.medal-position {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.medal {
+    font-size: 2.5rem;
+}
+
+.position-number {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1.2rem;
+    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+}
+
+.seller-info {
+    text-align: center;
+    margin-bottom: 25px;
+}
+
+.seller-info h4 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #2d3748;
+    margin: 0 0 5px 0;
+}
+
+.store-name {
+    color: #718096;
+    font-size: 1rem;
+    margin: 0;
+    font-weight: 500;
+}
+
+.score-section {
+    text-align: center;
+    margin-bottom: 25px;
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.7);
+    border-radius: 15px;
+    backdrop-filter: blur(10px);
+}
+
+.total-score {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #667eea;
+    margin-bottom: 5px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.score-label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #718096;
+    letter-spacing: 1px;
+}
+
+.additional-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.stat-item {
+    background: rgba(255, 255, 255, 0.5);
+    padding: 12px;
+    border-radius: 10px;
+    text-align: center;
+}
+
+.stat-label {
+    display: block;
+    font-size: 0.8rem;
+    color: #718096;
+    margin-bottom: 5px;
+    font-weight: 500;
+}
+
+.stat-value {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #2d3748;
+}
+
+/* Tabulka */
+.leaderboard-table-section {
+    margin-bottom: 30px;
+}
+
+.leaderboard-table-section h4 {
+    font-size: 1.3rem;
+    color: #2d3748;
+    margin-bottom: 20px;
+    font-weight: 600;
+}
+
+.table-wrapper {
+    background: white;
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e2e8f0;
+}
+
+.leaderboard-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.leaderboard-table th {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    padding: 20px 15px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.9rem;
+    letter-spacing: 0.5px;
+}
+
+.leaderboard-table td {
+    padding: 20px 15px;
+    border-bottom: 1px solid #e2e8f0;
+    font-size: 0.95rem;
+}
+
+.leaderboard-table tr:hover {
+    background: linear-gradient(135deg, #f8f9ff, #e8eeff);
+}
+
+.leaderboard-table tr.current-user-row {
+    background: linear-gradient(135deg, #e8f4f8, #d6edf2);
+    border-left: 4px solid #667eea;
+}
+
+.position-badge {
+    background: linear-gradient(135deg, #e2e8f0, #cbd5e0);
+    color: #4a5568;
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.seller-cell {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.you-badge {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    padding: 3px 8px;
+    border-radius: 10px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.points-value, .score-highlight {
+    font-weight: 700;
+    color: #667eea;
+}
+
+/* Pozice uživatele */
+.user-position-card {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    padding: 25px;
+    border-radius: 15px;
+    text-align: center;
+    margin-bottom: 20px;
+    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+}
+
+.user-position-card h4 {
+    font-size: 1.2rem;
+    margin: 0 0 15px 0;
+    font-weight: 600;
+}
+
+.position-info {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    flex-wrap: wrap;
+}
+
+.position-info span {
+    font-size: 1.1rem;
+    font-weight: 600;
+    opacity: 0.9;
+}
+
+/* Responzivní design */
+@media (max-width: 768px) {
+    .points-leaderboard {
+        padding: 10px;
+    }
+    
+    .leaderboard-stats {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .top-three-cards {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    
+    .top-seller-card {
+        padding: 25px 20px;
+    }
+    
+    .additional-stats {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+    
+    .table-wrapper {
+        overflow-x: auto;
+    }
+    
+    .leaderboard-table th,
+    .leaderboard-table td {
+        padding: 15px 10px;
+        font-size: 0.9rem;
+    }
+    
+    .position-info {
+        flex-direction: column;
+        gap: 10px;
+    }
+}
+
+@media (max-width: 480px) {
+    .stat-card {
+        padding: 20px;
+    }
+    
+    .stat-value {
+        font-size: 1.8rem;
+    }
+    
+    .top-seller-card {
+        padding: 20px 15px;
+    }
+    
+    .total-score {
+        font-size: 2rem;
+    }
+    
+    .medal {
+        font-size: 2rem;
+    }
+    
+    .position-number {
+        width: 35px;
+        height: 35px;
+        font-size: 1rem;
+    }
+} 

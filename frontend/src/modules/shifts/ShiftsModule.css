@@ -1,0 +1,283 @@
+.shifts-module {
+    padding: 20px;
+    max-width: 1400px;
+    margin: 0 auto;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.shifts-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid #e0e0e0;
+}
+
+.shifts-header h2 {
+    margin: 0;
+    color: #333;
+    font-size: 28px;
+    font-weight: 600;
+}
+
+.view-tabs {
+    display: flex;
+    gap: 10px;
+}
+
+.view-tabs button {
+    padding: 10px 20px;
+    border: 2px solid #ddd;
+    background: white;
+    cursor: pointer;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    color: #666;
+}
+
+.view-tabs button:hover {
+    border-color: #007bff;
+    color: #007bff;
+    transform: translateY(-1px);
+}
+
+.view-tabs button.active {
+    background: linear-gradient(135deg, #007bff, #0056b3);
+    color: white;
+    border-color: #007bff;
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+}
+
+.shifts-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    align-items: center;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 12px;
+    margin-bottom: 30px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.prodejna-selector {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.prodejna-selector label {
+    font-weight: 600;
+    color: #333;
+    font-size: 14px;
+}
+
+.prodejna-selector select {
+    padding: 8px 15px;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+    min-width: 150px;
+    background: white;
+    cursor: pointer;
+    transition: border-color 0.3s ease;
+}
+
+.prodejna-selector select:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.month-navigation {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    background: white;
+    padding: 12px 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.month-navigation button {
+    background: #3b82f6 !important;
+    color: white !important;
+    border: 1px solid #3b82f6 !important;
+    padding: 8px 15px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.month-navigation button:hover {
+    background: #2563eb !important;
+    border-color: #2563eb !important;
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgba(59, 130, 246, 0.3);
+}
+
+.current-month {
+    font-size: 16px;
+    font-weight: 600;
+    color: #374151;
+    min-width: 200px;
+    text-align: center;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 10px;
+    margin-left: auto;
+}
+
+.btn-primary, .btn-secondary, .btn-export {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(40, 167, 69, 0.4);
+}
+
+.btn-secondary {
+    background: linear-gradient(135deg, #6c757d, #495057);
+    color: white;
+    box-shadow: 0 4px 12px rgba(108, 117, 125, 0.3);
+}
+
+.btn-secondary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(108, 117, 125, 0.4);
+}
+
+.btn-export {
+    background: linear-gradient(135deg, #fd7e14, #e55100);
+    color: white;
+    box-shadow: 0 4px 12px rgba(253, 126, 20, 0.3);
+}
+
+.btn-export:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(253, 126, 20, 0.4);
+}
+
+.shifts-content {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+.loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 200px;
+    font-size: 18px;
+    color: #666;
+}
+
+/* Responzivní design */
+@media (max-width: 1200px) {
+    .shifts-controls {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 15px;
+    }
+    
+    .action-buttons {
+        margin-left: 0;
+        justify-content: center;
+    }
+    
+    .month-navigation {
+        justify-content: center;
+    }
+}
+
+@media (max-width: 768px) {
+    .shifts-module {
+        padding: 10px;
+    }
+    
+    .shifts-header {
+        flex-direction: column;
+        gap: 20px;
+        align-items: stretch;
+    }
+    
+    .view-tabs {
+        justify-content: center;
+    }
+    
+    .view-tabs button {
+        flex: 1;
+        text-align: center;
+    }
+    
+    .shifts-controls {
+        padding: 15px;
+        gap: 15px;
+    }
+    
+    .prodejna-selector {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+    
+    .prodejna-selector select {
+        min-width: unset;
+    }
+    
+    .month-navigation {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .current-month {
+        min-width: unset;
+    }
+    
+    .action-buttons {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .btn-primary, .btn-secondary, .btn-export {
+        justify-content: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .shifts-header h2 {
+        font-size: 24px;
+        text-align: center;
+    }
+    
+    .view-tabs {
+        flex-direction: column;
+        gap: 8px;
+    }
+} 

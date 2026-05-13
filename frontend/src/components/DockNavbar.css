@@ -1,0 +1,284 @@
+/* Dock navbar – nahrazuje dashboard-header, používá theme.css proměnné */
+
+.dock-navbar {
+    position: sticky;
+    top: 0;
+    z-index: 1100;
+    width: 100%;
+    padding: 0.75rem 1rem 0.5rem;
+    box-sizing: border-box;
+}
+
+/* Desktop: odsazení nahoře kvůli tooltipům nad ikonami */
+@media (min-width: 769px) {
+    .dock-navbar {
+        padding-top: 1rem;
+        padding-bottom: 0.75rem;
+    }
+}
+
+/* --- Mobil (≤768px) --- */
+.dock-navbar-mobile {
+    display: none;
+}
+
+.dock-mobile-wrap {
+    border-radius: 16px;
+    border: 1px solid var(--border-primary);
+    background: rgba(255, 255, 255, 0.55);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow: var(--shadow-primary);
+    overflow: hidden;
+}
+
+.dark-mode .dock-mobile-wrap {
+    background: rgba(40, 40, 40, 0.75);
+}
+
+@supports (background: color-mix(in srgb, white 50%, transparent)) {
+    .dock-mobile-wrap {
+        background: color-mix(in srgb, var(--bg-primary) 78%, transparent);
+    }
+}
+
+.dock-mobile-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    border: none;
+    background: transparent;
+}
+
+.dock-mobile-toggle {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 5px;
+    width: 40px;
+    height: 40px;
+    padding: 8px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    border-radius: 8px;
+    color: var(--text-header);
+    flex-shrink: 0;
+}
+
+.dock-mobile-toggle:hover {
+    background-color: var(--hover-bg);
+}
+
+.dock-hamburger-line {
+    display: block;
+    width: 22px;
+    height: 2px;
+    background: currentColor;
+    border-radius: 1px;
+}
+
+.dock-mobile-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex-shrink: 0;
+    margin-left: auto;
+}
+
+.dock-icon-btn--compact {
+    width: 38px;
+    height: 38px;
+    padding: 0;
+}
+
+
+/* --- Desktop (≥769px) --- */
+.dock-navbar-desktop {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+}
+
+.dock-glass {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 0.5rem 1rem;
+    max-width: 100%;
+    padding: 0.65rem 1.25rem 0.85rem;
+    border-radius: 24px;
+    border: 1px solid var(--border-primary);
+    background: rgba(255, 255, 255, 0.65);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    box-shadow: var(--shadow-secondary);
+    position: relative;
+}
+
+.dark-mode .dock-glass {
+    background: rgba(45, 45, 45, 0.75);
+}
+
+@supports (background: color-mix(in srgb, white 50%, transparent)) {
+    .dock-glass {
+        background: color-mix(in srgb, var(--bg-primary) 70%, transparent);
+    }
+}
+
+.dock-nav-icons {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 0.35rem;
+}
+
+.dock-nav-item-wrap {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.dock-sep {
+    width: 1px;
+    align-self: stretch;
+    min-height: 36px;
+    background: var(--border-primary);
+    opacity: 0.6;
+    margin: 0 0.25rem;
+}
+
+.dock-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 0.35rem;
+}
+
+.dock-slot {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Ikony v docku */
+.dock-icon-btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: none;
+    border-radius: 14px;
+    background: transparent;
+    color: var(--text-header);
+    cursor: pointer;
+    transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.dock-icon-btn:hover {
+    background: var(--hover-bg);
+    box-shadow: 0 4px 14px rgba(102, 126, 234, 0.15);
+}
+
+.dock-icon-btn i {
+    font-size: 1.1rem;
+}
+
+.dock-icon-btn--active {
+    color: var(--accent-secondary);
+}
+
+.dock-icon-btn--active:hover {
+    color: var(--accent-secondary);
+}
+
+.dock-active-dot {
+    position: absolute;
+    bottom: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent-secondary);
+    pointer-events: none;
+}
+
+/* Tooltip (desktop) – pod ikonou, aby se neusekávaly u horního okraje */
+@media (hover: hover) and (min-width: 769px) {
+    .dock-icon-btn[data-tooltip]:hover::after {
+        content: attr(data-tooltip);
+        position: absolute;
+        top: calc(100% + 8px);
+        bottom: auto;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 4px 8px;
+        font-size: 0.7rem;
+        font-weight: 500;
+        white-space: nowrap;
+        color: var(--text-inverse);
+        background: var(--text-primary);
+        border-radius: 6px;
+        z-index: 1200;
+        pointer-events: none;
+        box-shadow: var(--shadow-primary);
+    }
+}
+
+/* Admin / Bug vložené komponenty – sladit s dockem */
+.dock-navbar .admin-dropdown,
+.dock-navbar .bug-dropdown {
+    display: inline-flex;
+    align-items: center;
+    vertical-align: middle;
+}
+
+.dock-navbar .admin-toggle,
+.dock-navbar .bug-toggle {
+    width: 44px;
+    height: 44px;
+    font-size: 1.1rem;
+    border-radius: 14px;
+    color: var(--text-header);
+}
+
+.dock-navbar .admin-toggle:hover,
+.dock-navbar .bug-toggle:hover {
+    transform: none;
+}
+
+/* Dropdowny nad dockem */
+.dock-navbar .admin-dropdown-menu,
+.dock-navbar .bug-dropdown-menu {
+    z-index: 1200;
+}
+
+/* Breakpointy */
+@media (max-width: 768px) {
+    .dock-navbar-mobile {
+        display: block;
+    }
+
+    .dock-navbar-desktop {
+        display: none;
+    }
+}
+
+@media (min-width: 769px) {
+    .dock-navbar-mobile {
+        display: none;
+    }
+
+    .dock-navbar-desktop {
+        display: flex;
+    }
+}

@@ -1,0 +1,357 @@
+.profile-image {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.image-header {
+    text-align: center;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid #f0f0f0;
+}
+
+.image-header h2 {
+    color: #333;
+    font-size: 1.8rem;
+    margin-bottom: 10px;
+}
+
+.image-header p {
+    color: #666;
+    font-size: 1.1rem;
+    margin: 0;
+}
+
+.message {
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-weight: 500;
+}
+
+.message.success {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.message.error {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.image-content {
+    display: grid;
+    gap: 40px;
+}
+
+.current-image-section,
+.upload-section {
+    background: #f8f9fa;
+    padding: 25px;
+    border-radius: 12px;
+    border: 1px solid #e9ecef;
+}
+
+.current-image-section h3,
+.upload-section h3 {
+    color: #333;
+    font-size: 1.4rem;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #dee2e6;
+}
+
+/* Aktuální obrázek */
+.current-image {
+    text-align: center;
+}
+
+.profile-preview {
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 4px solid #fff;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    margin-bottom: 15px;
+}
+
+.image-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+}
+
+.image-info p {
+    color: #666;
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+.delete-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    color: white;
+    border: none;
+    border-radius: 25px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.delete-button:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+}
+
+.delete-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.no-image {
+    text-align: center;
+    padding: 40px 20px;
+    color: #666;
+}
+
+.no-image-icon {
+    font-size: 4rem;
+    color: #ccc;
+    margin-bottom: 15px;
+}
+
+.no-image p {
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+/* Nahrávání obrázku */
+.upload-area {
+    margin-bottom: 25px;
+}
+
+.upload-button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 40px 20px;
+    border: 2px dashed #dee2e6;
+    border-radius: 12px;
+    background: #fff;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+}
+
+.upload-button:hover {
+    border-color: #667eea;
+    background: #f8f9ff;
+    transform: translateY(-2px);
+}
+
+.upload-button i {
+    font-size: 2.5rem;
+    color: #667eea;
+}
+
+.upload-button span {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #333;
+}
+
+.upload-button small {
+    color: #666;
+    font-size: 0.9rem;
+}
+
+/* Vybraný soubor */
+.file-selected {
+    background: #fff;
+    border: 2px solid #e9ecef;
+    border-radius: 12px;
+    padding: 20px;
+}
+
+.file-preview {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.preview-image {
+    width: 150px;
+    height: 150px;
+    border-radius: 8px;
+    object-fit: cover;
+    border: 2px solid #e9ecef;
+}
+
+.file-info {
+    margin-bottom: 20px;
+}
+
+.file-info p {
+    margin: 5px 0;
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.file-info strong {
+    color: #333;
+}
+
+.file-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+}
+
+.upload-confirm-button {
+    padding: 12px 24px;
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+    border: none;
+    border-radius: 25px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.upload-confirm-button:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+}
+
+.upload-confirm-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.cancel-button {
+    padding: 12px 24px;
+    background: #6c757d;
+    color: white;
+    border: none;
+    border-radius: 25px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.cancel-button:hover:not(:disabled) {
+    background: #5a6268;
+    transform: translateY(-2px);
+}
+
+.cancel-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Tipy pro nahrávání */
+.upload-tips {
+    background: #e3f2fd;
+    padding: 20px;
+    border-radius: 8px;
+    border-left: 4px solid #2196f3;
+}
+
+.upload-tips h4 {
+    color: #1976d2;
+    font-size: 1.1rem;
+    margin-bottom: 15px;
+    margin-top: 0;
+}
+
+.upload-tips ul {
+    margin: 0;
+    padding-left: 20px;
+    color: #424242;
+}
+
+.upload-tips li {
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+}
+
+.upload-tips li:last-child {
+    margin-bottom: 0;
+}
+
+/* Responzivní design */
+@media (max-width: 768px) {
+    .image-content {
+        gap: 30px;
+    }
+    
+    .current-image-section,
+    .upload-section {
+        padding: 20px;
+    }
+    
+    .profile-preview {
+        width: 150px;
+        height: 150px;
+    }
+    
+    .file-actions {
+        flex-direction: column;
+    }
+    
+    .upload-confirm-button,
+    .cancel-button {
+        width: 100%;
+    }
+    
+    .upload-button {
+        padding: 30px 15px;
+    }
+    
+    .upload-button i {
+        font-size: 2rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .image-header h2 {
+        font-size: 1.5rem;
+    }
+    
+    .current-image-section h3,
+    .upload-section h3 {
+        font-size: 1.2rem;
+    }
+    
+    .profile-preview {
+        width: 120px;
+        height: 120px;
+    }
+    
+    .preview-image {
+        width: 100px;
+        height: 100px;
+    }
+    
+    .upload-tips {
+        padding: 15px;
+    }
+    
+    .upload-tips h4 {
+        font-size: 1rem;
+    }
+    
+    .upload-tips li {
+        font-size: 0.8rem;
+    }
+} 

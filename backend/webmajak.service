@@ -1,0 +1,25 @@
+[Unit]
+Description=WebMajak Django Application
+After=network.target
+
+[Service]
+Type=exec
+User=webmajak
+Group=webmajak
+WorkingDirectory=/home/webmajak/webapp
+Environment="PATH=/home/webmajak/webapp/venv/bin"
+Environment="DJANGO_SETTINGS_MODULE=webapp.settings_production"
+ExecStart=/home/webmajak/webapp/venv/bin/gunicorn --config /home/webmajak/webapp/gunicorn.conf.py webapp.wsgi:application
+ExecReload=/bin/kill -s HUP $MAINPID
+Restart=always
+RestartSec=3
+
+# Security settings
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/home/webmajak/webapp
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target 

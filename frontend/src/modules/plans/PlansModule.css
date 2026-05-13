@@ -1,0 +1,1743 @@
+/* ===================== PLANS MODULE ===================== */
+
+.plans-module {
+  padding: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.plans-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.plans-title {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--text-primary, #1a1a2e);
+  margin: 0;
+}
+
+.plans-controls {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.plans-control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.plans-control-group label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary, #666);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Alerts */
+.plans-alert {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 0.9rem;
+}
+
+.plans-alert button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0 4px;
+  opacity: 0.7;
+}
+
+.plans-alert-error {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fca5a5;
+}
+
+.plans-alert-success {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #86efac;
+}
+
+.plans-loading {
+  text-align: center;
+  padding: 40px;
+  color: var(--text-secondary, #666);
+  font-size: 0.95rem;
+}
+
+/* Empty state */
+.plans-empty {
+  background: var(--card-bg, #fff);
+  border: 2px dashed var(--border-color, #e2e8f0);
+  border-radius: 12px;
+  padding: 40px;
+  text-align: center;
+}
+
+.plans-empty h3 {
+  font-size: 1.1rem;
+  color: var(--text-secondary, #666);
+  margin-bottom: 24px;
+}
+
+.plans-empty-form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  max-width: 360px;
+  margin: 0 auto;
+}
+
+.plans-empty-form label {
+  font-weight: 600;
+  color: var(--text-primary, #1a1a2e);
+  align-self: flex-start;
+}
+
+.plans-empty-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.plans-empty-form-historie {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border-color, #e2e8f0);
+  flex-direction: row;
+  flex-wrap: wrap;
+  max-width: none;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.plans-empty-form-historie label {
+  flex: 0 0 auto;
+}
+
+.plans-empty-form-historie input {
+  width: 80px;
+}
+
+.plans-empty-form-historie button {
+  flex: 0 0 auto;
+}
+
+/* Firma castka bar */
+.plans-firma-castka {
+  background: var(--card-bg, #fff);
+  border-radius: 12px;
+  padding: 20px 24px;
+  margin-bottom: 20px;
+  border: 1px solid var(--border-color, #e2e8f0);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.plans-firma-castka-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.plans-firma-castka-inner label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary, #666);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.plans-firma-input-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.plans-firma-formatted {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #0066cc;
+}
+
+.plans-castka-bezdph {
+  font-size: 0.85em;
+  font-weight: 500;
+  color: #6b7280;
+  white-space: normal;
+}
+
+.dark-mode .plans-castka-bezdph {
+  color: #9ca3af;
+}
+
+/* Modrý banner plnění – šedá závorka bez DPH by nečetla; bílá/světlá */
+.plneni-preview .plans-castka-bezdph {
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.dark-mode .plneni-preview .plans-castka-bezdph {
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.plans-validace-chyba {
+  font-size: 0.8rem;
+  color: #dc2626;
+}
+
+.plans-soucet-podilu {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.plans-podil-ok {
+  color: #166534;
+}
+
+.plans-podil-chyba {
+  color: #dc2626;
+}
+
+/* Prodejny */
+.plans-prodejny {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+/* Actions bar */
+.plans-actions {
+  background: var(--card-bg, #fff);
+  border-radius: 12px;
+  padding: 16px 24px;
+  border: 1px solid var(--border-color, #e2e8f0);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.plans-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: var(--text-secondary, #666);
+  cursor: pointer;
+}
+
+.plans-actions-historie {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.plans-actions-historie .plans-input-sm {
+  width: 56px;
+  text-align: right;
+}
+
+.plans-input-suffix {
+  font-size: 0.9rem;
+  color: var(--text-secondary, #666);
+  font-weight: 500;
+}
+
+/* Inputs */
+.plans-input {
+  padding: 8px 12px;
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 8px;
+  font-size: 0.95rem;
+  background: var(--input-bg, #fff);
+  color: var(--text-primary, #1a1a2e);
+  transition: border-color 0.2s;
+  width: 100%;
+}
+
+.plans-input:focus {
+  outline: none;
+  border-color: #0066cc;
+}
+
+.plans-input-lg {
+  font-size: 1.1rem;
+  padding: 10px 14px;
+  width: 200px;
+}
+
+.plans-input-sm {
+  width: 70px;
+  padding: 4px 8px;
+  text-align: right;
+}
+
+.plans-select {
+  padding: 8px 12px;
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  background: var(--input-bg, #fff);
+  color: var(--text-primary, #1a1a2e);
+  cursor: pointer;
+}
+
+/* Buttons */
+.plans-btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: opacity 0.2s, transform 0.1s;
+  white-space: nowrap;
+}
+
+.plans-btn:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.plans-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.plans-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.plans-btn-primary {
+  background: #0066cc;
+  color: #fff;
+}
+
+.plans-btn-secondary {
+  background: #f1f5f9;
+  color: #334155;
+  border: 1px solid #e2e8f0;
+}
+
+.plans-btn-ghost {
+  background: transparent;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+}
+
+.plans-btn-warning {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fcd34d;
+}
+
+.plans-btn-sm {
+  padding: 4px 10px;
+  font-size: 0.8rem;
+}
+
+/* Toggle Plán / PLNĚNÍ */
+.plans-toggle-row {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.plans-toggle-btn {
+  padding: 8px 16px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border: none;
+  background: var(--bg-secondary, #f8fafc);
+  color: var(--text-secondary, #64748b);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.plans-toggle-btn:hover {
+  background: #e2e8f0;
+  color: var(--text-primary, #334155);
+}
+
+.plans-toggle-btn-active {
+  background: #0066cc !important;
+  color: #fff !important;
+}
+
+/* ===================== PLNĚNÍ VIEW ===================== */
+
+.plans-plneni {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  margin-top: 16px;
+}
+
+/* Přehledový banner – plán, plnění %, trend */
+.plneni-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px 32px;
+  padding: 20px 24px;
+  background: linear-gradient(135deg, #0066cc 0%, #1e5a9e 100%);
+  border-radius: 12px;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(0, 102, 204, 0.25);
+}
+
+.plneni-preview-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.plneni-preview-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.85;
+}
+
+.plneni-preview-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.plneni-preview-item.plneni-trend .plneni-preview-value {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.plneni-pct {
+  color: #86efac;
+}
+
+.plneni-bar-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary, #64748b);
+}
+
+.plneni-pct-badge {
+  padding: 2px 8px;
+  background: #eff6ff;
+  color: #0066cc;
+  border-radius: 6px;
+  font-size: 0.8rem;
+}
+
+.plneni-trend-badge {
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+/* Trend barvy: zelený ≥100%, oranžový 80–99%, červený <80% */
+.plneni-trend-badge.plneni-trend-ok,
+.plneni-preview-item.plneni-trend-ok .plneni-preview-value {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.plneni-trend-badge.plneni-trend-var,
+.plneni-preview-item.plneni-trend-var .plneni-preview-value {
+  background: #ffedd5;
+  color: #c2410c;
+}
+
+.plneni-trend-badge.plneni-trend-chyba,
+.plneni-preview-item.plneni-trend-chyba .plneni-preview-value {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.plneni-preview-item.plneni-trend.plneni-trend-ok .plneni-preview-value {
+  background: rgba(220, 252, 231, 0.95);
+  color: #166534;
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+.plneni-preview-item.plneni-trend.plneni-trend-var .plneni-preview-value {
+  background: rgba(255, 237, 213, 0.95);
+  color: #c2410c;
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+.plneni-preview-item.plneni-trend.plneni-trend-chyba .plneni-preview-value {
+  background: rgba(254, 226, 226, 0.95);
+  color: #991b1b;
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+.plneni-sekce {
+  background: var(--card-bg, #fff);
+  border-radius: 12px;
+  border: 1px solid var(--border-color, #e2e8f0);
+  padding: 20px 24px;
+}
+
+.plneni-nadpis {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary, #1a1a2e);
+  margin: 0 0 16px 0;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-color, #e2e8f0);
+}
+
+.plneni-bar-wrap {
+  margin-bottom: 12px;
+}
+
+.plneni-bar-wrap:last-child {
+  margin-bottom: 0;
+}
+
+.plneni-bar-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  font-size: 0.9rem;
+}
+
+.plneni-bar-label span:first-child {
+  font-weight: 600;
+  color: var(--text-primary, #1a1a2e);
+}
+
+.plneni-kusy {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary, #64748b);
+}
+
+.plneni-progress-track {
+  height: 10px;
+  background: #e2e8f0;
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.plneni-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #0066cc, #3385d6);
+  border-radius: 5px;
+  transition: width 0.3s ease;
+}
+
+.plneni-kategorie-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.plneni-kat-item {
+  padding: 4px 0;
+}
+
+.plneni-kat-item.plneni-kat-sub {
+  margin-left: 16px;
+  padding-left: 12px;
+  border-left: 3px solid #e2e8f0;
+}
+
+.plneni-prodejna {
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border-color-light, #f1f5f9);
+}
+
+.plneni-prodejna:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.plneni-prodejna-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 1rem;
+}
+
+.plneni-prodejna-nazev {
+  font-weight: 700;
+  color: var(--text-primary, #1a1a2e);
+}
+
+.plneni-prodejna-meta {
+  font-weight: 400;
+  color: var(--text-secondary, #64748b);
+  font-size: 0.9em;
+}
+
+.plneni-bar-prodejna {
+  margin-bottom: 12px;
+}
+
+.plneni-prodejna-kat {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.plneni-loading {
+  padding: 24px;
+  text-align: center;
+  color: var(--text-secondary, #64748b);
+  font-size: 0.95rem;
+}
+
+.plneni-empty {
+  padding: 24px;
+  text-align: center;
+  color: var(--text-secondary, #94a3b8);
+  font-size: 0.9rem;
+  font-style: italic;
+}
+
+.plneni-progress-fill.plneni-over {
+  background: linear-gradient(90deg, #16a34a, #22c55e);
+}
+
+.plans-btn-lg {
+  padding: 12px 28px;
+  font-size: 1rem;
+}
+
+.plans-pct-label {
+  font-size: 0.85rem;
+  color: var(--text-secondary, #666);
+  min-width: 16px;
+}
+
+/* Sliders */
+.plans-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 3px;
+  outline: none;
+  flex: 1;
+}
+
+.plans-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  background: #0066cc;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.plans-slider-servis::-webkit-slider-thumb {
+  background: #f59e0b;
+}
+
+.plans-slider-kategorie::-webkit-slider-thumb {
+  background: #8b5cf6;
+  width: 14px;
+  height: 14px;
+}
+
+.plans-slider:disabled::-webkit-slider-thumb {
+  background: #94a3b8;
+  cursor: not-allowed;
+}
+
+/* ===================== PRODEJNA KARTA ===================== */
+
+.prodejna-karta {
+  background: var(--card-bg, #fff);
+  border-radius: 12px;
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-left: 4px solid #0066cc;
+  padding: 20px 24px;
+  transition: box-shadow 0.2s;
+}
+
+.prodejna-karta:hover {
+  box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+}
+
+.prodejna-karta-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.prodejna-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.prodejna-nazev {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary, #1a1a2e);
+}
+
+.prodejna-castka-badge {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #0066cc;
+  background: #eff6ff;
+  padding: 2px 10px;
+  border-radius: 20px;
+}
+
+.prodejna-castka-badge-input {
+  width: 100px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #0066cc;
+  background: #eff6ff;
+  border: 1px solid #0066cc;
+  padding: 2px 10px;
+  border-radius: 20px;
+  text-align: right;
+}
+
+.prodejna-castka-badge-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(0, 102, 204, 0.3);
+}
+
+.prodejna-zamek-badge {
+  font-size: 0.8rem;
+  color: #92400e;
+  background: #fef3c7;
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+
+.prodejna-header-akce {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.prodejna-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.prodejna-slider-row label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary, #666);
+  min-width: 80px;
+}
+
+.prodejna-slider-row-sub label {
+  color: #f59e0b;
+}
+
+.prodejna-slider-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+}
+
+.plans-prodej-servis-labels {
+  display: flex;
+  gap: 12px;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.label-prodej {
+  color: #166534;
+  font-weight: 600;
+}
+
+.label-servis {
+  color: #f59e0b;
+  font-weight: 600;
+}
+
+.plans-input-inline {
+  width: 90px;
+  display: inline-block;
+  margin: 0 4px;
+  text-align: right;
+}
+
+/* Kategorie */
+.prodejna-kategorie {
+  margin-top: 16px;
+  background: var(--bg-secondary, #f8fafc);
+  border-radius: 8px;
+  padding: 16px;
+  border: 1px solid var(--border-color, #e2e8f0);
+}
+
+.prodejna-kategorie-header {
+  display: grid;
+  grid-template-columns: 220px 1fr 130px 110px 90px;
+  gap: 12px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-secondary, #666);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-color, #e2e8f0);
+}
+
+.prodejna-kopirovat-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-color-light, #f1f5f9);
+}
+
+.prodejna-kopirovat-label {
+  font-size: 0.8rem;
+  color: var(--text-secondary, #666);
+  white-space: nowrap;
+}
+
+.prodejna-kopirovat-row .plans-select-sm {
+  min-width: 160px;
+  font-size: 0.85rem;
+}
+
+.kategorie-radek {
+  display: grid;
+  grid-template-columns: 220px 1fr 130px 110px 90px;
+  gap: 12px;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border-color-light, #f1f5f9);
+}
+
+.kategorie-nazev-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.kategorie-zamek-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.8rem;
+  padding: 0 2px;
+  opacity: 0.4;
+  transition: opacity 0.15s;
+  line-height: 1;
+}
+
+.kategorie-zamek-btn:hover {
+  opacity: 1;
+}
+
+.kategorie-zamek-btn.zamknuto {
+  opacity: 1;
+}
+
+.kategorie-radek.kategorie-zamknuta {
+  background: rgba(245, 158, 11, 0.06);
+}
+
+.kategorie-radek.kategorie-zamknuta .plans-slider {
+  opacity: 0.4;
+  cursor: not-allowed !important;
+}
+
+.kategorie-radek.kategorie-zamknuta .plans-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed !important;
+}
+
+.kategorie-radek .plans-slider {
+  cursor: grab !important;
+}
+
+.kategorie-radek .plans-slider:active {
+  cursor: grabbing !important;
+}
+
+.kategorie-radek input[type="number"],
+.kategorie-radek button {
+  cursor: auto !important;
+}
+
+.kategorie-radek button {
+  cursor: pointer !important;
+}
+
+.kategorie-nazev {
+  font-size: 0.85rem;
+  color: var(--text-primary, #1a1a2e);
+  font-weight: 500;
+}
+
+.kategorie-slider-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.kategorie-castka {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #6d28d9;
+  text-align: right;
+}
+
+.kategorie-kusy {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary, #666);
+  text-align: right;
+}
+
+.kategorie-soucet {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-color, #e2e8f0);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary, #666);
+  text-align: right;
+}
+
+/* ===== PLÁN PRODEJCŮ ===== */
+
+.pp-panel {
+  margin-top: 16px;
+  background: var(--bg-secondary, #f0fdf4);
+  border-radius: 8px;
+  padding: 16px;
+  border: 1px solid #bbf7d0;
+}
+
+.pp-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.pp-panel-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #166534;
+}
+
+.pp-loading {
+  padding: 12px;
+  color: var(--text-secondary, #666);
+  font-size: 0.85rem;
+}
+
+.pp-empty {
+  padding: 12px;
+  color: var(--text-secondary, #888);
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+/* Souhrn kategorií */
+.pp-souhrn {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.pp-souhrn-item {
+  display: grid;
+  grid-template-columns: 180px 90px 1fr 200px;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.8rem;
+}
+
+.pp-souhrn-nazev {
+  font-weight: 600;
+  color: var(--text-primary, #1a1a2e);
+}
+
+.pp-souhrn-plan {
+  color: var(--text-secondary, #666);
+}
+
+.pp-souhrn-bar-wrap {
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.pp-souhrn-bar {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s;
+}
+
+.pp-souhrn-zbývá {
+  color: #166534;
+  font-size: 0.78rem;
+}
+
+.pp-over { background: rgba(239, 68, 68, 0.05); border-radius: 4px; }
+.pp-over-text { color: #ef4444 !important; font-weight: 600; }
+.pp-ok-text { color: #166534 !important; font-weight: 600; }
+
+/* Tabulka */
+.pp-tabulka-wrap {
+  overflow-x: auto;
+}
+
+.pp-tabulka {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.pp-tabulka th,
+.pp-tabulka td {
+  padding: 6px 8px;
+  border: 1px solid #d1fae5;
+  text-align: center;
+}
+
+.pp-th-prodejce {
+  text-align: left !important;
+  min-width: 150px;
+  background: #dcfce7;
+  font-weight: 700;
+  color: #166534;
+}
+
+.pp-th-kat {
+  background: #dcfce7;
+  font-weight: 700;
+  color: #166534;
+  min-width: 90px;
+}
+
+.pp-th-plan {
+  font-weight: 400;
+  font-size: 0.72rem;
+  color: #4ade80;
+  margin-top: 2px;
+}
+
+.pp-td-prodejce {
+  text-align: left !important;
+  font-weight: 500;
+  color: var(--text-primary, #1a1a2e);
+  white-space: nowrap;
+}
+
+.pp-td-kat {
+  padding: 4px 6px !important;
+}
+
+.pp-input {
+  width: 70px;
+  border: 1px solid #86efac;
+  border-radius: 4px;
+  padding: 3px 6px;
+  font-size: 0.82rem;
+  text-align: center;
+  background: #fff;
+  color: var(--text-primary, #1a1a2e);
+}
+
+.pp-input:focus {
+  outline: none;
+  border-color: #22c55e;
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2);
+}
+
+.pp-soucet-radek td {
+  background: #f0fdf4;
+  font-weight: 700;
+}
+
+.pp-soucet-label {
+  color: #166534 !important;
+}
+
+.pp-soucet-val {
+  color: #374151;
+}
+
+/* Formulář přidání prodejce */
+.pp-form-wrap {
+  margin-bottom: 16px;
+  padding: 16px;
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid #bbf7d0;
+  box-shadow: 0 1px 2px rgba(22, 101, 52, 0.06);
+}
+
+.pp-form-header {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #166534;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #dcfce7;
+}
+
+.pp-form-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.pp-form-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #166534;
+  min-width: 90px;
+  flex-shrink: 0;
+}
+
+.pp-select {
+  flex: 1;
+  max-width: 260px;
+  padding: 8px 12px;
+  border: 1px solid #86efac;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  background: #fff;
+  color: var(--text-primary, #1a1a2e);
+}
+
+.pp-form-vybrany {
+  font-size: 0.82rem;
+  color: #15803d;
+  font-weight: 600;
+  margin-bottom: 10px;
+  padding: 6px 10px;
+  background: #dcfce7;
+  border-radius: 4px;
+}
+
+.pp-form-kusy-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-secondary, #666);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
+}
+
+.pp-btn-podle-smen {
+  margin-left: 4px;
+}
+
+.pp-form-tabulka {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0 16px;
+}
+
+.pp-form-th {
+  text-align: left;
+  padding: 6px 12px 6px 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-secondary, #666);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.pp-form-th-akce {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.pp-form-radek {
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.pp-form-radek:last-child {
+  border-bottom: none;
+}
+
+.pp-form-td-label {
+  padding: 6px 12px 6px 0;
+  font-size: 0.88rem;
+  color: var(--text-primary, #1a1a2e);
+  font-weight: 500;
+  width: 180px;
+  vertical-align: middle;
+}
+
+.pp-form-td-input {
+  padding: 6px 12px 6px 0;
+  vertical-align: middle;
+}
+
+.pp-form-td-input .pp-input {
+  width: 64px;
+  margin-right: 6px;
+}
+
+.pp-form-td-zbyva {
+  padding: 6px 12px 6px 0;
+  font-size: 0.85rem;
+  color: #166534;
+  font-weight: 600;
+  vertical-align: middle;
+}
+
+.pp-zbyva-nula {
+  color: var(--text-secondary, #9ca3af);
+  font-weight: 500;
+}
+
+.pp-form-td-btn {
+  padding: 6px 0;
+  vertical-align: middle;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.pp-btn-pridělit {
+  font-size: 0.75rem;
+  padding: 3px 8px;
+  white-space: nowrap;
+}
+
+.pp-form-kat-plan {
+  font-size: 0.75rem;
+  color: var(--text-secondary, #888);
+}
+
+.pp-form-akce {
+  display: flex;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+/* Seznam přidaných prodejců */
+.pp-seznam {
+  margin-top: 12px;
+}
+
+.pp-seznam-header {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #166534;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 8px;
+}
+
+.pp-radek-karta {
+  background: #fff;
+  border: 1px solid #bbf7d0;
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+}
+
+.pp-radek-hlavicka {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.pp-radek-jmeno {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text-primary, #1a1a2e);
+}
+
+.pp-radek-akce {
+  display: flex;
+  gap: 6px;
+}
+
+.pp-radek-kusy {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  font-size: 0.82rem;
+  color: var(--text-secondary, #666);
+}
+
+.pp-radek-kat strong {
+  color: #6d28d9;
+}
+
+.pp-btn-odebrat {
+  color: #dc2626 !important;
+}
+
+.pp-btn-odebrat:hover {
+  background: #fef2f2 !important;
+}
+
+.plans-btn-xs {
+  padding: 2px 8px;
+  font-size: 0.75rem;
+}
+
+.pp-soucet-radek {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #bbf7d0;
+  font-size: 0.82rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+}
+
+.pp-soucet-radek .pp-soucet-label {
+  font-weight: 700;
+  color: #166534;
+  margin-right: 8px;
+}
+
+.pp-soucet-radek .pp-soucet-val {
+  color: #374151;
+}
+
+/* ==========================================================
+   Flexibilní plánování – zámky (none/pct/kc), onboarding,
+   souhrnný banner, segmented lock control. Barvy:
+     pct  = #2563eb (modrá)
+     kc   = #16a34a (zelená)
+     auto = #64748b (šedá)
+   ========================================================== */
+
+/* ------- Onboarding info-box ------- */
+.plans-onboarding {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 12px 0 16px;
+  padding: 12px 14px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-left: 4px solid #2563eb;
+  border-radius: 8px;
+  color: #1e3a8a;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+.plans-onboarding-icon { font-size: 1.25rem; line-height: 1; }
+.plans-onboarding-text { flex: 1; }
+.plans-onboarding-text strong { color: #1e40af; }
+.plans-onboarding-close {
+  background: transparent;
+  border: none;
+  color: #1e40af;
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 6px;
+}
+.plans-onboarding-close:hover { color: #1e3a8a; }
+.plans-kbd {
+  display: inline-block;
+  padding: 1px 6px;
+  background: #dbeafe;
+  border: 1px solid #93c5fd;
+  border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.82em;
+  color: #1e3a8a;
+}
+
+/* ------- Tagy (souhrn + onboarding) ------- */
+.plans-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+.plans-tag-pct  { background: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; }
+.plans-tag-kc   { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+.plans-tag-auto { background: #e2e8f0; color: #334155; border: 1px solid #cbd5e1; }
+
+/* ------- Total-lock tlačítko vedle celkové částky ------- */
+.plans-total-lock-btn {
+  margin-left: 8px;
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #334155;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.plans-total-lock-btn:hover { border-color: #94a3b8; }
+.plans-total-lock-btn-on {
+  background: #dbeafe;
+  border-color: #2563eb;
+  color: #1e40af;
+}
+.plans-firma-hint {
+  font-weight: 400;
+  font-size: 0.8rem;
+  color: #64748b;
+  margin-left: 6px;
+}
+.plans-firma-ok    { color: #16a34a; }
+.plans-firma-warn  { color: #d97706; }
+.plans-firma-error { color: #dc2626; }
+
+/* ------- Souhrnný banner ------- */
+.plans-souhrn {
+  margin: 12px 0 16px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border-left: 4px solid #64748b;
+  background: #f8fafc;
+  color: #1e293b;
+  font-size: 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.plans-souhrn-ok    { border-left-color: #16a34a; background: #f0fdf4; color: #14532d; }
+.plans-souhrn-warn  { border-left-color: #d97706; background: #fffbeb; color: #78350f; }
+.plans-souhrn-error { border-left-color: #dc2626; background: #fef2f2; color: #7f1d1d; }
+
+.plans-souhrn-radek {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  align-items: baseline;
+}
+.plans-souhrn-label { font-weight: 600; opacity: 0.8; }
+.plans-souhrn-hodnota { font-weight: 700; font-variant-numeric: tabular-nums; }
+
+.plans-souhrn-rozpad {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.plans-souhrn-dorovnani {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding-top: 4px;
+  border-top: 1px dashed currentColor;
+}
+.plans-souhrn-poznamka { flex: 1 1 260px; font-size: 0.85rem; opacity: 0.9; }
+.plans-souhrn-cta { flex-shrink: 0; }
+
+.plans-souhrn-warnings {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+.plans-souhrn-warnings li { margin: 2px 0; }
+
+.plans-alert-warn {
+  background: #fffbeb;
+  color: #78350f;
+  border: 1px solid #fde68a;
+  border-left: 4px solid #d97706;
+  padding: 10px 14px;
+  border-radius: 6px;
+  margin: 8px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: relative;
+}
+.plans-alert-warn button {
+  position: absolute;
+  right: 8px;
+  top: 6px;
+  background: transparent;
+  border: none;
+  color: #78350f;
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+
+/* ------- LockSegmented (tří-stavový přepínač) ------- */
+.lock-segmented {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #f8fafc;
+  line-height: 1;
+  user-select: none;
+}
+.lock-segmented-md { font-size: 0.82rem; }
+.lock-segmented-sm { font-size: 0.72rem; }
+.lock-segmented-disabled { opacity: 0.5; pointer-events: none; }
+
+.lock-seg {
+  background: transparent;
+  border: none;
+  padding: 6px 10px;
+  cursor: pointer;
+  color: #475569;
+  font-weight: 600;
+  transition: background 0.12s, color 0.12s;
+  border-right: 1px solid #e2e8f0;
+  white-space: nowrap;
+}
+.lock-segmented-sm .lock-seg { padding: 3px 7px; }
+.lock-seg:last-child { border-right: none; }
+.lock-seg:hover:not(:disabled) { background: #e2e8f0; }
+.lock-seg:disabled { cursor: not-allowed; }
+
+.lock-seg-auto-active {
+  background: #64748b;
+  color: #ffffff;
+}
+.lock-seg-pct-active {
+  background: #2563eb;
+  color: #ffffff;
+}
+.lock-seg-kc-active {
+  background: #16a34a;
+  color: #ffffff;
+}
+
+/* ------- Prodejna karta – barevný rámeček dle locku ------- */
+.prodejna-karta-lock-pct {
+  box-shadow: inset 4px 0 0 #2563eb, 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+.prodejna-karta-lock-kc {
+  box-shadow: inset 4px 0 0 #16a34a, 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+.prodejna-karta-lock-none {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.prodejna-lock-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  margin-left: 6px;
+  white-space: nowrap;
+}
+.prodejna-lock-badge-pct  { background: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; }
+.prodejna-lock-badge-kc   { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+.prodejna-lock-badge-auto { background: #e2e8f0; color: #475569; border: 1px solid #cbd5e1; }
+
+.prodejna-badge-pct  { color: #2563eb; }
+.prodejna-badge-kc   { color: #16a34a; }
+.prodejna-badge-auto { color: #64748b; }
+
+/* ------- Slider row states ------- */
+.prodejna-slider-row-disabled {
+  opacity: 0.75;
+}
+.prodejna-slider-row-primary {
+  /* default focus row, žádná změna oproti .prodejna-slider-row */
+}
+.prodejna-slider-hint {
+  margin-left: 8px;
+  font-size: 0.78rem;
+  color: #94a3b8;
+  font-style: italic;
+}
+.prodejna-slider-lock-mini {
+  display: inline-flex;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+/* ------- Input locked variants ------- */
+.plans-input-locked-pct {
+  border-color: #2563eb !important;
+  background: #eff6ff;
+  color: #1e3a8a;
+}
+.plans-input-locked-kc {
+  border-color: #16a34a !important;
+  background: #f0fdf4;
+  color: #14532d;
+}
+.plans-slider-locked-pct {
+  accent-color: #2563eb;
+}
+.plans-input-md {
+  width: 150px;
+}
+.plans-kc-label {
+  color: #16a34a;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+/* ------- Kategorie – barevný levý pruh dle lock_mode ------- */
+.kategorie-lock-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.kategorie-lock-pct {
+  box-shadow: inset 3px 0 0 #2563eb;
+  background: rgba(37, 99, 235, 0.04);
+}
+.kategorie-lock-kc {
+  box-shadow: inset 3px 0 0 #16a34a;
+  background: rgba(22, 163, 74, 0.04);
+}
+.kategorie-lock-none {
+  box-shadow: inset 3px 0 0 transparent;
+}
+
+.prodejna-kategorie-header {
+  display: grid;
+  grid-template-columns: 1.6fr 0.9fr 1.6fr 1fr 1.1fr 0.7fr;
+  gap: 8px;
+  padding: 6px 10px;
+  background: #f1f5f9;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.kategorie-radek {
+  display: grid;
+  grid-template-columns: 1.6fr 0.9fr 1.6fr 1fr 1.1fr 0.7fr;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 10px;
+  margin-top: 4px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #ffffff;
+  transition: background 0.15s;
+}
+.kategorie-radek:hover { background: #f8fafc; }
+
+/* ==== Dark mode ==== */
+@media (prefers-color-scheme: dark) {
+  .plans-title { color: #f1f5f9; }
+  .plans-firma-formatted { color: #60a5fa; }
+  .prodejna-castka-badge { background: #1e3a5f; color: #60a5fa; }
+  .plans-alert-error { background: #450a0a; color: #fca5a5; }
+  .plans-alert-success { background: #052e16; color: #86efac; }
+
+  .plans-onboarding { background: #0f172a; border-color: #1e3a8a; color: #bfdbfe; border-left-color: #3b82f6; }
+  .plans-onboarding-text strong { color: #93c5fd; }
+  .plans-onboarding-close { color: #93c5fd; }
+  .plans-kbd { background: #1e3a8a; border-color: #3b82f6; color: #bfdbfe; }
+
+  .plans-tag-pct  { background: #1e3a8a; color: #bfdbfe; border-color: #3b82f6; }
+  .plans-tag-kc   { background: #064e3b; color: #bbf7d0; border-color: #22c55e; }
+  .plans-tag-auto { background: #1e293b; color: #cbd5e1; border-color: #475569; }
+
+  .plans-total-lock-btn { background: #1e293b; border-color: #475569; color: #cbd5e1; }
+  .plans-total-lock-btn-on { background: #1e3a8a; border-color: #3b82f6; color: #bfdbfe; }
+  .plans-firma-hint { color: #94a3b8; }
+
+  .plans-souhrn       { background: #0f172a; color: #cbd5e1; border-left-color: #475569; }
+  .plans-souhrn-ok    { background: #052e16; color: #bbf7d0; border-left-color: #22c55e; }
+  .plans-souhrn-warn  { background: #451a03; color: #fde68a; border-left-color: #f59e0b; }
+  .plans-souhrn-error { background: #450a0a; color: #fca5a5; border-left-color: #ef4444; }
+
+  .plans-alert-warn { background: #451a03; color: #fde68a; border-color: #78350f; border-left-color: #f59e0b; }
+  .plans-alert-warn button { color: #fde68a; }
+
+  .lock-segmented { background: #0f172a; border-color: #334155; }
+  .lock-seg { color: #cbd5e1; border-right-color: #1e293b; }
+  .lock-seg:hover:not(:disabled) { background: #1e293b; }
+  .lock-seg-auto-active { background: #475569; }
+  .lock-seg-pct-active  { background: #3b82f6; }
+  .lock-seg-kc-active   { background: #22c55e; color: #052e16; }
+
+  .prodejna-lock-badge-pct  { background: #1e3a8a; color: #bfdbfe; border-color: #3b82f6; }
+  .prodejna-lock-badge-kc   { background: #064e3b; color: #bbf7d0; border-color: #22c55e; }
+  .prodejna-lock-badge-auto { background: #1e293b; color: #cbd5e1; border-color: #475569; }
+
+  .plans-input-locked-pct { background: #0f1e3d; color: #bfdbfe; }
+  .plans-input-locked-kc  { background: #04220f; color: #bbf7d0; }
+  .plans-kc-label { color: #22c55e; }
+
+  .prodejna-kategorie-header { background: #0f172a; color: #94a3b8; }
+  .kategorie-radek { background: #111827; border-color: #1f2937; }
+  .kategorie-radek:hover { background: #1e293b; }
+  .kategorie-lock-pct { background: rgba(59, 130, 246, 0.08); }
+  .kategorie-lock-kc  { background: rgba(34, 197, 94, 0.08); }
+}

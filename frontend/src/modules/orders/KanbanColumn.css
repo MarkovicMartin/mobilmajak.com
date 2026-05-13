@@ -1,0 +1,204 @@
+.kanban-column {
+    min-width: 320px;
+    max-width: 350px;
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.kanban-column.drag-over {
+    transform: scale(1.02);
+    box-shadow: 0 8px 30px rgba(102, 126, 234, 0.3);
+    border: 2px solid #667eea;
+}
+
+/* Header sloupce */
+.column-header {
+    padding: 15px 20px;
+    border-radius: 15px 15px 0 0;
+    color: white;
+    font-weight: 700;
+    font-size: 16px;
+    text-align: center;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    position: relative;
+    overflow: hidden;
+}
+
+.column-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+}
+
+.kanban-column:hover .column-header::before {
+    left: 100%;
+}
+
+.header-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    position: relative;
+    z-index: 1;
+}
+
+.column-icon {
+    font-size: 20px;
+}
+
+.column-title {
+    flex: 1;
+    text-align: center;
+}
+
+.column-count {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    min-width: 24px;
+    text-align: center;
+}
+
+/* Obsah sloupce */
+.column-content {
+    flex: 1;
+    padding: 15px;
+    min-height: 400px;
+    position: relative;
+}
+
+.empty-column {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 200px;
+    text-align: center;
+}
+
+.empty-message {
+    color: #999;
+}
+
+.empty-icon {
+    font-size: 48px;
+    margin-bottom: 10px;
+    display: block;
+    opacity: 0.5;
+}
+
+.empty-message p {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.orders-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* Drop zone indikátor */
+.drop-zone-indicator {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(102, 126, 234, 0.1);
+    border: 2px dashed #667eea;
+    border-radius: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 0.6;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.02);
+    }
+    100% {
+        opacity: 0.6;
+        transform: scale(1);
+    }
+}
+
+.drop-zone-content {
+    text-align: center;
+    color: #667eea;
+    font-weight: 600;
+    padding: 20px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.drop-icon {
+    font-size: 32px;
+    display: block;
+    margin-bottom: 10px;
+}
+
+.drop-zone-content p {
+    margin: 0;
+    font-size: 14px;
+}
+
+/* Responzivní design */
+@media (max-width: 768px) {
+    .kanban-column {
+        min-width: 280px;
+        max-width: 300px;
+    }
+    
+    .column-header {
+        padding: 12px 15px;
+        font-size: 14px;
+    }
+    
+    .column-icon {
+        font-size: 18px;
+    }
+    
+    .column-content {
+        padding: 12px;
+        min-height: 300px;
+    }
+}
+
+@media (max-width: 480px) {
+    .kanban-column {
+        min-width: 100%;
+        max-width: 100%;
+        margin-bottom: 20px;
+    }
+    
+    .column-content {
+        min-height: auto;
+    }
+    
+    .empty-column {
+        height: 150px;
+    }
+} 

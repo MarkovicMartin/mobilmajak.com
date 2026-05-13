@@ -1,0 +1,107 @@
+/* CSS proměnné pro světlý a tmavý režim */
+
+:root {
+    /* Světlý režim (výchozí) */
+    --bg-primary: #ffffff;
+    --bg-secondary: #f8f9fa;
+    --bg-tertiary: #e9ecef;
+    --bg-header: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+    --bg-card: #ffffff;
+    --bg-dropdown: #ffffff;
+    --bg-button: #ffffff;
+    --bg-input: #ffffff;
+    
+    --text-primary: #333333;
+    --text-secondary: #666666;
+    --text-muted: #999999;
+    --text-inverse: #ffffff;
+    --text-header: #333333;
+    
+    --border-primary: #dee2e6;
+    --border-secondary: #e9ecef;
+    --border-focus: #667eea;
+    
+    --shadow-primary: 0 2px 10px rgba(0, 0, 0, 0.1);
+    --shadow-secondary: 0 8px 32px rgba(0, 0, 0, 0.15);
+    --shadow-dropdown: 0 8px 32px rgba(0, 0, 0, 0.15);
+    
+    --accent-primary: #ff6b9d;
+    --accent-secondary: #667eea;
+    --accent-success: #28a745;
+    --accent-warning: #ffc107;
+    --accent-danger: #dc3545;
+    --accent-info: #17a2b8;
+    
+    --hover-bg: rgba(255, 255, 255, 0.2);
+    --hover-text: #ff6b9d;
+    
+    --transition-speed: 0.3s;
+}
+
+/* Tmavý režim */
+.dark-mode {
+    --bg-primary: #1a1a1a;
+    --bg-secondary: #2d2d2d;
+    --bg-tertiary: #404040;
+    --bg-header: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+    --bg-card: #2d2d2d;
+    --bg-dropdown: #2d2d2d;
+    --bg-button: #404040;
+    --bg-input: #404040;
+    
+    --text-primary: #e2e8f0;
+    --text-secondary: #a0aec0;
+    --text-muted: #718096;
+    --text-inverse: #1a1a1a;
+    --text-header: #e2e8f0;
+    
+    --border-primary: #4a5568;
+    --border-secondary: #2d3748;
+    --border-focus: #90cdf4;
+    
+    --shadow-primary: 0 2px 10px rgba(0, 0, 0, 0.3);
+    --shadow-secondary: 0 8px 32px rgba(0, 0, 0, 0.4);
+    --shadow-dropdown: 0 8px 32px rgba(0, 0, 0, 0.4);
+    
+    --accent-primary: #ff6b9d;
+    --accent-secondary: #90cdf4;
+    --accent-success: #48bb78;
+    --accent-warning: #ed8936;
+    --accent-danger: #f56565;
+    --accent-info: #4299e1;
+    
+    --hover-bg: rgba(255, 255, 255, 0.1);
+    --hover-text: #ff6b9d;
+}
+
+/* Globální styly pro plynulé přechody */
+* {
+    transition: background-color var(--transition-speed) ease,
+                color var(--transition-speed) ease,
+                border-color var(--transition-speed) ease,
+                box-shadow var(--transition-speed) ease;
+}
+
+/* Aplikace proměnných na základní elementy */
+body {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+/* Scrollbar styly pro tmavý režim */
+.dark-mode ::-webkit-scrollbar {
+    width: 8px;
+}
+
+.dark-mode ::-webkit-scrollbar-track {
+    background: var(--bg-secondary);
+}
+
+.dark-mode ::-webkit-scrollbar-thumb {
+    background: var(--border-primary);
+    border-radius: 4px;
+}
+
+.dark-mode ::-webkit-scrollbar-thumb:hover {
+    background: var(--text-secondary);
+} 

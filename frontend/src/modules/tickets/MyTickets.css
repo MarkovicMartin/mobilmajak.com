@@ -1,0 +1,15 @@
+.my-tickets .btn-new-ticket {
+    padding: 6px 16px;
+    border-radius: 8px;
+    border: none;
+    background: var(--accent-primary, #667eea);
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.my-tickets .btn-new-ticket:hover {
+    opacity: 0.85;
+}

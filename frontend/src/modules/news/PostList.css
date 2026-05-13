@@ -1,0 +1,29 @@
+.post-list {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.empty-posts {
+    text-align: center;
+    padding: 60px 20px;
+    color: #666;
+}
+
+.empty-icon {
+    font-size: 64px;
+    margin-bottom: 20px;
+    opacity: 0.5;
+}
+
+.empty-posts h3 {
+    margin: 0 0 10px 0;
+    color: #333;
+    font-size: 24px;
+}
+
+.empty-posts p {
+    margin: 0;
+    font-size: 16px;
+    opacity: 0.7;
+} 

@@ -1,0 +1,307 @@
+.chart-filters {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+    color: #2d3748;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    border: 1px solid #e2e8f0;
+}
+
+.filters-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 2px solid #f7fafc;
+}
+
+.filters-header h3 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1a202c;
+    background: linear-gradient(135deg, #4299e1, #3182ce);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.reset-btn {
+    background: linear-gradient(135deg, #fc8181, #f56565);
+    color: white;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(245, 101, 101, 0.3);
+}
+
+.reset-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(245, 101, 101, 0.4);
+}
+
+.filter-group {
+    margin-bottom: 24px;
+}
+
+.filter-label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 12px;
+    font-size: 1rem;
+    color: #2d3748;
+}
+
+.filter-options {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.radio-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #f7fafc;
+    padding: 12px 18px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 2px solid #e2e8f0;
+    font-weight: 500;
+    color: #4a5568;
+}
+
+.radio-option:hover {
+    background: #edf2f7;
+    border-color: #cbd5e0;
+    transform: translateY(-1px);
+}
+
+.radio-option input[type="radio"]:checked + * {
+    color: #3182ce;
+}
+
+.radio-option:has(input[type="radio"]:checked) {
+    background: #ebf8ff;
+    border-color: #3182ce;
+    color: #3182ce;
+}
+
+.radio-option input[type="radio"] {
+    accent-color: #3182ce;
+}
+
+.date-inputs {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.date-inputs input[type="date"] {
+    background: #ffffff;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: #2d3748;
+    font-size: 0.9rem;
+    transition: border-color 0.2s ease;
+}
+
+.date-inputs input[type="date"]:focus {
+    outline: none;
+    border-color: #3182ce;
+    box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1);
+}
+
+.date-inputs span {
+    font-weight: 500;
+    color: #718096;
+    margin: 0 4px;
+}
+
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 10px;
+}
+
+.metric-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #ffffff;
+    padding: 10px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 2px solid #e2e8f0;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #4a5568;
+}
+
+.metric-option:hover {
+    background: #f7fafc;
+    border-color: #cbd5e0;
+    transform: translateY(-1px);
+}
+
+.metric-option:has(input[type="checkbox"]:checked) {
+    background: #f0fff4;
+    border-color: #48bb78;
+    color: #2f855a;
+}
+
+.metric-option input[type="checkbox"] {
+    accent-color: #48bb78;
+}
+
+.metric-color {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    display: inline-block;
+    border: 2px solid #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.stores-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 10px;
+}
+
+.store-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #ffffff;
+    padding: 10px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 2px solid #e2e8f0;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #4a5568;
+}
+
+.store-option:hover {
+    background: #f7fafc;
+    border-color: #cbd5e0;
+    transform: translateY(-1px);
+}
+
+.store-option.all-stores {
+    grid-column: 1 / -1;
+    background: #f0fff4;
+    border: 2px solid #48bb78;
+    color: #2f855a;
+    font-weight: 600;
+}
+
+.store-option.all-stores:hover {
+    background: #e6fffa;
+}
+
+.store-option:has(input[type="checkbox"]:checked) {
+    background: #ebf8ff;
+    border-color: #3182ce;
+    color: #3182ce;
+}
+
+.store-option input[type="checkbox"] {
+    accent-color: #3182ce;
+}
+
+.prodejce-select {
+    width: 100%;
+    background: #ffffff;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 12px 16px;
+    color: #2d3748;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: border-color 0.2s ease;
+}
+
+.prodejce-select:focus {
+    outline: none;
+    border-color: #3182ce;
+    box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1);
+}
+
+.current-filters {
+    margin-top: 20px;
+    padding: 16px;
+    background: #f7fafc;
+    border-radius: 8px;
+    border-left: 4px solid #3182ce;
+}
+
+.current-filters small {
+    color: #4a5568;
+    line-height: 1.5;
+    font-weight: 500;
+}
+
+.current-filters strong {
+    color: #2d3748;
+}
+
+/* Responzivní design */
+@media (max-width: 768px) {
+    .chart-filters {
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    
+    .filters-header {
+        flex-direction: column;
+        gap: 12px;
+        align-items: flex-start;
+    }
+    
+    .metrics-grid,
+    .stores-grid {
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    }
+    
+    .filter-options {
+        flex-direction: column;
+    }
+    
+    .date-inputs {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .date-inputs span {
+        margin: 8px 0;
+    }
+}
+
+@media (max-width: 480px) {
+    .chart-filters {
+        padding: 16px;
+    }
+    
+    .metrics-grid,
+    .stores-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .metric-option,
+    .store-option {
+        font-size: 0.85rem;
+    }
+} 

@@ -1,0 +1,88 @@
+/* Analytics Section Wrapper Styles */
+.analytics-section-wrapper {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.analytics-section-wrapper .section-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 1.5rem;
+    flex-shrink: 0;
+}
+
+.analytics-section-wrapper .back-btn {
+    background: var(--secondary-color);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.analytics-section-wrapper .back-btn:hover {
+    background: var(--hover-color);
+    transform: translateX(-2px);
+}
+
+.analytics-section-wrapper .section-title {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-color);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.analytics-section-wrapper .section-icon {
+    font-size: 1.3rem;
+}
+
+.analytics-section-wrapper .section-content {
+    flex: 1;
+    overflow: auto;
+}
+
+/* Dark mode support */
+.dark-mode .analytics-section-wrapper .back-btn {
+    background: var(--dark-secondary);
+    color: var(--dark-text);
+    border-color: var(--dark-border);
+}
+
+.dark-mode .analytics-section-wrapper .back-btn:hover {
+    background: var(--dark-hover);
+}
+
+.dark-mode .analytics-section-wrapper .section-title {
+    color: var(--dark-text);
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+    .analytics-section-wrapper .section-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    
+    .analytics-section-wrapper .back-btn {
+        align-self: flex-start;
+    }
+    
+    .analytics-section-wrapper .section-title {
+        font-size: 1.3rem;
+    }
+}
+
