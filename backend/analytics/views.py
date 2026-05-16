@@ -20,6 +20,12 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.utils.decorators import method_decorator
 from rest_framework.decorators import permission_classes
 from .models import ProdejniData, ProdejniDataDenni, ProdejniDataMesicni, GoogleSheetsConfig, WebProdejeAll, WebZasilkovna, WebVykupy
+from .technik_utils import (
+    merge_technici_rows,
+    aggregate_by_canonical_technik,
+    technik_filter_q,
+    resolve_technik_display,
+)
 from users.models import WebUser
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -3704,6 +3710,8 @@ def servis_data_view(request):
             # Přidáme technika do výsledného seznamu
             technici_breakdown.append(t)
 
+        technici_breakdown = merge_technici_rows(technici_breakdown)
+
         # VÝBĚR VÍTĚZŮ (medaile)
         top_all = None  # nejlepší prodejco/technik podle celkového obratu bez DPH
         top_service = None  # nejlepší servisní technik (služby + servisní práce)
@@ -3722,7 +3730,7 @@ def servis_data_view(request):
                 .values('technik')
                 .annotate(obrat_bez_dph=Sum(F('pocet_kusu') * F('cena_ks_bez_dph'), default=0))
             )
-            obrat_servis_map = {r['technik']: float(r['obrat_bez_dph'] or 0) for r in servis_by_technik}
+            obrat_servis_map = aggregate_by_canonical_technik(servis_by_technik)
             best_service_score = -1
             top_service = None
             for t in technici_breakdown:
@@ -3745,7 +3753,7 @@ def servis_data_view(request):
                 .values('technik')
                 .annotate(obrat_bez_dph=Sum(F('pocet_kusu') * F('cena_ks_bez_dph'), default=0))
             )
-            prislusenstvi_obrat_map = {r['technik']: float(r['obrat_bez_dph'] or 0) for r in prislusenstvi_by_technik}
+            prislusenstvi_obrat_map = aggregate_by_canonical_technik(prislusenstvi_by_technik)
 
             best_seller_score = -1
             top_seller_only = None
@@ -4088,7 +4096,8 @@ def servis_technik_detail_view(request):
             Q(k_servisu='ANO')
         )
         
-        qs = WebProdejeAll.objects.filter(base_servis_q).filter(technik__iexact=technik)
+        display_name = resolve_technik_display(technik)
+        qs = WebProdejeAll.objects.filter(base_servis_q).filter(technik_filter_q(display_name))
 
         if period != 'custom':
             today = date.today()
@@ -4138,7 +4147,7 @@ def servis_technik_detail_view(request):
         return JsonResponse({
             'success': True,
             'detail': {
-                'technik': technik,
+                'technik': display_name,
                 'breakdown': {
                     'sluzby': convert(sluzby),
                     'prislusenstvi_k_servisu': convert(prislusenstvi),
@@ -4175,7 +4184,8 @@ def servis_technik_items_view(request):
             Q(k_servisu='ANO')
         )
         
-        qs = WebProdejeAll.objects.filter(base_servis_q).filter(technik__iexact=technik)
+        display_name = resolve_technik_display(technik)
+        qs = WebProdejeAll.objects.filter(base_servis_q).filter(technik_filter_q(display_name))
 
         if period != 'custom':
             today = date.today()

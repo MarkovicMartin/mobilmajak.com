@@ -6,7 +6,8 @@ Spustit: python manage.py populate_technik_id
 from django.core.management.base import BaseCommand
 from users.models import WebUser
 
-# ID -> (jmeno, prijmeni) - techniciMap z actoru + 4 doplněné
+# ID -> (jmeno, prijmeni) - techniciMap z actoru + doplněné
+# Stejné technik_id může mít více záznamů (aliasy – např. přejmenování v EDA).
 MAPPING = [
     (78, 'Miroslav', 'Hoza'),
     (96, 'Martin', 'Šimek'),
@@ -26,7 +27,9 @@ MAPPING = [
     (125, 'Adam', 'Kolarčík'),
     (126, 'Aplikace', 'MyRepair.app'),
     (135, 'Karolína', 'Macková'),
-    (148, 'Benny', 'Babušík'),
+    (148, 'Artur', 'Babušík'),
+    (148, 'Benny', 'Babušík'),  # historické jméno účtu (EDA dříve „Benny“)
+    (343, 'Dominik', 'Karas'),
     (153, 'Tomáš', 'Doležal'),
     (156, 'Patrik', 'Šebák'),
     (157, 'Štěpán', 'Kundera'),
@@ -64,7 +67,7 @@ class Command(BaseCommand):
             if count:
                 if not dry_run:
                     qs.update(technik_id=technik_id)
-                self.stdout.write(f'  {jmeno} {prijmeni} → technik_id={technik_id} ({count} řádků)')
+                self.stdout.write(f'  {jmeno} {prijmeni} -> technik_id={technik_id} ({count} radku)')
                 updated += count
         if dry_run:
             self.stdout.write(self.style.WARNING(f'Dry-run: bylo by aktualizováno {updated} uživatelů.'))
