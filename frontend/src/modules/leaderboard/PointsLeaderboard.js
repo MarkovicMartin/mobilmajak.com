@@ -136,7 +136,7 @@ const PointsLeaderboard = ({ data, loading, currentUser }) => {
                                     <th>Prodejce</th>
                                     <th>Prodejna</th>
                                     <th>Celkové body</th>
-                                    <th>Průměr bodů</th>
+                                    <th>Průměr pol./účt.</th>
                                     <th>Skóre minulý měsíc</th>
                                 </tr>
                             </thead>
