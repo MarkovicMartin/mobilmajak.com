@@ -59,6 +59,17 @@ frontend/coverage/
 *~
 .DS_Store
 
+# SSH keys and local secrets (never commit)
+.ssh/
+secrets/napojeno_ed25519
+secrets/napojeno_ed25519.pub
+secrets/napojeno_ed25519.USER_INPUT_REQ
+secrets/webmajak_vps
+secrets/*.pem
+secrets/id_*
+!secrets/actor-cesta-na-vps.USER_INPUT_REQ
+!secrets/README.md
+
 # Environment variables
 .env
 .env.local
@@ -138,4 +149,9 @@ build/
 # Deployment files (keep structure, ignore sensitive data)
 # deploy.sh can stay, but make sure no passwords/keys are hardcoded
 
+# Internal documentation with credentials (keep local only)
+Dokumentace MOBILMAJAK.COM.docx
+ZADÁNÍ.md
+zadání.md
+ZADANI.md
 

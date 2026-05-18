@@ -14,14 +14,16 @@ if [ ! -d ".git" ]; then
 fi
 
 # Zkontrolovat, zda existuje remote
+DEFAULT_REPO_URL="https://github.com/MarkovicMartin/mobilmajak.com.git"
 if ! git remote | grep -q "^origin$"; then
     echo "📝 Přidejte GitHub remote:"
-    echo "   git remote add origin https://github.com/VASE_UZIVATELSKE_JMENO/VASE_REPO_JMENO.git"
-    read -p "Zadejte URL vašeho GitHub repozitáře (nebo Enter pro přeskočení): " repo_url
-    if [ -n "$repo_url" ]; then
-        git remote add origin "$repo_url"
-        echo "✅ Remote přidán"
+    echo "   git remote add origin $DEFAULT_REPO_URL"
+    read -p "Zadejte URL GitHub repozitáře (Enter = výchozí): " repo_url
+    if [ -z "$repo_url" ]; then
+        repo_url="$DEFAULT_REPO_URL"
     fi
+    git remote add origin "$repo_url"
+    echo "✅ Remote přidán: $repo_url"
 fi
 
 # Vytvořit větve pokud neexistují
