@@ -135,6 +135,31 @@ const ProfileAnalytics = ({ userId }) => {
         return date.toLocaleDateString('cs-CZ');
     };
 
+    const formatCurrency = (amount) => {
+        if (amount === null || amount === undefined) return '0 Kč';
+        return new Intl.NumberFormat('cs-CZ', {
+            style: 'currency',
+            currency: 'CZK',
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 2,
+        }).format(amount);
+    };
+
+    const formatNumber = (num) => {
+        if (num === null || num === undefined) return '0';
+        return new Intl.NumberFormat('cs-CZ').format(Math.round(num));
+    };
+
+    const renderServisMarzeRow = (payload) => {
+        const marze = payload?.servisni_prace?.marze ?? 0;
+        return (
+            <div className="servis-marze-row">
+                <span className="label">Servis marže celkem:</span>
+                <span className="value">{formatNumber(marze)}</span>
+            </div>
+        );
+    };
+
     const renderPointsCard = (title, pointsData) => {
         if (!pointsData || pointsData.source === 'none') {
             return (
@@ -243,6 +268,17 @@ const ProfileAnalytics = ({ userId }) => {
                                     {pointsData.breakdown.aligator.count}× = {pointsData.breakdown.aligator.points}b
                                 </span>
                             </div>
+                            {pointsData.breakdown.servis_marze && (
+                                <div className="data-item servis-marze-points">
+                                    <span className="label">
+                                        Servis marže ({pointsData.breakdown.servis_marze.odmena_sazba ?? 10} %):
+                                    </span>
+                                    <span className="value">
+                                        {formatNumber(pointsData.breakdown.servis_marze.marze)} → {formatNumber(pointsData.breakdown.servis_marze.points)}b
+                                    </span>
+                                </div>
+                            )}
+
                         </div>
                     )}
                 </div>
@@ -288,6 +324,8 @@ const ProfileAnalytics = ({ userId }) => {
                             <div className="metric-label">Průměr pol./účtu</div>
                         </div>
                     </div>
+
+                    {renderServisMarzeRow(data)}
 
                     <div className="products-grid">
                         <div className="product-item">
@@ -403,8 +441,7 @@ const ProfileAnalytics = ({ userId }) => {
                 ) : (
                     <>
                         {renderDataCard('Dnešní výsledky', todayData)}
-                        {renderDataCard('Měsíční výsledky', monthlyData)}
-                    </>
+                        {renderDataCard('Měsíční výsledky', monthlyData)}                    </>
                 )}
             </div>
 

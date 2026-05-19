@@ -347,7 +347,13 @@ def create_user_view(request):
     
     serializer = WebUserCreateSerializer(data=request.data)
     if serializer.is_valid():
-        user = serializer.save()
+        try:
+            user = serializer.save()
+        except Exception as exc:
+            return Response({
+                'success': False,
+                'message': f'Chyba při ukládání do databáze: {exc}',
+            }, status=status.HTTP_400_BAD_REQUEST)
         return Response({
             'success': True,
             'message': 'Uživatel byl úspěšně vytvořen',

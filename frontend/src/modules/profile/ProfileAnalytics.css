@@ -561,4 +561,30 @@
     font-weight: 500;
     margin: 0;
     font-size: 1.1rem;
-} 
+}
+
+.servis-marze-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 16px;
+    margin: 16px 0;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+}
+
+.servis-marze-row .label {
+    font-weight: 600;
+    color: #333;
+}
+
+.servis-marze-row .value {
+    font-weight: 700;
+    color: #1a7f37;
+}
+
+.data-item.servis-marze-points .value {
+    color: #1a7f37;
+    font-weight: 600;
+}

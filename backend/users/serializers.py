@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import WebUser, ProfilovyObrazek
+from .utils import create_web_user_with_auto_id
 from stores.models import Prodejna
 
 class WebUserSerializer(serializers.ModelSerializer):
@@ -8,8 +9,8 @@ class WebUserSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = WebUser
-        fields = ['id', 'uzivatelske_jmeno', 'jmeno', 'prijmeni', 'role', 'aktivni', 'moduly', 'datum_vytvoreni', 
-                 'telefon', 'email', 'adresa', 'poznamka', 'prodejna_id', 'prodejna']
+        fields = ['id', 'uzivatelske_jmeno', 'jmeno', 'prijmeni', 'role', 'aktivni', 'moduly', 'datum_vytvoreni',
+                 'telefon', 'email', 'adresa', 'poznamka', 'prodejna_id', 'prodejna', 'technik_id']
         read_only_fields = ['datum_vytvoreni']
     
     def get_prodejna(self, obj):
@@ -55,19 +56,19 @@ class ProfilovyObrazekSerializer(serializers.ModelSerializer):
 
 class WebUserCreateSerializer(serializers.ModelSerializer):
     """Serializer pro vytvoření nového uživatele (pouze pro adminy)"""
+    id = serializers.IntegerField(read_only=True)
     heslo = serializers.CharField(write_only=True, min_length=6)
+    technik_id = serializers.IntegerField(required=True, min_value=0)
     
     class Meta:
         model = WebUser
         fields = ['id', 'uzivatelske_jmeno', 'jmeno', 'prijmeni', 'heslo', 'role', 'aktivni', 'moduly',
-                 'telefon', 'email', 'adresa', 'poznamka', 'prodejna_id']
+                 'telefon', 'email', 'adresa', 'poznamka', 'prodejna_id', 'technik_id']
     
     def create(self, validated_data):
         heslo = validated_data.pop('heslo')
-        user = WebUser(**validated_data)
-        user.set_heslo(heslo)
-        user.save()
-        return user
+        validated_data.pop('id', None)
+        return create_web_user_with_auto_id(validated_data, heslo)
 
 
 class WebUserUpdateSerializer(serializers.ModelSerializer):
@@ -75,11 +76,12 @@ class WebUserUpdateSerializer(serializers.ModelSerializer):
     nove_heslo = serializers.CharField(write_only=True, required=False, min_length=6)
     # Alias pro zpětnou kompatibilitu s frontendem
     heslo = serializers.CharField(write_only=True, required=False, min_length=6)
+    technik_id = serializers.IntegerField(required=False, min_value=0)
     
     class Meta:
         model = WebUser
         fields = ['id', 'uzivatelske_jmeno', 'jmeno', 'prijmeni', 'role', 'aktivni', 'moduly',
-                 'telefon', 'email', 'adresa', 'poznamka', 'nove_heslo', 'heslo', 'prodejna_id']
+                 'telefon', 'email', 'adresa', 'poznamka', 'nove_heslo', 'heslo', 'prodejna_id', 'technik_id']
         read_only_fields = ['id']
     
     def update(self, instance, validated_data):

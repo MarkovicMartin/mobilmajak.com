@@ -49,6 +49,7 @@ MAPPING = [
     (317, 'David', 'Valčík'),
     (323, 'Monika', 'Křížková'),
     (336, 'Lukáš', 'Hekele'),
+    (290, 'Marek', 'Pich'),
 ]
 
 

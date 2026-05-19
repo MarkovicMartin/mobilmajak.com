@@ -3432,6 +3432,130 @@ def eshop_categories_timeseries_view(request):
 # SERVIS - API endpointy pro analýzu servisních dat z WEB_PRODEJE_ALL
 # =============================================================================
 
+SERVIS_ODMENA_RATE = Decimal('0.10')
+SERVIS_ODMENA_SAZBA = 10
+
+
+def _base_servis_q():
+    return Q(objednavku_zalozil__icontains='servis eda') & Q(k_servisu='ANO')
+
+
+def _servisni_prace_segment_q():
+    return Q(kategorie__icontains='!Servis') & ~Q(kategorie_1__icontains='Služby')
+
+
+def aggregate_servisni_prace(queryset):
+    """Agregace segmentu Servisní práce + odměna 10 % z marže."""
+    prace_qs = queryset.filter(_servisni_prace_segment_q())
+    result = prace_qs.aggregate(
+        obrat_bez_dph=Sum(F('pocet_kusu') * F('cena_ks_bez_dph'), default=0),
+        marze=Sum(F('pocet_kusu') * F('zisk'), default=0),
+        polozky=Count('id'),
+        doklady=Count('doklad', distinct=True),
+    )
+    marze = Decimal(str(result['marze'] or 0))
+    odmena = round(marze * SERVIS_ODMENA_RATE, 2)
+    return {
+        'obrat_bez_dph': float(result['obrat_bez_dph'] or 0),
+        'marze': float(marze),
+        'polozky': result['polozky'] or 0,
+        'doklady': result['doklady'] or 0,
+        'odmena': float(odmena),
+        'odmena_sazba': SERVIS_ODMENA_SAZBA,
+    }
+
+
+def _technik_display_name_for_user(user):
+    return f'{user.jmeno} {user.prijmeni}'.strip()
+
+
+def _apply_servis_date_filters(queryset, start_date=None, end_date=None, period='custom'):
+    """Aplikuje period/start_date/end_date na queryset (typ jako YYYY-MM-DD string)."""
+    if period != 'custom':
+        today = date.today()
+        if period == 'daily':
+            start_date = today
+            end_date = today
+        elif period == 'weekly':
+            start_date = today - timedelta(days=7)
+            end_date = today
+        elif period == 'monthly':
+            start_date = today.replace(day=1)
+            end_date = today
+
+    if start_date:
+        try:
+            sd = parse_date(start_date).date() if isinstance(start_date, str) else start_date
+            queryset = queryset.filter(typ__gte=sd.strftime('%Y-%m-%d'))
+        except Exception:
+            pass
+    if end_date:
+        try:
+            ed = parse_date(end_date).date() if isinstance(end_date, str) else end_date
+            end_upper = (ed + timedelta(days=1)).strftime('%Y-%m-%d')
+            queryset = queryset.filter(typ__lt=end_upper)
+        except Exception:
+            pass
+    return queryset
+
+
+def servisni_prace_for_user(user, typ_exact=None, typ_month_prefix=None, start_date=None, end_date=None, period='custom', prodejna_id=None):
+    """
+    Servisní práce + odměna pro uživatele mapovaného přes technik_id.
+    Vrací (data_dict, reason) – reason je None při úspěchu, jinak kód pro frontend.
+    """
+    if not user or not getattr(user, 'technik_id', None):
+        return None, 'no_technik_id'
+
+    display_name = _technik_display_name_for_user(user)
+    if not display_name:
+        return None, 'no_technik_name'
+
+    qs = WebProdejeAll.objects.filter(_base_servis_q()).filter(technik_filter_q(display_name))
+
+    if typ_exact:
+        qs = qs.filter(typ=typ_exact)
+    elif typ_month_prefix:
+        qs = qs.filter(typ__startswith=typ_month_prefix)
+    else:
+        qs = _apply_servis_date_filters(qs, start_date, end_date, period)
+
+    if prodejna_id:
+        qs = qs.filter(id_prodejny=prodejna_id)
+
+    return aggregate_servisni_prace(qs), None
+
+
+def _attach_servisni_prace(result, user_id, typ_exact=None, typ_month_prefix=None):
+    try:
+        user = WebUser.objects.get(id=user_id)
+    except WebUser.DoesNotExist:
+        result['servisni_prace'] = None
+        result['servisni_prace_reason'] = 'user_not_found'
+        return result
+
+    data, reason = servisni_prace_for_user(user, typ_exact=typ_exact, typ_month_prefix=typ_month_prefix)
+    result['servisni_prace'] = data
+    if reason:
+        result['servisni_prace_reason'] = reason
+    return result
+
+
+def _servis_points_for_user_id(user_id, typ_exact=None, typ_month_prefix=None):
+    """Vrátí (body z 10 % marže servisních prací, servisni_prace dict nebo None)."""
+    try:
+        user = WebUser.objects.get(id=user_id)
+    except WebUser.DoesNotExist:
+        return 0, None
+
+    data, _reason = servisni_prace_for_user(user, typ_exact=typ_exact, typ_month_prefix=typ_month_prefix)
+    if not data:
+        return 0, None
+
+    points = int(round(data.get('odmena') or 0))
+    return points, data
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def servis_data_view(request):
@@ -4179,10 +4303,7 @@ def servis_technik_items_view(request):
         limit = int(request.GET.get('limit', '200'))
 
         # Základní servisní filtr
-        base_servis_q = (
-            Q(objednavku_zalozil__icontains='servis eda') &
-            Q(k_servisu='ANO')
-        )
+        base_servis_q = _base_servis_q()
         
         display_name = resolve_technik_display(technik)
         qs = WebProdejeAll.objects.filter(base_servis_q).filter(technik_filter_q(display_name))
@@ -5926,6 +6047,7 @@ def web_prodeje_salesperson_today(request):
             }
 
         result['source'] = 'database'
+        _attach_servisni_prace(result, user_id, typ_exact=today_iso)
         return JsonResponse(result)
     except Exception as e:
         return JsonResponse({'error': str(e), 'source': 'error'}, status=500)
@@ -5955,6 +6077,7 @@ def web_prodeje_salesperson_monthly(request):
         }
 
         result['source'] = 'database'
+        _attach_servisni_prace(result, user_id, typ_month_prefix=ym)
         return JsonResponse(result)
     except Exception as e:
         return JsonResponse({'error': str(e), 'source': 'error'}, status=500)
@@ -5972,7 +6095,9 @@ def web_prodeje_salesperson_points_today(request):
         today_iso = date.today().strftime('%Y-%m-%d')
         today_qs = WebProdejeAll.objects.filter(id_prodejce=user_id, typ=today_iso)
         base = _aggregate_web_prodeje_all_salesperson(today_qs, user_id, today_iso)
-        total_points = calculate_points_for_data(base)
+        product_points = calculate_points_for_data(base)
+        servis_points, servis_data = _servis_points_for_user_id(user_id, typ_exact=today_iso)
+        total_points = product_points + servis_points
 
         # poslední den se záznamy (minulá směna)
         last_rec = (
@@ -5985,14 +6110,16 @@ def web_prodeje_salesperson_points_today(request):
             prev_date = str(last_rec.typ)[:10]
             prev_qs = WebProdejeAll.objects.filter(id_prodejce=user_id, typ=prev_date)
             prev_base = _aggregate_web_prodeje_all_salesperson(prev_qs, user_id, prev_date)
-            prev_points = calculate_points_for_data(prev_base)
+            prev_product_points = calculate_points_for_data(prev_base)
+            prev_servis_points, _ = _servis_points_for_user_id(user_id, typ_exact=prev_date)
+            prev_points = prev_product_points + prev_servis_points
             compare = {
                 'previous_date': prev_date,
                 'previous_points': prev_points,
                 'delta_points': total_points - prev_points,
             }
 
-        payload = _build_points_payload(base, total_points, 'database')
+        payload = _build_points_payload(base, total_points, 'database', servis_data=servis_data, servis_points=servis_points)
         if compare:
             payload['compare'] = compare
         return JsonResponse(payload)
@@ -6013,15 +6140,19 @@ def web_prodeje_salesperson_points_monthly(request):
         ym = today.strftime('%Y-%m')
         queryset = WebProdejeAll.objects.filter(id_prodejce=user_id, typ__startswith=ym)
         base = _aggregate_web_prodeje_all_salesperson(queryset, user_id, f"{ym}-01")
-        total_points = calculate_points_for_data(base)
+        product_points = calculate_points_for_data(base)
+        servis_points, servis_data = _servis_points_for_user_id(user_id, typ_month_prefix=ym)
+        total_points = product_points + servis_points
 
         # minulý měsíc
         prev_month = (today.replace(day=1) - timedelta(days=1)).strftime('%Y-%m')
         prev_qs = WebProdejeAll.objects.filter(id_prodejce=user_id, typ__startswith=prev_month)
         prev_base = _aggregate_web_prodeje_all_salesperson(prev_qs, user_id, f"{prev_month}-01")
-        prev_points = calculate_points_for_data(prev_base)
+        prev_product_points = calculate_points_for_data(prev_base)
+        prev_servis_points, _ = _servis_points_for_user_id(user_id, typ_month_prefix=prev_month)
+        prev_points = prev_product_points + prev_servis_points
 
-        payload = _build_points_payload(base, total_points, 'database')
+        payload = _build_points_payload(base, total_points, 'database', servis_data=servis_data, servis_points=servis_points)
         payload['compare'] = {
             'previous_month': prev_month,
             'previous_points': prev_points,
@@ -6117,29 +6248,37 @@ def _aggregate_web_prodeje_all_salesperson(queryset, user_id, iso_date):
     }
 
 
-def _build_points_payload(base_data, total_points, source):
+def _build_points_payload(base_data, total_points, source, servis_data=None, servis_points=0):
     """Sestaví payload pro body včetně breakdownu"""
+    breakdown = {
+        'polozky_nad_100': {'count': base_data.get('polozky_nad_100', 0), 'points': base_data.get('polozky_nad_100', 0) * 15},
+        'ct300': {'count': base_data.get('ct300', 0), 'points': base_data.get('ct300', 0) * 15},
+        'ct600': {'count': base_data.get('ct600', 0), 'points': base_data.get('ct600', 0) * 50},
+        'ct1200': {'count': base_data.get('ct1200', 0), 'points': base_data.get('ct1200', 0) * 100},
+        'akt': {'count': base_data.get('akt', 0), 'points': base_data.get('akt', 0) * 30},
+        'zah250': {'count': base_data.get('zah250', 0), 'points': base_data.get('zah250', 0) * 30},
+        'nap': {'count': base_data.get('nap', 0), 'points': base_data.get('nap', 0) * 50},
+        'zah500': {'count': base_data.get('zah500', 0), 'points': base_data.get('zah500', 0) * 50},
+        'kop250': {'count': base_data.get('kop250', 0), 'points': base_data.get('kop250', 0) * 30},
+        'kop500': {'count': base_data.get('kop500', 0), 'points': base_data.get('kop500', 0) * 50},
+        'pz1': {'count': base_data.get('pz1', 0), 'points': base_data.get('pz1', 0) * 100},
+        'knz': {'count': base_data.get('knz', 0), 'points': base_data.get('knz', 0) * 30},
+        'aligator': {'count': base_data.get('aligator', 0), 'points': 0},
+    }
+    if servis_data is not None:
+        breakdown['servis_marze'] = {
+            'marze': servis_data.get('marze', 0),
+            'odmena_sazba': servis_data.get('odmena_sazba', SERVIS_ODMENA_SAZBA),
+            'points': servis_points,
+        }
+
     return {
         'date': base_data.get('date'),
         'prodejna': base_data.get('prodejna'),
         'prodejce': base_data.get('prodejce'),
         'id_prodejce': base_data.get('id_prodejce'),
         'total_points': total_points,
-        'breakdown': {
-            'polozky_nad_100': {'count': base_data.get('polozky_nad_100', 0), 'points': base_data.get('polozky_nad_100', 0) * 15},
-            'ct300': {'count': base_data.get('ct300', 0), 'points': base_data.get('ct300', 0) * 15},
-            'ct600': {'count': base_data.get('ct600', 0), 'points': base_data.get('ct600', 0) * 50},
-            'ct1200': {'count': base_data.get('ct1200', 0), 'points': base_data.get('ct1200', 0) * 100},
-            'akt': {'count': base_data.get('akt', 0), 'points': base_data.get('akt', 0) * 30},
-            'zah250': {'count': base_data.get('zah250', 0), 'points': base_data.get('zah250', 0) * 30},
-            'nap': {'count': base_data.get('nap', 0), 'points': base_data.get('nap', 0) * 50},
-            'zah500': {'count': base_data.get('zah500', 0), 'points': base_data.get('zah500', 0) * 50},
-            'kop250': {'count': base_data.get('kop250', 0), 'points': base_data.get('kop250', 0) * 30},
-            'kop500': {'count': base_data.get('kop500', 0), 'points': base_data.get('kop500', 0) * 50},
-            'pz1': {'count': base_data.get('pz1', 0), 'points': base_data.get('pz1', 0) * 100},
-            'knz': {'count': base_data.get('knz', 0), 'points': base_data.get('knz', 0) * 30},
-            'aligator': {'count': base_data.get('aligator', 0), 'points': 0},
-        },
+        'breakdown': breakdown,
         'source': source,
     }
 

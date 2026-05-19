@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { userAPI, storeAPI } from '../services/api';
+import { prepareUserSubmitData, formatUserApiError, estimateNextUserId } from '../utils/userForm';
 import './UserManagement.css';
 
 const UserManagement = () => {
@@ -8,11 +9,12 @@ const UserManagement = () => {
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [formError, setFormError] = useState(null);
+    const [submitting, setSubmitting] = useState(false);
     const [showAddForm, setShowAddForm] = useState(false);
     const [editingUser, setEditingUser] = useState(null);
     const [stores, setStores] = useState([]);
     const [formData, setFormData] = useState({
-        id: '',
         uzivatelske_jmeno: '',
         jmeno: '',
         prijmeni: '',
@@ -20,12 +22,15 @@ const UserManagement = () => {
         role: 'PRODEJCE',
         aktivni: true,
         prodejna: '',
+        technik_id: '',
         moduly: [],
         telefon: '',
         email: '',
         adresa: '',
         poznamka: ''
     });
+
+    const nextUserIdPreview = estimateNextUserId(users);
 
     const availableModules = ['analytics', 'shifts', 'news', 'access'];
 
@@ -80,7 +85,6 @@ const UserManagement = () => {
 
     const resetForm = () => {
         setFormData({
-            id: '',
             uzivatelske_jmeno: '',
             jmeno: '',
             prijmeni: '',
@@ -88,6 +92,7 @@ const UserManagement = () => {
             role: 'PRODEJCE',
             aktivni: true,
             prodejna: '',
+            technik_id: '',
             moduly: [],
             telefon: '',
             email: '',
@@ -96,84 +101,57 @@ const UserManagement = () => {
         });
         setEditingUser(null);
         setShowAddForm(false);
+        setFormError(null);
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setFormError(null);
+
+        const prepared = prepareUserSubmitData(formData, editingUser);
+        if (prepared.error) {
+            setFormError(prepared.error);
+            return;
+        }
 
         try {
-            // Příprava dat pro odeslání - jednotná logika pro vytváření i editaci
-            const submitData = { ...formData };
-
-            // Převod prodejna na prodejna_id pro backend
-            if (submitData.prodejna) {
-                const pid = parseInt(submitData.prodejna, 10);
-                if (!Number.isNaN(pid)) {
-                    submitData.prodejna_id = pid;
-                } else {
-                    // Pokud není číslo, nastavíme null
-                    submitData.prodejna_id = null;
-                }
-            } else {
-                submitData.prodejna_id = null;
-            }
-
-            // Odstraníme pole 'prodejna', protože backend ho nezná
-            delete submitData.prodejna;
-
+            setSubmitting(true);
             let response;
             if (editingUser) {
-                // Aktualizace existujícího uživatele
-                // Pro editaci backend očekává 'nove_heslo' místo 'heslo'
-                if (submitData.heslo && submitData.heslo.trim()) {
-                    submitData.nove_heslo = submitData.heslo.trim();
-                }
-                delete submitData.heslo; // backend neočekává pole 'heslo' při editaci
-
-                response = await userAPI.updateUser(editingUser.id, submitData);
+                response = await userAPI.updateUser(editingUser.id, prepared.data);
             } else {
-                // Vytvoření nového uživatele
-                // Při vytváření backend očekává pole 'heslo'
-                if (!submitData.heslo || submitData.heslo.length < 6) {
-                    setError('Heslo musí mít alespoň 6 znaků');
-                    return;
-                }
-
-                response = await userAPI.createUser(submitData);
+                response = await userAPI.createUser(prepared.data);
             }
 
             if (response.success) {
-                await loadUsers(); // Znovu načíst seznam uživatelů
+                await loadUsers();
                 resetForm();
                 setError(null);
             } else {
-                setError(response.message || 'Chyba při ukládání uživatele');
-                // Zobrazíme také detailní chyby z backendu pro debug
-                if (response.errors) {
-                    console.error('Chyby validace:', response.errors);
-                    const errorMessages = Object.entries(response.errors)
-                        .map(([field, errors]) => `${field}: ${Array.isArray(errors) ? errors.join(', ') : errors}`)
-                        .join('\n');
-                    setError(response.message + '\n\nDetaily:\n' + errorMessages);
-                }
+                setFormError(formatUserApiError(response));
             }
-        } catch (error) {
-            console.error('Chyba při odesílání formuláře:', error);
-            setError('Chyba při ukládání uživatele');
+        } catch (err) {
+            console.error('Chyba při odesílání formuláře:', err);
+            setFormError(
+                formatUserApiError(err.response?.data) || 'Chyba při ukládání uživatele'
+            );
+        } finally {
+            setSubmitting(false);
         }
     };
 
     const handleEdit = (user) => {
+        setFormError(null);
         setEditingUser(user);
         setFormData({
-            id: user.id,
             uzivatelske_jmeno: user.uzivatelske_jmeno,
             jmeno: user.jmeno,
             prijmeni: user.prijmeni,
-            heslo: '', // Heslo necháme prázdné pro editaci
+            heslo: '',
             role: user.role,
             aktivni: user.aktivni,
             prodejna: user.prodejna_id || user.prodejna || '',
+            technik_id: user.technik_id != null ? String(user.technik_id) : '',
             moduly: user.moduly || [],
             telefon: user.telefon || '',
             email: user.email || '',
@@ -225,7 +203,10 @@ const UserManagement = () => {
                 <h1>Správa uživatelů</h1>
                 <button
                     className="add-user-btn"
-                    onClick={() => setShowAddForm(true)}
+                    onClick={() => {
+                        setFormError(null);
+                        setShowAddForm(true);
+                    }}
                 >
                     + Přidat uživatele
                 </button>
@@ -246,18 +227,48 @@ const UserManagement = () => {
                         </div>
 
                         <form onSubmit={handleSubmit}>
+                            {formError && (
+                                <div className="form-error-message" role="alert">
+                                    {formError.split('\n').map((line, i) => (
+                                        <div key={i}>{line}</div>
+                                    ))}
+                                </div>
+                            )}
+
                             <div className="form-row">
+                                {editingUser ? (
+                                    <div className="form-group">
+                                        <label>Systémové ID</label>
+                                        <input
+                                            type="text"
+                                            value={editingUser.id}
+                                            disabled
+                                            className="input-readonly"
+                                        />
+                                    </div>
+                                ) : (
+                                    <div className="form-group">
+                                        <label>Systémové ID</label>
+                                        <div className="auto-id-hint">
+                                            Přiřadí se automaticky (odhad: <strong>{nextUserIdPreview}</strong>)
+                                        </div>
+                                    </div>
+                                )}
                                 <div className="form-group">
-                                    <label>ID uživatele *</label>
+                                    <label>Technik ID (EDA/Pohoda) *</label>
                                     <input
                                         type="number"
-                                        name="id"
-                                        value={formData.id}
+                                        name="technik_id"
+                                        value={formData.technik_id}
                                         onChange={handleInputChange}
                                         required
-                                        disabled={editingUser} // ID nelze měnit při editaci
+                                        min="0"
+                                        placeholder="např. 108"
                                     />
                                 </div>
+                            </div>
+
+                            <div className="form-row">
                                 <div className="form-group">
                                     <label>Uživatelské jméno *</label>
                                     <input
@@ -302,7 +313,8 @@ const UserManagement = () => {
                                         value={formData.heslo}
                                         onChange={handleInputChange}
                                         required={!editingUser}
-                                        placeholder={editingUser ? 'Ponechte prázdné pro zachování' : ''}
+                                        minLength={editingUser ? undefined : 6}
+                                        placeholder={editingUser ? 'Ponechte prázdné pro zachování' : 'Min. 6 znaků'}
                                     />
                                 </div>
                                 <div className="form-group">
@@ -371,8 +383,12 @@ const UserManagement = () => {
                                 <button type="button" onClick={resetForm} className="cancel-btn">
                                     Zrušit
                                 </button>
-                                <button type="submit" className="save-btn">
-                                    {editingUser ? 'Uložit změny' : 'Vytvořit uživatele'}
+                                <button type="submit" className="save-btn" disabled={submitting}>
+                                    {submitting
+                                        ? 'Ukládám…'
+                                        : editingUser
+                                            ? 'Uložit změny'
+                                            : 'Vytvořit uživatele'}
                                 </button>
                             </div>
                         </form>
@@ -385,6 +401,7 @@ const UserManagement = () => {
                     <thead>
                         <tr>
                             <th>ID</th>
+                            <th>Technik ID</th>
                             <th>Uživatelské jméno</th>
                             <th>Jméno</th>
                             <th>Příjmení</th>
@@ -399,6 +416,7 @@ const UserManagement = () => {
                         {users.map(user => (
                             <tr key={user.id} className={user.id === currentUser.id ? 'current-user' : ''}>
                                 <td>{user.id}</td>
+                                <td>{user.technik_id ?? '—'}</td>
                                 <td>{user.uzivatelske_jmeno}</td>
                                 <td>{user.jmeno}</td>
                                 <td>{user.prijmeni}</td>
