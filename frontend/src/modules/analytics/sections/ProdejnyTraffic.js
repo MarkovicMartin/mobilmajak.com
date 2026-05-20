@@ -35,7 +35,18 @@ const ProdejnyTrafficView = ({ isComparison = false }) => {
             granularity: 'daily'
         };
     });
-    const [dateError, setDateError] = useState(''); // eslint-disable-line no-unused-vars
+    const [dateError, setDateError] = useState('');
+    const [dateDraft, setDateDraft] = useState(() => ({
+        start_date: filters.start_date,
+        end_date: filters.end_date,
+    }));
+
+    const isValidISODate = (str) => {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(str)) return false;
+        const [y, m, d] = str.split('-').map(Number);
+        const dt = new Date(y, m - 1, d);
+        return dt.getFullYear() === y && dt.getMonth() === m - 1 && dt.getDate() === d;
+    };
 
     // --- Actions ---
     const loadData = async () => {
@@ -138,11 +149,15 @@ const ProdejnyTrafficView = ({ isComparison = false }) => {
             default: return;
         }
 
+        const range = {
+            start_date: fmt(from),
+            end_date: fmt(to),
+        };
+        setDateDraft(range);
         setFilters(prev => ({
             ...prev,
             period: 'custom',
-            start_date: fmt(from),
-            end_date: fmt(to)
+            ...range,
         }));
         setDateError('');
     };
@@ -154,9 +169,37 @@ const ProdejnyTrafficView = ({ isComparison = false }) => {
         }));
     };
 
-    const onDateChange = (field, value) => {
-        setFilters(prev => ({ ...prev, [field]: value }));
+    const onDateDraftChange = (field, value) => {
+        setDateDraft(prev => ({ ...prev, [field]: value }));
         setDateError('');
+    };
+
+    const applyCustomDates = () => {
+        const { start_date, end_date } = dateDraft;
+        if (!isValidISODate(start_date) || !isValidISODate(end_date)) {
+            setDateError('Neplatné datum. Zkontrolujte prosím zadání.');
+            return;
+        }
+        let start = start_date;
+        let end = end_date;
+        if (new Date(start) > new Date(end)) {
+            [start, end] = [end, start];
+        }
+        setDateError('');
+        setDateDraft({ start_date: start, end_date: end });
+        setFilters(prev => {
+            if (prev.period === 'custom' && prev.start_date === start && prev.end_date === end) {
+                return prev;
+            }
+            return { ...prev, period: 'custom', start_date: start, end_date: end };
+        });
+    };
+
+    const onDateKeyDown = (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            applyCustomDates();
+        }
     };
 
     // --- Heatmap Logic ---
@@ -288,6 +331,10 @@ const ProdejnyTrafficView = ({ isComparison = false }) => {
                                         placeholder="Vyberte období"
                                         onChange={(selectedValue) => {
                                             if (selectedValue === 'custom') {
+                                                setDateDraft({
+                                                    start_date: filters.start_date,
+                                                    end_date: filters.end_date,
+                                                });
                                                 handleFilterChange('period', 'custom');
                                             } else if (selectedValue.startsWith('month:')) {
                                                 const ym = selectedValue.split(':')[1];
@@ -313,21 +360,29 @@ const ProdejnyTrafficView = ({ isComparison = false }) => {
                                     <label>Od:</label>
                                     <input
                                         type="date"
-                                        value={filters.start_date}
-                                        max={filters.end_date || undefined}
-                                        onChange={(e) => onDateChange('start_date', e.target.value)}
+                                        value={dateDraft.start_date}
+                                        max={dateDraft.end_date || undefined}
+                                        onChange={(e) => onDateDraftChange('start_date', e.target.value)}
+                                        onBlur={applyCustomDates}
+                                        onKeyDown={onDateKeyDown}
                                     />
                                 </div>
                                 <div className="filter-group">
                                     <label>Do:</label>
                                     <input
                                         type="date"
-                                        value={filters.end_date}
-                                        min={filters.start_date || undefined}
-                                        onChange={(e) => onDateChange('end_date', e.target.value)}
+                                        value={dateDraft.end_date}
+                                        min={dateDraft.start_date || undefined}
+                                        onChange={(e) => onDateDraftChange('end_date', e.target.value)}
+                                        onBlur={applyCustomDates}
+                                        onKeyDown={onDateKeyDown}
                                     />
                                 </div>
                             </>
+                        )}
+
+                        {dateError && filters.period === 'custom' && (
+                            <div className="error-container" style={{ marginTop: 8 }}>{dateError}</div>
                         )}
 
                         {/* Rychlé volby období */}
