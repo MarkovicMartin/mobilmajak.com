@@ -87,7 +87,7 @@ Write-Host "[4/4] .env, collectstatic, restart ..."
 $postScript = Join-Path $RepoRoot "scripts\staging-post-deploy.sh"
 & scp @sshArgs $postScript "${target}:/tmp/staging-post-deploy.sh"
 if ($LASTEXITCODE -ne 0) { throw "scp post-deploy script failed" }
-Invoke-Ssh "bash /tmp/staging-post-deploy.sh; rm -f /tmp/staging-post-deploy.sh; chmod -R a+rX ${StagingPath}/frontend/build/static; systemctl reload nginx"
+Invoke-Ssh "sed -i 's/\r$//' /tmp/staging-post-deploy.sh; bash /tmp/staging-post-deploy.sh || true; rm -f /tmp/staging-post-deploy.sh; systemctl restart webmajak-staging; sleep 2; systemctl is-active webmajak-staging; chmod -R a+rX ${StagingPath}/frontend/build/static; systemctl reload nginx"
 
 Write-Host ""
 Write-Host "Done."
