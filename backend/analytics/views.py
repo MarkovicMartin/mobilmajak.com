@@ -6255,8 +6255,8 @@ def web_prodeje_salesperson_points_today(request):
         )
         compare = None
         if last_rec:
-            prev_date = prev_rec.typ.isoformat()
-            prev_qs = WebProdejeAll.objects.filter(id_prodejce=user_id, typ=prev_rec.typ)
+            prev_date = last_rec.typ.isoformat()
+            prev_qs = WebProdejeAll.objects.filter(id_prodejce=user_id, typ=last_rec.typ)
             prev_base = _aggregate_web_prodeje_all_salesperson(prev_qs, user_id, prev_date)
             prev_product_points = calculate_points_for_data(prev_base)
             prev_servis_points, _ = _servis_points_for_user_id(user_id, typ_exact=prev_date)

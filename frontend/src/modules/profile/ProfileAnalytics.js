@@ -144,8 +144,13 @@ const ProfileAnalytics = ({ userId }) => {
     };
 
     const resolvePointsContext = (data, pointsPayload) => {
-        const breakdown = pointsPayload?.breakdown || buildBreakdownFromData(data);
-        const totalPoints = pointsPayload?.total_points ?? sumProductPoints(breakdown);
+        const pointsOk = pointsPayload && pointsPayload.source !== 'error' && !pointsPayload.error;
+        const breakdown = (pointsOk && pointsPayload.breakdown)
+            ? pointsPayload.breakdown
+            : buildBreakdownFromData(data);
+        const totalPoints = pointsOk && pointsPayload.total_points != null
+            ? pointsPayload.total_points
+            : sumProductPoints(breakdown);
         return { breakdown, totalPoints };
     };
 
