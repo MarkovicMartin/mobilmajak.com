@@ -524,6 +524,7 @@ const StoreManagement = () => {
                                         </div>
                                     </div>
                                 ) : (
+                                    <>
                                     <p className="oteviraci-hint">
                                         Dny bez úpravy používají výchozí dobu ({formData.oteviraci_doba.vychozi.od}–{formData.oteviraci_doba.vychozi.do}). Upravte jen dny, které se liší, nebo zaškrtněte Zavřeno.
                                     </p>
@@ -566,6 +567,7 @@ const StoreManagement = () => {
                                             );
                                         })}
                                     </div>
+                                    </>
                                 )}
                             </fieldset>
 
