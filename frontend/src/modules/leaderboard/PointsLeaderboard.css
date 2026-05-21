@@ -51,6 +51,12 @@
     font-weight: 600;
 }
 
+.stat-change-hint {
+    font-size: 0.8rem;
+    font-weight: 400;
+    opacity: 0.85;
+}
+
 /* TOP 3 sekce */
 .top-three-section {
     margin-bottom: 40px;

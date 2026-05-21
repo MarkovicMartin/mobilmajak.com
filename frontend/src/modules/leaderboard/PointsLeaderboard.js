@@ -28,6 +28,12 @@ const PointsLeaderboard = ({ data, loading, currentUser, period = 'month' }) => 
     const topThree = data.slice(0, 3);
     const restOfList = data;
 
+    /** Nejvyšší body v porovnávacím období (včera / minulý měsíc), ne lídr dnešního žebříčku. */
+    const topByCompare = data.reduce(
+        (best, seller) => (getComparePoints(seller) > getComparePoints(best) ? seller : best),
+        data[0],
+    );
+
     const getCurrentUserPosition = () => {
         if (!currentUser) return null;
         const userIndex = data.findIndex(seller => seller.id === currentUser.id);
@@ -79,8 +85,13 @@ const PointsLeaderboard = ({ data, loading, currentUser, period = 'month' }) => 
                 </div>
                 <div className="stat-card">
                     <h4>🎯 {compareLabel}</h4>
-                    <div className="stat-value">{getComparePoints(data[0] || {}).toLocaleString()}</div>
-                    <div className="stat-change">{data[0]?.prodejce || 'N/A'}</div>
+                    <div className="stat-value">{getComparePoints(topByCompare).toLocaleString()}</div>
+                    <div className="stat-change">
+                        {topByCompare?.prodejce || 'N/A'}
+                        <span className="stat-change-hint">
+                            {isDay ? ' · nejlepší včera' : ' · nejlepší minulý měsíc'}
+                        </span>
+                    </div>
                 </div>
             </div>
 

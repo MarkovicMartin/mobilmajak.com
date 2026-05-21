@@ -6398,6 +6398,63 @@ def _leaderboard_sluzby_celkem(item):
     ))
 
 
+def _leaderboard_home_store_map(users_by_id):
+    """Domovská prodejna z profilu (prodejna_id → název)."""
+    from stores.models import Prodejna
+
+    store_ids = {
+        u.prodejna_id for u in users_by_id.values()
+        if u and getattr(u, 'prodejna_id', None)
+    }
+    store_names = {p.id: p.nazev for p in Prodejna.objects.filter(id__in=store_ids)}
+    return {
+        uid: store_names.get(u.prodejna_id) or 'Neznámá'
+        for uid, u in users_by_id.items()
+        if u
+    }
+
+
+def _leaderboard_dominant_stredisko_map(queryset, seller_ids):
+    """
+    Středisko / sklad, kde prodejce za dané období nejvíc prodával (počet řádků).
+    Nejprve prodejní řádky, u čistě servisních dne doplnění ze servisních záznamů.
+    """
+    if not seller_ids:
+        return {}
+
+    base = (
+        queryset.filter(id_prodejce__in=seller_ids)
+        .exclude(stredisko__isnull=True)
+        .exclude(stredisko='')
+    )
+    product_rows = list(
+        base.exclude(_servisni_prace_segment_q())
+        .values('id_prodejce', 'stredisko')
+        .annotate(line_count=Count('id'))
+        .order_by('id_prodejce', '-line_count', 'stredisko')
+    )
+    result = {}
+    for row in product_rows:
+        pid = int(row['id_prodejce'])
+        if pid not in result:
+            result[pid] = row['stredisko']
+
+    missing = set(int(x) for x in seller_ids) - set(result.keys())
+    if missing:
+        servis_rows = list(
+            base.filter(id_prodejce__in=missing)
+            .filter(_servisni_prace_segment_q())
+            .values('id_prodejce', 'stredisko')
+            .annotate(line_count=Count('id'))
+            .order_by('id_prodejce', '-line_count', 'stredisko')
+        )
+        for row in servis_rows:
+            pid = int(row['id_prodejce'])
+            if pid not in result:
+                result[pid] = row['stredisko']
+    return result
+
+
 def _servis_points_map_for_month(month_ym):
     """Body ze servisu (10 % marže) pro všechny prodejce – jeden průchod DB + mapování techniků."""
     from users.exclusions import is_excluded_report_user
@@ -6571,6 +6628,7 @@ def web_prodeje_leaderboard_points(request):
 
         prodejci_ids = [item['id_prodejce'] for item in current_aggregation]
         users = {u.id: u for u in WebUser.objects.filter(id__in=prodejci_ids)}
+        home_store_map = _leaderboard_home_store_map(users)
 
         leaderboard = []
 
@@ -6581,10 +6639,10 @@ def web_prodeje_leaderboard_points(request):
             user = users.get(prodejce_id)
             if user:
                 prodejce_jmeno = f"{user.jmeno} {user.prijmeni}".strip()
-                prodejna_nazev = item['prodejna_nazev'] or str(getattr(user, 'prodejna_id', 'Neznámá'))
+                prodejna_nazev = home_store_map.get(prodejce_id, 'Neznámá')
             else:
                 prodejce_jmeno = f"Prodejce {prodejce_id}"
-                prodejna_nazev = item['prodejna_nazev'] or 'Neznámá'
+                prodejna_nazev = item.get('prodejna_nazev') or 'Neznámá'
 
             product_points = calculate_points_for_data(_leaderboard_item_points_data(item))
             servis_points = servis_map.get(prodejce_id, 0)
@@ -6644,6 +6702,8 @@ def web_prodeje_leaderboard_points_today(request):
 
         prodejci_ids = [item['id_prodejce'] for item in current_aggregation]
         users = {u.id: u for u in WebUser.objects.filter(id__in=prodejci_ids)}
+        home_store_map = _leaderboard_home_store_map(users)
+        workplace_map = _leaderboard_dominant_stredisko_map(day_queryset, prodejci_ids)
 
         leaderboard = []
 
@@ -6654,10 +6714,13 @@ def web_prodeje_leaderboard_points_today(request):
             user = users.get(prodejce_id)
             if user:
                 prodejce_jmeno = f"{user.jmeno} {user.prijmeni}".strip()
-                prodejna_nazev = item['prodejna_nazev'] or str(getattr(user, 'prodejna_id', 'Neznámá'))
+                prodejna_nazev = (
+                    workplace_map.get(prodejce_id)
+                    or home_store_map.get(prodejce_id, 'Neznámá')
+                )
             else:
                 prodejce_jmeno = f"Prodejce {prodejce_id}"
-                prodejna_nazev = item['prodejna_nazev'] or 'Neznámá'
+                prodejna_nazev = workplace_map.get(prodejce_id) or item.get('prodejna_nazev') or 'Neznámá'
 
             product_points = calculate_points_for_data(_leaderboard_item_points_data(item))
             servis_points = servis_map.get(prodejce_id, 0)
@@ -6712,6 +6775,7 @@ def web_prodeje_leaderboard_average_items(request):
 
         prodejci_ids = [item['id_prodejce'] for item in aggregation]
         users = {u.id: u for u in WebUser.objects.filter(id__in=prodejci_ids)}
+        home_store_map = _leaderboard_home_store_map(users)
 
         leaderboard = []
 
@@ -6722,10 +6786,10 @@ def web_prodeje_leaderboard_average_items(request):
             user = users.get(prodejce_id)
             if user:
                 prodejce_jmeno = f"{user.jmeno} {user.prijmeni}".strip()
-                prodejna_nazev = getattr(user, 'prodejna_id', 'Neznámá')
+                prodejna_nazev = home_store_map.get(prodejce_id, 'Neznámá')
             else:
                 prodejce_jmeno = f"Prodejce {prodejce_id}"
-                prodejna_nazev = item['prodejna_nazev'] or 'Neznámá'
+                prodejna_nazev = item.get('prodejna_nazev') or 'Neznámá'
 
             leaderboard.append({
                 'id': prodejce_id,
