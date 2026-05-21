@@ -6610,6 +6610,8 @@ def _get_cached_prev_month_points(prev_ym, today=None):
 @permission_classes([AllowAny])
 def web_prodeje_leaderboard_points(request):
     """Žebříček bodů – aktuální měsíc z jedné agregace + servis mapou; minulý měsíc z cache."""
+    if request.GET.get('period') in ('today', 'day'):
+        return web_prodeje_leaderboard_points_today(request)
     try:
         today = date.today()
         ym = today.strftime('%Y-%m')

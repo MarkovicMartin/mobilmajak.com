@@ -62,10 +62,10 @@ const LeaderboardModule = () => {
         setError(null);
         try {
             const endpoints = getApiEndpoints();
-            const url = endpoints.leaderboardPointsToday;
-            if (!url) {
+            if (!endpoints.leaderboardPoints) {
                 throw new Error('Endpoint pro denní žebříček není k dispozici');
             }
+            const url = `${endpoints.leaderboardPoints}?period=today`;
             const response = await fetch(url, {
                 credentials: 'include',
                 headers: {
