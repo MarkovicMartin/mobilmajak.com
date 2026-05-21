@@ -4,7 +4,14 @@ from decimal import Decimal
 
 from stores.models import Prodejna
 from users.exclusions import real_sales_staff_queryset
-from users.mzda_utils import mzda_zaklad_body, sum_mzda_doplnky
+from users.mzda_utils import (
+    is_brigadnik,
+    mzda_body_za_hodinu,
+    mzda_fixni_body,
+    mzda_fixni_mesicni_body,
+    mzda_z_hodin_body,
+    sum_mzda_doplnky,
+)
 
 from .labor_hours import fondu_hodin_mesic, prescas_hodin
 from .models import MzdovaOdmenaMesic, Smena
@@ -79,9 +86,15 @@ def build_payroll_row(user, rok, mesic_cislo, hours_map, mesic_date, prodejny_ca
         'nemoc_h': 0,
         'svatek_h': 0,
     })
+    odpracovano = hours.get('odpracovano_h', 0)
     doplnky_sum, doplnky = sum_mzda_doplnky(user)
-    zaklad = mzda_zaklad_body(user)
-    mzda_fixni = zaklad + doplnky_sum
+    if is_brigadnik(user):
+        zaklad = mzda_z_hodin_body(user, odpracovano)
+        sazba_h = float(mzda_body_za_hodinu(user))
+    else:
+        zaklad = mzda_fixni_mesicni_body(user)
+        sazba_h = None
+    mzda_fixni = mzda_fixni_body(user, odpracovano)
 
     odmena_row = odmeny_map.get(uid)
     if odmena_row:
@@ -104,7 +117,6 @@ def build_payroll_row(user, rok, mesic_cislo, hours_map, mesic_date, prodejny_ca
     ct300_item = breakdown.get('ct300') or {}
     ct300_count = int(ct300_item.get('count') or 0)
 
-    odpracovano = hours.get('odpracovano_h', 0)
     prescas_h = prescas_hodin(odpracovano, fondu_h)
 
     stredisko = ''
@@ -118,6 +130,9 @@ def build_payroll_row(user, rok, mesic_cislo, hours_map, mesic_date, prodejny_ca
         **hours,
         'prescas_h': prescas_h,
         'ct300_count': ct300_count,
+        'role': user.role,
+        'is_brigadnik': is_brigadnik(user),
+        'body_za_hodinu': sazba_h,
         'zaklad_body': float(zaklad),
         'doplnky': doplnky,
         'doplnky_body': float(doplnky_sum),

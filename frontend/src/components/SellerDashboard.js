@@ -154,7 +154,12 @@ export default function SellerDashboard({ user }) {
       <div className="seller-head">
         <div>
           <div className="seller-head-title">Vítej zpět, {user?.jmeno} 👋</div>
-          <div className="seller-head-sub">Role: {user?.role === 'VEDOUCI' ? 'Vedoucí' : 'Prodejce'} • Dnes je {new Date().toLocaleDateString('cs-CZ')}</div>
+          <div className="seller-head-sub">Role: {
+            user?.role === 'VEDOUCI' ? 'Vedoucí'
+              : user?.role === 'BRIGADNIK' ? 'Brigádník'
+              : user?.role === 'ADMIN' ? 'Administrátor'
+              : 'Prodejce'
+          } • Dnes je {new Date().toLocaleDateString('cs-CZ')}</div>
         </div>
         <div className="seller-head-actions">
           <button className="btn-rounded" onClick={() => navigate('/shifts')}>Plán směn</button>

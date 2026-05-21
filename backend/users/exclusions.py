@@ -7,7 +7,7 @@ from django.db.models import Q
 
 from .models import WebUser
 
-STAFF_ROLES = ('PRODEJCE', 'VEDOUCI')
+STAFF_ROLES = ('PRODEJCE', 'VEDOUCI', 'BRIGADNIK')
 
 # (jmeno, prijmeni) bez diakritiky / case-insensitive porovnání
 _EXCLUDED_NAME_PAIRS = frozenset({

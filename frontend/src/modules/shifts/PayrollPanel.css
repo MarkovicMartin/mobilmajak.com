@@ -180,6 +180,12 @@
     font-size: 0.9rem;
 }
 
+.payroll-sazba-hint {
+    font-size: 0.8rem;
+    color: #868e96;
+    font-weight: normal;
+}
+
 .payroll-table-wrap {
     overflow-x: auto;
     background: #fff;

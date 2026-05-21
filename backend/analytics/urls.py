@@ -40,6 +40,7 @@ urlpatterns = [
     path('web-prodeje/polozky/', views.web_prodeje_polozky_view, name='web_prodeje_polozky'),
     # Leaderboardy z WEB_PRODEJE_ALL
     path('web-prodeje/leaderboard/points/', views.web_prodeje_leaderboard_points, name='web_prodeje_leaderboard_points'),
+    path('web-prodeje/leaderboard/points/today/', views.web_prodeje_leaderboard_points_today, name='web_prodeje_leaderboard_points_today'),
     path('web-prodeje/leaderboard/average-items/', views.web_prodeje_leaderboard_average_items, name='web_prodeje_leaderboard_average_items'),
 
     # Profil prodejce (Můj profil) – čteno přímo z WEB_PRODEJE_ALL

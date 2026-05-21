@@ -312,7 +312,8 @@ function PayrollPanel({ month, onMonthChange, onExport }) {
             {loading && <p className="payroll-loading-inline">Aktualizuji data…</p>}
 
             <p className="payroll-hint">
-                Základ a doplňky v modulu <strong>Uživatelé</strong>. Měsíční bonus přidáte tlačítkem výše.
+                Fixní body / sazba za hodinu a doplňky v modulu <strong>Uživatelé</strong> (brigádník: hodiny × sazba).
+                Měsíční bonus přidáte tlačítkem výše.
             </p>
 
             {error && <div className="error-message">{error}</div>}
@@ -325,7 +326,7 @@ function PayrollPanel({ month, onMonthChange, onExport }) {
                             <th>Jméno</th>
                             <th>Odprac. h</th>
                             <th>Přesčas h</th>
-                            <th>Základ</th>
+                            <th>Fixní / hodiny</th>
                             <th>Doplňky</th>
                             <th>Provize</th>
                             <th>Celkem</th>
@@ -350,7 +351,18 @@ function PayrollPanel({ month, onMonthChange, onExport }) {
                                         <td className="col-name">{row.jmeno}</td>
                                         <td>{formatNumber(row.odpracovano_h)}</td>
                                         <td>{formatNumber(row.prescas_h)}</td>
-                                        <td>{formatPoints(row.zaklad_body)}</td>
+                                        <td
+                                            title={
+                                                row.is_brigadnik
+                                                    ? `${row.body_za_hodinu} bodů/h × ${row.odpracovano_h} h`
+                                                    : undefined
+                                            }
+                                        >
+                                            {formatPoints(row.zaklad_body)}
+                                            {row.is_brigadnik && row.body_za_hodinu != null && (
+                                                <span className="payroll-sazba-hint"> ({row.body_za_hodinu}/h)</span>
+                                            )}
+                                        </td>
                                         <td>{formatPoints(row.doplnky_body)}</td>
                                         <td>{formatPoints(row.provize_body)}</td>
                                         <td className="col-celkem"><strong>{formatPoints(row.celkem_body)}</strong></td>

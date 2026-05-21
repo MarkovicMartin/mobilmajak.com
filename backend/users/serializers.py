@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from .models import WebUser, ProfilovyObrazek
 from .utils import create_web_user_with_auto_id
-from .mzda_utils import normalize_mzda_doplnky
+from .mzda_utils import BRIGADNIK_DEFAULT_BODY_ZA_HODINU, normalize_mzda_doplnky
 from stores.models import Prodejna
 
 class WebUserSerializer(serializers.ModelSerializer):
@@ -84,6 +84,14 @@ class WebUserCreateSerializer(serializers.ModelSerializer):
     
     def validate_mzda_doplnky(self, value):
         return normalize_mzda_doplnky(value)
+
+    def validate(self, attrs):
+        role = attrs.get('role', 'PRODEJCE')
+        if role == 'BRIGADNIK':
+            z = attrs.get('mzda_zaklad')
+            if z is None or z == '':
+                attrs['mzda_zaklad'] = BRIGADNIK_DEFAULT_BODY_ZA_HODINU
+        return attrs
     
     def create(self, validated_data):
         heslo = validated_data.pop('heslo')
@@ -109,6 +117,17 @@ class WebUserUpdateSerializer(serializers.ModelSerializer):
         if value is None:
             return []
         return normalize_mzda_doplnky(value)
+
+    def validate(self, attrs):
+        role = attrs.get('role', getattr(self.instance, 'role', None))
+        if role == 'BRIGADNIK' and 'mzda_zaklad' in attrs:
+            z = attrs.get('mzda_zaklad')
+            if z is None or z == '':
+                attrs['mzda_zaklad'] = BRIGADNIK_DEFAULT_BODY_ZA_HODINU
+        elif role == 'BRIGADNIK' and self.instance and getattr(self.instance, 'mzda_zaklad', None) is None:
+            if 'mzda_zaklad' not in attrs:
+                attrs['mzda_zaklad'] = BRIGADNIK_DEFAULT_BODY_ZA_HODINU
+        return attrs
     
     def update(self, instance, validated_data):
         # Přijmeme buď 'nove_heslo' nebo alias 'heslo'

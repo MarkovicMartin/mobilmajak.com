@@ -316,6 +316,16 @@
     color: #0984e3;
 }
 
+.role-badge.vedouci {
+    background: #fff3e0;
+    color: #e67e22;
+}
+
+.role-badge.brigadnik {
+    background: #e8f5e9;
+    color: #2e7d32;
+}
+
 .status-badge {
     padding: 4px 12px;
     border-radius: 20px;

@@ -66,6 +66,7 @@ const API_ENDPOINTS = {
         salespersonPointsMonthly: '/api/analytics/web-prodeje/salesperson/points/monthly/',
         salespersonActiveDates: '/api/analytics/web-prodeje/salesperson/active-dates/',
         leaderboardPoints: '/api/analytics/web-prodeje/leaderboard/points/',
+        leaderboardPointsToday: '/api/analytics/web-prodeje/leaderboard/points/today/',
         leaderboardAverageItems: '/api/analytics/web-prodeje/leaderboard/average-items/',
         chartsData: '/api/analytics/web-prodeje-charts-data/',
         backupInfo: '/api/analytics/backup-info/', // Backup info endpoint

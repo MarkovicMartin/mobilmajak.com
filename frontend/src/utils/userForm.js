@@ -31,10 +31,10 @@ export function prepareUserSubmitData(formData, editingUser) {
     submitData.technik_id = technikId;
 
     if (submitData.mzda_zaklad === '' || submitData.mzda_zaklad == null) {
-        submitData.mzda_zaklad = null;
+        submitData.mzda_zaklad = submitData.role === 'BRIGADNIK' ? 80 : null;
     } else {
         const z = parseFloat(submitData.mzda_zaklad);
-        submitData.mzda_zaklad = Number.isNaN(z) ? null : z;
+        submitData.mzda_zaklad = Number.isNaN(z) ? (submitData.role === 'BRIGADNIK' ? 80 : null) : z;
     }
     if (!Array.isArray(submitData.mzda_doplnky)) {
         submitData.mzda_doplnky = [];
@@ -57,7 +57,7 @@ export function prepareUserSubmitData(formData, editingUser) {
     return { data: submitData };
 }
 
-const STAFF_ROLES = ['PRODEJCE', 'VEDOUCI'];
+const STAFF_ROLES = ['PRODEJCE', 'VEDOUCI', 'BRIGADNIK'];
 
 /**
  * Odhad dalšího systémového ID (jen řada prodejce/vedoucí, bez admin účtů).

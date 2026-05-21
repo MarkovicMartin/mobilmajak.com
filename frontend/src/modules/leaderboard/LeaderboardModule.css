@@ -115,6 +115,38 @@
     cursor: not-allowed;
 }
 
+.points-subtabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.subtab-button {
+    background: #fff;
+    border: 2px solid #e1e8ff;
+    border-radius: 12px;
+    padding: 8px 18px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: #5a67d8;
+}
+
+.subtab-button:hover {
+    border-color: #c7d2fe;
+    background: #f8f9ff;
+}
+
+.subtab-button.active {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    border-color: #667eea;
+    color: white;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
 .leaderboard-content {
     min-height: 400px;
 }

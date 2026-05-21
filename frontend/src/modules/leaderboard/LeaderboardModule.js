@@ -8,18 +8,24 @@ import './LeaderboardModule.css';
 const LeaderboardModule = () => {
     const { user } = useAuth();
     const [activeTab, setActiveTab] = useState('points');
+    const [pointsSubTab, setPointsSubTab] = useState('month');
     const [pointsData, setPointsData] = useState([]);
+    const [pointsTodayData, setPointsTodayData] = useState([]);
     const [averageItemsData, setAverageItemsData] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
     useEffect(() => {
         if (activeTab === 'points') {
-            fetchPointsLeaderboard();
+            if (pointsSubTab === 'today') {
+                fetchPointsTodayLeaderboard();
+            } else {
+                fetchPointsLeaderboard();
+            }
         } else {
             fetchAverageItemsLeaderboard();
         }
-    }, [activeTab]);
+    }, [activeTab, pointsSubTab]);
 
     const fetchPointsLeaderboard = async () => {
         setLoading(true);
@@ -46,6 +52,40 @@ const LeaderboardModule = () => {
         } catch (err) {
             setError(err.message);
             console.error('Chyba při načítání žebříčku bodů:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchPointsTodayLeaderboard = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const endpoints = getApiEndpoints();
+            const url = endpoints.leaderboardPointsToday;
+            if (!url) {
+                throw new Error('Endpoint pro denní žebříček není k dispozici');
+            }
+            const response = await fetch(url, {
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error('Chyba při načítání denního žebříčku bodů');
+            }
+
+            const data = await response.json();
+            if (data.success) {
+                setPointsTodayData(data.data || []);
+            } else {
+                throw new Error(data.error || 'Neznámá chyba');
+            }
+        } catch (err) {
+            setError(err.message);
+            console.error('Chyba při načítání denního žebříčku bodů:', err);
         } finally {
             setLoading(false);
         }
@@ -83,7 +123,11 @@ const LeaderboardModule = () => {
 
     const refreshData = () => {
         if (activeTab === 'points') {
-            fetchPointsLeaderboard();
+            if (pointsSubTab === 'today') {
+                fetchPointsTodayLeaderboard();
+            } else {
+                fetchPointsLeaderboard();
+            }
         } else {
             fetchAverageItemsLeaderboard();
         }
@@ -128,12 +172,40 @@ const LeaderboardModule = () => {
                 </button>
             </div>
 
+            {activeTab === 'points' && (
+                <div className="points-subtabs">
+                    <button
+                        type="button"
+                        className={`subtab-button ${pointsSubTab === 'month' ? 'active' : ''}`}
+                        onClick={() => setPointsSubTab('month')}
+                    >
+                        Měsíční žebříček
+                    </button>
+                    <button
+                        type="button"
+                        className={`subtab-button ${pointsSubTab === 'today' ? 'active' : ''}`}
+                        onClick={() => setPointsSubTab('today')}
+                    >
+                        Dnešní body
+                    </button>
+                </div>
+            )}
+
             <div className="leaderboard-content">
-                {activeTab === 'points' && (
+                {activeTab === 'points' && pointsSubTab === 'month' && (
                     <PointsLeaderboard 
                         data={pointsData} 
                         loading={loading}
                         currentUser={user}
+                        period="month"
+                    />
+                )}
+                {activeTab === 'points' && pointsSubTab === 'today' && (
+                    <PointsLeaderboard 
+                        data={pointsTodayData} 
+                        loading={loading}
+                        currentUser={user}
+                        period="day"
                     />
                 )}
                 {activeTab === 'average' && (

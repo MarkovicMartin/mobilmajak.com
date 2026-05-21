@@ -6,6 +6,7 @@ class WebUser(models.Model):
         ('ADMIN', 'Administrátor'),
         ('VEDOUCI', 'Vedoucí'),
         ('PRODEJCE', 'Prodejce'),
+        ('BRIGADNIK', 'Brigádník'),
     ]
     
     # Primární klíč - ručně zadaný ID
@@ -34,7 +35,7 @@ class WebUser(models.Model):
     # Mzdové údaje (body) – viditelné jen pro ADMIN v administraci a exportu
     mzda_zaklad = models.DecimalField(
         max_digits=10, decimal_places=2, null=True, blank=True,
-        verbose_name="Měsíční základ (body)",
+        verbose_name="Fixní body (prodejce) / body za hodinu (brigádník)",
     )
     mzda_doplnky = models.JSONField(
         default=list, blank=True,

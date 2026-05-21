@@ -1,7 +1,12 @@
 import React from 'react';
 import './PointsLeaderboard.css';
 
-const PointsLeaderboard = ({ data, loading, currentUser }) => {
+const PointsLeaderboard = ({ data, loading, currentUser, period = 'month' }) => {
+    const isDay = period === 'day';
+    const periodLabel = isDay ? 'dnešek' : 'aktuální měsíc';
+    const compareLabel = isDay ? 'Body včera' : 'Skóre minulý měsíc';
+    const getComparePoints = (seller) =>
+        isDay ? (seller.yesterday_points || 0) : (seller.last_month_points || 0);
     if (loading) {
         return (
             <div className="loading-container">
@@ -15,7 +20,7 @@ const PointsLeaderboard = ({ data, loading, currentUser }) => {
         return (
             <div className="no-data">
                 <h3>📊 Žádná data k zobrazení</h3>
-                <p>Pro aktuální měsíc nejsou k dispozici žádná data o bodovém hodnocení.</p>
+                <p>Pro {periodLabel} nejsou k dispozici žádná data o bodovém hodnocení.</p>
             </div>
         );
     }
@@ -63,7 +68,7 @@ const PointsLeaderboard = ({ data, loading, currentUser }) => {
                 <div className="stat-card">
                     <h4>👥 Aktivní prodejci</h4>
                     <div className="stat-value">{data.length}</div>
-                    <div className="stat-change">Za aktuální měsíc</div>
+                    <div className="stat-change">Za {periodLabel}</div>
                 </div>
                 <div className="stat-card">
                     <h4>📊 Průměr bodů</h4>
@@ -73,8 +78,8 @@ const PointsLeaderboard = ({ data, loading, currentUser }) => {
                     <div className="stat-change">Na prodejce</div>
                 </div>
                 <div className="stat-card">
-                    <h4>🎯 Skóre minulý měsíc</h4>
-                    <div className="stat-value">{data[0]?.last_month_points?.toLocaleString() || 0}</div>
+                    <h4>🎯 {compareLabel}</h4>
+                    <div className="stat-value">{getComparePoints(data[0] || {}).toLocaleString()}</div>
                     <div className="stat-change">{data[0]?.prodejce || 'N/A'}</div>
                 </div>
             </div>
@@ -83,7 +88,7 @@ const PointsLeaderboard = ({ data, loading, currentUser }) => {
             {topThree.length > 0 && (
                 <div className="top-three-section">
                     <h3>🏆 Žebříček prodejců</h3>
-                    <p>Nejlepší prodejci podle bodového hodnocení za aktuální měsíc</p>
+                    <p>Nejlepší prodejci podle bodového hodnocení za {periodLabel}</p>
                     
                     <div className="top-three-cards">
                         {topThree.map((seller, index) => (
@@ -141,7 +146,7 @@ const PointsLeaderboard = ({ data, loading, currentUser }) => {
                                     <th>Prodejna</th>
                                     <th>Celkové body</th>
                                     <th>Průměr pol./účt.</th>
-                                    <th>Skóre minulý měsíc</th>
+                                    <th>{compareLabel}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -172,7 +177,7 @@ const PointsLeaderboard = ({ data, loading, currentUser }) => {
                                         <td>{seller.prumer_polozek_uctu.toFixed(2)}</td>
                                         <td>
                                             <span className="score-highlight">
-                                                {(seller.last_month_points || 0).toLocaleString()}
+                                                {getComparePoints(seller).toLocaleString()}
                                             </span>
                                         </td>
                                     </tr>

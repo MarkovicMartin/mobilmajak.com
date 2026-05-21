@@ -6335,6 +6335,17 @@ def _leaderboard_month_queryset(month_ym):
     return qs
 
 
+def _leaderboard_day_queryset(day):
+    """Denní prodeje bez systémových / admin účtů."""
+    from users.exclusions import get_excluded_report_user_ids
+
+    qs = WebProdejeAll.objects.filter(typ=day)
+    excluded = get_excluded_report_user_ids()
+    if excluded:
+        qs = qs.exclude(id_prodejce__in=excluded)
+    return qs
+
+
 def _leaderboard_seller_aggregation(month_queryset):
     """Jednotná měsíční agregace metrik po prodejci (produkty + unikátní doklady)."""
     return month_queryset.filter(id_prodejce__isnull=False).values('id_prodejce').annotate(
@@ -6422,6 +6433,56 @@ def _servis_points_map_for_month(month_ym):
         points_by_user[user_id] += int(round(marze * float(SERVIS_ODMENA_RATE)))
 
     return dict(points_by_user)
+
+
+def _servis_points_map_for_day(day):
+    """Body ze servisu (10 % marže) pro všechny prodejce za jeden den."""
+    from users.exclusions import is_excluded_report_user
+
+    id_to_name, _ = _load_technik_maps()
+    name_to_user_id = {}
+    for user in WebUser.objects.exclude(technik_id__isnull=True).exclude(technik_id=0):
+        if is_excluded_report_user(user=user):
+            continue
+        name = f'{user.jmeno} {user.prijmeni}'.strip()
+        if name:
+            name_to_user_id[name] = user.id
+
+    prace_qs = (
+        WebProdejeAll.objects.filter(typ=day)
+        .filter(_base_servis_q())
+        .filter(_servisni_prace_segment_q())
+    )
+    by_technik = prace_qs.values('technik').annotate(
+        marze=Sum(F('pocet_kusu') * F('zisk'), default=0),
+    )
+
+    points_by_user = defaultdict(int)
+    for row in by_technik:
+        raw_technik = row.get('technik')
+        if not raw_technik:
+            continue
+        canonical = resolve_technik_display(raw_technik, id_to_name)
+        user_id = name_to_user_id.get(canonical)
+        if not user_id:
+            continue
+        marze = float(row['marze'] or 0)
+        points_by_user[user_id] += int(round(marze * float(SERVIS_ODMENA_RATE)))
+
+    return dict(points_by_user)
+
+
+def _compute_day_total_points_map(day):
+    """Celkové body za jeden den – produkty + servis."""
+    day_queryset = _leaderboard_day_queryset(day)
+    aggregation = list(_leaderboard_seller_aggregation(day_queryset))
+    servis_map = _servis_points_map_for_day(day)
+    points_map = {}
+    for item in aggregation:
+        prodejce_id = int(item['id_prodejce'])
+        product_points = calculate_points_for_data(_leaderboard_item_points_data(item))
+        points_map[prodejce_id] = product_points + servis_map.get(prodejce_id, 0)
+    return points_map
 
 
 def _compute_month_total_points_map(month_ym):
@@ -6559,6 +6620,73 @@ def web_prodeje_leaderboard_points(request):
                     _leaderboard_cache_table_available()
                     and LeaderboardMonthPointsCache.objects.filter(month_ym=prev_ym).exists()
                 ),
+            },
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e), 'data': []}, status=500)
+
+
+@require_http_methods(["GET"])
+@permission_classes([AllowAny])
+def web_prodeje_leaderboard_points_today(request):
+    """Žebříček bodů za dnešek – stejná agregace jako měsíční, filtr typ=dnes."""
+    try:
+        today = date.today()
+        day_queryset = _leaderboard_day_queryset(today)
+        yesterday = today - timedelta(days=1)
+        yesterday_points_map = _compute_day_total_points_map(yesterday)
+
+        current_aggregation = list(_leaderboard_seller_aggregation(day_queryset))
+        servis_map = _servis_points_map_for_day(today)
+
+        from users.exclusions import get_excluded_report_user_ids
+        excluded_ids = get_excluded_report_user_ids()
+
+        prodejci_ids = [item['id_prodejce'] for item in current_aggregation]
+        users = {u.id: u for u in WebUser.objects.filter(id__in=prodejci_ids)}
+
+        leaderboard = []
+
+        for item in current_aggregation:
+            prodejce_id = int(item['id_prodejce'])
+            if prodejce_id in excluded_ids:
+                continue
+            user = users.get(prodejce_id)
+            if user:
+                prodejce_jmeno = f"{user.jmeno} {user.prijmeni}".strip()
+                prodejna_nazev = item['prodejna_nazev'] or str(getattr(user, 'prodejna_id', 'Neznámá'))
+            else:
+                prodejce_jmeno = f"Prodejce {prodejce_id}"
+                prodejna_nazev = item['prodejna_nazev'] or 'Neznámá'
+
+            product_points = calculate_points_for_data(_leaderboard_item_points_data(item))
+            servis_points = servis_map.get(prodejce_id, 0)
+
+            leaderboard.append({
+                'id': prodejce_id,
+                'prodejce': prodejce_jmeno,
+                'prodejna': str(prodejna_nazev),
+                'total_points': product_points + servis_points,
+                'yesterday_points': yesterday_points_map.get(prodejce_id, 0),
+                'polozky_nad_100': item['polozky_nad_100'] or 0,
+                'sluzby_celkem': _leaderboard_sluzby_celkem(item),
+                'servis_provize': servis_points,
+                'prumer_polozek_uctu': _leaderboard_prumer_polozek(item),
+            })
+
+        leaderboard.sort(key=lambda x: x['total_points'], reverse=True)
+        for idx, item in enumerate(leaderboard):
+            item['position'] = idx + 1
+
+        return JsonResponse({
+            'success': True,
+            'data': leaderboard,
+            'count': len(leaderboard),
+            'date': today.isoformat(),
+            'type': 'points_today',
+            'source': 'WEB_PRODEJE_ALL',
+            'meta': {
+                'yesterday_date': yesterday.isoformat(),
             },
         })
     except Exception as e:

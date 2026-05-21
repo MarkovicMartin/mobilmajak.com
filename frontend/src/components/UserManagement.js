@@ -10,6 +10,12 @@ import {
 import { formatBodyCount } from '../utils/formatBody';
 import { manualNumberInputClass, preventNumberInputWheel } from '../utils/manualNumberInput';
 import { useModalKeyboard } from '../utils/useModalKeyboard';
+import {
+    USER_ROLE_OPTIONS,
+    BRIGADNIK_DEFAULT_BODY_ZA_HODINU,
+    roleLabel,
+    isBrigadnikRole,
+} from '../constants/userRoles';
 import './UserManagement.css';
 
 const UserManagement = () => {
@@ -91,9 +97,19 @@ const UserManagement = () => {
 
     const handleInputChange = (e) => {
         const { name, value, type, checked } = e.target;
-        setFormData(prev => ({
+        if (name === 'role') {
+            setFormData((prev) => {
+                const next = { ...prev, role: value };
+                if (value === 'BRIGADNIK' && (prev.mzda_zaklad === '' || prev.mzda_zaklad == null)) {
+                    next.mzda_zaklad = String(BRIGADNIK_DEFAULT_BODY_ZA_HODINU);
+                }
+                return next;
+            });
+            return;
+        }
+        setFormData((prev) => ({
             ...prev,
-            [name]: type === 'checkbox' ? checked : value
+            [name]: type === 'checkbox' ? checked : value,
         }));
     };
 
@@ -217,9 +233,15 @@ const UserManagement = () => {
         }));
     };
 
+    const isBrigadnik = isBrigadnikRole(formData.role);
+
     const mzdaFixniPreview = () => {
-        const zaklad = parseFloat(formData.mzda_zaklad) || 0;
-        return zaklad + sumDoplnkyBody(formData.mzda_doplnky);
+        const doplnky = sumDoplnkyBody(formData.mzda_doplnky);
+        if (isBrigadnik) {
+            return doplnky;
+        }
+        const fixni = parseFloat(formData.mzda_zaklad) || 0;
+        return fixni + doplnky;
     };
 
     const handleDelete = async (userId) => {
@@ -249,7 +271,7 @@ const UserManagement = () => {
             <td>{user.prijmeni}</td>
             <td>
                 <span className={`role-badge ${user.role.toLowerCase()}`}>
-                    {user.role === 'ADMIN' ? 'Administrátor' : user.role === 'VEDOUCI' ? 'Vedoucí' : 'Prodejce'}
+                    {roleLabel(user.role)}
                 </span>
             </td>
             <td>
@@ -447,10 +469,17 @@ const UserManagement = () => {
                                         onChange={handleInputChange}
                                         required
                                     >
-                                        <option value="PRODEJCE">Prodejce</option>
-                                        <option value="VEDOUCI">Vedoucí</option>
-                                        <option value="ADMIN">Administrátor</option>
+                                        {USER_ROLE_OPTIONS.map((opt) => (
+                                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                        ))}
+                                        {formData.role === 'VEDOUCI' && (
+                                            <option value="VEDOUCI">Vedoucí (systémová role)</option>
+                                        )}
                                     </select>
+                                    <small className="field-hint">
+                                        <strong>Vedoucí (role):</strong> může v modulu Směny zadávat a upravovat směny ostatních.
+                                        Pro odměnu za vedení pobočky použijte níže „Vedoucí prodejny“ (+2000 bodů v doplňcích), role Prodejce stačí.
+                                    </small>
                                 </div>
                             </div>
 
@@ -502,9 +531,11 @@ const UserManagement = () => {
                             </div>
 
                             <fieldset className="form-fieldset mzda-fieldset">
-                                <legend>Mzdové údaje (body)</legend>
+                                <legend>Fixní body a doplňky</legend>
                                 <div className="form-group">
-                                    <label>Měsíční základ (body)</label>
+                                    <label>
+                                        {isBrigadnik ? 'Body za hodinu' : 'Fixní body'}
+                                    </label>
                                     <input
                                         type="number"
                                         name="mzda_zaklad"
@@ -514,8 +545,13 @@ const UserManagement = () => {
                                         value={formData.mzda_zaklad}
                                         onChange={handleInputChange}
                                         onWheel={preventNumberInputWheel}
-                                        placeholder="např. 15000"
+                                        placeholder={isBrigadnik ? String(BRIGADNIK_DEFAULT_BODY_ZA_HODINU) : 'např. 15000'}
                                     />
+                                    {isBrigadnik && (
+                                        <small className="field-hint">
+                                            Ve výplatě: odpracované hodiny × tato sazba (výchozí {BRIGADNIK_DEFAULT_BODY_ZA_HODINU} bodů/h) + doplňky + provize.
+                                        </small>
+                                    )}
                                 </div>
                                 <div className="doplnky-section">
                                     <label>Volitelné doplňky</label>
@@ -557,7 +593,16 @@ const UserManagement = () => {
                                     </div>
                                 </div>
                                 <p className="mzda-preview">
-                                    Fixní mzda celkem: <strong>{formatBodyCount(mzdaFixniPreview())}</strong>
+                                    {isBrigadnik ? (
+                                        <>
+                                            Doplňky: <strong>{formatBodyCount(mzdaFixniPreview())}</strong>
+                                            {' '}(fixní část z hodin se počítá ve výplatě podle směn)
+                                        </>
+                                    ) : (
+                                        <>
+                                            Fixní body celkem: <strong>{formatBodyCount(mzdaFixniPreview())}</strong>
+                                        </>
+                                    )}
                                 </p>
                             </fieldset>
 

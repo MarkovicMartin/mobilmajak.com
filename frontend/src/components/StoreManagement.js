@@ -71,7 +71,7 @@ const StoreManagement = () => {
                 ]);
                 const staff = (response.users || []).filter((u) => {
                     if (!u.aktivni || u.role === 'ADMIN') return false;
-                    if (!['PRODEJCE', 'VEDOUCI'].includes(u.role)) return false;
+                    if (!['PRODEJCE', 'VEDOUCI', 'BRIGADNIK'].includes(u.role)) return false;
                     const full = `${u.jmeno || ''} ${u.prijmeni || ''}`.trim().toLowerCase();
                     return !excludedNames.has(full);
                 });
