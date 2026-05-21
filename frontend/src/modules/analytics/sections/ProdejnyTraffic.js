@@ -12,6 +12,7 @@ import {
 import api from '../../../services/api';
 import AnalyticsSectionWrapper from '../AnalyticsSectionWrapper';
 import CustomDropdown from '../../../components/CustomDropdown';
+import AnalyticsDateRange from '../../../components/AnalyticsDateRange';
 import './Prodejnyzakaznici.css';
 
 const ProdejnyTrafficView = ({ isComparison = false }) => {
@@ -35,19 +36,6 @@ const ProdejnyTrafficView = ({ isComparison = false }) => {
             granularity: 'daily'
         };
     });
-    const [dateError, setDateError] = useState('');
-    const [dateDraft, setDateDraft] = useState(() => ({
-        start_date: filters.start_date,
-        end_date: filters.end_date,
-    }));
-
-    const isValidISODate = (str) => {
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(str)) return false;
-        const [y, m, d] = str.split('-').map(Number);
-        const dt = new Date(y, m - 1, d);
-        return dt.getFullYear() === y && dt.getMonth() === m - 1 && dt.getDate() === d;
-    };
-
     // --- Actions ---
     const loadData = async () => {
         setLoading(true);
@@ -149,17 +137,12 @@ const ProdejnyTrafficView = ({ isComparison = false }) => {
             default: return;
         }
 
-        const range = {
-            start_date: fmt(from),
-            end_date: fmt(to),
-        };
-        setDateDraft(range);
         setFilters(prev => ({
             ...prev,
             period: 'custom',
-            ...range,
+            start_date: fmt(from),
+            end_date: fmt(to),
         }));
-        setDateError('');
     };
 
     const handleFilterChange = (key, value) => {
@@ -169,37 +152,13 @@ const ProdejnyTrafficView = ({ isComparison = false }) => {
         }));
     };
 
-    const onDateDraftChange = (field, value) => {
-        setDateDraft(prev => ({ ...prev, [field]: value }));
-        setDateError('');
-    };
-
-    const applyCustomDates = () => {
-        const { start_date, end_date } = dateDraft;
-        if (!isValidISODate(start_date) || !isValidISODate(end_date)) {
-            setDateError('Neplatné datum. Zkontrolujte prosím zadání.');
-            return;
-        }
-        let start = start_date;
-        let end = end_date;
-        if (new Date(start) > new Date(end)) {
-            [start, end] = [end, start];
-        }
-        setDateError('');
-        setDateDraft({ start_date: start, end_date: end });
+    const applyDateRange = ({ start_date, end_date }) => {
         setFilters(prev => {
-            if (prev.period === 'custom' && prev.start_date === start && prev.end_date === end) {
+            if (prev.period === 'custom' && prev.start_date === start_date && prev.end_date === end_date) {
                 return prev;
             }
-            return { ...prev, period: 'custom', start_date: start, end_date: end };
+            return { ...prev, period: 'custom', start_date, end_date };
         });
-    };
-
-    const onDateKeyDown = (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            applyCustomDates();
-        }
     };
 
     // --- Heatmap Logic ---
@@ -331,10 +290,6 @@ const ProdejnyTrafficView = ({ isComparison = false }) => {
                                         placeholder="Vyberte období"
                                         onChange={(selectedValue) => {
                                             if (selectedValue === 'custom') {
-                                                setDateDraft({
-                                                    start_date: filters.start_date,
-                                                    end_date: filters.end_date,
-                                                });
                                                 handleFilterChange('period', 'custom');
                                             } else if (selectedValue.startsWith('month:')) {
                                                 const ym = selectedValue.split(':')[1];
@@ -345,7 +300,6 @@ const ProdejnyTrafficView = ({ isComparison = false }) => {
                                                     start_date: '',
                                                     end_date: ''
                                                 }));
-                                                setDateError('');
                                             }
                                         }}
                                     />
@@ -355,34 +309,12 @@ const ProdejnyTrafficView = ({ isComparison = false }) => {
 
                         {/* Vlastní období */}
                         {filters.period === 'custom' && (
-                            <>
-                                <div className="filter-group">
-                                    <label>Od:</label>
-                                    <input
-                                        type="date"
-                                        value={dateDraft.start_date}
-                                        max={dateDraft.end_date || undefined}
-                                        onChange={(e) => onDateDraftChange('start_date', e.target.value)}
-                                        onBlur={applyCustomDates}
-                                        onKeyDown={onDateKeyDown}
-                                    />
-                                </div>
-                                <div className="filter-group">
-                                    <label>Do:</label>
-                                    <input
-                                        type="date"
-                                        value={dateDraft.end_date}
-                                        min={dateDraft.start_date || undefined}
-                                        onChange={(e) => onDateDraftChange('end_date', e.target.value)}
-                                        onBlur={applyCustomDates}
-                                        onKeyDown={onDateKeyDown}
-                                    />
-                                </div>
-                            </>
-                        )}
-
-                        {dateError && filters.period === 'custom' && (
-                            <div className="error-container" style={{ marginTop: 8 }}>{dateError}</div>
+                            <AnalyticsDateRange
+                                startDate={filters.start_date}
+                                endDate={filters.end_date}
+                                onApply={applyDateRange}
+                                errorStyle={{ marginTop: 8 }}
+                            />
                         )}
 
                         {/* Rychlé volby období */}

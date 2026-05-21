@@ -3,6 +3,7 @@ import api from '../../services/api';
 import KanbanBoard from './KanbanBoard';
 import OrderForm from './OrderForm';
 import OrderDetail from './OrderDetail';
+import AnalyticsDateRange from '../../components/AnalyticsDateRange';
 import './OrdersModule.css';
 
 const OrdersModule = () => {
@@ -18,6 +19,10 @@ const OrdersModule = () => {
         date_to: ''
     });
     const [dashboardStats, setDashboardStats] = useState({});
+
+    const applyOrderDateRange = ({ start_date, end_date }) => {
+        setFilters(prev => ({ ...prev, date_from: start_date, date_to: end_date }));
+    };
 
     // Načtení dat pro kanban board
     const loadKanbanData = useCallback(async () => {
@@ -219,20 +224,13 @@ const OrdersModule = () => {
                         <option value="hotovo">Hotovo</option>
                     </select>
                     
-                    <input
-                        type="date"
-                        value={filters.date_from}
-                        onChange={(e) => handleFilterChange('date_from', e.target.value)}
-                        className="filter-input"
-                        placeholder="Od data"
-                    />
-                    
-                    <input
-                        type="date"
-                        value={filters.date_to}
-                        onChange={(e) => handleFilterChange('date_to', e.target.value)}
-                        className="filter-input"
-                        placeholder="Do data"
+                    <AnalyticsDateRange
+                        variant="bare"
+                        startDate={filters.date_from}
+                        endDate={filters.date_to}
+                        onApply={applyOrderDateRange}
+                        inputClassName="filter-input"
+                        showError={false}
                     />
                     
                     <button 

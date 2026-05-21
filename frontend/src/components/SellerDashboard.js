@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getApiEndpoints } from '../config/apiConfig';
+import { AnalyticsDateInput } from './AnalyticsDateRange';
 import './SellerDashboard.css';
 import AttendancePanel from '../modules/shifts/AttendancePanel';
 
@@ -319,7 +320,11 @@ export default function SellerDashboard({ user }) {
                   <option value="stredni">Střední</option>
                   <option value="vysoka">Vysoká</option>
                 </select>
-                <input type="date" value={newTask.deadline} onChange={(e)=>setNewTask({...newTask, deadline:e.target.value})} />
+                <AnalyticsDateInput
+                  value={newTask.deadline}
+                  onApply={(deadline) => setNewTask(prev => ({ ...prev, deadline }))}
+                  showError={false}
+                />
                 <button onClick={createTask}>Přidat úkol</button>
               </div>
               <div className="tasks-list">

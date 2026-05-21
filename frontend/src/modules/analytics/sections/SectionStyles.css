@@ -2047,6 +2047,32 @@
     font-size: 16px;
 }
 
+.metric-value.highlight-servis {
+    background: linear-gradient(135deg, #1a7f37, #146c2e);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.metric-item-servis {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+}
+
+.metric-item-servis .metric-sublabel {
+    font-size: 11px;
+    color: #6c757d;
+    font-weight: 500;
+}
+
+.stat-card-servis .stat-value {
+    color: #1a7f37;
+}
+
 .metric-value.highlight-yellow {
     background: linear-gradient(135deg, #ffc107, #e0a800);
     color: #212529;
@@ -2103,6 +2129,25 @@
     font-size: 14px;
     font-weight: 700;
     color: #495057;
+}
+
+.service-item-servis {
+    background: #e8f5e9;
+    border-color: #1a7f37;
+}
+
+.service-item-servis .service-name {
+    color: #1a7f37;
+}
+
+.service-item-servis .service-count {
+    color: #1a7f37;
+    background: linear-gradient(135deg, #1a7f37, #146c2e);
+    color: #fff;
+    padding: 2px 8px;
+    border-radius: 4px;
+    min-width: 28px;
+    text-align: center;
 }
 
 .seller-performance {

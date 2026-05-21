@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "hooks": {
+    "beforeShellExecution": [
+      {
+        "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .cursor/hooks/shell-policy.ps1"
+      }
+    ],
+    "beforeMCPExecution": [
+      {
+        "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .cursor/hooks/mcp-policy.ps1",
+        "failClosed": true
+      }
+    ]
+  }
+}

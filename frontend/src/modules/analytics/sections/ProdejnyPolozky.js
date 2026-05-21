@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { getApiEndpoints } from '../../../config/apiConfig';
 import AnalyticsSectionWrapper from '../AnalyticsSectionWrapper';
 import CustomDropdown from '../../../components/CustomDropdown';
+import AnalyticsDateRange from '../../../components/AnalyticsDateRange';
+import { formatISODate } from '../../../utils/analyticsDateRange';
 import './SectionStyles.css';
 
 const ProdejnyPolozky = () => {
@@ -28,14 +30,12 @@ const ProdejnyPolozky = () => {
     const [dateError, setDateError] = useState('');
     const [quickKey, setQuickKey] = useState('custom'); // today|yesterday|thisWeek|thisMonth|prevMonth|custom
 
-    // ===== Helpers pro datumy =====
-    const isValidISODate = (str) => {
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(str)) return false;
-        const [y, m, d] = str.split('-').map(Number);
-        const dt = new Date(y, m - 1, d);
-        return dt.getFullYear() === y && dt.getMonth() === m - 1 && dt.getDate() === d;
+    const applyDateRange = ({ start_date, end_date }) => {
+        setFilters(prev => ({ ...prev, period: 'custom', start_date, end_date }));
+        setQuickKey('custom');
     };
-    const formatISO = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+    // ===== Helpers pro datumy =====
     const setQuickRange = (type) => {
         const now = new Date();
         let from, to;
@@ -62,26 +62,10 @@ const ProdejnyPolozky = () => {
         setFilters(prev => ({
             ...prev,
             period: 'custom',
-            start_date: formatISO(from),
-            end_date: formatISO(to)
+            start_date: formatISODate(from),
+            end_date: formatISODate(to)
         }));
         setQuickKey(type);
-    };
-    const onDateChange = (name, value) => {
-        if (!isValidISODate(value)) {
-            setDateError('Neplatné datum. Zkontrolujte prosím zadání.');
-            return;
-        }
-        setDateError('');
-        setFilters(prev => {
-            const next = { ...prev, [name]: value };
-            if (next.start_date && next.end_date && isValidISODate(next.start_date) && isValidISODate(next.end_date)) {
-                if (new Date(next.start_date) > new Date(next.end_date)) {
-                    [next.start_date, next.end_date] = [next.end_date, next.start_date];
-                }
-            }
-            return next;
-        });
     };
 
     // Načtení dat z API
@@ -119,7 +103,7 @@ const ProdejnyPolozky = () => {
 
             if (result.success && Array.isArray(result.data)) {
                 setSalesData(result.data);
-                setLastUpdate(result.generated_at || new Date().toISOString());
+                setLastUpdate(result.lastUpdate || result.generated_at || new Date().toISOString());
             } else {
                 throw new Error(result.error || 'Chyba při načítání dat');
             }
@@ -234,26 +218,13 @@ const ProdejnyPolozky = () => {
 
                         {/* Vlastní období */}
                         {filters.period === 'custom' && (
-                            <>
-                                <div className="filter-group">
-                                    <label>Od:</label>
-                                    <input
-                                        type="date"
-                                        value={filters.start_date}
-                                        max={filters.end_date || undefined}
-                                        onChange={(e) => onDateChange('start_date', e.target.value)}
-                                    />
-                                </div>
-                                <div className="filter-group">
-                                    <label>Do:</label>
-                                    <input
-                                        type="date"
-                                        value={filters.end_date}
-                                        min={filters.start_date || undefined}
-                                        onChange={(e) => onDateChange('end_date', e.target.value)}
-                                    />
-                                </div>
-                            </>
+                            <AnalyticsDateRange
+                                startDate={filters.start_date}
+                                endDate={filters.end_date}
+                                onApply={applyDateRange}
+                                onErrorChange={setDateError}
+                                showError={false}
+                            />
                         )}
 
                         {/* Rychlé volby období */}
@@ -333,7 +304,7 @@ const ProdejnyPolozky = () => {
                         <div className="stat-card">
                             <h4>Z toho Služby</h4>
                             <div className="stat-value">{totalSluzby}</div>
-                            <div className="stat-change positive">Servisní služby</div>
+                            <div className="stat-change positive">Prodejní kódy služeb</div>
                         </div>
                         <div className="stat-card">
                             <h4>Z toho SUNSHINE</h4>
@@ -402,6 +373,10 @@ const ProdejnyPolozky = () => {
                                         <div className="seller-services">
                                             <h6>Detail</h6>
                                             <div className="services-grid">
+                                                <div className="service-item service-item-servis" title={item.servisni_prace != null ? '10 % marže servisních prací' : 'Uživatel nemá technik_id'}>
+                                                    <span className="service-name">Servis</span>
+                                                    <span className="service-count">{item.servis_provize ?? 0}</span>
+                                                </div>
                                                 <div className="service-item">
                                                     <span className="service-name">CT300</span>
                                                     <span className="service-count">{item.ct300 || 0}</span>

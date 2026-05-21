@@ -1,4 +1,5 @@
 import React from 'react';
+import AnalyticsDateRange from '../../../components/AnalyticsDateRange';
 import './ChartFilters.css';
 
 const ChartFilters = ({ filters, onFiltersChange, users = [] }) => {
@@ -61,8 +62,8 @@ const ChartFilters = ({ filters, onFiltersChange, users = [] }) => {
         onFiltersChange({ ...filters, prodejny: newStores });
     };
 
-    const handleDateChange = (field, value) => {
-        onFiltersChange({ ...filters, [field]: value });
+    const applyDateRange = ({ start_date, end_date }) => {
+        onFiltersChange({ ...filters, start_date, end_date });
     };
 
     const handleTypeChange = (type) => {
@@ -126,21 +127,13 @@ const ChartFilters = ({ filters, onFiltersChange, users = [] }) => {
             {filters.type === 'daily' && (
                 <div className="filter-group">
                     <label className="filter-label">📆 Období:</label>
-                    <div className="date-inputs">
-                        <input
-                            type="date"
-                            value={filters.start_date || ''}
-                            onChange={(e) => handleDateChange('start_date', e.target.value)}
-                            placeholder="Od"
-                        />
-                        <span>až</span>
-                        <input
-                            type="date"
-                            value={filters.end_date || ''}
-                            onChange={(e) => handleDateChange('end_date', e.target.value)}
-                            placeholder="Do"
-                        />
-                    </div>
+                    <AnalyticsDateRange
+                        variant="inline"
+                        startDate={filters.start_date || ''}
+                        endDate={filters.end_date || ''}
+                        onApply={applyDateRange}
+                        errorClassName="chart-filters-date-error"
+                    />
                 </div>
             )}
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { AnalyticsDateInput } from '../../components/AnalyticsDateRange';
 import { userAPI, storeAPI } from '../../services/api';
 import './ShiftForm.css';
 
@@ -181,15 +182,14 @@ function ShiftForm({ user, onClose, onSuccess }) {
                             </select>
                         </div>
                     )}
-                    <div className="form-group">
-                        <label>Datum:</label>
-                        <input
-                            type="date"
-                            value={formData.datum}
-                            onChange={(e) => setFormData({...formData, datum: e.target.value})}
-                            required
-                        />
-                    </div>
+                    <AnalyticsDateInput
+                        label="Datum:"
+                        value={formData.datum}
+                        onApply={(datum) => setFormData(prev => ({ ...prev, datum }))}
+                        wrapperClassName="form-group"
+                        showError={false}
+                        required
+                    />
 
                     <div className="form-group">
                         <label>Prodejna:</label>

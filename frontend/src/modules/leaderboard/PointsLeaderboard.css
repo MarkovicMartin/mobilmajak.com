@@ -187,8 +187,12 @@
 
 .additional-stats {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(3, 1fr);
     gap: 15px;
+}
+
+.additional-stats .stat-item-servis .stat-value {
+    color: #047857;
 }
 
 .stat-item {

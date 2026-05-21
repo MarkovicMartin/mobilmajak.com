@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getApiEndpoints } from '../../config/apiConfig';
+import { AnalyticsDateInput } from '../../components/AnalyticsDateRange';
 import './ProfileAnalytics.css';
 
 const ProfileAnalytics = ({ userId }) => {
@@ -268,10 +269,10 @@ const ProfileAnalytics = ({ userId }) => {
                                     {pointsData.breakdown.aligator.count}× = {pointsData.breakdown.aligator.points}b
                                 </span>
                             </div>
-                            {pointsData.breakdown.servis_marze && (
+                            {pointsData.source === 'database' && pointsData.breakdown?.servis_marze && (
                                 <div className="data-item servis-marze-points">
                                     <span className="label">
-                                        Servis marže ({pointsData.breakdown.servis_marze.odmena_sazba ?? 10} %):
+                                        Servis provize ({pointsData.breakdown.servis_marze.odmena_sazba ?? 10} %):
                                     </span>
                                     <span className="value">
                                         {formatNumber(pointsData.breakdown.servis_marze.marze)} → {formatNumber(pointsData.breakdown.servis_marze.points)}b
@@ -421,15 +422,14 @@ const ProfileAnalytics = ({ userId }) => {
                     </button>
                 </div>
 
-                <div className="date-picker">
-                    <label htmlFor="date-select">Vyberte datum:</label>
-                    <input
-                        type="date"
-                        id="date-select"
-                        value={selectedDate}
-                        onChange={(e) => setSelectedDate(e.target.value)}
-                    />
-                </div>
+                <AnalyticsDateInput
+                    id="date-select"
+                    label="Vyberte datum:"
+                    value={selectedDate}
+                    onApply={setSelectedDate}
+                    wrapperClassName="date-picker"
+                    showError={false}
+                />
             </div>
 
             <div className="analytics-grid">

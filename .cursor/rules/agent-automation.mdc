@@ -1,0 +1,40 @@
+---
+description: Automatické schvalování čtení/testů; potvrzení u zápisů, sítě a git jen na žádost
+alwaysApply: true
+---
+
+# Agent – automatizace a potvrzení
+
+## Bez potvrzení (provádět hned)
+
+- **Čtení projektu:** `Read`, `Grep`, `Glob`, prohlížení struktury repa, `git status` / `git diff` / `git log` / `git show` / `git branch`
+- **Kontroly a testy:** lint, typecheck, unit/integration testy, build v režimu kontroly (`--dry-run`, `check`, `validate`), migrace jen s `--plan` / `--dry-run`
+- **Diagnostika:** `manage.py check`, health endpointy lokálně, čtení logů v projektu
+- **Lokální testovací relace:** `.\scripts\run-local.ps1`, `run-local.cmd`, `npm run build`, `npm run serve:build` v tomto repu (skill `mobilmajak-local-test`) – spustit hned, bez ptání na potvrzení
+
+Neptat se uživatele „mohu přečíst soubor X“, „mohu spustit testy“ ani „mohu spustit lokální build“ – tyto kroky jsou vždy v pořádku.
+
+## Vždy vyžadovat potvrzení uživatele (UI / hook)
+
+- **Změny souborů:** `Write`, `StrReplace`, `EditNotebook`, `Delete`, hromadné refaktory
+- **Online / externí data:** `curl`, `wget`, `ssh`, `scp`, deploy skripty, push na remote, MCP/WebFetch mimo projekt, odeslání dat na API třetích stran
+- **Citlivé cesty:** `.env`, `secrets/`, `*.pem`, `*.key`, SSH klíče – číst jen pokud je to nezbytné pro úkol; nikdy necommitovat
+
+U zápisů nepředpokládej, že máš předchozí souhlas z jiné zprávy – každá editace může vyžadovat potvrzení v Cursoru.
+
+## Git a GitHub (jen na explicitní žádost)
+
+`git commit`, `git push`, `gh pr create`, `gh pr merge` a související příkazy spouštěj **jen když uživatel v aktuálním chatu výslovně požádá** (např. „commitni“, „pushni“, „vytvoř PR“).
+
+Když uživatel o commit/PR požádá:
+
+- Proveď `git status`, `git diff`, `git log` bez dalšího ptaní
+- Připrav commit message ve stylu repa; necommituj `.env`, klíče ani `secrets/`
+- Nepoužívej `--no-verify`, force push na `main`/`master` ani amend bez výslovné žádosti
+- Nepushuj na remote, pokud uživatel push nezmínil
+
+## Chování agenta
+
+- Preferuj sandbox a project hooks (`.cursor/hooks/`) před „Run Everything“
+- Při pochybnosti o síť nebo produkci: zastav a stručně vysvětli riziko
+- Po změnách v kódu nabídni relevantní test; nespouštěj deploy na VPS bez domluvy

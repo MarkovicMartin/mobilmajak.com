@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import AnalyticsSectionWrapper from '../AnalyticsSectionWrapper';
 import CustomDropdown from '../../../components/CustomDropdown';
+import AnalyticsDateRange from '../../../components/AnalyticsDateRange';
+import { formatISODate } from '../../../utils/analyticsDateRange';
 import './CelkovaCisla.css';
 
 const CategoryTimeseries = ({ filters, defaultGroupBy, defaultSelected }) => {
@@ -540,14 +542,11 @@ const CelkovaCislaView = ({ isComparison = false }) => {
         }));
     };
 
-    // ===== Helpers pro datumy =====
-    const isValidISODate = (str) => {
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(str)) return false;
-        const [y, m, d] = str.split('-').map(Number);
-        const dt = new Date(y, m - 1, d);
-        return dt.getFullYear() === y && dt.getMonth() === m - 1 && dt.getDate() === d;
+    const applyDateRange = ({ start_date, end_date }) => {
+        setFilters(prev => ({ ...prev, period: 'custom', start_date, end_date }));
     };
-    const formatISO = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+    // ===== Helpers pro datumy =====
     const monthStep = (ym, step) => {
         const [y, m] = ym.split('-').map(Number);
         const dt = new Date(y, m - 1 + step, 1);
@@ -579,27 +578,10 @@ const CelkovaCislaView = ({ isComparison = false }) => {
         setFilters(prev => ({
             ...prev,
             period: 'custom',
-            start_date: formatISO(from),
-            end_date: formatISO(to)
+            start_date: formatISODate(from),
+            end_date: formatISODate(to)
         }));
         setQuickKey(type);
-    };
-    const onDateChange = (name, value) => {
-        if (!isValidISODate(value)) {
-            setDateError('Neplatné datum. Zkontrolujte prosím zadání.');
-            return;
-        }
-        setDateError('');
-        setFilters(prev => {
-            const next = { ...prev, [name]: value };
-            if (next.start_date && next.end_date && isValidISODate(next.start_date) && isValidISODate(next.end_date)) {
-                if (new Date(next.start_date) > new Date(next.end_date)) {
-                    // automaticky prohodíme, ať je UX hladké
-                    [next.start_date, next.end_date] = [next.end_date, next.start_date];
-                }
-            }
-            return next;
-        });
     };
 
     // Formátování čísel
@@ -994,26 +976,13 @@ const CelkovaCislaView = ({ isComparison = false }) => {
 
                     {/* Vlastní období */}
                     {filters.period === 'custom' && (
-                        <>
-                            <div className="filter-group">
-                                <label>Od:</label>
-                                <input
-                                    type="date"
-                                    value={filters.start_date}
-                                    max={filters.end_date || undefined}
-                                    onChange={(e) => onDateChange('start_date', e.target.value)}
-                                />
-                            </div>
-                            <div className="filter-group">
-                                <label>Do:</label>
-                                <input
-                                    type="date"
-                                    value={filters.end_date}
-                                    min={filters.start_date || undefined}
-                                    onChange={(e) => onDateChange('end_date', e.target.value)}
-                                />
-                            </div>
-                        </>
+                        <AnalyticsDateRange
+                            startDate={filters.start_date}
+                            endDate={filters.end_date}
+                            onApply={applyDateRange}
+                            onErrorChange={setDateError}
+                            showError={false}
+                        />
                     )}
 
                     {/* Rychlé volby období */}

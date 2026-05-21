@@ -15,6 +15,7 @@ import {
 } from 'recharts';
 import AnalyticsSectionWrapper from '../AnalyticsSectionWrapper';
 import CustomDropdown from '../../../components/CustomDropdown';
+import AnalyticsDateRange from '../../../components/AnalyticsDateRange';
 import './SectionStyles.css';
 
 const SalespersonBreakdown = ({ filters }) => {
@@ -215,6 +216,11 @@ const ProdejniAnalytika = ({ currentUser }) => {
         }));
     };
 
+    const applyDateRange = ({ start_date, end_date }) => {
+        setFilters(prev => ({ ...prev, period: 'custom', start_date, end_date }));
+        setQuickKey('custom');
+    };
+
     const formatCurrency = (amount) => {
         return new Intl.NumberFormat('cs-CZ', {
             style: 'currency',
@@ -359,20 +365,13 @@ const ProdejniAnalytika = ({ currentUser }) => {
 
                 {filters.period === 'custom' && (
                     <>
-                        <div className="filter-group">
-                            <label>Od:</label>
-                            <input type="date" value={filters.start_date} onChange={(e)=>{
-                                const v=e.target.value; if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) { setDateError('Neplatné datum'); return; }
-                                setDateError(''); handleFilterChange('start_date', v);
-                            }} />
-                        </div>
-                        <div className="filter-group">
-                            <label>Do:</label>
-                            <input type="date" value={filters.end_date} onChange={(e)=>{
-                                const v=e.target.value; if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) { setDateError('Neplatné datum'); return; }
-                                setDateError(''); handleFilterChange('end_date', v);
-                            }} />
-                        </div>
+                        <AnalyticsDateRange
+                            startDate={filters.start_date}
+                            endDate={filters.end_date}
+                            onApply={applyDateRange}
+                            onErrorChange={setDateError}
+                            showError={false}
+                        />
                         <div className="filter-group" style={{minWidth:240}}>
                             <label>Rychlé volby:</label>
                             <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>

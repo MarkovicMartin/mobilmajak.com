@@ -110,12 +110,16 @@ const PointsLeaderboard = ({ data, loading, currentUser }) => {
                                 
                                 <div className="additional-stats">
                                     <div className="stat-item">
-                                        <span className="stat-label">Položky 100+ (vč. služeb)</span>
+                                        <span className="stat-label">Položky</span>
                                         <span className="stat-value">{(seller.polozky_nad_100 || 0) + (seller.sluzby_celkem || 0)}</span>
                                     </div>
                                     <div className="stat-item">
                                         <span className="stat-label">Průměr pol./účt.</span>
                                         <span className="stat-value">{seller.prumer_polozek_uctu.toFixed(2)}</span>
+                                    </div>
+                                    <div className="stat-item stat-item-servis">
+                                        <span className="stat-label">Servis</span>
+                                        <span className="stat-value">{seller.servis_provize ?? 0}</span>
                                     </div>
                                 </div>
                             </div>

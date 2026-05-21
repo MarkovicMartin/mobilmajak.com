@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import AnalyticsSectionWrapper from '../AnalyticsSectionWrapper';
 import CustomDropdown from '../../../components/CustomDropdown';
+import AnalyticsDateRange from '../../../components/AnalyticsDateRange';
 import './Servis.css';
 
 const Servis = () => {
@@ -233,13 +234,11 @@ const Servis = () => {
         }));
     };
 
-    // ===== Helpers – stejné UX jako v Celková čísla =====
-    const isValidISODate = (str) => {
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(str)) return false;
-        const [y,m,d] = str.split('-').map(Number);
-        const dt = new Date(y, m-1, d);
-        return dt.getFullYear()===y && dt.getMonth()===m-1 && dt.getDate()===d;
+    const applyDateRange = ({ start_date, end_date }) => {
+        setFilters(prev => ({ ...prev, period: 'custom', start_date, end_date }));
     };
+
+    // ===== Helpers – stejné UX jako v Celková čísla =====
     const setQuickRange = (type) => {
         const now = new Date();
         const fmt = (d)=> `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -265,18 +264,6 @@ const Servis = () => {
         setDateError('');
         setFilters(prev => ({...prev, period:'custom', start_date: fmt(from), end_date: fmt(to)}));
     };
-    const onDateChange = (name, value) => {
-        if (!isValidISODate(value)) { setDateError('Neplatné datum'); return; }
-        setDateError('');
-        setFilters(prev=>{
-            const next = {...prev, [name]: value};
-            if (next.start_date && next.end_date && new Date(next.start_date)>new Date(next.end_date)) {
-                [next.start_date, next.end_date] = [next.end_date, next.start_date];
-            }
-            return next;
-        });
-    };
-
     // Formátování čísel
     const formatNumber = (num) => {
         if (num === null || num === undefined) return '0';
@@ -389,26 +376,13 @@ const Servis = () => {
 
                     {/* Vlastní období */}
                     {filters.period === 'custom' && (
-                        <>
-                            <div className="filter-group">
-                                <label>Od:</label>
-                                <input 
-                                    type="date" 
-                                    value={filters.start_date}
-                                    max={filters.end_date||undefined}
-                                    onChange={(e) => onDateChange('start_date', e.target.value)}
-                                />
-                            </div>
-                            <div className="filter-group">
-                                <label>Do:</label>
-                                <input 
-                                    type="date" 
-                                    value={filters.end_date}
-                                    min={filters.start_date||undefined}
-                                    onChange={(e) => onDateChange('end_date', e.target.value)}
-                                />
-                            </div>
-                        </>
+                        <AnalyticsDateRange
+                            startDate={filters.start_date}
+                            endDate={filters.end_date}
+                            onApply={applyDateRange}
+                            onErrorChange={setDateError}
+                            showError={false}
+                        />
                     )}
 
                     {/* Rychlé volby */}

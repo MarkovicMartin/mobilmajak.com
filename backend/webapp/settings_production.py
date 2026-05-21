@@ -4,13 +4,17 @@ Django settings for webapp project - PRODUCTION
 PRODUCTION ONLY - použije se na VPS serveru
 """
 
-import pymysql
-pymysql.install_as_MySQLdb()
 import os
 from pathlib import Path
 
+from dotenv import load_dotenv
+import pymysql
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+load_dotenv(BASE_DIR / '.env')
+pymysql.install_as_MySQLdb()
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'change-me-in-production')

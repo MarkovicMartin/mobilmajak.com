@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import AnalyticsSectionWrapper from '../AnalyticsSectionWrapper';
 import CustomDropdown from '../../../components/CustomDropdown';
+import AnalyticsDateRange from '../../../components/AnalyticsDateRange';
 import './Eshop.css';
 // Sub-component for category analytics
 const EshopCategoryAnalytics = ({ filters }) => {
@@ -269,6 +270,10 @@ const Eshop = () => {
     });
     const [dateError, setDateError] = useState('');
 
+    const applyDateRange = ({ start_date, end_date }) => {
+        setFilters(prev => ({ ...prev, period: 'custom', start_date, end_date }));
+    };
+
     // Rychlé volby rozsahu
     const setQuickRange = (type) => {
         const now = new Date();
@@ -511,22 +516,13 @@ const Eshop = () => {
                     </div>
 
                     {/* Vlastní období */}
-                    {true && (
-                        <>
-                            <div className="filter-group">
-                                <label>Od:</label>
-                                <input type="date" value={filters.start_date} max={filters.end_date||undefined} onChange={(e)=>{
-                                    const v=e.target.value; if(!/^\d{4}-\d{2}-\d{2}$/.test(v)){setDateError('Neplatné datum');return;} setDateError(''); setFilters(prev=>{ const next={...prev,start_date:v}; if(new Date(next.start_date)>new Date(next.end_date)) [next.start_date,next.end_date]=[next.end_date,next.start_date]; return next;});
-                                }}/>
-                            </div>
-                            <div className="filter-group">
-                                <label>Do:</label>
-                                <input type="date" value={filters.end_date} min={filters.start_date||undefined} onChange={(e)=>{
-                                    const v=e.target.value; if(!/^\d{4}-\d{2}-\d{2}$/.test(v)){setDateError('Neplatné datum');return;} setDateError(''); setFilters(prev=>{ const next={...prev,end_date:v}; if(new Date(next.start_date)>new Date(next.end_date)) [next.start_date,next.end_date]=[next.end_date,next.start_date]; return next;});
-                                }}/>
-                            </div>
-                        </>
-                    )}
+                    <AnalyticsDateRange
+                        startDate={filters.start_date}
+                        endDate={filters.end_date}
+                        onApply={applyDateRange}
+                        onErrorChange={setDateError}
+                        showError={false}
+                    />
 
                     {/* Vyloučit ALLEGRO */}
                     <div className="filter-group">
