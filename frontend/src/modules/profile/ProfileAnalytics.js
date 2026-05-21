@@ -1,29 +1,20 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { getApiEndpoints } from '../../config/apiConfig';
 import { AnalyticsDateInput } from '../../components/AnalyticsDateRange';
+import {
+    PRODUCT_COMMISSIONS,
+    CT300_INFO_KEY,
+    CT300_INFO_LABEL,
+} from '../../constants/productCommissions';
 import './ProfileAnalytics.css';
-
-/** Provize v bodech za kus (shodné s backend calculate_points_for_data) */
-const PRODUCT_COMMISSIONS = [
-    { key: 'polozky_nad_100', label: 'Položky nad 100 Kč', rate: 15 },
-    { key: 'ct300', label: 'CT300', rate: 15 },
-    { key: 'ct600', label: 'CT600', rate: 50 },
-    { key: 'ct1200', label: 'CT1200', rate: 100 },
-    { key: 'akt', label: 'AKT', rate: 30 },
-    { key: 'zah250', label: 'ZAH250', rate: 30 },
-    { key: 'nap', label: 'NAP', rate: 50 },
-    { key: 'zah500', label: 'ZAH500', rate: 50 },
-    { key: 'kop250', label: 'KOP250', rate: 30 },
-    { key: 'kop500', label: 'KOP500', rate: 50 },
-    { key: 'pz1', label: 'PZ1', rate: 100 },
-    { key: 'knz', label: 'KNZ', rate: 30 },
-];
 
 const SERVIS_RATE = 0.1;
 
 const buildBreakdownFromData = (data) => {
     if (!data) return null;
     const breakdown = {};
+    const ct300Count = data[CT300_INFO_KEY] || 0;
+    breakdown[CT300_INFO_KEY] = { count: ct300Count, points: 0, informational: true };
     PRODUCT_COMMISSIONS.forEach(({ key, rate }) => {
         const count = data[key] || 0;
         breakdown[key] = { count, points: count * rate };
@@ -44,6 +35,7 @@ const sumProductPoints = (breakdown) => {
     if (!breakdown) return 0;
     let total = 0;
     PRODUCT_COMMISSIONS.forEach(({ key }) => {
+        if (breakdown[key]?.informational) return;
         total += breakdown[key]?.points || 0;
     });
     total += breakdown.servis_marze?.points || 0;
@@ -207,8 +199,22 @@ const ProfileAnalytics = ({ userId }) => {
 
                     <div className="products-grid">
                         <div className="products-list products-list-calculations">
+                            {(() => {
+                                const ct300Item = breakdown?.[CT300_INFO_KEY];
+                                const ct300Count = ct300Item?.count ?? data[CT300_INFO_KEY] ?? 0;
+                                if (ct300Count > 0) {
+                                    return (
+                                        <div key={CT300_INFO_KEY} className="product-item product-item-info">
+                                            <span>{CT300_INFO_LABEL}:</span>
+                                            <span className="product-calc">{ct300Count} ks (bez bodů)</span>
+                                        </div>
+                                    );
+                                }
+                                return null;
+                            })()}
                             {PRODUCT_COMMISSIONS.map(({ key, label, rate }) => {
                                 const item = breakdown?.[key];
+                                if (item?.informational) return null;
                                 const count = item?.count ?? data[key] ?? 0;
                                 const points = item?.points ?? count * rate;
                                 return (

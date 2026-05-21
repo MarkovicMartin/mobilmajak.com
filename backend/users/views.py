@@ -82,7 +82,7 @@ def user_list(request):
         }, status=status.HTTP_403_FORBIDDEN)
     
     users = WebUser.objects.all()
-    serializer = WebUserSerializer(users, many=True)
+    serializer = WebUserSerializer(users, many=True, context={'request': request})
     
     return Response({
         'success': True,
@@ -378,13 +378,26 @@ def update_user_view(request, user_id):
     except WebUser.DoesNotExist:
         return Response({'success': False, 'message': 'Uživatel nenalezen'}, status=status.HTTP_404_NOT_FOUND)
     
+    vedouci_prodejna_id = request.data.get('vedouci_prodejna_id')
     serializer = WebUserUpdateSerializer(user, data=request.data, partial=True)
     if serializer.is_valid():
         user = serializer.save()
+        if 'vedouci_prodejna_id' in request.data:
+            from stores.vedouci_sync import sync_vedouci_from_user
+            vid = vedouci_prodejna_id
+            if vid in ('', None, 'null'):
+                vid = None
+            else:
+                try:
+                    vid = int(vid)
+                except (TypeError, ValueError):
+                    vid = None
+            sync_vedouci_from_user(user.id, vid)
+            user = WebUser.objects.get(pk=user.id)
         return Response({
             'success': True,
             'message': 'Uživatel byl úspěšně aktualizován',
-            'user': WebUserSerializer(user).data
+            'user': WebUserSerializer(user, context={'request': request}).data
         })
     return Response({
         'success': False,

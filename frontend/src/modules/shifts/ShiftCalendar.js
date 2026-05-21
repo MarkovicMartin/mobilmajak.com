@@ -225,6 +225,7 @@ function ShiftCalendar({ prodejna, month, user, refreshTrigger, onRefresh }) {
                 <UnifiedCalendar
                     month={month}
                     variant="full"
+                    getExtraCellClass={(dateStr) => (svatky[dateStr] ? 'holiday' : '')}
                     renderCellContent={(date) => {
                         const dateStr = format(date, 'yyyy-MM-dd');
                         const shifts = getShiftsForDate(dateStr);

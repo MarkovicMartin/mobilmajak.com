@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { AnalyticsDateInput } from '../../components/AnalyticsDateRange';
 import { userAPI, storeAPI } from '../../services/api';
+import { useModalKeyboard } from '../../utils/useModalKeyboard';
 import './ShiftForm.css';
 
 const PRODEJNY = ['Globus', 'Senimo', 'Zlín', 'Přerov', 'Vsetín', 'Šternberk'];
@@ -21,6 +22,9 @@ function ShiftForm({ user, onClose, onSuccess }) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [existingShiftInfo, setExistingShiftInfo] = useState(null);
+    const shiftFormRef = useRef(null);
+
+    useModalKeyboard(true, { onClose, formRef: shiftFormRef });
 
     // Načtení prodejen z DB (choices)
     useEffect(() => {
@@ -162,7 +166,7 @@ function ShiftForm({ user, onClose, onSuccess }) {
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                 <h3>➕ Přidat novou směnu</h3>
                 
-                <form onSubmit={handleSubmit}>
+                <form ref={shiftFormRef} onSubmit={handleSubmit}>
                     {(user && ['ADMIN', 'VEDOUCI'].includes(user.role)) && (
                         <div className="form-group">
                             <label>Uživatel:</label>

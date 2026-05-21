@@ -1,10 +1,10 @@
 from django.db import IntegrityError
 from django.db.models import Max
 
+from .exclusions import STAFF_ROLES  # noqa: F401 – re-export
 from .models import WebUser
 
 # Systémové / admin účty mají vysoká ID (777, 99999, …) – řada pro běžné uživatele je 1, 2, …
-STAFF_ROLES = ('PRODEJCE', 'VEDOUCI')
 
 
 def get_next_web_user_id():

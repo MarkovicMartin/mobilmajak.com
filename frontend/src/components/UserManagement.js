@@ -1,7 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { userAPI, storeAPI } from '../services/api';
 import { prepareUserSubmitData, formatUserApiError, estimateNextUserId } from '../utils/userForm';
+import {
+    MZDA_DOPLNEK_TEMPLATES,
+    createDoplnekFromTemplate,
+    sumDoplnkyBody,
+} from '../constants/mzdaDoplnkyTemplates';
+import { formatBodyCount } from '../utils/formatBody';
+import { manualNumberInputClass, preventNumberInputWheel } from '../utils/manualNumberInput';
+import { useModalKeyboard } from '../utils/useModalKeyboard';
 import './UserManagement.css';
 
 const UserManagement = () => {
@@ -14,6 +22,8 @@ const UserManagement = () => {
     const [showAddForm, setShowAddForm] = useState(false);
     const [editingUser, setEditingUser] = useState(null);
     const [stores, setStores] = useState([]);
+    const [showInactiveUsers, setShowInactiveUsers] = useState(false);
+    const userFormRef = useRef(null);
     const [formData, setFormData] = useState({
         uzivatelske_jmeno: '',
         jmeno: '',
@@ -27,10 +37,23 @@ const UserManagement = () => {
         telefon: '',
         email: '',
         adresa: '',
-        poznamka: ''
+        poznamka: '',
+        mzda_zaklad: '',
+        mzda_doplnky: [],
+        vedouci_prodejna_id: '',
     });
 
     const nextUserIdPreview = estimateNextUserId(users);
+
+    const { activeUsers, inactiveUsers } = useMemo(() => {
+        const active = [];
+        const inactive = [];
+        (users || []).forEach((u) => {
+            if (u.aktivni) active.push(u);
+            else inactive.push(u);
+        });
+        return { activeUsers: active, inactiveUsers: inactive };
+    }, [users]);
 
     const availableModules = ['analytics', 'shifts', 'news', 'access'];
 
@@ -97,12 +120,17 @@ const UserManagement = () => {
             telefon: '',
             email: '',
             adresa: '',
-            poznamka: ''
+            poznamka: '',
+            mzda_zaklad: '',
+            mzda_doplnky: [],
+            vedouci_prodejna_id: '',
         });
         setEditingUser(null);
         setShowAddForm(false);
         setFormError(null);
     };
+
+    useModalKeyboard(showAddForm, { onClose: resetForm, formRef: userFormRef });
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -156,9 +184,42 @@ const UserManagement = () => {
             telefon: user.telefon || '',
             email: user.email || '',
             adresa: user.adresa || '',
-            poznamka: user.poznamka || ''
+            poznamka: user.poznamka || '',
+            mzda_zaklad: user.mzda_zaklad != null ? String(user.mzda_zaklad) : '',
+            mzda_doplnky: Array.isArray(user.mzda_doplnky) ? [...user.mzda_doplnky] : [],
+            vedouci_prodejna_id: user.vedouci_prodejna_id != null ? String(user.vedouci_prodejna_id) : '',
         });
         setShowAddForm(true);
+    };
+
+    const handleDoplnekChange = (index, field, value) => {
+        setFormData((prev) => {
+            const next = [...(prev.mzda_doplnky || [])];
+            next[index] = { ...next[index], [field]: value };
+            return { ...prev, mzda_doplnky: next };
+        });
+    };
+
+    const addDoplnek = (template) => {
+        setFormData((prev) => ({
+            ...prev,
+            mzda_doplnky: [
+                ...(prev.mzda_doplnky || []),
+                template ? createDoplnekFromTemplate(template) : { kod: '', nazev: '', castka: 0 },
+            ],
+        }));
+    };
+
+    const removeDoplnek = (index) => {
+        setFormData((prev) => ({
+            ...prev,
+            mzda_doplnky: (prev.mzda_doplnky || []).filter((_, i) => i !== index),
+        }));
+    };
+
+    const mzdaFixniPreview = () => {
+        const zaklad = parseFloat(formData.mzda_zaklad) || 0;
+        return zaklad + sumDoplnkyBody(formData.mzda_doplnky);
     };
 
     const handleDelete = async (userId) => {
@@ -174,10 +235,69 @@ const UserManagement = () => {
             } else {
                 setError(response.message);
             }
-        } catch (error) {
+        } catch (err) {
             setError('Chyba při mazání uživatele');
         }
     };
+
+    const renderUserRow = (user) => (
+        <tr key={user.id} className={user.id === currentUser.id ? 'current-user' : ''}>
+            <td>{user.id}</td>
+            <td>{user.technik_id ?? '—'}</td>
+            <td>{user.uzivatelske_jmeno}</td>
+            <td>{user.jmeno}</td>
+            <td>{user.prijmeni}</td>
+            <td>
+                <span className={`role-badge ${user.role.toLowerCase()}`}>
+                    {user.role === 'ADMIN' ? 'Administrátor' : user.role === 'VEDOUCI' ? 'Vedoucí' : 'Prodejce'}
+                </span>
+            </td>
+            <td>
+                <span className="prodejna-text">{user.prodejna || '—'}</span>
+            </td>
+            <td>
+                <span className={`status-badge ${user.aktivni ? 'active' : 'inactive'}`}>
+                    {user.aktivni ? 'Aktivní' : 'Neaktivní'}
+                </span>
+            </td>
+            <td>
+                <div className="modules-list">
+                    {user.moduly && user.moduly.length > 0 ? (
+                        user.moduly.map((module) => (
+                            <span key={module} className="module-tag">
+                                {module === 'analytics' && 'Analytika'}
+                                {module === 'shifts' && 'Směny'}
+                                {module === 'news' && 'Novinky'}
+                                {module === 'access' && 'Přístupy'}
+                            </span>
+                        ))
+                    ) : (
+                        <span className="no-modules">Žádné moduly</span>
+                    )}
+                </div>
+            </td>
+            <td>
+                <div className="action-buttons">
+                    <button
+                        type="button"
+                        className="edit-btn"
+                        onClick={() => handleEdit(user)}
+                        disabled={user.id === currentUser.id}
+                    >
+                        Upravit
+                    </button>
+                    <button
+                        type="button"
+                        className="delete-btn"
+                        onClick={() => handleDelete(user.id)}
+                        disabled={user.id === currentUser.id}
+                    >
+                        Smazat
+                    </button>
+                </div>
+            </td>
+        </tr>
+    );
 
     if (!currentUser || currentUser.role !== 'ADMIN') {
         return (
@@ -226,7 +346,7 @@ const UserManagement = () => {
                             <button className="close-btn" onClick={resetForm}>×</button>
                         </div>
 
-                        <form onSubmit={handleSubmit}>
+                        <form ref={userFormRef} onSubmit={handleSubmit}>
                             {formError && (
                                 <div className="form-error-message" role="alert">
                                     {formError.split('\n').map((line, i) => (
@@ -259,8 +379,10 @@ const UserManagement = () => {
                                     <input
                                         type="number"
                                         name="technik_id"
+                                        className={manualNumberInputClass()}
                                         value={formData.technik_id}
                                         onChange={handleInputChange}
+                                        onWheel={preventNumberInputWheel}
                                         required
                                         min="0"
                                         placeholder="např. 108"
@@ -349,6 +471,25 @@ const UserManagement = () => {
                             </div>
 
                             <div className="form-group">
+                                <label>Vedoucí prodejny (přiřazení pobočky)</label>
+                                <select
+                                    name="vedouci_prodejna_id"
+                                    value={formData.vedouci_prodejna_id}
+                                    onChange={handleInputChange}
+                                >
+                                    <option value="">— není vedoucí —</option>
+                                    {stores.map((store) => (
+                                        <option key={store.id} value={store.id}>
+                                            {store.nazev}
+                                        </option>
+                                    ))}
+                                </select>
+                                <small className="field-hint">
+                                    Přiřazení synchronizuje doplněk „vedoucí pobočky“ (2000 bodů). Částku lze upravit níže v doplňcích.
+                                </small>
+                            </div>
+
+                            <div className="form-group">
                                 <label>
                                     <input
                                         type="checkbox"
@@ -359,6 +500,66 @@ const UserManagement = () => {
                                     Aktivní uživatel
                                 </label>
                             </div>
+
+                            <fieldset className="form-fieldset mzda-fieldset">
+                                <legend>Mzdové údaje (body)</legend>
+                                <div className="form-group">
+                                    <label>Měsíční základ (body)</label>
+                                    <input
+                                        type="number"
+                                        name="mzda_zaklad"
+                                        className={manualNumberInputClass()}
+                                        min="0"
+                                        step="1"
+                                        value={formData.mzda_zaklad}
+                                        onChange={handleInputChange}
+                                        onWheel={preventNumberInputWheel}
+                                        placeholder="např. 15000"
+                                    />
+                                </div>
+                                <div className="doplnky-section">
+                                    <label>Volitelné doplňky</label>
+                                    {(formData.mzda_doplnky || []).map((d, idx) => (
+                                        <div key={idx} className="doplnek-row">
+                                            <input
+                                                type="text"
+                                                placeholder="Název"
+                                                value={d.nazev || ''}
+                                                onChange={(e) => handleDoplnekChange(idx, 'nazev', e.target.value)}
+                                            />
+                                            <input
+                                                type="number"
+                                                className={manualNumberInputClass()}
+                                                min="0"
+                                                step="1"
+                                                placeholder="Body"
+                                                value={d.castka ?? ''}
+                                                onChange={(e) => handleDoplnekChange(idx, 'castka', e.target.value)}
+                                                onWheel={preventNumberInputWheel}
+                                            />
+                                            <button type="button" className="doplnek-remove" onClick={() => removeDoplnek(idx)}>×</button>
+                                        </div>
+                                    ))}
+                                    <div className="doplnky-actions">
+                                        <button type="button" className="btn-secondary-sm" onClick={() => addDoplnek(null)}>
+                                            + Přidat doplněk
+                                        </button>
+                                        {MZDA_DOPLNEK_TEMPLATES.filter((t) => t.kod !== 'vedouci_pobocky').map((tpl) => (
+                                            <button
+                                                key={tpl.kod}
+                                                type="button"
+                                                className="btn-secondary-sm"
+                                                onClick={() => addDoplnek(tpl)}
+                                            >
+                                                + {tpl.nazev} ({tpl.castka} bodů)
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <p className="mzda-preview">
+                                    Fixní mzda celkem: <strong>{formatBodyCount(mzdaFixniPreview())}</strong>
+                                </p>
+                            </fieldset>
 
                             <div className="form-group">
                                 <label>Povolené moduly</label>
@@ -413,66 +614,45 @@ const UserManagement = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {users.map(user => (
-                            <tr key={user.id} className={user.id === currentUser.id ? 'current-user' : ''}>
-                                <td>{user.id}</td>
-                                <td>{user.technik_id ?? '—'}</td>
-                                <td>{user.uzivatelske_jmeno}</td>
-                                <td>{user.jmeno}</td>
-                                <td>{user.prijmeni}</td>
-                                <td>
-                                    <span className={`role-badge ${user.role.toLowerCase()}`}>
-                                        {user.role === 'ADMIN' ? 'Administrátor' : user.role === 'VEDOUCI' ? 'Vedoucí' : 'Prodejce'}
-                                    </span>
-                                </td>
-                                <td>
-                                    <span className="prodejna-text">
-                                        {user.prodejna || '—'}
-                                    </span>
-                                </td>
-                                <td>
-                                    <span className={`status-badge ${user.aktivni ? 'active' : 'inactive'}`}>
-                                        {user.aktivni ? 'Aktivní' : 'Neaktivní'}
-                                    </span>
-                                </td>
-                                <td>
-                                    <div className="modules-list">
-                                        {user.moduly && user.moduly.length > 0 ? (
-                                            user.moduly.map(module => (
-                                                <span key={module} className="module-tag">
-                                                    {module === 'analytics' && 'Analytika'}
-                                                    {module === 'shifts' && 'Směny'}
-                                                    {module === 'news' && 'Novinky'}
-                                                    {module === 'access' && 'Přístupy'}
-                                                </span>
-                                            ))
-                                        ) : (
-                                            <span className="no-modules">Žádné moduly</span>
-                                        )}
-                                    </div>
-                                </td>
-                                <td>
-                                    <div className="action-buttons">
-                                        <button
-                                            className="edit-btn"
-                                            onClick={() => handleEdit(user)}
-                                            disabled={user.id === currentUser.id}
-                                        >
-                                            Upravit
-                                        </button>
-                                        <button
-                                            className="delete-btn"
-                                            onClick={() => handleDelete(user.id)}
-                                            disabled={user.id === currentUser.id}
-                                        >
-                                            Smazat
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        ))}
+                        {activeUsers.map(renderUserRow)}
                     </tbody>
                 </table>
+
+                {inactiveUsers.length > 0 && (
+                    <div className="inactive-users-section">
+                        <button
+                            type="button"
+                            className="inactive-users-toggle"
+                            onClick={() => setShowInactiveUsers((v) => !v)}
+                            aria-expanded={showInactiveUsers}
+                        >
+                            <span className="toggle-icon">{showInactiveUsers ? '▼' : '▶'}</span>
+                            Neaktivní uživatelé
+                            <span className="inactive-count">({inactiveUsers.length})</span>
+                        </button>
+                        {showInactiveUsers && (
+                            <table className="users-table-inactive">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Technik ID</th>
+                                        <th>Uživatelské jméno</th>
+                                        <th>Jméno</th>
+                                        <th>Příjmení</th>
+                                        <th>Role</th>
+                                        <th>Prodejna</th>
+                                        <th>Status</th>
+                                        <th>Moduly</th>
+                                        <th>Akce</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {inactiveUsers.map(renderUserRow)}
+                                </tbody>
+                            </table>
+                        )}
+                    </div>
+                )}
             </div>
         </div>
     );

@@ -115,8 +115,8 @@ function ShiftOverview({ user, month, onMonthChange }) {
                 <div className="stat-card success">
                     <div className="stat-icon">📊</div>
                     <div className="stat-content">
-                        <div className="stat-value">{overview.standardni_hodiny}h</div>
-                        <div className="stat-label">Standardní měsíc</div>
+                        <div className="stat-value">{(overview.mesicni_fond ?? overview.standardni_hodiny)}h</div>
+                        <div className="stat-label">Měsíční fond</div>
                     </div>
                 </div>
 

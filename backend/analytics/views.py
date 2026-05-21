@@ -41,6 +41,11 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
 from django.db import connection
+from .points_config import (
+    calculate_product_points,
+    build_product_points_breakdown,
+    normalize_points_metrics,
+)
 
 
 def _count_unique_receipts(queryset):
@@ -1055,43 +1060,8 @@ def get_salesperson_monthly_data(request):
 
 
 def calculate_points_for_data(data):
-    """
-    Vypočítá body podle zadané logiky:
-    - Za každou prodanou položku nad 100 Kč = 15 bodů
-    - CT300 = 15 bodů
-    - CT600 = 50 bodů  
-    - CT1200 = 100 bodů
-    - AKT = 30 bodů
-    - ZAH250 = 30 bodů
-    - ZAH500 = 50 bodů
-    - ZAH (obecně) = 50 bodů
-    - KOP250 = 30 bodů
-    - KOP500 = 50 bodů
-    - NAP = 50 bodů
-    - PZ1 = 100 bodů
-    - KNZ = 30 bodů
-    - ALIGATOR = 0 bodů
-    """
-    points = 0
-    
-    # Body za položky nad 100 Kč
-    points += data.get('polozky_nad_100', 0) * 15
-    
-    # Body za specifické produkty
-    points += data.get('ct300', 0) * 15
-    points += data.get('ct600', 0) * 50
-    points += data.get('ct1200', 0) * 100
-    points += data.get('akt', 0) * 30
-    points += data.get('zah250', 0) * 30
-    points += data.get('zah500', 0) * 50
-    points += data.get('kop250', 0) * 30
-    points += data.get('kop500', 0) * 50
-    points += data.get('nap', 0) * 50
-    points += data.get('pz1', 0) * 100
-    points += data.get('knz', 0) * 30
-    points += data.get('aligator', 0) * 0  # ALIGATOR je za 0 bodů
-    
-    return points
+    """Body z položek nad 100 Kč (15/kus) + služby (příplatek nad základ 15). Viz points_config."""
+    return calculate_product_points(data)
 
 
 @require_http_methods(["GET"])
@@ -1139,21 +1109,7 @@ def get_salesperson_points_today(request):
                 'prodejce': today_data.uzivatel.jmeno if today_data.uzivatel else '',
                 'id_prodejce': today_data.uzivatel_id,
                 'total_points': total_points,
-                'breakdown': {
-                    'polozky_nad_100': {'count': data['polozky_nad_100'], 'points': data['polozky_nad_100'] * 15},
-                    'ct300': {'count': data['ct300'], 'points': data['ct300'] * 15},
-                    'ct600': {'count': data['ct600'], 'points': data['ct600'] * 50},
-                    'ct1200': {'count': data['ct1200'], 'points': data['ct1200'] * 100},
-                    'akt': {'count': data['akt'], 'points': data['akt'] * 30},
-                    'zah250': {'count': data['zah250'], 'points': data['zah250'] * 30},
-                    'nap': {'count': data['nap'], 'points': data['nap'] * 50},
-                    'zah500': {'count': data['zah500'], 'points': data['zah500'] * 50},
-                    'kop250': {'count': data['kop250'], 'points': data['kop250'] * 30},
-                    'kop500': {'count': data['kop500'], 'points': data['kop500'] * 50},
-                    'pz1': {'count': data['pz1'], 'points': data['pz1'] * 100},
-                    'knz': {'count': data['knz'], 'points': data['knz'] * 30},
-                    'aligator': {'count': data['aligator'], 'points': data['aligator'] * 0}
-                },
+                'breakdown': build_product_points_breakdown(data),
                 'source': 'database'
             }
         else:
@@ -1191,21 +1147,7 @@ def get_salesperson_points_today(request):
                                 'prodejce': user_data.get('prodejce', ''),
                                 'id_prodejce': user_data.get('id_prodejce'),
                                 'total_points': total_points,
-                                'breakdown': {
-                                    'polozky_nad_100': {'count': user_data.get('polozky_nad_100', 0), 'points': user_data.get('polozky_nad_100', 0) * 15},
-                                    'ct300': {'count': user_data.get('ct300', 0), 'points': user_data.get('ct300', 0) * 15},
-                                    'ct600': {'count': user_data.get('ct600', 0), 'points': user_data.get('ct600', 0) * 50},
-                                    'ct1200': {'count': user_data.get('ct1200', 0), 'points': user_data.get('ct1200', 0) * 100},
-                                    'akt': {'count': user_data.get('akt', 0), 'points': user_data.get('akt', 0) * 30},
-                                    'zah250': {'count': user_data.get('zah250', 0), 'points': user_data.get('zah250', 0) * 30},
-                                    'nap': {'count': user_data.get('nap', 0), 'points': user_data.get('nap', 0) * 50},
-                                    'zah500': {'count': user_data.get('zah500', 0), 'points': user_data.get('zah500', 0) * 50},
-                                    'kop250': {'count': user_data.get('kop250', 0), 'points': user_data.get('kop250', 0) * 30},
-                                    'kop500': {'count': user_data.get('kop500', 0), 'points': user_data.get('kop500', 0) * 50},
-                                    'pz1': {'count': user_data.get('pz1', 0), 'points': user_data.get('pz1', 0) * 100},
-                                    'knz': {'count': user_data.get('knz', 0), 'points': user_data.get('knz', 0) * 30},
-                                    'aligator': {'count': user_data.get('aligator', 0), 'points': user_data.get('aligator', 0) * 0}
-                                },
+                                'breakdown': build_product_points_breakdown(user_data),
                                 'source': 'google_sheets'
                             }
                         else:
@@ -1290,21 +1232,7 @@ def get_salesperson_points_monthly(request):
                 'prodejce': monthly_data.uzivatel.jmeno if monthly_data.uzivatel else '',
                 'id_prodejce': monthly_data.uzivatel_id,
                 'total_points': total_points,
-                'breakdown': {
-                    'polozky_nad_100': {'count': data['polozky_nad_100'], 'points': data['polozky_nad_100'] * 15},
-                    'ct300': {'count': data['ct300'], 'points': data['ct300'] * 15},
-                    'ct600': {'count': data['ct600'], 'points': data['ct600'] * 50},
-                    'ct1200': {'count': data['ct1200'], 'points': data['ct1200'] * 100},
-                    'akt': {'count': data['akt'], 'points': data['akt'] * 30},
-                    'zah250': {'count': data['zah250'], 'points': data['zah250'] * 30},
-                    'nap': {'count': data['nap'], 'points': data['nap'] * 50},
-                    'zah500': {'count': data['zah500'], 'points': data['zah500'] * 50},
-                    'kop250': {'count': data['kop250'], 'points': data['kop250'] * 30},
-                    'kop500': {'count': data['kop500'], 'points': data['kop500'] * 50},
-                    'pz1': {'count': data['pz1'], 'points': data['pz1'] * 100},
-                    'knz': {'count': data['knz'], 'points': data['knz'] * 30},
-                    'aligator': {'count': data['aligator'], 'points': data['aligator'] * 0}
-                },
+                'breakdown': build_product_points_breakdown(data),
                 'source': 'database'
             }
         else:
@@ -1342,21 +1270,7 @@ def get_salesperson_points_monthly(request):
                                 'prodejce': user_data.get('prodejce', ''),
                                 'id_prodejce': user_data.get('id_prodejce'),
                                 'total_points': total_points,
-                                'breakdown': {
-                                    'polozky_nad_100': {'count': user_data.get('polozky_nad_100', 0), 'points': user_data.get('polozky_nad_100', 0) * 15},
-                                    'ct300': {'count': user_data.get('ct300', 0), 'points': user_data.get('ct300', 0) * 15},
-                                    'ct600': {'count': user_data.get('ct600', 0), 'points': user_data.get('ct600', 0) * 50},
-                                    'ct1200': {'count': user_data.get('ct1200', 0), 'points': user_data.get('ct1200', 0) * 100},
-                                    'akt': {'count': user_data.get('akt', 0), 'points': user_data.get('akt', 0) * 30},
-                                    'zah250': {'count': user_data.get('zah250', 0), 'points': user_data.get('zah250', 0) * 30},
-                                    'nap': {'count': user_data.get('nap', 0), 'points': user_data.get('nap', 0) * 50},
-                                    'zah500': {'count': user_data.get('zah500', 0), 'points': user_data.get('zah500', 0) * 50},
-                                    'kop250': {'count': user_data.get('kop250', 0), 'points': user_data.get('kop250', 0) * 30},
-                                    'kop500': {'count': user_data.get('kop500', 0), 'points': user_data.get('kop500', 0) * 50},
-                                    'pz1': {'count': user_data.get('pz1', 0), 'points': user_data.get('pz1', 0) * 100},
-                                    'knz': {'count': user_data.get('knz', 0), 'points': user_data.get('knz', 0) * 30},
-                                    'aligator': {'count': user_data.get('aligator', 0), 'points': user_data.get('aligator', 0) * 0}
-                                },
+                                'breakdown': build_product_points_breakdown(user_data),
                                 'source': 'google_sheets'
                             }
                         else:
@@ -1411,7 +1325,11 @@ def get_leaderboard_monthly_points(request):
         
         leaderboard = []
         
+        from users.exclusions import is_excluded_report_user
+
         for data in monthly_data:
+            if data.uzivatel and is_excluded_report_user(user=data.uzivatel):
+                continue
             # Převod dat na formát pro výpočet bodů
             data_dict = {
                 'polozky_nad_100': data.polozky_nad_100,
@@ -1439,21 +1357,7 @@ def get_leaderboard_monthly_points(request):
                 'polozky_nad_100': data.polozky_nad_100,
                 'sluzby_celkem': data.sluzby_celkem,
                 'prumer_polozek_uctu': float(data.prumer_polozek_uctu),
-                'breakdown': {
-                    'polozky_nad_100': {'count': data.polozky_nad_100, 'points': data.polozky_nad_100 * 15},
-                    'ct300': {'count': data.ct300, 'points': data.ct300 * 15},
-                    'ct600': {'count': data.ct600, 'points': data.ct600 * 50},
-                    'ct1200': {'count': data.ct1200, 'points': data.ct1200 * 100},
-                    'akt': {'count': data.akt, 'points': data.akt * 30},
-                    'zah250': {'count': data.zah250, 'points': data.zah250 * 30},
-                    'nap': {'count': data.nap, 'points': data.nap * 50},
-                    'zah500': {'count': data.zah500, 'points': data.zah500 * 50},
-                    'kop250': {'count': data.kop250, 'points': data.kop250 * 30},
-                    'kop500': {'count': data.kop500, 'points': data.kop500 * 50},
-                    'pz1': {'count': data.pz1, 'points': data.pz1 * 100},
-                    'knz': {'count': data.knz, 'points': data.knz * 30},
-                    'aligator': {'count': data.aligator, 'points': data.aligator * 0}
-                }
+                'breakdown': build_product_points_breakdown(normalize_points_metrics(data))
             })
         
         # Pokud nejsou data v databázi, zkusí Google Sheets
@@ -1486,21 +1390,7 @@ def get_leaderboard_monthly_points(request):
                                     'polozky_nad_100': item.get('polozky_nad_100', 0),
                                     'sluzby_celkem': item.get('sluzby_celkem', 0),
                                     'prumer_polozek_uctu': float(item.get('pol_dok', 0)),
-                                    'breakdown': {
-                                        'polozky_nad_100': {'count': item.get('polozky_nad_100', 0), 'points': item.get('polozky_nad_100', 0) * 15},
-                                        'ct300': {'count': item.get('ct300', 0), 'points': item.get('ct300', 0) * 15},
-                                        'ct600': {'count': item.get('ct600', 0), 'points': item.get('ct600', 0) * 50},
-                                        'ct1200': {'count': item.get('ct1200', 0), 'points': item.get('ct1200', 0) * 100},
-                                        'akt': {'count': item.get('akt', 0), 'points': item.get('akt', 0) * 30},
-                                        'zah250': {'count': item.get('zah250', 0), 'points': item.get('zah250', 0) * 30},
-                                        'nap': {'count': item.get('nap', 0), 'points': item.get('nap', 0) * 50},
-                                        'zah500': {'count': item.get('zah500', 0), 'points': item.get('zah500', 0) * 50},
-                                        'kop250': {'count': item.get('kop250', 0), 'points': item.get('kop250', 0) * 30},
-                                        'kop500': {'count': item.get('kop500', 0), 'points': item.get('kop500', 0) * 50},
-                                        'pz1': {'count': item.get('pz1', 0), 'points': item.get('pz1', 0) * 100},
-                                        'knz': {'count': item.get('knz', 0), 'points': item.get('knz', 0) * 30},
-                                        'aligator': {'count': item.get('aligator', 0), 'points': item.get('aligator', 0) * 0}
-                                    }
+                                    'breakdown': build_product_points_breakdown(item),
                                 })
             except Exception as e:
                 print(f"Chyba při načítání z Google Sheets: {str(e)}")
@@ -1512,23 +1402,23 @@ def get_leaderboard_monthly_points(request):
                     'id': 1,
                     'prodejce': 'Lukáš Kováčik',
                     'prodejna': 'Čepkov',
-                    'total_points': 8750,
+                    'total_points': 9923,
                     'polozky_nad_100': 515,
                     'sluzby_celkem': 45,
                     'prumer_polozek_uctu': 2.15,
                     'breakdown': {
                         'polozky_nad_100': {'count': 515, 'points': 7725},
-                        'ct300': {'count': 23, 'points': 345},
-                        'ct600': {'count': 15, 'points': 750},
+                        'ct300': {'count': 23, 'points': 23},
+                        'ct600': {'count': 15, 'points': 525},
                         'ct1200': {'count': 0, 'points': 0},
-                        'akt': {'count': 12, 'points': 360},
-                        'zah250': {'count': 8, 'points': 240},
-                        'nap': {'count': 15, 'points': 750},
-                        'zah500': {'count': 3, 'points': 150},
-                        'kop250': {'count': 2, 'points': 60},
-                        'kop500': {'count': 1, 'points': 50},
-                        'pz1': {'count': 7, 'points': 700},
-                        'knz': {'count': 4, 'points': 120},
+                        'akt': {'count': 12, 'points': 180},
+                        'zah250': {'count': 8, 'points': 120},
+                        'nap': {'count': 15, 'points': 525},
+                        'zah500': {'count': 3, 'points': 105},
+                        'kop250': {'count': 2, 'points': 30},
+                        'kop500': {'count': 1, 'points': 35},
+                        'pz1': {'count': 7, 'points': 595},
+                        'knz': {'count': 4, 'points': 60},
                         'aligator': {'count': 2, 'points': 0}
                     }
                 },
@@ -1536,23 +1426,23 @@ def get_leaderboard_monthly_points(request):
                     'id': 5,
                     'prodejce': 'Jan Létal',
                     'prodejna': 'Šternberk',
-                    'total_points': 7865,
+                    'total_points': 8853,
                     'polozky_nad_100': 484,
                     'sluzby_celkem': 38,
                     'prumer_polozek_uctu': 1.95,
                     'breakdown': {
                         'polozky_nad_100': {'count': 484, 'points': 7260},
-                        'ct300': {'count': 18, 'points': 270},
-                        'ct600': {'count': 12, 'points': 600},
-                        'ct1200': {'count': 1, 'points': 100},
-                        'akt': {'count': 8, 'points': 240},
-                        'zah250': {'count': 6, 'points': 180},
-                        'nap': {'count': 11, 'points': 550},
-                        'zah500': {'count': 2, 'points': 100},
-                        'kop250': {'count': 1, 'points': 30},
-                        'kop500': {'count': 1, 'points': 50},
-                        'pz1': {'count': 5, 'points': 500},
-                        'knz': {'count': 3, 'points': 90},
+                        'ct300': {'count': 18, 'points': 18},
+                        'ct600': {'count': 12, 'points': 420},
+                        'ct1200': {'count': 1, 'points': 85},
+                        'akt': {'count': 8, 'points': 120},
+                        'zah250': {'count': 6, 'points': 90},
+                        'nap': {'count': 11, 'points': 385},
+                        'zah500': {'count': 2, 'points': 70},
+                        'kop250': {'count': 1, 'points': 15},
+                        'kop500': {'count': 1, 'points': 35},
+                        'pz1': {'count': 5, 'points': 425},
+                        'knz': {'count': 3, 'points': 45},
                         'aligator': {'count': 1, 'points': 0}
                     }
                 },
@@ -1560,23 +1450,23 @@ def get_leaderboard_monthly_points(request):
                     'id': 2,
                     'prodejce': 'Šimon Gabriel',
                     'prodejna': 'Globus',
-                    'total_points': 5905,
+                    'total_points': 6549,
                     'polozky_nad_100': 356,
                     'sluzby_celkem': 67,
                     'prumer_polozek_uctu': 1.78,
                     'breakdown': {
                         'polozky_nad_100': {'count': 356, 'points': 5340},
-                        'ct300': {'count': 14, 'points': 210},
-                        'ct600': {'count': 8, 'points': 400},
+                        'ct300': {'count': 14, 'points': 14},
+                        'ct600': {'count': 8, 'points': 280},
                         'ct1200': {'count': 0, 'points': 0},
-                        'akt': {'count': 22, 'points': 660},
-                        'zah250': {'count': 5, 'points': 150},
-                        'nap': {'count': 7, 'points': 350},
-                        'zah500': {'count': 1, 'points': 50},
-                        'kop250': {'count': 2, 'points': 60},
+                        'akt': {'count': 22, 'points': 330},
+                        'zah250': {'count': 5, 'points': 75},
+                        'nap': {'count': 7, 'points': 245},
+                        'zah500': {'count': 1, 'points': 35},
+                        'kop250': {'count': 2, 'points': 30},
                         'kop500': {'count': 0, 'points': 0},
-                        'pz1': {'count': 3, 'points': 300},
-                        'knz': {'count': 6, 'points': 180},
+                        'pz1': {'count': 3, 'points': 255},
+                        'knz': {'count': 6, 'points': 90},
                         'aligator': {'count': 3, 'points': 0}
                     }
                 }
@@ -1623,9 +1513,13 @@ def get_leaderboard_average_items(request):
             prumer_polozek_uctu__gt=0  # Pouze s průměrem větším než 0
         ).select_related('uzivatel').order_by('-prumer_polozek_uctu')
         
+        from users.exclusions import is_excluded_report_user
+
         leaderboard = []
         
         for data in monthly_data:
+            if data.uzivatel and is_excluded_report_user(user=data.uzivatel):
+                continue
             leaderboard.append({
                 'id': data.uzivatel.id,
                 'prodejce': f"{data.uzivatel.jmeno} {data.uzivatel.prijmeni}".strip(),
@@ -6402,21 +6296,7 @@ def _aggregate_web_prodeje_all_salesperson(queryset, user_id, iso_date):
 
 def _build_points_payload(base_data, total_points, source, servis_data=None, servis_points=0):
     """Sestaví payload pro body včetně breakdownu"""
-    breakdown = {
-        'polozky_nad_100': {'count': base_data.get('polozky_nad_100', 0), 'points': base_data.get('polozky_nad_100', 0) * 15},
-        'ct300': {'count': base_data.get('ct300', 0), 'points': base_data.get('ct300', 0) * 15},
-        'ct600': {'count': base_data.get('ct600', 0), 'points': base_data.get('ct600', 0) * 50},
-        'ct1200': {'count': base_data.get('ct1200', 0), 'points': base_data.get('ct1200', 0) * 100},
-        'akt': {'count': base_data.get('akt', 0), 'points': base_data.get('akt', 0) * 30},
-        'zah250': {'count': base_data.get('zah250', 0), 'points': base_data.get('zah250', 0) * 30},
-        'nap': {'count': base_data.get('nap', 0), 'points': base_data.get('nap', 0) * 50},
-        'zah500': {'count': base_data.get('zah500', 0), 'points': base_data.get('zah500', 0) * 50},
-        'kop250': {'count': base_data.get('kop250', 0), 'points': base_data.get('kop250', 0) * 30},
-        'kop500': {'count': base_data.get('kop500', 0), 'points': base_data.get('kop500', 0) * 50},
-        'pz1': {'count': base_data.get('pz1', 0), 'points': base_data.get('pz1', 0) * 100},
-        'knz': {'count': base_data.get('knz', 0), 'points': base_data.get('knz', 0) * 30},
-        'aligator': {'count': base_data.get('aligator', 0), 'points': 0},
-    }
+    breakdown = build_product_points_breakdown(base_data)
     if servis_data is not None:
         breakdown['servis_marze'] = {
             'marze': servis_data.get('marze', 0),
@@ -6442,6 +6322,17 @@ def _build_points_payload(base_data, total_points, source, servis_data=None, ser
 
 def _leaderboard_doklad_q():
     return Q(doklad__isnull=False) & ~Q(doklad='')
+
+
+def _leaderboard_month_queryset(month_ym):
+    """Měsíční prodeje bez systémových / admin účtů."""
+    from users.exclusions import get_excluded_report_user_ids
+
+    qs = WebProdejeAll.objects.filter(typ__startswith=month_ym)
+    excluded = get_excluded_report_user_ids()
+    if excluded:
+        qs = qs.exclude(id_prodejce__in=excluded)
+    return qs
 
 
 def _leaderboard_seller_aggregation(month_queryset):
@@ -6498,9 +6389,13 @@ def _leaderboard_sluzby_celkem(item):
 
 def _servis_points_map_for_month(month_ym):
     """Body ze servisu (10 % marže) pro všechny prodejce – jeden průchod DB + mapování techniků."""
+    from users.exclusions import is_excluded_report_user
+
     id_to_name, _ = _load_technik_maps()
     name_to_user_id = {}
     for user in WebUser.objects.exclude(technik_id__isnull=True).exclude(technik_id=0):
+        if is_excluded_report_user(user=user):
+            continue
         name = f'{user.jmeno} {user.prijmeni}'.strip()
         if name:
             name_to_user_id[name] = user.id
@@ -6531,7 +6426,7 @@ def _servis_points_map_for_month(month_ym):
 
 def _compute_month_total_points_map(month_ym):
     """Celkové body za uzavřený měsíc – jen při cache miss / 1. v měsíci (bez N+1)."""
-    month_queryset = WebProdejeAll.objects.filter(typ__startswith=month_ym)
+    month_queryset = _leaderboard_month_queryset(month_ym)
     aggregation = list(_leaderboard_seller_aggregation(month_queryset))
     servis_map = _servis_points_map_for_month(month_ym)
     points_map = {}
@@ -6600,7 +6495,7 @@ def web_prodeje_leaderboard_points(request):
     try:
         today = date.today()
         ym = today.strftime('%Y-%m')
-        month_queryset = WebProdejeAll.objects.filter(typ__startswith=ym)
+        month_queryset = _leaderboard_month_queryset(ym)
 
         first_of_month = today.replace(day=1)
         prev_month_last_day = first_of_month - timedelta(days=1)
@@ -6610,6 +6505,9 @@ def web_prodeje_leaderboard_points(request):
         current_aggregation = list(_leaderboard_seller_aggregation(month_queryset))
         servis_map = _servis_points_map_for_month(ym)
 
+        from users.exclusions import get_excluded_report_user_ids
+        excluded_ids = get_excluded_report_user_ids()
+
         prodejci_ids = [item['id_prodejce'] for item in current_aggregation]
         users = {u.id: u for u in WebUser.objects.filter(id__in=prodejci_ids)}
 
@@ -6617,6 +6515,8 @@ def web_prodeje_leaderboard_points(request):
 
         for item in current_aggregation:
             prodejce_id = int(item['id_prodejce'])
+            if prodejce_id in excluded_ids:
+                continue
             user = users.get(prodejce_id)
             if user:
                 prodejce_jmeno = f"{user.jmeno} {user.prijmeni}".strip()
@@ -6671,13 +6571,16 @@ def web_prodeje_leaderboard_average_items(request):
     """Žebříček průměru položek/účtenka – stejná jednotná agregace jako u bodů."""
     try:
         ym = date.today().strftime('%Y-%m')
-        month_queryset = WebProdejeAll.objects.filter(typ__startswith=ym)
+        month_queryset = _leaderboard_month_queryset(ym)
 
         global_polozky_nad_29 = month_queryset.filter(cena_ks_vcl_dph__gte=29).exclude(_excluded_names_q()).count()
         global_unikatni_doklady = _count_unique_receipts(month_queryset)
         global_prumer = round(global_polozky_nad_29 / global_unikatni_doklady, 2) if global_unikatni_doklady else 0
 
         aggregation = list(_leaderboard_seller_aggregation(month_queryset))
+
+        from users.exclusions import get_excluded_report_user_ids
+        excluded_ids = get_excluded_report_user_ids()
 
         prodejci_ids = [item['id_prodejce'] for item in aggregation]
         users = {u.id: u for u in WebUser.objects.filter(id__in=prodejci_ids)}
@@ -6686,6 +6589,8 @@ def web_prodeje_leaderboard_average_items(request):
 
         for item in aggregation:
             prodejce_id = int(item['id_prodejce'])
+            if prodejce_id in excluded_ids:
+                continue
             user = users.get(prodejce_id)
             if user:
                 prodejce_jmeno = f"{user.jmeno} {user.prijmeni}".strip()

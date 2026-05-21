@@ -8,13 +8,29 @@ function AttendancePanel({ user }) {
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(false);
     const [error, setError] = useState('');
+    const [warnings, setWarnings] = useState([]);
 
     useEffect(() => {
         fetchTodayData();
-        // Aktualizace každou minutu
-        const interval = setInterval(fetchTodayData, 60000);
+        fetchWarnings();
+        const interval = setInterval(() => {
+            fetchTodayData();
+            fetchWarnings();
+        }, 60000);
         return () => clearInterval(interval);
     }, []);
+
+    const fetchWarnings = async () => {
+        try {
+            const res = await fetch('/api/shifts/attendance/my-status/', { credentials: 'include' });
+            if (res.ok) {
+                const data = await res.json();
+                setWarnings(data.warnings || []);
+            }
+        } catch (err) {
+            console.error('Chyba při načítání upozornění docházky:', err);
+        }
+    };
 
     const fetchTodayData = async () => {
         try {
@@ -203,6 +219,29 @@ function AttendancePanel({ user }) {
                     📅 Dnes nemáte naplánovanou žádnou směnu
                 </div>
             )}
+
+            {warnings.length > 0 && (
+                <div className="attendance-warning-banner" role="alert">
+                    {warnings.map((w, i) => (
+                        <p key={i}>⚠️ {w.zprava}</p>
+                    ))}
+                </div>
+            )}
+
+            {todayShift && currentStatus === 'working' && todayShift.cas_do && (() => {
+                const now = new Date();
+                const [h, m] = todayShift.cas_do.substring(0, 5).split(':').map(Number);
+                const end = new Date();
+                end.setHours(h, m, 0, 0);
+                if (now > end) {
+                    return (
+                        <div className="attendance-warning-banner" role="alert">
+                            <p>⚠️ Směna už skončila ({todayShift.cas_do.substring(0, 5)}) – nezapomeňte odkliknout odchod.</p>
+                        </div>
+                    );
+                }
+                return null;
+            })()}
 
             {error && <div className="error-message">{error}</div>}
 

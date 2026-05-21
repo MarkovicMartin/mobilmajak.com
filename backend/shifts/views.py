@@ -589,8 +589,8 @@ def smeny_prehled(request):
             if (rok, mesic_cislo, den) not in ceske_svatky:
                 pracovni_dny += 1
     
-    # Standardní počet hodin = pracovní dny * 8 hodin (podle českého práva)
-    standardni_hodiny = pracovni_dny * 8
+    from .labor_hours import fondu_hodin_mesic
+    mesicni_fond = fondu_hodin_mesic(rok, mesic_cislo)
     
     return Response({
         'mesic': f'{rok}-{mesic_cislo:02d}',
@@ -598,8 +598,9 @@ def smeny_prehled(request):
         'celkem_hodin_naplanovanych': celkem_hodin,
         'hodin_dovolene': hodin_dovolene,
         'pocet_smeny': pocet_smeny,
-        'standardni_hodiny': standardni_hodiny,
-        'procento_naplneni': round((celkem_hodin / standardni_hodiny) * 100, 1) if standardni_hodiny > 0 else 0,
+        'standardni_hodiny': mesicni_fond,
+        'mesicni_fond': mesicni_fond,
+        'procento_naplneni': round((celkem_hodin / mesicni_fond) * 100, 1) if mesicni_fond > 0 else 0,
         'smeny_detail': [
             {
                 'datum': smena.datum,
@@ -617,207 +618,138 @@ def smeny_prehled(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def export_smeny(request):
-    """Export směn pro účetní - agregovaný přehled po zaměstnancích"""
-    
+    """Export směn a odměňování – pouze ADMIN, vše v bodech."""
+    from io import BytesIO
+    from .payroll_service import build_payroll_preview
+
     if request.user.role != 'ADMIN':
         return Response({'error': 'Nemáte oprávnění'}, status=status.HTTP_403_FORBIDDEN)
-    
-    mesic = request.GET.get('mesic')  # YYYY-MM
-    
-    print(f"[EXPORT] Požadavek na export pro měsíc: {mesic}")
-    
+
+    mesic = request.GET.get('mesic')
+    prodejna = request.GET.get('prodejna')
+
     if not mesic:
         return Response({'error': 'Chybí parametr mesic'}, status=status.HTTP_400_BAD_REQUEST)
-    
+
     try:
         rok, mesic_cislo = map(int, mesic.split('-'))
-        print(f"[EXPORT] Parsováno: rok={rok}, měsíc={mesic_cislo}")
-        
-        # Název měsíce česky
         nazvy_mesicu = {
             1: 'Leden', 2: 'Únor', 3: 'Březen', 4: 'Duben',
             5: 'Květen', 6: 'Červen', 7: 'Červenec', 8: 'Srpen',
-            9: 'Září', 10: 'Říjen', 11: 'Listopad', 12: 'Prosinec'
+            9: 'Září', 10: 'Říjen', 11: 'Listopad', 12: 'Prosinec',
         }
         nazev_mesice = f"{nazvy_mesicu[mesic_cislo]} {rok}"
-        
-        # Získání svátků pro daný měsíc
-        ceske_svatky = get_ceske_svatky(rok)
-        svatky_v_mesici = set()
-        for rok_s, mesic_s, den_s in ceske_svatky:
-            if mesic_s == mesic_cislo:
-                svatky_v_mesici.add(date(rok_s, mesic_s, den_s))
-        
-        print(f"[EXPORT] Svátky v měsíci: {svatky_v_mesici}")
-        
-        # Předem načteme prodejny pro rychlejší lookup
-        prodejny_cache = {p.id: p.nazev for p in Prodejna.objects.all()}
-        
-        # Načtení VŠECH aktivních zaměstnanců
-        vsichni_uzivatele = WebUser.objects.filter(aktivni=True).order_by('jmeno', 'prijmeni')
-        print(f"[EXPORT] Celkem aktivních zaměstnanců: {vsichni_uzivatele.count()}")
-        
-        # Inicializace dat pro všechny zaměstnance
-        zamestanci_data = {}
-        for user in vsichni_uzivatele:
-            stredisko = ""
-            if user.prodejna_id:
-                stredisko = prodejny_cache.get(user.prodejna_id, "")
-            
-            zamestanci_data[user.id] = {
-                'jmeno': f"{user.jmeno} {user.prijmeni}",
-                'stredisko': stredisko,
-                'odpracovano_h': 0,
-                'dovolena_h': 0,
-                'nemoc_h': 0,
-                'svatek_h': 0
-            }
-        
-        # Načtení směn za daný měsíc
-        smeny = Smena.objects.filter(
-            datum__year=rok,
-            datum__month=mesic_cislo,
-            aktivni=True
-        ).select_related('user', 'prodejna')
-        
-        print(f"[EXPORT] Nalezeno {smeny.count()} směn")
-        
-        # Agregace směn k zaměstnancům
-        for smena in smeny:
-            user_id = smena.user.id
-            
-            # Přeskočíme neaktivní uživatele (pokud by směna patřila neaktivnímu)
-            if user_id not in zamestanci_data:
-                continue
-            
-            # Výpočet hodin - počítáme přímo z cas_od a cas_do
-            from datetime import datetime as dt, timedelta
-            cas_od_dt = dt.combine(smena.datum, smena.cas_od)
-            cas_do_dt = dt.combine(smena.datum, smena.cas_do)
-            if cas_do_dt < cas_od_dt:
-                cas_do_dt += timedelta(days=1)
-            hodiny = round((cas_do_dt - cas_od_dt).total_seconds() / 3600, 2)
-            
-            if smena.typ_smeny == 'dovolena':
-                zamestanci_data[user_id]['dovolena_h'] += hodiny
-            elif smena.typ_smeny == 'nemoc':
-                zamestanci_data[user_id]['nemoc_h'] += hodiny
-            elif smena.typ_smeny == 'prace':
-                zamestanci_data[user_id]['odpracovano_h'] += hodiny
-                
-                # Kontrola zda je to svátek
-                if smena.datum in svatky_v_mesici:
-                    zamestanci_data[user_id]['svatek_h'] += hodiny
-        
-        print(f"[EXPORT] Agregováno {len(zamestanci_data)} zaměstnanců")
-        
-        # Vytvoření Excel souboru pomocí openpyxl
+
+        preview = build_payroll_preview(mesic, prodejna_id=prodejna)
+        rows = sorted(preview.get('rows') or [], key=lambda r: r.get('jmeno') or '')
+
+        provize_cols = [
+            ('polozky_nad_100', 'Položky nad 100'),
+            ('ct600', 'CT600'),
+            ('ct1200', 'CT1200'),
+            ('akt', 'AKT'),
+            ('zah250', 'ZAH250'),
+            ('nap', 'NAP'),
+            ('zah500', 'ZAH500'),
+            ('kop250', 'KOP250'),
+            ('kop500', 'KOP500'),
+            ('pz1', 'PZ1'),
+            ('knz', 'KNZ'),
+            ('servis_marze', 'Servis'),
+        ]
+        doplnek_kody = [
+            ('vedouci_pobocky', 'Vedoucí pobočky'),
+        ]
+
+        headers = [
+            'Měsíc', 'Jméno', 'Středisko',
+            'Odpracováno h', 'Dovolená h', 'Nemoc h', 'Svátek h',
+            'Fond h', 'Přesčas h',
+            'Základ', 'Doplňky',
+        ]
+        headers += [label for _k, label in doplnek_kody]
+        headers += [label for _k, label in provize_cols]
+        headers += ['Provize celkem', 'Odměna měsíc', 'Celkem']
+
+        def row_values(data):
+            bd = data.get('provize_breakdown') or {}
+            doplnky_by_kod = {d.get('kod'): d.get('castka', 0) for d in (data.get('doplnky') or [])}
+            out = [
+                nazev_mesice,
+                data.get('jmeno'),
+                data.get('stredisko'),
+                data.get('odpracovano_h', 0),
+                data.get('dovolena_h', 0),
+                data.get('nemoc_h', 0),
+                data.get('svatek_h', 0),
+                data.get('fondu_h', 0),
+                data.get('prescas_h', 0),
+                data.get('zaklad_body', 0),
+                data.get('doplnky_body', 0),
+            ]
+            for kod, _label in doplnek_kody:
+                out.append(doplnky_by_kod.get(kod, 0))
+            for key, _label in provize_cols:
+                item = bd.get(key) or {}
+                out.append(item.get('points', 0))
+            out.extend([
+                data.get('provize_body', 0),
+                data.get('odmena_mesic_body', 0),
+                data.get('celkem_body', 0),
+            ])
+            return out
+
         try:
             from openpyxl import Workbook
             from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
-            
+
             wb = Workbook()
             ws = wb.active
-            ws.title = f"Směny {mesic}"
-            
-            # Hlavička
-            headers = ['MĚSÍC', 'JMÉNO', 'STŘEDISKO', 'ODPRACOVÁNO H', 'DOVOLENÁ H', 'NEMOC H', 'SVÁTEK H']
-            
-            # Styly
+            ws.title = f"Výplata {mesic}"
+
             header_font = Font(bold=True, color="FFFFFF")
             header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
             thin_border = Border(
-                left=Side(style='thin'),
-                right=Side(style='thin'),
-                top=Side(style='thin'),
-                bottom=Side(style='thin')
+                left=Side(style='thin'), right=Side(style='thin'),
+                top=Side(style='thin'), bottom=Side(style='thin'),
             )
-            
-            # Zápis hlavičky
+
             for col, header in enumerate(headers, 1):
                 cell = ws.cell(row=1, column=col, value=header)
                 cell.font = header_font
                 cell.fill = header_fill
                 cell.alignment = Alignment(horizontal='center')
                 cell.border = thin_border
-            
-            # Zápis dat zaměstnanců
-            row = 2
-            if zamestanci_data:
-                for user_id, data in sorted(zamestanci_data.items(), key=lambda x: x[1]['jmeno']):
-                    ws.cell(row=row, column=1, value=nazev_mesice).border = thin_border
-                    ws.cell(row=row, column=2, value=data['jmeno']).border = thin_border
-                    ws.cell(row=row, column=3, value=data['stredisko']).border = thin_border
-                    ws.cell(row=row, column=4, value=data['odpracovano_h']).border = thin_border
-                    ws.cell(row=row, column=5, value=data['dovolena_h']).border = thin_border
-                    ws.cell(row=row, column=6, value=data['nemoc_h']).border = thin_border
-                    ws.cell(row=row, column=7, value=data['svatek_h']).border = thin_border
-                    row += 1
-            else:
-                # Prázdný řádek s informací že nejsou data
-                ws.cell(row=row, column=1, value=nazev_mesice).border = thin_border
-                ws.cell(row=row, column=2, value="Žádné směny").border = thin_border
-                ws.cell(row=row, column=3, value="-").border = thin_border
-                ws.cell(row=row, column=4, value=0).border = thin_border
-                ws.cell(row=row, column=5, value=0).border = thin_border
-                ws.cell(row=row, column=6, value=0).border = thin_border
-                ws.cell(row=row, column=7, value=0).border = thin_border
-            
-            # Nastavení šířky sloupců
-            ws.column_dimensions['A'].width = 15
-            ws.column_dimensions['B'].width = 25
-            ws.column_dimensions['C'].width = 20
-            ws.column_dimensions['D'].width = 18
-            ws.column_dimensions['E'].width = 15
-            ws.column_dimensions['F'].width = 12
-            ws.column_dimensions['G'].width = 12
-            
-            # Odpověď jako Excel soubor
-            from io import BytesIO
+
+            row_idx = 2
+            for data in rows:
+                for col, val in enumerate(row_values(data), 1):
+                    ws.cell(row=row_idx, column=col, value=val).border = thin_border
+                row_idx += 1
+
             output = BytesIO()
             wb.save(output)
             output.seek(0)
-            
-            print(f"[EXPORT] Excel vygenerován, velikost: {output.getbuffer().nbytes} bytes")
-            
             response = HttpResponse(
                 output.read(),
-                content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             )
-            response['Content-Disposition'] = f'attachment; filename="smeny_{mesic}.xlsx"'
+            response['Content-Disposition'] = f'attachment; filename="vyplata_{mesic}.xlsx"'
             return response
-            
-        except ImportError as e:
-            print(f"[EXPORT] ImportError: {e} - použiji CSV fallback")
-            # Fallback na CSV pokud openpyxl není nainstalován
+
+        except ImportError:
             response = HttpResponse(content_type='text/csv')
-            response['Content-Disposition'] = f'attachment; filename="smeny_{mesic}.csv"'
-            response.write('\ufeff')  # BOM pro správné zobrazení v Excelu
-            
+            response['Content-Disposition'] = f'attachment; filename="vyplata_{mesic}.csv"'
+            response.write('\ufeff')
             writer = csv.writer(response, delimiter=';')
-            writer.writerow(['MĚSÍC', 'JMÉNO', 'STŘEDISKO', 'ODPRACOVÁNO H', 'DOVOLENÁ H', 'NEMOC H', 'SVÁTEK H'])
-            
-            if zamestanci_data:
-                for user_id, data in sorted(zamestanci_data.items(), key=lambda x: x[1]['jmeno']):
-                    writer.writerow([
-                        nazev_mesice,
-                        data['jmeno'],
-                        data['stredisko'],
-                        data['odpracovano_h'],
-                        data['dovolena_h'],
-                        data['nemoc_h'],
-                        data['svatek_h']
-                    ])
-            else:
-                writer.writerow([nazev_mesice, "Žádné směny", "-", 0, 0, 0, 0])
-            
+            writer.writerow(headers)
+            for data in rows:
+                writer.writerow(row_values(data))
             return response
-        
+
     except ValueError as e:
-        print(f"[EXPORT] ValueError: {e}")
         return Response({'error': f'Neplatný formát měsíce: {e}'}, status=status.HTTP_400_BAD_REQUEST)
     except Exception as e:
-        print(f"[EXPORT] Neočekávaná chyba: {e}")
         import traceback
         traceback.print_exc()
         return Response({'error': f'Chyba při exportu: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

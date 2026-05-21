@@ -30,6 +30,16 @@ class WebUser(models.Model):
     
     # Moduly - JSON pole pro uložení povolených modulů
     moduly = models.JSONField(default=list, verbose_name="Povolené moduly")
+
+    # Mzdové údaje (body) – viditelné jen pro ADMIN v administraci a exportu
+    mzda_zaklad = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True,
+        verbose_name="Měsíční základ (body)",
+    )
+    mzda_doplnky = models.JSONField(
+        default=list, blank=True,
+        verbose_name="Volitelné mzdové doplňky (body)",
+    )
     
     # Časové údaje
     datum_vytvoreni = models.DateTimeField(auto_now_add=True, verbose_name="Datum vytvoření")

@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from django.db.models import Q
 from .models import Prodejna
 from .serializers import ProdejnaSerializer, ProdejnaListSerializer, ProdejnaChoiceSerializer
+from .vedouci_sync import assign_vedouci_prodejny
 
 class ProdejnaViewSet(viewsets.ModelViewSet):
     """ViewSet pro správu prodejen"""
@@ -81,12 +82,23 @@ class ProdejnaViewSet(viewsets.ModelViewSet):
                 'message': f'Chyba při načítání prodejny: {str(e)}'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
+    def _sync_vedouci_after_save(self, prodejna, request_data, previous_vedouci_id=None):
+        if 'vedouci_user_id' not in request_data:
+            return prodejna
+        new_id = request_data.get('vedouci_user_id')
+        if new_id in ('', None) and previous_vedouci_id:
+            assign_vedouci_prodejny(prodejna.id, None)
+        elif new_id not in ('', None):
+            assign_vedouci_prodejny(prodejna.id, new_id)
+        return Prodejna.objects.get(pk=prodejna.pk)
+
     def create(self, request):
         """Vytvoření nové prodejny"""
         try:
             serializer = self.get_serializer(data=request.data)
             if serializer.is_valid():
                 prodejna = serializer.save()
+                prodejna = self._sync_vedouci_after_save(prodejna, request.data)
                 return Response({
                     'success': True,
                     'message': 'Prodejna byla úspěšně vytvořena',
@@ -108,10 +120,14 @@ class ProdejnaViewSet(viewsets.ModelViewSet):
         """Aktualizace prodejny"""
         try:
             prodejna = self.get_object()
+            previous_vedouci_id = prodejna.vedouci_user_id
             serializer = self.get_serializer(prodejna, data=request.data, partial=True)
             
             if serializer.is_valid():
                 prodejna = serializer.save()
+                prodejna = self._sync_vedouci_after_save(
+                    prodejna, request.data, previous_vedouci_id=previous_vedouci_id
+                )
                 return Response({
                     'success': True,
                     'message': 'Prodejna byla úspěšně aktualizována',

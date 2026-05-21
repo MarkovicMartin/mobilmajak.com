@@ -1,17 +1,29 @@
 from rest_framework import serializers
 from .models import WebUser, ProfilovyObrazek
 from .utils import create_web_user_with_auto_id
+from .mzda_utils import normalize_mzda_doplnky
 from stores.models import Prodejna
 
 class WebUserSerializer(serializers.ModelSerializer):
     """Serializer pro zobrazení uživatelů (bez hesla)"""
     prodejna = serializers.SerializerMethodField()
+    vedouci_prodejna_id = serializers.SerializerMethodField()
     
     class Meta:
         model = WebUser
         fields = ['id', 'uzivatelske_jmeno', 'jmeno', 'prijmeni', 'role', 'aktivni', 'moduly', 'datum_vytvoreni',
-                 'telefon', 'email', 'adresa', 'poznamka', 'prodejna_id', 'prodejna', 'technik_id']
+                 'telefon', 'email', 'adresa', 'poznamka', 'prodejna_id', 'prodejna', 'technik_id',
+                 'mzda_zaklad', 'mzda_doplnky', 'vedouci_prodejna_id']
         read_only_fields = ['datum_vytvoreni']
+    
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        request = self.context.get('request')
+        role = getattr(getattr(request, 'user', None), 'role', None) if request else None
+        if role != 'ADMIN':
+            ret.pop('mzda_zaklad', None)
+            ret.pop('mzda_doplnky', None)
+        return ret
     
     def get_prodejna(self, obj):
         """Vrátí název prodejny podle prodejna_id"""
@@ -22,6 +34,10 @@ class WebUserSerializer(serializers.ModelSerializer):
             except Prodejna.DoesNotExist:
                 return None
         return None
+
+    def get_vedouci_prodejna_id(self, obj):
+        row = Prodejna.objects.filter(vedouci_user_id=obj.id).first()
+        return row.id if row else None
 
 
 class WebUserProfileSerializer(serializers.ModelSerializer):
@@ -63,7 +79,11 @@ class WebUserCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = WebUser
         fields = ['id', 'uzivatelske_jmeno', 'jmeno', 'prijmeni', 'heslo', 'role', 'aktivni', 'moduly',
-                 'telefon', 'email', 'adresa', 'poznamka', 'prodejna_id', 'technik_id']
+                 'telefon', 'email', 'adresa', 'poznamka', 'prodejna_id', 'technik_id',
+                 'mzda_zaklad', 'mzda_doplnky']
+    
+    def validate_mzda_doplnky(self, value):
+        return normalize_mzda_doplnky(value)
     
     def create(self, validated_data):
         heslo = validated_data.pop('heslo')
@@ -81,8 +101,14 @@ class WebUserUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = WebUser
         fields = ['id', 'uzivatelske_jmeno', 'jmeno', 'prijmeni', 'role', 'aktivni', 'moduly',
-                 'telefon', 'email', 'adresa', 'poznamka', 'nove_heslo', 'heslo', 'prodejna_id', 'technik_id']
+                 'telefon', 'email', 'adresa', 'poznamka', 'nove_heslo', 'heslo', 'prodejna_id', 'technik_id',
+                 'mzda_zaklad', 'mzda_doplnky']
         read_only_fields = ['id']
+    
+    def validate_mzda_doplnky(self, value):
+        if value is None:
+            return []
+        return normalize_mzda_doplnky(value)
     
     def update(self, instance, validated_data):
         # Přijmeme buď 'nove_heslo' nebo alias 'heslo'

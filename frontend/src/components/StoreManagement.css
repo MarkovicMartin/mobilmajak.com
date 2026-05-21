@@ -161,7 +161,7 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    z-index: 1000;
+    z-index: 15000;
 }
 
 .store-form {
@@ -398,6 +398,26 @@
 .delete-btn:hover {
     background: #d32f2f;
     color: white;
+}
+
+.oteviraci-hint {
+    margin: 0.5rem 0 0.75rem;
+    font-size: 0.85rem;
+    color: #6c757d;
+    line-height: 1.4;
+}
+
+.oteviraci-den-vychozi input[type="time"] {
+    border-color: #ced4da;
+    background: #f8f9fa;
+}
+
+.den-vychozi-badge {
+    font-size: 0.7rem;
+    color: #868e96;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    align-self: center;
 }
 
 /* No Stores Message */

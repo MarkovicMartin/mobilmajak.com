@@ -1,0 +1,46 @@
+.attendance-log-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.problemy-badge {
+    font-size: 0.95rem;
+}
+
+.attendance-log-table-wrap {
+    overflow-x: auto;
+}
+
+.attendance-log-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.attendance-log-table th,
+.attendance-log-table td {
+    border: 1px solid #ddd;
+    padding: 0.45rem 0.5rem;
+}
+
+.attendance-log-table th {
+    background: #c55a11;
+    color: #fff;
+}
+
+.attendance-log-table tr.row-problem {
+    background: #fff3f0;
+}
+
+.problem-tag {
+    color: #c00;
+    font-weight: bold;
+}
+
+.attendance-log-table .empty {
+    text-align: center;
+    color: #888;
+}

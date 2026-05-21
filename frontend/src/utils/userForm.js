@@ -14,11 +14,36 @@ export function prepareUserSubmitData(formData, editingUser) {
     }
     delete submitData.prodejna;
 
+    if ('vedouci_prodejna_id' in submitData) {
+        const v = submitData.vedouci_prodejna_id;
+        if (v === '' || v == null) {
+            submitData.vedouci_prodejna_id = null;
+        } else {
+            const vid = parseInt(v, 10);
+            submitData.vedouci_prodejna_id = Number.isNaN(vid) ? null : vid;
+        }
+    }
+
     const technikId = parseInt(submitData.technik_id, 10);
     if (Number.isNaN(technikId) || technikId < 0) {
         return { error: 'Zadejte platné Technik ID (EDA/Pohoda) – celé číslo ≥ 0.' };
     }
     submitData.technik_id = technikId;
+
+    if (submitData.mzda_zaklad === '' || submitData.mzda_zaklad == null) {
+        submitData.mzda_zaklad = null;
+    } else {
+        const z = parseFloat(submitData.mzda_zaklad);
+        submitData.mzda_zaklad = Number.isNaN(z) ? null : z;
+    }
+    if (!Array.isArray(submitData.mzda_doplnky)) {
+        submitData.mzda_doplnky = [];
+    }
+    submitData.mzda_doplnky = submitData.mzda_doplnky.map((d) => ({
+        kod: d.kod || '',
+        nazev: d.nazev || '',
+        castka: Number(d.castka) || 0,
+    }));
 
     if (editingUser) {
         if (submitData.heslo && submitData.heslo.trim()) {

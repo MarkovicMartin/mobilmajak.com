@@ -14,6 +14,7 @@ function UnifiedCalendar({
   onDateClick,
   renderCellContent, // (date: Date, meta: { isCurrentMonth, isToday, isSelected }) => ReactNode
   isDateEnabled, // optional (date: Date) => boolean
+  getExtraCellClass, // optional (dateStr: string) => string
 }) {
   const monthDate = useMemo(() => parse(`${month}-01`, 'yyyy-MM-dd', new Date()), [month]);
 
@@ -68,6 +69,7 @@ function UnifiedCalendar({
           const isToday = dateStr === todayStr;
           const isSelected = selectedDates && selectedDates.has(dateStr);
           const disabled = !inCurrentMonth || !isEnabled(date);
+          const extraClass = getExtraCellClass ? getExtraCellClass(dateStr) : '';
 
           return (
             <div
@@ -79,6 +81,7 @@ function UnifiedCalendar({
                 disabled ? 'disabled' : '',
                 isSelected ? 'selected' : '',
                 isToday ? 'today' : '',
+                extraClass || '',
               ].join(' ')}
               role="gridcell"
               tabIndex={0}

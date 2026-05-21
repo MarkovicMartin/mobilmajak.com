@@ -54,6 +54,8 @@
 .uc-cell:hover { background: #f8fafc; }
 .uc-cell.selected { background: var(--uc-accent); color: #fff; }
 .uc-cell.today:not(.selected) { box-shadow: inset 0 0 0 2px var(--uc-accent); border-radius: 8px; }
+.uc-cell.holiday:not(.selected) { background: #fff7ed; }
+.uc-cell.holiday .uc-day-number { color: #c2410c; }
 
 .uc-day-number {
   font-size: 12px;

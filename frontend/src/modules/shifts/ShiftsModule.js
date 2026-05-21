@@ -5,6 +5,8 @@ import ShiftForm from './ShiftForm';
 import BulkShiftForm from './BulkShiftForm';
 import ShiftOverview from './ShiftOverview';
 import AttendancePanel from './AttendancePanel';
+import PayrollPanel from './PayrollPanel';
+import AttendanceLogPanel from './AttendanceLogPanel';
 import './ShiftsModule.css';
 
 // Mapování názvů prodejen na ID podle databáze
@@ -146,6 +148,22 @@ function ShiftsModule() {
                     >
                         ⏰ Docházka
                     </button>
+                    {user?.role === 'ADMIN' && (
+                        <>
+                            <button
+                                className={activeView === 'payroll' ? 'active' : ''}
+                                onClick={() => setActiveView('payroll')}
+                            >
+                                💰 Výplata
+                            </button>
+                            <button
+                                className={activeView === 'attendance-log' ? 'active' : ''}
+                                onClick={() => setActiveView('attendance-log')}
+                            >
+                                📋 Docházka log
+                            </button>
+                        </>
+                    )}
                 </div>
             </div>
 
@@ -236,6 +254,18 @@ function ShiftsModule() {
                     <AttendancePanel
                         user={user}
                     />
+                )}
+
+                {activeView === 'payroll' && user?.role === 'ADMIN' && (
+                    <PayrollPanel
+                        month={currentMonth}
+                        onMonthChange={setCurrentMonth}
+                        onExport={handleExport}
+                    />
+                )}
+
+                {activeView === 'attendance-log' && user?.role === 'ADMIN' && (
+                    <AttendanceLogPanel month={currentMonth} />
                 )}
             </div>
 

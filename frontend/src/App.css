@@ -36,6 +36,29 @@
   z-index: 2000;
 }
 
+/* Horní dock panel má z-index 1100 – modály musí být nad ním */
+.modal-overlay,
+.user-form-overlay,
+.store-form-overlay,
+.post-form-overlay,
+.access-form-overlay,
+.payroll-modal-overlay,
+.confirm-overlay {
+  z-index: 15000 !important;
+}
+
+/* Číselná pole: jen ruční zápis, bez kolečka a bez spinnerů */
+.input-manual-number[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.input-manual-number[type='number']::-webkit-inner-spin-button,
+.input-manual-number[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 @keyframes App-logo-spin {
   from {
     transform: rotate(0deg);

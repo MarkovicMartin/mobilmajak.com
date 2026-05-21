@@ -1,6 +1,13 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { storeAPI } from '../services/api';
+import { storeAPI, userAPI } from '../services/api';
+import {
+    DNY_TYDNE,
+    defaultOteviraciDoba,
+    effectiveDenHours,
+    normalizeOteviraciDoba,
+} from '../constants/oteviraciDoba';
+import { useModalKeyboard } from '../utils/useModalKeyboard';
 import './StoreManagement.css';
 
 const StoreManagement = () => {
@@ -13,6 +20,8 @@ const StoreManagement = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [filterActive, setFilterActive] = useState('all');
     const [selectedStores, setSelectedStores] = useState([]);
+    const [staffUsers, setStaffUsers] = useState([]);
+    const storeFormRef = useRef(null);
     const [formData, setFormData] = useState({
         nazev: '',
         nazev_kratkiy: '',
@@ -23,6 +32,8 @@ const StoreManagement = () => {
         otevreno_od: '',
         otevreno_do: '',
         vedouci_prodejny: '',
+        vedouci_user_id: '',
+        oteviraci_doba: defaultOteviraciDoba(),
         aktivni: true,
         barva: '#0066cc',
         poradi: 0,
@@ -48,9 +59,36 @@ const StoreManagement = () => {
         }
     }, [searchTerm, filterActive]);
 
+    const loadStaffUsers = async () => {
+        try {
+            const response = await userAPI.getUsers();
+            if (response.success) {
+                const excludedNames = new Set([
+                    'prodejce prodejce',
+                    'administrátor systémový',
+                    'nový prodejce',
+                    'novy prodejce',
+                ]);
+                const staff = (response.users || []).filter((u) => {
+                    if (!u.aktivni || u.role === 'ADMIN') return false;
+                    if (!['PRODEJCE', 'VEDOUCI'].includes(u.role)) return false;
+                    const full = `${u.jmeno || ''} ${u.prijmeni || ''}`.trim().toLowerCase();
+                    return !excludedNames.has(full);
+                });
+                setStaffUsers(staff);
+            }
+        } catch (err) {
+            console.error('Chyba při načítání uživatelů:', err);
+        }
+    };
+
     useEffect(() => {
         loadStores();
     }, [loadStores]);
+
+    useEffect(() => {
+        loadStaffUsers();
+    }, []);
 
     useEffect(() => {
         const timeoutId = setTimeout(() => {
@@ -67,6 +105,43 @@ const StoreManagement = () => {
         }));
     };
 
+    const handleOteviraciStejneChange = (checked) => {
+        setFormData((prev) => ({
+            ...prev,
+            oteviraci_doba: {
+                ...prev.oteviraci_doba,
+                stejne_pro_vsechny: checked,
+            },
+        }));
+    };
+
+    const handleOteviraciVychoziChange = (field, value) => {
+        setFormData((prev) => ({
+            ...prev,
+            oteviraci_doba: {
+                ...prev.oteviraci_doba,
+                vychozi: { ...prev.oteviraci_doba.vychozi, [field]: value },
+            },
+        }));
+    };
+
+    const handleOteviraciDenChange = (denKey, field, value) => {
+        setFormData((prev) => {
+            const { vychozi } = prev.oteviraci_doba;
+            const dny = { ...prev.oteviraci_doba.dny };
+            if (field === 'zavreno') {
+                dny[denKey] = value ? { zavreno: true } : null;
+            } else {
+                const eff = effectiveDenHours(dny[denKey], vychozi);
+                dny[denKey] = { od: eff.od, do: eff.do, [field]: value };
+            }
+            return {
+                ...prev,
+                oteviraci_doba: { ...prev.oteviraci_doba, dny },
+            };
+        });
+    };
+
     const resetForm = () => {
         setFormData({
             nazev: '',
@@ -78,6 +153,8 @@ const StoreManagement = () => {
             otevreno_od: '',
             otevreno_do: '',
             vedouci_prodejny: '',
+            vedouci_user_id: '',
+            oteviraci_doba: defaultOteviraciDoba(),
             aktivni: true,
             barva: '#0066cc',
             poradi: 0,
@@ -87,15 +164,25 @@ const StoreManagement = () => {
         setShowAddForm(false);
     };
 
+    useModalKeyboard(showAddForm, { onClose: resetForm, formRef: storeFormRef });
+
     const handleSubmit = async (e) => {
         e.preventDefault();
-        
+
+        const payload = {
+            ...formData,
+            vedouci_user_id: formData.vedouci_user_id
+                ? parseInt(formData.vedouci_user_id, 10)
+                : null,
+            oteviraci_doba: normalizeOteviraciDoba(formData.oteviraci_doba),
+        };
+
         try {
             let response;
             if (editingStore) {
-                response = await storeAPI.updateStore(editingStore.id, formData);
+                response = await storeAPI.updateStore(editingStore.id, payload);
             } else {
-                response = await storeAPI.createStore(formData);
+                response = await storeAPI.createStore(payload);
             }
 
             if (response.success) {
@@ -110,24 +197,48 @@ const StoreManagement = () => {
         }
     };
 
-    const handleEdit = (store) => {
+    const handleEdit = async (store) => {
         setEditingStore(store);
-        setFormData({
-            nazev: store.nazev || '',
-            nazev_kratkiy: store.nazev_kratkiy || '',
-            nazev_google_sheets: store.nazev_google_sheets || '',
-            adresa: store.adresa || '',
-            telefon: store.telefon || '',
-            email: store.email || '',
-            otevreno_od: store.otevreno_od || '',
-            otevreno_do: store.otevreno_do || '',
-            vedouci_prodejny: store.vedouci_prodejny || '',
-            aktivni: store.aktivni,
-            barva: store.barva || '#0066cc',
-            poradi: store.poradi || 0,
-            poznamka: store.poznamka || ''
-        });
         setShowAddForm(true);
+        try {
+            const response = await storeAPI.getStore(store.id);
+            const s = response.store || store;
+            setFormData({
+                nazev: s.nazev || '',
+                nazev_kratkiy: s.nazev_kratkiy || '',
+                nazev_google_sheets: s.nazev_google_sheets || '',
+                adresa: s.adresa || '',
+                telefon: s.telefon || '',
+                email: s.email || '',
+                otevreno_od: s.otevreno_od || '',
+                otevreno_do: s.otevreno_do || '',
+                vedouci_prodejny: s.vedouci_prodejny || '',
+                vedouci_user_id: s.vedouci_user_id != null ? String(s.vedouci_user_id) : '',
+                oteviraci_doba: normalizeOteviraciDoba(s.oteviraci_doba),
+                aktivni: s.aktivni,
+                barva: s.barva || '#0066cc',
+                poradi: s.poradi || 0,
+                poznamka: s.poznamka || '',
+            });
+        } catch {
+            setFormData({
+                nazev: store.nazev || '',
+                nazev_kratkiy: store.nazev_kratkiy || '',
+                nazev_google_sheets: store.nazev_google_sheets || '',
+                adresa: store.adresa || '',
+                telefon: store.telefon || '',
+                email: store.email || '',
+                otevreno_od: store.otevreno_od || '',
+                otevreno_do: store.otevreno_do || '',
+                vedouci_prodejny: store.vedouci_prodejny || '',
+                vedouci_user_id: store.vedouci_user_id != null ? String(store.vedouci_user_id) : '',
+                oteviraci_doba: defaultOteviraciDoba(),
+                aktivni: store.aktivni,
+                barva: store.barva || '#0066cc',
+                poradi: store.poradi || 0,
+                poznamka: store.poznamka || '',
+            });
+        }
     };
 
     const handleDelete = async (storeId) => {
@@ -280,7 +391,7 @@ const StoreManagement = () => {
                             <button className="close-btn" onClick={resetForm}>×</button>
                         </div>
                         
-                        <form onSubmit={handleSubmit}>
+                        <form ref={storeFormRef} onSubmit={handleSubmit}>
                             <div className="form-row">
                                 <div className="form-group">
                                     <label>Název prodejny *</label>
@@ -368,14 +479,95 @@ const StoreManagement = () => {
                             </div>
 
                             <div className="form-group">
-                                <label>Vedoucí prodejny</label>
-                                <input
-                                    type="text"
-                                    name="vedouci_prodejny"
-                                    value={formData.vedouci_prodejny}
+                                <label>Vedoucí prodejny (uživatel)</label>
+                                <select
+                                    name="vedouci_user_id"
+                                    value={formData.vedouci_user_id}
                                     onChange={handleInputChange}
-                                />
+                                >
+                                    <option value="">— bez vedoucího —</option>
+                                    {staffUsers.map((u) => (
+                                        <option key={u.id} value={u.id}>
+                                            {u.jmeno} {u.prijmeni} ({u.uzivatelske_jmeno})
+                                        </option>
+                                    ))}
+                                </select>
                             </div>
+
+                            <fieldset className="form-fieldset oteviraci-fieldset">
+                                <legend>Otevírací doba Po–Ne</legend>
+                                <label className="checkbox-inline">
+                                    <input
+                                        type="checkbox"
+                                        checked={formData.oteviraci_doba.stejne_pro_vsechny}
+                                        onChange={(e) => handleOteviraciStejneChange(e.target.checked)}
+                                    />
+                                    Stejné pro všechny dny
+                                </label>
+                                {formData.oteviraci_doba.stejne_pro_vsechny ? (
+                                    <div className="form-row">
+                                        <div className="form-group">
+                                            <label>Od</label>
+                                            <input
+                                                type="time"
+                                                value={formData.oteviraci_doba.vychozi.od}
+                                                onChange={(e) => handleOteviraciVychoziChange('od', e.target.value)}
+                                            />
+                                        </div>
+                                        <div className="form-group">
+                                            <label>Do</label>
+                                            <input
+                                                type="time"
+                                                value={formData.oteviraci_doba.vychozi.do}
+                                                onChange={(e) => handleOteviraciVychoziChange('do', e.target.value)}
+                                            />
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <p className="oteviraci-hint">
+                                        Dny bez úpravy používají výchozí dobu ({formData.oteviraci_doba.vychozi.od}–{formData.oteviraci_doba.vychozi.do}). Upravte jen dny, které se liší, nebo zaškrtněte Zavřeno.
+                                    </p>
+                                    <div className="oteviraci-grid">
+                                        {DNY_TYDNE.map(({ key, label }) => {
+                                            const den = formData.oteviraci_doba.dny[key];
+                                            const eff = effectiveDenHours(den, formData.oteviraci_doba.vychozi);
+                                            return (
+                                                <div
+                                                    key={key}
+                                                    className={`oteviraci-den-row${eff.usesVychozi ? ' oteviraci-den-vychozi' : ''}`}
+                                                >
+                                                    <span className="den-label">{label}</span>
+                                                    <label className="checkbox-inline">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={eff.zavreno}
+                                                            onChange={(e) => handleOteviraciDenChange(key, 'zavreno', e.target.checked)}
+                                                        />
+                                                        Zavřeno
+                                                    </label>
+                                                    {!eff.zavreno && (
+                                                        <>
+                                                            <input
+                                                                type="time"
+                                                                value={eff.od}
+                                                                onChange={(e) => handleOteviraciDenChange(key, 'od', e.target.value)}
+                                                            />
+                                                            <input
+                                                                type="time"
+                                                                value={eff.do}
+                                                                onChange={(e) => handleOteviraciDenChange(key, 'do', e.target.value)}
+                                                            />
+                                                            {eff.usesVychozi && (
+                                                                <span className="den-vychozi-badge" title="Používá výchozí dobu">výchozí</span>
+                                                            )}
+                                                        </>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </fieldset>
 
                             <div className="form-row">
                                 <div className="form-group">
@@ -468,7 +660,7 @@ const StoreManagement = () => {
                                 <td>{store.nazev}</td>
                                 <td>{store.nazev_kratkiy}</td>
                                 <td>{store.nazev_google_sheets || '—'}</td>
-                                <td>{store.vedouci_prodejny || '—'}</td>
+                                <td>{store.vedouci_jmeno || store.vedouci_prodejny || '—'}</td>
                                 <td>
                                     <span className={`status-badge ${store.aktivni ? 'active' : 'inactive'}`}>
                                         {store.aktivni ? 'Aktivní' : 'Neaktivní'}

@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from . import payroll_views
 
 urlpatterns = [
     # Počet směn prodejce na prodejně v měsíci (typ=prace)
@@ -24,4 +25,13 @@ urlpatterns = [
     
     # Export pro účetní
     path('export/', views.export_smeny, name='export_smeny'),
+
+    # Payroll (ADMIN)
+    path('payroll/', payroll_views.payroll_preview, name='payroll_preview'),
+    path('payroll/odmena/', payroll_views.payroll_odmena, name='payroll_odmena'),
+
+    # Docházka log (ADMIN) + stav pro zaměstnance
+    path('attendance/log/', payroll_views.attendance_log, name='attendance_log'),
+    path('attendance/open/', payroll_views.attendance_open, name='attendance_open'),
+    path('attendance/my-status/', payroll_views.attendance_my_status, name='attendance_my_status'),
 ] 

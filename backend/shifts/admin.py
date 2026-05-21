@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Smena, SmenaDochazka, SmenaStatistiky
+from .models import Smena, SmenaDochazka, SmenaStatistiky, MzdovaOdmenaMesic
 
 @admin.register(Smena)
 class SmenaAdmin(admin.ModelAdmin):
@@ -54,3 +54,11 @@ class SmenaStatistikyAdmin(admin.ModelAdmin):
     
     def get_queryset(self, request):
         return super().get_queryset(request).select_related('user')
+
+
+@admin.register(MzdovaOdmenaMesic)
+class MzdovaOdmenaMesicAdmin(admin.ModelAdmin):
+    list_display = ['user', 'mesic', 'castka', 'poznamka']
+    list_filter = ['mesic']
+    search_fields = ['user__jmeno', 'user__prijmeni']
+    ordering = ['-mesic']

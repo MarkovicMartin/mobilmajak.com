@@ -21,7 +21,18 @@ class Prodejna(models.Model):
     # Provozní informace
     otevreno_od = models.TimeField(blank=True, null=True, verbose_name="Otevřeno od")
     otevreno_do = models.TimeField(blank=True, null=True, verbose_name="Otevřeno do")
-    vedouci_prodejny = models.CharField(max_length=100, blank=True, null=True, verbose_name="Vedoucí prodejny")
+    oteviraci_doba = models.JSONField(
+        default=dict, blank=True,
+        verbose_name="Otevírací doba Po–Ne (JSON)",
+    )
+    vedouci_prodejny = models.CharField(
+        max_length=100, blank=True, null=True,
+        verbose_name="Vedoucí prodejny (legacy text)",
+    )
+    vedouci_user_id = models.IntegerField(
+        null=True, blank=True,
+        verbose_name="ID vedoucího (WebUser)",
+    )
     
     # Nastavení
     aktivni = models.BooleanField(default=True, verbose_name="Aktivní")
