@@ -19,12 +19,22 @@ from django.db.models import Case, When, IntegerField, DecimalField
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.utils.decorators import method_decorator
 from rest_framework.decorators import permission_classes
-from .models import ProdejniData, ProdejniDataDenni, ProdejniDataMesicni, GoogleSheetsConfig, WebProdejeAll, WebZasilkovna, WebVykupy
+from .models import (
+    ProdejniData,
+    ProdejniDataDenni,
+    ProdejniDataMesicni,
+    GoogleSheetsConfig,
+    WebProdejeAll,
+    WebZasilkovna,
+    WebVykupy,
+    LeaderboardMonthPointsCache,
+)
 from .technik_utils import (
     merge_technici_rows,
     aggregate_by_canonical_technik,
     technik_filter_q,
     resolve_technik_display,
+    _load_technik_maps,
 )
 from users.models import WebUser
 from rest_framework.decorators import api_view
@@ -6077,6 +6087,73 @@ def web_prodeje_polozky_view(request):
 # WEB_PRODEJE - Profil prodejce (Můj profil)
 # =============================================================================
 
+def _salesperson_target_date(request):
+    """Volitelný parametr date=YYYY-MM-DD; bez něj dnešek."""
+    date_str = request.GET.get('date')
+    if not date_str:
+        return date.today(), None
+    parsed = parse_date(date_str)
+    if not parsed:
+        return None, 'Neplatný formát data. Použijte YYYY-MM-DD'
+    return parsed, None
+
+
+def _salesperson_month_filter(target):
+    return Q(typ__year=target.year, typ__month=target.month)
+
+
+def _salesperson_prev_month(target):
+    first_of_month = target.replace(day=1)
+    prev_last = first_of_month - timedelta(days=1)
+    return prev_last.year, prev_last.month, prev_last.strftime('%Y-%m')
+
+
+@require_http_methods(["GET"])
+@permission_classes([AllowAny])
+def web_prodeje_salesperson_active_dates(request):
+    """Dny se záznamy prodeje nebo servisní provize pro daného prodejce (kalendář)."""
+    user_id = request.GET.get('user_id')
+    month = request.GET.get('month')
+
+    if not user_id:
+        return JsonResponse({'error': 'Chybí user_id parametr'}, status=400)
+
+    try:
+        active = set()
+        sales_qs = WebProdejeAll.objects.filter(id_prodejce=user_id).exclude(typ__isnull=True)
+        year = month_num = None
+        if month:
+            try:
+                year, month_num = map(int, month.split('-'))
+                sales_qs = sales_qs.filter(typ__year=year, typ__month=month_num)
+            except (ValueError, TypeError):
+                return JsonResponse({'error': 'Neplatný formát měsíce. Použijte YYYY-MM'}, status=400)
+
+        for d in sales_qs.values_list('typ', flat=True).distinct():
+            if d:
+                active.add(d)
+
+        try:
+            user = WebUser.objects.get(id=user_id)
+            display_name = _technik_display_name_for_user(user) if getattr(user, 'technik_id', None) else None
+            if display_name:
+                servis_qs = WebProdejeAll.objects.filter(_base_servis_q()).filter(
+                    technik_filter_q(display_name)
+                ).exclude(typ__isnull=True)
+                if year is not None and month_num is not None:
+                    servis_qs = servis_qs.filter(typ__year=year, typ__month=month_num)
+                for d in servis_qs.values_list('typ', flat=True).distinct():
+                    if d:
+                        active.add(d)
+        except WebUser.DoesNotExist:
+            pass
+
+        dates = sorted(d.isoformat() for d in active)
+        return JsonResponse({'dates': dates, 'user_id': user_id, 'month': month})
+    except Exception as e:
+        return JsonResponse({'error': str(e), 'dates': []}, status=500)
+
+
 @require_http_methods(["GET"])
 @permission_classes([AllowAny])
 def web_prodeje_salesperson_today(request):
@@ -6085,20 +6162,23 @@ def web_prodeje_salesperson_today(request):
     if not user_id:
         return JsonResponse({'error': 'Chybí user_id parametr'}, status=400)
 
-    try:
-        today_iso = date.today().strftime('%Y-%m-%d')
-        queryset = WebProdejeAll.objects.filter(id_prodejce=user_id, typ=today_iso)
-        result = _aggregate_web_prodeje_all_salesperson(queryset, user_id, today_iso)
+    target, err = _salesperson_target_date(request)
+    if err:
+        return JsonResponse({'error': err}, status=400)
 
-        # poslední směna = poslední den s daty před dneškem
+    try:
+        target_iso = target.strftime('%Y-%m-%d')
+        queryset = WebProdejeAll.objects.filter(id_prodejce=user_id, typ=target)
+        result = _aggregate_web_prodeje_all_salesperson(queryset, user_id, target_iso)
+
         prev_rec = (
-            WebProdejeAll.objects.filter(id_prodejce=user_id, typ__lt=today_iso)
+            WebProdejeAll.objects.filter(id_prodejce=user_id, typ__lt=target)
             .order_by('-typ')
             .first()
         )
         if prev_rec:
-            prev_date = str(prev_rec.typ)[:10]
-            prev_qs = WebProdejeAll.objects.filter(id_prodejce=user_id, typ=prev_date)
+            prev_date = prev_rec.typ.isoformat()
+            prev_qs = WebProdejeAll.objects.filter(id_prodejce=user_id, typ=prev_rec.typ)
             prev = _aggregate_web_prodeje_all_salesperson(prev_qs, user_id, prev_date)
             result['compare'] = {
                 'previous_date': prev_date,
@@ -6107,7 +6187,7 @@ def web_prodeje_salesperson_today(request):
             }
 
         result['source'] = 'database'
-        _attach_servisni_prace(result, user_id, typ_exact=today_iso)
+        _attach_servisni_prace(result, user_id, typ_exact=target_iso)
         return JsonResponse(result)
     except Exception as e:
         return JsonResponse({'error': str(e), 'source': 'error'}, status=500)
@@ -6121,14 +6201,19 @@ def web_prodeje_salesperson_monthly(request):
     if not user_id:
         return JsonResponse({'error': 'Chybí user_id parametr'}, status=400)
 
+    target, err = _salesperson_target_date(request)
+    if err:
+        return JsonResponse({'error': err}, status=400)
+
     try:
-        today = date.today()
-        ym = today.strftime('%Y-%m')
-        queryset = WebProdejeAll.objects.filter(id_prodejce=user_id, typ__startswith=ym)
+        ym = target.strftime('%Y-%m')
+        queryset = WebProdejeAll.objects.filter(id_prodejce=user_id).filter(_salesperson_month_filter(target))
         result = _aggregate_web_prodeje_all_salesperson(queryset, user_id, f"{ym}-01")
 
-        prev_month = (today.replace(day=1) - timedelta(days=1)).strftime('%Y-%m')
-        prev_qs = WebProdejeAll.objects.filter(id_prodejce=user_id, typ__startswith=prev_month)
+        prev_y, prev_m, prev_month = _salesperson_prev_month(target)
+        prev_qs = WebProdejeAll.objects.filter(
+            id_prodejce=user_id, typ__year=prev_y, typ__month=prev_m
+        )
         prev = _aggregate_web_prodeje_all_salesperson(prev_qs, user_id, f"{prev_month}-01")
         result['compare'] = {
             'previous_month': prev_month,
@@ -6151,24 +6236,27 @@ def web_prodeje_salesperson_points_today(request):
     if not user_id:
         return JsonResponse({'error': 'Chybí user_id parametr'}, status=400)
 
+    target, err = _salesperson_target_date(request)
+    if err:
+        return JsonResponse({'error': err}, status=400)
+
     try:
-        today_iso = date.today().strftime('%Y-%m-%d')
-        today_qs = WebProdejeAll.objects.filter(id_prodejce=user_id, typ=today_iso)
-        base = _aggregate_web_prodeje_all_salesperson(today_qs, user_id, today_iso)
+        target_iso = target.strftime('%Y-%m-%d')
+        today_qs = WebProdejeAll.objects.filter(id_prodejce=user_id, typ=target)
+        base = _aggregate_web_prodeje_all_salesperson(today_qs, user_id, target_iso)
         product_points = calculate_points_for_data(base)
-        servis_points, servis_data = _servis_points_for_points_api(user_id, typ_exact=today_iso)
+        servis_points, servis_data = _servis_points_for_points_api(user_id, typ_exact=target_iso)
         total_points = product_points + servis_points
 
-        # poslední den se záznamy (minulá směna)
         last_rec = (
-            WebProdejeAll.objects.filter(id_prodejce=user_id, typ__lt=today_iso)
+            WebProdejeAll.objects.filter(id_prodejce=user_id, typ__lt=target)
             .order_by('-typ')
             .first()
         )
         compare = None
         if last_rec:
-            prev_date = str(last_rec.typ)[:10]
-            prev_qs = WebProdejeAll.objects.filter(id_prodejce=user_id, typ=prev_date)
+            prev_date = prev_rec.typ.isoformat()
+            prev_qs = WebProdejeAll.objects.filter(id_prodejce=user_id, typ=prev_rec.typ)
             prev_base = _aggregate_web_prodeje_all_salesperson(prev_qs, user_id, prev_date)
             prev_product_points = calculate_points_for_data(prev_base)
             prev_servis_points, _ = _servis_points_for_user_id(user_id, typ_exact=prev_date)
@@ -6195,18 +6283,22 @@ def web_prodeje_salesperson_points_monthly(request):
     if not user_id:
         return JsonResponse({'error': 'Chybí user_id parametr'}, status=400)
 
+    target, err = _salesperson_target_date(request)
+    if err:
+        return JsonResponse({'error': err}, status=400)
+
     try:
-        today = date.today()
-        ym = today.strftime('%Y-%m')
-        queryset = WebProdejeAll.objects.filter(id_prodejce=user_id, typ__startswith=ym)
+        ym = target.strftime('%Y-%m')
+        queryset = WebProdejeAll.objects.filter(id_prodejce=user_id).filter(_salesperson_month_filter(target))
         base = _aggregate_web_prodeje_all_salesperson(queryset, user_id, f"{ym}-01")
         product_points = calculate_points_for_data(base)
         servis_points, servis_data = _servis_points_for_points_api(user_id, typ_month_prefix=ym)
         total_points = product_points + servis_points
 
-        # minulý měsíc
-        prev_month = (today.replace(day=1) - timedelta(days=1)).strftime('%Y-%m')
-        prev_qs = WebProdejeAll.objects.filter(id_prodejce=user_id, typ__startswith=prev_month)
+        prev_y, prev_m, prev_month = _salesperson_prev_month(target)
+        prev_qs = WebProdejeAll.objects.filter(
+            id_prodejce=user_id, typ__year=prev_y, typ__month=prev_m
+        )
         prev_base = _aggregate_web_prodeje_all_salesperson(prev_qs, user_id, f"{prev_month}-01")
         prev_product_points = calculate_points_for_data(prev_base)
         prev_servis_points, _ = _servis_points_for_user_id(user_id, typ_month_prefix=prev_month)
@@ -6348,71 +6440,183 @@ def _build_points_payload(base_data, total_points, source, servis_data=None, ser
 # WEB_PRODEJE - Leaderboardy (měsíční)
 # =============================================================================
 
+def _leaderboard_doklad_q():
+    return Q(doklad__isnull=False) & ~Q(doklad='')
+
+
+def _leaderboard_seller_aggregation(month_queryset):
+    """Jednotná měsíční agregace metrik po prodejci (produkty + unikátní doklady)."""
+    return month_queryset.filter(id_prodejce__isnull=False).values('id_prodejce').annotate(
+        polozky_nad_100=Sum('pocet_kusu', filter=Q(cena_ks_vcl_dph__gte=100) & ~Q(kod__isnull=True) & ~Q(kod='')),
+        ct300=Count('id', filter=Q(kod='P114194')),
+        ct600=Count('id', filter=Q(kod='CT600')),
+        ct1200=Count('id', filter=Q(kod='CT1200')),
+        akt=Count('id', filter=Q(kod='AKT')),
+        zah250=Count('id', filter=Q(kod='ZAH250')),
+        nap=Count('id', filter=Q(kod__in=['NAP', 'NAN'])),
+        zah500=Count('id', filter=Q(kod='ZAH500')),
+        kop250=Count('id', filter=Q(kod='KOP250')),
+        kop500=Count('id', filter=Q(kod='KOP500')),
+        pz1=Count('id', filter=Q(kod='PZ1')),
+        knz=Count('id', filter=Q(kod='KNZ')),
+        polozky_nad_29=Count('id', filter=Q(cena_ks_vcl_dph__gte=29) & Q(kod__isnull=False) & ~Q(kod='')),
+        unikatni_doklady=Count('doklad', distinct=True, filter=_leaderboard_doklad_q()),
+        prodejna_nazev=Max('stredisko'),
+    )
+
+
+def _leaderboard_item_points_data(item):
+    """Slovník metrik pro calculate_points_for_data z řádku agregace."""
+    return {
+        'polozky_nad_100': item.get('polozky_nad_100') or 0,
+        'ct300': item.get('ct300') or 0,
+        'ct600': item.get('ct600') or 0,
+        'ct1200': item.get('ct1200') or 0,
+        'akt': item.get('akt') or 0,
+        'zah250': item.get('zah250') or 0,
+        'nap': item.get('nap') or 0,
+        'zah500': item.get('zah500') or 0,
+        'kop250': item.get('kop250') or 0,
+        'kop500': item.get('kop500') or 0,
+        'pz1': item.get('pz1') or 0,
+        'knz': item.get('knz') or 0,
+        'aligator': 0,
+    }
+
+
+def _leaderboard_prumer_polozek(item):
+    polozky = item.get('polozky_nad_29') or 0
+    doklady = item.get('unikatni_doklady') or 0
+    return round(polozky / doklady, 2) if doklady else 0
+
+
+def _leaderboard_sluzby_celkem(item):
+    return sum(item.get(k) or 0 for k in (
+        'ct300', 'ct600', 'ct1200', 'akt', 'zah250', 'nap', 'zah500', 'kop250', 'kop500', 'pz1', 'knz',
+    ))
+
+
+def _servis_points_map_for_month(month_ym):
+    """Body ze servisu (10 % marže) pro všechny prodejce – jeden průchod DB + mapování techniků."""
+    id_to_name, _ = _load_technik_maps()
+    name_to_user_id = {}
+    for user in WebUser.objects.exclude(technik_id__isnull=True).exclude(technik_id=0):
+        name = f'{user.jmeno} {user.prijmeni}'.strip()
+        if name:
+            name_to_user_id[name] = user.id
+
+    prace_qs = (
+        WebProdejeAll.objects.filter(typ__startswith=month_ym)
+        .filter(_base_servis_q())
+        .filter(_servisni_prace_segment_q())
+    )
+    by_technik = prace_qs.values('technik').annotate(
+        marze=Sum(F('pocet_kusu') * F('zisk'), default=0),
+    )
+
+    points_by_user = defaultdict(int)
+    for row in by_technik:
+        raw_technik = row.get('technik')
+        if not raw_technik:
+            continue
+        canonical = resolve_technik_display(raw_technik, id_to_name)
+        user_id = name_to_user_id.get(canonical)
+        if not user_id:
+            continue
+        marze = float(row['marze'] or 0)
+        points_by_user[user_id] += int(round(marze * float(SERVIS_ODMENA_RATE)))
+
+    return dict(points_by_user)
+
+
+def _compute_month_total_points_map(month_ym):
+    """Celkové body za uzavřený měsíc – jen při cache miss / 1. v měsíci (bez N+1)."""
+    month_queryset = WebProdejeAll.objects.filter(typ__startswith=month_ym)
+    aggregation = list(_leaderboard_seller_aggregation(month_queryset))
+    servis_map = _servis_points_map_for_month(month_ym)
+    points_map = {}
+    for item in aggregation:
+        prodejce_id = int(item['id_prodejce'])
+        product_points = calculate_points_for_data(_leaderboard_item_points_data(item))
+        points_map[prodejce_id] = product_points + servis_map.get(prodejce_id, 0)
+    return points_map
+
+
+def _leaderboard_cache_table_available():
+    """True pokud existuje tabulka cache (migrace 0014)."""
+    try:
+        return LeaderboardMonthPointsCache._meta.db_table in connection.introspection.table_names()
+    except Exception:
+        return False
+
+
+def _get_cached_prev_month_points(prev_ym, today=None):
+    """
+    Body za minulý kalendářní měsíc z cache.
+    Přepočet: chybí-li záznam, nebo 1. den v měsíci (ještě ne dnes dopočítáno).
+    Bez tabulky cache: dopočítá jednorázově (bez uložení).
+    """
+    from django.db.utils import ProgrammingError, OperationalError
+
+    today = today or date.today()
+    use_cache = _leaderboard_cache_table_available()
+
+    cache = None
+    if use_cache:
+        try:
+            cache = LeaderboardMonthPointsCache.objects.filter(month_ym=prev_ym).first()
+        except (ProgrammingError, OperationalError):
+            use_cache = False
+
+    already_today = (
+        cache
+        and cache.computed_at
+        and timezone.localtime(cache.computed_at).date() == today
+    )
+    need_refresh = not use_cache or cache is None or (today.day == 1 and not already_today)
+
+    if use_cache and not need_refresh:
+        raw = cache.points_by_prodejce or {}
+        return {int(k): int(v) for k, v in raw.items()}
+
+    points_map = _compute_month_total_points_map(prev_ym)
+    if use_cache:
+        try:
+            LeaderboardMonthPointsCache.objects.update_or_create(
+                month_ym=prev_ym,
+                defaults={
+                    'points_by_prodejce': {str(k): v for k, v in points_map.items()},
+                },
+            )
+        except (ProgrammingError, OperationalError):
+            pass
+    return points_map
+
+
 @require_http_methods(["GET"])
 @permission_classes([AllowAny])
 def web_prodeje_leaderboard_points(request):
-    """Žebříček prodejců podle bodů za aktuální měsíc (WEB_PRODEJE_ALL)
-    Rozšířeno: přidává last_month_points = celkové body za minulý měsíc.
-    OPTIMALIZOVÁNO: Používá agregační dotaz místo smyček (10-50x rychlejší).
-    """
+    """Žebříček bodů – aktuální měsíc z jedné agregace + servis mapou; minulý měsíc z cache."""
     try:
-        ym = date.today().strftime('%Y-%m')
+        today = date.today()
+        ym = today.strftime('%Y-%m')
         month_queryset = WebProdejeAll.objects.filter(typ__startswith=ym)
 
-        # Vypočítej období pro minulý měsíc (YYYY-MM)
-        today = date.today()
         first_of_month = today.replace(day=1)
         prev_month_last_day = first_of_month - timedelta(days=1)
         prev_ym = prev_month_last_day.strftime('%Y-%m')
-        prev_month_queryset = WebProdejeAll.objects.filter(typ__startswith=prev_ym)
+        prev_month_points_map = _get_cached_prev_month_points(prev_ym, today=today)
 
-        # ===== AKTUÁLNÍ MĚSÍC - JEDEN AGREGAČNÍ DOTAZ =====
-        current_aggregation = month_queryset.filter(id_prodejce__isnull=False).values('id_prodejce').annotate(
-            polozky_nad_100=Sum('pocet_kusu', filter=Q(cena_ks_vcl_dph__gte=100) & ~Q(kod__isnull=True) & ~Q(kod='')),
-            ct300=Count('id', filter=Q(kod='P114194')),
-            ct600=Count('id', filter=Q(kod='CT600')),
-            ct1200=Count('id', filter=Q(kod='CT1200')),
-            akt=Count('id', filter=Q(kod='AKT')),
-            zah250=Count('id', filter=Q(kod='ZAH250')),
-            nap=Count('id', filter=Q(kod__in=['NAP', 'NAN'])),
-            zah500=Count('id', filter=Q(kod='ZAH500')),
-            kop250=Count('id', filter=Q(kod='KOP250')),
-            kop500=Count('id', filter=Q(kod='KOP500')),
-            pz1=Count('id', filter=Q(kod='PZ1')),
-            knz=Count('id', filter=Q(kod='KNZ')),
-            polozky_nad_29=Count('id', filter=Q(cena_ks_vcl_dph__gte=29) & Q(kod__isnull=False) & ~Q(kod='')),
-            prodejna_nazev=Max('stredisko'),
-        )
+        current_aggregation = list(_leaderboard_seller_aggregation(month_queryset))
+        servis_map = _servis_points_map_for_month(ym)
 
-        # ===== PŘEDCHOZÍ MĚSÍC - JEDEN AGREGAČNÍ DOTAZ =====
-        prev_aggregation = prev_month_queryset.filter(id_prodejce__isnull=False).values('id_prodejce').annotate(
-            prev_polozky_nad_100=Sum('pocet_kusu', filter=Q(cena_ks_vcl_dph__gte=100) & ~Q(kod__isnull=True) & ~Q(kod='')),
-            prev_ct300=Count('id', filter=Q(kod='P114194')),
-            prev_ct600=Count('id', filter=Q(kod='CT600')),
-            prev_ct1200=Count('id', filter=Q(kod='CT1200')),
-            prev_akt=Count('id', filter=Q(kod='AKT')),
-            prev_zah250=Count('id', filter=Q(kod='ZAH250')),
-            prev_nap=Count('id', filter=Q(kod__in=['NAP', 'NAN'])),
-            prev_zah500=Count('id', filter=Q(kod='ZAH500')),
-            prev_kop250=Count('id', filter=Q(kod='KOP250')),
-            prev_kop500=Count('id', filter=Q(kod='KOP500')),
-            prev_pz1=Count('id', filter=Q(kod='PZ1')),
-            prev_knz=Count('id', filter=Q(kod='KNZ')),
-        )
-
-        # Převést předchozí měsíc na slovník pro rychlé vyhledávání
-        prev_data = {item['id_prodejce']: item for item in prev_aggregation}
-
-        # Načíst všechny uživatele najednou (místo N dotazů)
         prodejci_ids = [item['id_prodejce'] for item in current_aggregation]
         users = {u.id: u for u in WebUser.objects.filter(id__in=prodejci_ids)}
 
         leaderboard = []
 
         for item in current_aggregation:
-            prodejce_id = item['id_prodejce']
-            
-            # Jméno a prodejna
+            prodejce_id = int(item['id_prodejce'])
             user = users.get(prodejce_id)
             if user:
                 prodejce_jmeno = f"{user.jmeno} {user.prijmeni}".strip()
@@ -6421,78 +6625,19 @@ def web_prodeje_leaderboard_points(request):
                 prodejce_jmeno = f"Prodejce {prodejce_id}"
                 prodejna_nazev = item['prodejna_nazev'] or 'Neznámá'
 
-            # Unikátní doklady - ZJEDNODUŠENO: pouze distinct na sloupec Doklad (místo 4 sloupců)
-            seller_qs = month_queryset.filter(id_prodejce=prodejce_id)
-            unikatni_doklady = (
-                seller_qs.exclude(doklad__isnull=True)
-                        .exclude(doklad='')
-                        .values('doklad')
-                        .distinct()
-                        .count()
-            )
-            prumer = round((item['polozky_nad_29'] or 0) / unikatni_doklady, 2) if unikatni_doklady else 0
-
-            sluzby_celkem = (
-                (item['ct300'] or 0) + (item['ct600'] or 0) + (item['ct1200'] or 0)
-                + (item['akt'] or 0) + (item['zah250'] or 0) + (item['nap'] or 0)
-                + (item['zah500'] or 0) + (item['kop250'] or 0) + (item['kop500'] or 0)
-                + (item['pz1'] or 0) + (item['knz'] or 0)
-            )
-
-            points_data = {
-                'polozky_nad_100': item['polozky_nad_100'] or 0,
-                'ct300': item['ct300'] or 0,
-                'ct600': item['ct600'] or 0,
-                'ct1200': item['ct1200'] or 0,
-                'akt': item['akt'] or 0,
-                'zah250': item['zah250'] or 0,
-                'nap': item['nap'] or 0,
-                'zah500': item['zah500'] or 0,
-                'kop250': item['kop250'] or 0,
-                'kop500': item['kop500'] or 0,
-                'pz1': item['pz1'] or 0,
-                'knz': item['knz'] or 0,
-                'aligator': 0,
-            }
-
-            # Body aktuálního měsíce (produkty + provize ze servisu jako v Moje body)
-            product_points = calculate_points_for_data(points_data)
-            servis_points, _servis_data = _servis_points_for_user_id(prodejce_id, typ_month_prefix=ym)
-            total_points = product_points + servis_points
-
-            # Body minulého měsíce
-            prev_item = prev_data.get(prodejce_id, {})
-            if prev_item:
-                prev_product_points = calculate_points_for_data({
-                    'polozky_nad_100': prev_item.get('prev_polozky_nad_100') or 0,
-                    'ct300': prev_item.get('prev_ct300') or 0,
-                    'ct600': prev_item.get('prev_ct600') or 0,
-                    'ct1200': prev_item.get('prev_ct1200') or 0,
-                    'akt': prev_item.get('prev_akt') or 0,
-                    'zah250': prev_item.get('prev_zah250') or 0,
-                    'nap': prev_item.get('prev_nap') or 0,
-                    'zah500': prev_item.get('prev_zah500') or 0,
-                    'kop250': prev_item.get('prev_kop250') or 0,
-                    'kop500': prev_item.get('prev_kop500') or 0,
-                    'pz1': prev_item.get('prev_pz1') or 0,
-                    'knz': prev_item.get('prev_knz') or 0,
-                    'aligator': 0,
-                })
-                prev_servis_points, _ = _servis_points_for_user_id(prodejce_id, typ_month_prefix=prev_ym)
-                last_month_points = prev_product_points + prev_servis_points
-            else:
-                last_month_points = 0
+            product_points = calculate_points_for_data(_leaderboard_item_points_data(item))
+            servis_points = servis_map.get(prodejce_id, 0)
 
             leaderboard.append({
-                'id': int(prodejce_id),
+                'id': prodejce_id,
                 'prodejce': prodejce_jmeno,
                 'prodejna': str(prodejna_nazev),
-                'total_points': total_points,
-                'last_month_points': last_month_points,
+                'total_points': product_points + servis_points,
+                'last_month_points': prev_month_points_map.get(prodejce_id, 0),
                 'polozky_nad_100': item['polozky_nad_100'] or 0,
-                'sluzby_celkem': sluzby_celkem,
+                'sluzby_celkem': _leaderboard_sluzby_celkem(item),
                 'servis_provize': servis_points,
-                'prumer_polozek_uctu': prumer,
+                'prumer_polozek_uctu': _leaderboard_prumer_polozek(item),
             })
 
         # Seřadit desc podle bodů a přidat pozice
@@ -6504,10 +6649,17 @@ def web_prodeje_leaderboard_points(request):
             'success': True,
             'data': leaderboard,
             'count': len(leaderboard),
-            'month': int(date.today().strftime('%m')),
-            'year': int(date.today().strftime('%Y')),
+            'month': int(today.strftime('%m')),
+            'year': int(today.strftime('%Y')),
             'type': 'points',
-            'source': 'WEB_PRODEJE_ALL'
+            'source': 'WEB_PRODEJE_ALL',
+            'meta': {
+                'last_month_ym': prev_ym,
+                'last_month_from_cache': (
+                    _leaderboard_cache_table_available()
+                    and LeaderboardMonthPointsCache.objects.filter(month_ym=prev_ym).exists()
+                ),
+            },
         })
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e), 'data': []}, status=500)
@@ -6516,46 +6668,24 @@ def web_prodeje_leaderboard_points(request):
 @require_http_methods(["GET"])
 @permission_classes([AllowAny])
 def web_prodeje_leaderboard_average_items(request):
-    """Žebříček prodejců podle průměru položek/účtenka za aktuální měsíc (WEB_PRODEJE_ALL)
-    OPTIMALIZOVÁNO: Používá agregační dotaz místo smyček (10-50x rychlejší).
-    """
+    """Žebříček průměru položek/účtenka – stejná jednotná agregace jako u bodů."""
     try:
         ym = date.today().strftime('%Y-%m')
         month_queryset = WebProdejeAll.objects.filter(typ__startswith=ym)
 
-        # Globální agregace pro správný celofiremní průměr
         global_polozky_nad_29 = month_queryset.filter(cena_ks_vcl_dph__gte=29).exclude(_excluded_names_q()).count()
         global_unikatni_doklady = _count_unique_receipts(month_queryset)
         global_prumer = round(global_polozky_nad_29 / global_unikatni_doklady, 2) if global_unikatni_doklady else 0
 
-        # ===== JEDEN AGREGAČNÍ DOTAZ PRO VŠECHNY PRODEJCE =====
-        aggregation = month_queryset.filter(id_prodejce__isnull=False).values('id_prodejce').annotate(
-            polozky_nad_100=Sum('pocet_kusu', filter=Q(cena_ks_vcl_dph__gte=100) & ~Q(kod__isnull=True) & ~Q(kod='')),
-            polozky_nad_29=Count('id', filter=Q(cena_ks_vcl_dph__gte=29) & Q(kod__isnull=False) & ~Q(kod='')),
-            ct300=Count('id', filter=Q(kod='P114194')),
-            ct600=Count('id', filter=Q(kod='CT600')),
-            ct1200=Count('id', filter=Q(kod='CT1200')),
-            akt=Count('id', filter=Q(kod='AKT')),
-            zah250=Count('id', filter=Q(kod='ZAH250')),
-            nap=Count('id', filter=Q(kod__in=['NAP', 'NAN'])),
-            zah500=Count('id', filter=Q(kod='ZAH500')),
-            kop250=Count('id', filter=Q(kod='KOP250')),
-            kop500=Count('id', filter=Q(kod='KOP500')),
-            pz1=Count('id', filter=Q(kod='PZ1')),
-            knz=Count('id', filter=Q(kod='KNZ')),
-            prodejna_nazev=Max('stredisko'),
-        )
+        aggregation = list(_leaderboard_seller_aggregation(month_queryset))
 
-        # Načíst všechny uživatele najednou (místo N dotazů)
         prodejci_ids = [item['id_prodejce'] for item in aggregation]
         users = {u.id: u for u in WebUser.objects.filter(id__in=prodejci_ids)}
 
         leaderboard = []
 
         for item in aggregation:
-            prodejce_id = item['id_prodejce']
-            
-            # Jméno a prodejna
+            prodejce_id = int(item['id_prodejce'])
             user = users.get(prodejce_id)
             if user:
                 prodejce_jmeno = f"{user.jmeno} {user.prijmeni}".strip()
@@ -6564,35 +6694,13 @@ def web_prodeje_leaderboard_average_items(request):
                 prodejce_jmeno = f"Prodejce {prodejce_id}"
                 prodejna_nazev = item['prodejna_nazev'] or 'Neznámá'
 
-            # Unikátní doklady - ponecháno jako individuální dotaz (optimalizace distinct je komplikovaná)
-            seller_qs = month_queryset.filter(id_prodejce=prodejce_id)
-            unikatni_doklady = _count_unique_receipts(seller_qs)
-            prumer = round((item['polozky_nad_29'] or 0) / unikatni_doklady, 2) if unikatni_doklady else 0
-
-            # Body pro info v kartách
-            total_points = calculate_points_for_data({
-                'polozky_nad_100': item['polozky_nad_100'] or 0,
-                'ct300': item['ct300'] or 0,
-                'ct600': item['ct600'] or 0,
-                'ct1200': item['ct1200'] or 0,
-                'akt': item['akt'] or 0,
-                'zah250': item['zah250'] or 0,
-                'nap': item['nap'] or 0,
-                'zah500': item['zah500'] or 0,
-                'kop250': item['kop250'] or 0,
-                'kop500': item['kop500'] or 0,
-                'pz1': item['pz1'] or 0,
-                'knz': item['knz'] or 0,
-                'aligator': 0,
-            })
-
             leaderboard.append({
-                'id': int(prodejce_id),
+                'id': prodejce_id,
                 'prodejce': prodejce_jmeno,
                 'prodejna': str(prodejna_nazev),
-                'prumer_polozek_uctu': prumer,
+                'prumer_polozek_uctu': _leaderboard_prumer_polozek(item),
                 'polozky_nad_100': item['polozky_nad_100'] or 0,
-                'total_points': total_points,
+                'total_points': calculate_points_for_data(_leaderboard_item_points_data(item)),
             })
 
         # Řazení desc podle průměru

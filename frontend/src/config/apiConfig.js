@@ -64,6 +64,7 @@ const API_ENDPOINTS = {
         salespersonMonthly: '/api/analytics/web-prodeje/salesperson/monthly/',
         salespersonPointsToday: '/api/analytics/web-prodeje/salesperson/points/today/',
         salespersonPointsMonthly: '/api/analytics/web-prodeje/salesperson/points/monthly/',
+        salespersonActiveDates: '/api/analytics/web-prodeje/salesperson/active-dates/',
         leaderboardPoints: '/api/analytics/web-prodeje/leaderboard/points/',
         leaderboardAverageItems: '/api/analytics/web-prodeje/leaderboard/average-items/',
         chartsData: '/api/analytics/web-prodeje-charts-data/',

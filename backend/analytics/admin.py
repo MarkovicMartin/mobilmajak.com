@@ -1,5 +1,12 @@
 from django.contrib import admin
-from .models import ProdejniData, ProdejniDataDenni, ProdejniDataMesicni, GoogleSheetsConfig, WebProdejeAll
+from .models import (
+    ProdejniData,
+    ProdejniDataDenni,
+    ProdejniDataMesicni,
+    GoogleSheetsConfig,
+    WebProdejeAll,
+    LeaderboardMonthPointsCache,
+)
 
 
 class BaseProdejniDataAdmin(admin.ModelAdmin):
@@ -211,3 +218,14 @@ class WebProdejeAllAdmin(admin.ModelAdmin):
         return super().get_queryset(request).select_related()
     
     # Žádné vlastní akce prozatím
+
+
+@admin.register(LeaderboardMonthPointsCache)
+class LeaderboardMonthPointsCacheAdmin(admin.ModelAdmin):
+    list_display = ('month_ym', 'prodejcu_count', 'computed_at')
+    readonly_fields = ('computed_at',)
+    ordering = ('-month_ym',)
+
+    def prodejcu_count(self, obj):
+        return len(obj.points_by_prodejce or {})
+    prodejcu_count.short_description = 'Prodejců'

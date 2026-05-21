@@ -1,9 +1,16 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import DatePicker, { registerLocale } from 'react-datepicker';
+import { cs } from 'date-fns/locale';
+import { format, parseISO, isValid } from 'date-fns';
 import {
     isValidISODate,
     normalizeDateRange,
     INVALID_DATE_MESSAGE,
 } from '../utils/analyticsDateRange';
+import 'react-datepicker/dist/react-datepicker.css';
+import './AnalyticsDatePicker.css';
+
+registerLocale('cs', cs);
 
 /**
  * Rozsah Od/Do s draft stavem – API / rodič se aktualizuje až po blur nebo Enter.
@@ -130,7 +137,7 @@ const AnalyticsDateRange = ({
 
 export default AnalyticsDateRange;
 
-/** Jedno datum – stejné chování (draft, blur, Enter). */
+/** Jedno datum – draft; s highlightDates použije react-datepicker. */
 export const AnalyticsDateInput = ({
     value = '',
     onApply,
@@ -142,9 +149,15 @@ export const AnalyticsDateInput = ({
     inputClassName = '',
     wrapperClassName = 'filter-group',
     required = false,
+    highlightDates = [],
+    onMonthChange,
+    isClearable = true,
 }) => {
     const [draft, setDraft] = useState(value);
     const [dateError, setDateError] = useState('');
+
+    const highlightSet = useMemo(() => new Set(highlightDates), [highlightDates]);
+    const useCalendarPicker = onMonthChange != null || highlightDates.length > 0;
 
     useEffect(() => {
         setDraft(value);
@@ -159,6 +172,11 @@ export const AnalyticsDateInput = ({
     );
 
     const applyDate = useCallback(() => {
+        if (!draft) {
+            reportError('');
+            if (onApply && draft !== value) onApply('');
+            return;
+        }
         if (!isValidISODate(draft)) {
             reportError(INVALID_DATE_MESSAGE);
             return;
@@ -174,7 +192,46 @@ export const AnalyticsDateInput = ({
         }
     };
 
-    const input = (
+    const handlePickerChange = (picked) => {
+        const iso = picked ? format(picked, 'yyyy-MM-dd') : '';
+        setDraft(iso);
+        reportError('');
+        if (onApply) onApply(iso);
+    };
+
+    const dayClassName = (d) => {
+        const iso = format(d, 'yyyy-MM-dd');
+        return highlightSet.has(iso) ? 'analytics-day-has-data' : undefined;
+    };
+
+    const selectedDate = draft && isValidISODate(draft) ? parseISO(draft) : null;
+    const pickerSelected = selectedDate && isValid(selectedDate) ? selectedDate : null;
+
+    const input = useCalendarPicker ? (
+        <DatePicker
+            id={id}
+            selected={pickerSelected}
+            onChange={handlePickerChange}
+            onMonthChange={(d) => {
+                if (onMonthChange) onMonthChange(format(d, 'yyyy-MM'));
+            }}
+            onCalendarOpen={() => {
+                if (onMonthChange && pickerSelected) {
+                    onMonthChange(format(pickerSelected, 'yyyy-MM'));
+                } else if (onMonthChange) {
+                    onMonthChange(format(new Date(), 'yyyy-MM'));
+                }
+            }}
+            dayClassName={dayClassName}
+            dateFormat="dd.MM.yyyy"
+            locale="cs"
+            placeholderText="dd.mm.rrrr"
+            className={`analytics-date-picker-input ${inputClassName || ''}`.trim()}
+            isClearable={isClearable}
+            required={required}
+            showPopperArrow={false}
+        />
+    ) : (
         <input
             type="date"
             id={id}

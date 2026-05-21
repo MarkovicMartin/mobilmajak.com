@@ -47,6 +47,7 @@ urlpatterns = [
     path('web-prodeje/salesperson/monthly/', views.web_prodeje_salesperson_monthly, name='web_prodeje_salesperson_monthly'),
     path('web-prodeje/salesperson/points/today/', views.web_prodeje_salesperson_points_today, name='web_prodeje_salesperson_points_today'),
     path('web-prodeje/salesperson/points/monthly/', views.web_prodeje_salesperson_points_monthly, name='web_prodeje_salesperson_points_monthly'),
+    path('web-prodeje/salesperson/active-dates/', views.web_prodeje_salesperson_active_dates, name='web_prodeje_salesperson_active_dates'),
     
     
     # STARÉ GOOGLE SHEETS ENDPOINTY (DEPRECATED - ZACHOVAT PRO ZPĚTNOU KOMPATIBILITU)

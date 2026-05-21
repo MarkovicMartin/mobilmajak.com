@@ -570,3 +570,25 @@ class WebVykupy(models.Model):
 
     def __str__(self):
         return f"{self.vystaveno} - {self.nazev} ({self.cena_ks_bez_dph} Kč)"
+
+
+class LeaderboardMonthPointsCache(models.Model):
+    """
+    Uzavřený měsíční součet bodů pro žebříček (minulý měsíc).
+    Přepočet jen 1. den v měsíci nebo při chybějící cache – během měsíce se čte z DB.
+    """
+    month_ym = models.CharField(max_length=7, unique=True, verbose_name='Měsíc (YYYY-MM)')
+    points_by_prodejce = models.JSONField(
+        default=dict,
+        verbose_name='Body podle id_prodejce',
+        help_text='Mapa {"123": 450, ...} – klíče jako řetězce kvůli JSON.',
+    )
+    computed_at = models.DateTimeField(auto_now=True, verbose_name='Naposledy spočítáno')
+
+    class Meta:
+        verbose_name = 'Cache bodů žebříčku (měsíc)'
+        verbose_name_plural = 'Cache bodů žebříčku (měsíce)'
+        ordering = ['-month_ym']
+
+    def __str__(self):
+        return f'{self.month_ym} ({len(self.points_by_prodejce or {})} prodejců)'
