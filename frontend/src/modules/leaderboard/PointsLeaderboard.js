@@ -1,7 +1,23 @@
 import React from 'react';
+import {
+    VICEPRACE_LABEL,
+    VICEPRACE_TOP_CARD_TITLE,
+    formatVicepraceObrat,
+} from '../../constants/viceprace';
 import './PointsLeaderboard.css';
 
-const PointsLeaderboard = ({ data, loading, currentUser, period = 'month', yesterdayBest = null }) => {
+const formatPrumerHodnotaUctenky = (value) => {
+    const n = Number(value);
+    if (!Number.isFinite(n) || n <= 0) return '—';
+    return new Intl.NumberFormat('cs-CZ', {
+        style: 'currency',
+        currency: 'CZK',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+    }).format(Math.round(n));
+};
+
+const PointsLeaderboard = ({ data, loading, currentUser, period = 'month', yesterdayBest = null, vicepraceLeader = null }) => {
     const isDay = period === 'day';
     const periodLabel = isDay ? 'dnešek' : 'aktuální měsíc';
     const statCardLabel = isDay ? 'Body včera' : 'Skóre minulý měsíc';
@@ -68,6 +84,17 @@ const PointsLeaderboard = ({ data, loading, currentUser, period = 'month', yeste
 
     const currentUserPosition = getCurrentUserPosition();
 
+    const topVicepraceFromData = data.reduce(
+        (best, seller) => ((seller.viceprace_obrat || 0) > (best?.viceprace_obrat || 0) ? seller : best),
+        data[0],
+    );
+    const vicepraceTopObrat = (vicepraceLeader?.obrat ?? 0) > 0
+        ? vicepraceLeader.obrat
+        : (topVicepraceFromData?.viceprace_obrat || 0);
+    const vicepraceTopName = (vicepraceLeader?.obrat ?? 0) > 0
+        ? (vicepraceLeader.prodejce || '—')
+        : (vicepraceTopObrat > 0 ? topVicepraceFromData?.prodejce : '—');
+
     return (
         <div className="points-leaderboard">
             {/* Hlavní statistiky */}
@@ -79,10 +106,10 @@ const PointsLeaderboard = ({ data, loading, currentUser, period = 'month', yeste
                     </div>
                     <div className="stat-change">Všichni prodejci</div>
                 </div>
-                <div className="stat-card">
-                    <h4>👥 Aktivní prodejci</h4>
-                    <div className="stat-value">{data.length}</div>
-                    <div className="stat-change">Za {periodLabel}</div>
+                <div className="stat-card" title="Součet obratu víceprací P63615 (s DPH), nepočítá se do bodů">
+                    <h4>🎁 {VICEPRACE_TOP_CARD_TITLE}</h4>
+                    <div className="stat-value">{formatVicepraceObrat(vicepraceTopObrat)}</div>
+                    <div className="stat-change">{vicepraceTopName}</div>
                 </div>
                 <div className="stat-card">
                     <h4>📊 Průměr bodů</h4>
@@ -141,11 +168,21 @@ const PointsLeaderboard = ({ data, loading, currentUser, period = 'month', yeste
                                     </div>
                                     <div className="stat-item">
                                         <span className="stat-label">Průměr pol./účt.</span>
-                                        <span className="stat-value">{seller.prumer_polozek_uctu.toFixed(2)}</span>
+                                        <span className="stat-value">{(seller.prumer_polozek_uctu ?? 0).toFixed(2)}</span>
+                                    </div>
+                                    <div className="stat-item">
+                                        <span className="stat-label">Prům. hodnota účt.</span>
+                                        <span className="stat-value">{formatPrumerHodnotaUctenky(seller.prumer_hodnota_uctenky)}</span>
                                     </div>
                                     <div className="stat-item stat-item-servis">
                                         <span className="stat-label">Servis</span>
                                         <span className="stat-value">{seller.servis_provize ?? 0}</span>
+                                    </div>
+                                    <div className="stat-item stat-item-viceprace">
+                                        <span className="stat-label">{VICEPRACE_LABEL}</span>
+                                        <span className="stat-value">
+                                            {formatVicepraceObrat(seller.viceprace_obrat)}
+                                        </span>
                                     </div>
                                 </div>
                             </div>
@@ -166,7 +203,9 @@ const PointsLeaderboard = ({ data, loading, currentUser, period = 'month', yeste
                                     <th>Prodejce</th>
                                     <th>Prodejna</th>
                                     <th>Celkové body</th>
+                                    <th>{VICEPRACE_LABEL}</th>
                                     <th>Průměr pol./účt.</th>
+                                    <th>Prům. hodnota účt.</th>
                                     <th>{tableShiftLabel}</th>
                                 </tr>
                             </thead>
@@ -195,7 +234,9 @@ const PointsLeaderboard = ({ data, loading, currentUser, period = 'month', yeste
                                                 {seller.total_points.toLocaleString()}
                                             </span>
                                         </td>
-                                        <td>{seller.prumer_polozek_uctu.toFixed(2)}</td>
+                                        <td>{formatVicepraceObrat(seller.viceprace_obrat)}</td>
+                                        <td>{(seller.prumer_polozek_uctu ?? 0).toFixed(2)}</td>
+                                        <td>{formatPrumerHodnotaUctenky(seller.prumer_hodnota_uctenky)}</td>
                                         <td>
                                             <span className="score-highlight">
                                                 {getLastShiftPoints(seller).toLocaleString()}

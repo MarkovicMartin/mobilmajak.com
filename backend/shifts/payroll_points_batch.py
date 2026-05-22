@@ -5,6 +5,7 @@ from django.db.models import Count, Q, Sum
 
 from analytics.models import WebProdejeAll
 from analytics.points_config import POINTS_METRIC_KEYS, calculate_product_points
+from analytics.viceprace_config import polozky_nad_100_q
 from analytics.views import (
     _build_points_payload,
     _empty_servisni_prace_data,
@@ -46,9 +47,7 @@ def batch_sales_metrics_for_month(rok, mesic_cislo, user_ids):
     )
 
     pol_rows = (
-        base.filter(cena_ks_vcl_dph__gte=100)
-        .exclude(kod__isnull=True)
-        .exclude(kod='')
+        base.filter(polozky_nad_100_q())
         .values('id_prodejce')
         .annotate(v=Sum('pocet_kusu'))
     )

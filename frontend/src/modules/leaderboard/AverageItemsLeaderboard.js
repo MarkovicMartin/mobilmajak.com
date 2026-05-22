@@ -1,7 +1,18 @@
 import React from 'react';
 import './AverageItemsLeaderboard.css';
 
-const AverageItemsLeaderboard = ({ data, loading, currentUser }) => {
+const formatPrumerHodnotaUctenky = (value) => {
+    const n = Number(value);
+    if (!Number.isFinite(n) || n <= 0) return '—';
+    return new Intl.NumberFormat('cs-CZ', {
+        style: 'currency',
+        currency: 'CZK',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+    }).format(Math.round(n));
+};
+
+const AverageItemsLeaderboard = ({ data, meta, loading, currentUser }) => {
     if (loading) {
         return (
             <div className="loading-container">
@@ -49,6 +60,13 @@ const AverageItemsLeaderboard = ({ data, loading, currentUser }) => {
 
     const currentUserPosition = getCurrentUserPosition();
     const overallAverage = data.reduce((sum, seller) => sum + seller.prumer_polozek_uctu, 0) / data.length;
+    const overallAvgHodnota = meta?.global_prumer_hodnota_uctenky ?? (
+        (() => {
+            const totalObrat = data.reduce((sum, s) => sum + (s.celkovy_obrat || 0), 0);
+            const totalDoklady = data.reduce((sum, s) => sum + (s.unikatni_doklady || 0), 0);
+            return totalDoklady > 0 ? totalObrat / totalDoklady : 0;
+        })()
+    );
 
     return (
         <div className="average-items-leaderboard">
@@ -72,9 +90,9 @@ const AverageItemsLeaderboard = ({ data, loading, currentUser }) => {
                     <div className="stat-change positive">{data[0]?.prodejce || 'N/A'}</div>
                 </div>
                 <div className="stat-card">
-                    <h4>👥 Aktivní prodejci</h4>
-                    <div className="stat-value">{data.length}</div>
-                    <div className="stat-change">Za aktuální měsíc</div>
+                    <h4>💰 Prům. hodnota účtenky</h4>
+                    <div className="stat-value">{formatPrumerHodnotaUctenky(overallAvgHodnota)}</div>
+                    <div className="stat-change">Vážený průměr (obrat / účtenky)</div>
                 </div>
             </div>
 
@@ -113,6 +131,10 @@ const AverageItemsLeaderboard = ({ data, loading, currentUser }) => {
                                         <span className="stat-value">{seller.polozky_nad_100}</span>
                                     </div>
                                     <div className="stat-item">
+                                        <span className="stat-label">Prům. hodnota účt.</span>
+                                        <span className="stat-value">{formatPrumerHodnotaUctenky(seller.prumer_hodnota_uctenky)}</span>
+                                    </div>
+                                    <div className="stat-item">
                                         <span className="stat-label">Celkové body</span>
                                         <span className="stat-value">{seller.total_points}</span>
                                     </div>
@@ -135,6 +157,7 @@ const AverageItemsLeaderboard = ({ data, loading, currentUser }) => {
                                     <th>Prodejce</th>
                                     <th>Prodejna</th>
                                     <th>Průměr pol./účt.</th>
+                                    <th>Prům. hodnota účt.</th>
                                     <th>Položky 100+</th>
                                     <th>Celkové body</th>
                                 </tr>
@@ -164,6 +187,7 @@ const AverageItemsLeaderboard = ({ data, loading, currentUser }) => {
                                                 {seller.prumer_polozek_uctu.toFixed(2)}
                                             </span>
                                         </td>
+                                        <td>{formatPrumerHodnotaUctenky(seller.prumer_hodnota_uctenky)}</td>
                                         <td>{seller.polozky_nad_100}</td>
                                         <td>
                                             <span className="points-highlight">
@@ -200,7 +224,7 @@ const AverageItemsLeaderboard = ({ data, loading, currentUser }) => {
                     </div>
                     <div className="info-card">
                         <h5>Jak se počítá?</h5>
-                        <p>Celkový počet prodaných položek / počet účtenek. Data se aktualizují denně podle prodejních dat.</p>
+                        <p>Počet položek ≥ 29 Kč s kódem / počet aktivních účtenek (bez samostatných dobropisů). Data se aktualizují denně.</p>
                     </div>
                 </div>
             </div>

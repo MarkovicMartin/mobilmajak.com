@@ -46,15 +46,33 @@ from .points_config import (
     build_product_points_breakdown,
     normalize_points_metrics,
 )
+from .viceprace_config import (
+    polozky_nad_100_q,
+    viceprace_row_q,
+    viceprace_obrat_sum,
+    aggregate_viceprace,
+    viceprace_leader_from_rows,
+)
+from .receipt_metrics import (
+    qualifying_polozka_q,
+    count_active_receipts,
+    sum_obrat_s_dph,
+    prumer_polozek_uctu,
+    prumer_hodnota_uctenky,
+    leaderboard_prumer_polozek,
+    leaderboard_prumer_hodnota_uctenky,
+)
 
 
 def _count_unique_receipts(queryset):
-    """Spočítá unikátní doklady - jen podle čísla dokladu (sloupec Doklad).
-    Ignoruje NULL/empty doklady.
-    OPTIMALIZOVÁNO: Používá distinct jen na 1 sloupec místo 4 (mnohem rychlejší).
-    """
+    """Spočítá unikátní doklady - jen podle čísla dokladu (legacy / traffic)."""
     cleaned = queryset.exclude(doklad__isnull=True).exclude(doklad='')
     return cleaned.values('doklad').distinct().count()
+
+
+def _count_active_receipts(queryset):
+    """Varianta 1: jen doklady s alespoň jednou položkou ≥29 Kč s kódem."""
+    return count_active_receipts(queryset)
 
 
 def _excluded_names_q():
@@ -5435,22 +5453,19 @@ def get_web_prodeje_charts_data(request):
             avg = {}
             per_group_sum = {}
             per_group_receipts = {}
-            excluded_q = _excluded_names_q()
             for r in rows:
                 g = r['g']
-                # denominator: unikátní doklady
                 key = (r['doklad'], r['pokladna'], r['typ'], r['id_prodejny'])
                 if g not in per_group_receipts:
                     per_group_receipts[g] = set()
-                if r['doklad']:
-                    per_group_receipts[g].add(key)
-                # numerator: součet kusů pouze pro reálné položky ≥ 29 Kč a ne přeprava/výdej
+                # numerator + denominator (varianta 1): jen qualifying řádky
                 if r['pocet_kusu'] is not None and r['cena_ks_vcl_dph'] is not None:
-                    # Doprava nemá vyplněný kód - vyloučíme položky bez kódu
                     kod = r.get('kod')
                     is_excluded = not kod or kod == ''
                     if (not is_excluded) and float(r['cena_ks_vcl_dph']) >= 29:
                         per_group_sum[g] = per_group_sum.get(g, 0) + int(r['pocet_kusu'] or 0)
+                        if r['doklad']:
+                            per_group_receipts[g].add(key)
             for g in set(list(per_group_sum.keys()) + list(per_group_receipts.keys())):
                 denom = len(per_group_receipts.get(g, set())) or 1
                 avg[g] = round(per_group_sum.get(g, 0) / denom, 2)
@@ -5462,7 +5477,7 @@ def get_web_prodeje_charts_data(request):
             chart_data = queryset.annotate(
                 displayDate=Cast('typ', DateField())
             ).values('displayDate').annotate(
-                polozky_nad_100=Sum('pocet_kusu', filter=Q(cena_ks_vcl_dph__gte=100) & Q(kod__isnull=False) & ~Q(kod=''), default=0),
+                polozky_nad_100=Sum('pocet_kusu', filter=polozky_nad_100_q(), default=0),
                 sluzby_celkem=Count('id', filter=Q(kategorie__icontains='!Servis')),
                 prumer_polozek_uctu=Avg('pocet_kusu'),
                 ct300=Count('id', filter=Q(kod__icontains='CT300')),
@@ -5509,7 +5524,7 @@ def get_web_prodeje_charts_data(request):
             chart_data = queryset.annotate(
                 displayDate=TruncWeek(Cast('typ', DateField()))
             ).values('displayDate').annotate(
-                polozky_nad_100=Sum('pocet_kusu', filter=Q(cena_ks_vcl_dph__gte=100) & Q(kod__isnull=False) & ~Q(kod=''), default=0),
+                polozky_nad_100=Sum('pocet_kusu', filter=polozky_nad_100_q(), default=0),
                 sluzby_celkem=Count('id', filter=Q(kategorie__icontains='!Servis')),
                 prumer_polozek_uctu=Avg('pocet_kusu'),
                 ct300=Count('id', filter=Q(kod__icontains='CT300')),
@@ -5534,7 +5549,7 @@ def get_web_prodeje_charts_data(request):
             chart_data = queryset.annotate(
                 displayDate=TruncMonth(Cast('typ', DateField()))
             ).values('displayDate').annotate(
-                polozky_nad_100=Sum('pocet_kusu', filter=Q(cena_ks_vcl_dph__gte=100) & Q(kod__isnull=False) & ~Q(kod=''), default=0),
+                polozky_nad_100=Sum('pocet_kusu', filter=polozky_nad_100_q(), default=0),
                 sluzby_celkem=Count('id', filter=Q(kategorie__icontains='!Servis')),
                 prumer_polozek_uctu=Avg('pocet_kusu'),
                 ct300=Count('id', filter=Q(kod__icontains='CT300')),
@@ -5785,9 +5800,10 @@ def web_prodeje_polozky_view(request):
                 # 1. Položky nad 100 Kč (suma Pocet_kusu, bez dopravného)
                 polozky_nad_100=Sum(
                     'pocet_kusu',
-                    filter=Q(cena_ks_vcl_dph__gte=100) & Q(kod__isnull=False) & ~Q(kod=''),
+                    filter=polozky_nad_100_q(),
                     default=0
                 ),
+                viceprace_obrat=viceprace_obrat_sum(),
                 # 2. Služby podle kódů
                 ct300=Count('id', filter=Q(kod='P114194')),
                 ct600=Count('id', filter=Q(kod='CT600')),
@@ -5806,7 +5822,7 @@ def web_prodeje_polozky_view(request):
                 sklicka=Count('id', filter=Q(kategorie_1='Skla a fólie')),
                 lepeni=Count('id', filter=Q(kod='LOS')),
                 # 5. Položky nad 29 Kč (bez dopravného - stejná logika jako v profilu)
-                polozky_nad_29=Count('id', filter=Q(cena_ks_vcl_dph__gte=29) & Q(kod__isnull=False) & ~Q(kod='')),
+                polozky_nad_29=Count('id', filter=qualifying_polozka_q()),
                 # 6. Pomocné hodnoty pro výpočet unikátních dokladů
                 prvni_stredisko=Max('stredisko')  # Pro fallback prodejna
             ).order_by('-polozky_nad_100')[:20]  # Top 20 prodejců
@@ -5844,7 +5860,7 @@ def web_prodeje_polozky_view(request):
             doklady_cache = {}
             for prodejce_id in prodejci_ids:
                 prodejce_qs = queryset.filter(id_prodejce=prodejce_id)
-                doklady_cache[prodejce_id] = _count_unique_receipts(prodejce_qs)
+                doklady_cache[prodejce_id] = _count_active_receipts(prodejce_qs)
             
             # Sestavíme výsledná data
             data_list = []
@@ -5870,11 +5886,11 @@ def web_prodeje_polozky_view(request):
                     agg_data['pz1'] + agg_data['knz']
                 )
                 
-                # Výpočet průměru položek na doklad
                 unikatni_doklady = doklady_cache.get(prodejce_id, 0)
-                prumer_polozek = round(
-                    agg_data['polozky_nad_29'] / unikatni_doklady, 2
-                ) if unikatni_doklady > 0 else 0
+                prodejce_qs = queryset.filter(id_prodejce=prodejce_id)
+                celkovy_obrat = float(sum_obrat_s_dph(prodejce_qs))
+                prumer_polozek = prumer_polozek_uctu(agg_data['polozky_nad_29'], unikatni_doklady)
+                prumer_hodnota = prumer_hodnota_uctenky(celkovy_obrat, unikatni_doklady)
 
                 servisni_prace = None
                 servis_provize = 0
@@ -5893,6 +5909,9 @@ def web_prodeje_polozky_view(request):
                     'sluzby_celkem': sluzby_celkem,
                     'sunshine': agg_data['sunshine'],
                     'pol_dok': prumer_polozek,
+                    'prumer_polozek_uctu': prumer_polozek,
+                    'prumer_hodnota_uctenky': prumer_hodnota,
+                    'celkovy_obrat': celkovy_obrat,
                     'polozky_nad_29': agg_data['polozky_nad_29'],
                     'unikatni_doklady': unikatni_doklady,
                     'ct300': agg_data['ct300'],
@@ -5911,6 +5930,7 @@ def web_prodeje_polozky_view(request):
                     'vykupy': vykupy_map.get(prodejce_id, 0),
                     'servis_provize': servis_provize,
                     'servisni_prace': servisni_prace,
+                    'viceprace_obrat': round(float(agg_data.get('viceprace_obrat') or 0), 2),
                     'aligator': 0
                 })
             
@@ -6024,6 +6044,10 @@ def web_prodeje_salesperson_active_dates(request):
                 return JsonResponse({'error': 'Neplatný formát měsíce. Použijte YYYY-MM'}, status=400)
 
         for d in sales_qs.values_list('typ', flat=True).distinct():
+            if d:
+                active.add(d)
+
+        for d in sales_qs.filter(viceprace_row_q()).values_list('typ', flat=True).distinct():
             if d:
                 active.add(d)
 
@@ -6221,8 +6245,14 @@ def _aggregate_web_prodeje_all_salesperson(queryset, user_id, iso_date):
             'prodejce': f'Prodejce {user_id}',
             'id_prodejce': int(user_id),
             'polozky_nad_100': 0,
+            'viceprace_obrat': 0,
             'sluzby_celkem': 0,
             'pol_dok': 0.0,
+            'prumer_polozek_uctu': 0.0,
+            'prumer_hodnota_uctenky': 0.0,
+            'celkovy_obrat': 0.0,
+            'unikatni_doklady': 0,
+            'polozky_nad_29': 0,
             'ct300': 0,
             'ct600': 0,
             'ct1200': 0,
@@ -6245,7 +6275,8 @@ def _aggregate_web_prodeje_all_salesperson(queryset, user_id, iso_date):
         prodejce_jmeno = f"Prodejce {user_id}"
 
     # Vynecháváme dopravné (položky bez kódu), počítáme podle Pocet_kusu
-    polozky_nad_100 = queryset.filter(cena_ks_vcl_dph__gte=100).exclude(kod__isnull=True).exclude(kod='').aggregate(total=Sum('pocet_kusu', default=0))['total'] or 0
+    polozky_nad_100 = queryset.filter(polozky_nad_100_q()).aggregate(total=Sum('pocet_kusu', default=0))['total'] or 0
+    viceprace_data = aggregate_viceprace(queryset)
 
     # Služby
     ct300 = queryset.filter(kod='P114194').count()
@@ -6266,9 +6297,11 @@ def _aggregate_web_prodeje_all_salesperson(queryset, user_id, iso_date):
 
     # Průměr položek/účtu: počet položek s cenou ≥ 29 Kč / počet unikátních dokladů
     # Odfiltrujeme prázdné/NULL doklady, aby se počítaly pouze platné účtenky
-    polozky_nad_29 = queryset.filter(cena_ks_vcl_dph__gte=29).exclude(_excluded_names_q()).count()
-    unikatni_doklady = _count_unique_receipts(queryset)
-    prumer_polozek = round(polozky_nad_29 / unikatni_doklady, 2) if unikatni_doklady else 0
+    polozky_nad_29 = queryset.filter(qualifying_polozka_q()).count()
+    unikatni_doklady = _count_active_receipts(queryset)
+    celkovy_obrat = float(sum_obrat_s_dph(queryset))
+    prumer_polozek = prumer_polozek_uctu(polozky_nad_29, unikatni_doklady)
+    prumer_hodnota = prumer_hodnota_uctenky(celkovy_obrat, unikatni_doklady)
 
     return {
         'date': iso_date,
@@ -6276,9 +6309,15 @@ def _aggregate_web_prodeje_all_salesperson(queryset, user_id, iso_date):
         'prodejce': prodejce_jmeno,
         'id_prodejce': int(user_id),
         'polozky_nad_100': polozky_nad_100,
+        'viceprace_obrat': viceprace_data['obrat'],
+        'viceprace': viceprace_data,
         'sluzby_celkem': sluzby_celkem,
         'pol_dok': prumer_polozek,
-        'prumer_polozek_uctu': prumer_polozek,  # alias pro FE kompatibilitu
+        'prumer_polozek_uctu': prumer_polozek,
+        'prumer_hodnota_uctenky': prumer_hodnota,
+        'celkovy_obrat': celkovy_obrat,
+        'unikatni_doklady': unikatni_doklady,
+        'polozky_nad_29': polozky_nad_29,
         'ct300': ct300,
         'ct600': ct600,
         'ct1200': ct1200,
@@ -6349,7 +6388,8 @@ def _leaderboard_day_queryset(day):
 def _leaderboard_seller_aggregation(month_queryset):
     """Jednotná měsíční agregace metrik po prodejci (produkty + unikátní doklady)."""
     return month_queryset.filter(id_prodejce__isnull=False).values('id_prodejce').annotate(
-        polozky_nad_100=Sum('pocet_kusu', filter=Q(cena_ks_vcl_dph__gte=100) & ~Q(kod__isnull=True) & ~Q(kod='')),
+        polozky_nad_100=Sum('pocet_kusu', filter=polozky_nad_100_q()),
+        viceprace_obrat=viceprace_obrat_sum(),
         ct300=Count('id', filter=Q(kod='P114194')),
         ct600=Count('id', filter=Q(kod='CT600')),
         ct1200=Count('id', filter=Q(kod='CT1200')),
@@ -6361,8 +6401,16 @@ def _leaderboard_seller_aggregation(month_queryset):
         kop500=Count('id', filter=Q(kod='KOP500')),
         pz1=Count('id', filter=Q(kod='PZ1')),
         knz=Count('id', filter=Q(kod='KNZ')),
-        polozky_nad_29=Count('id', filter=Q(cena_ks_vcl_dph__gte=29) & Q(kod__isnull=False) & ~Q(kod='')),
-        unikatni_doklady=Count('doklad', distinct=True, filter=_leaderboard_doklad_q()),
+        polozky_nad_29=Count('id', filter=qualifying_polozka_q()),
+        unikatni_doklady=Count(
+            'doklad',
+            distinct=True,
+            filter=_leaderboard_doklad_q() & qualifying_polozka_q(),
+        ),
+        celkovy_obrat=Sum(
+            F('pocet_kusu') * F('cena_ks_vcl_dph'),
+            default=0,
+        ),
         prodejna_nazev=Max('stredisko'),
     )
 
@@ -6387,9 +6435,11 @@ def _leaderboard_item_points_data(item):
 
 
 def _leaderboard_prumer_polozek(item):
-    polozky = item.get('polozky_nad_29') or 0
-    doklady = item.get('unikatni_doklady') or 0
-    return round(polozky / doklady, 2) if doklady else 0
+    return leaderboard_prumer_polozek(item)
+
+
+def _leaderboard_prumer_hodnota_uctenky(item):
+    return leaderboard_prumer_hodnota_uctenky(item)
 
 
 def _leaderboard_sluzby_celkem(item):
@@ -6700,9 +6750,11 @@ def web_prodeje_leaderboard_points(request):
                 'total_points': product_points + servis_points,
                 'last_month_points': prev_month_points_map.get(prodejce_id, 0),
                 'polozky_nad_100': item['polozky_nad_100'] or 0,
+                'viceprace_obrat': round(float(item.get('viceprace_obrat') or 0), 2),
                 'sluzby_celkem': _leaderboard_sluzby_celkem(item),
                 'servis_provize': servis_points,
                 'prumer_polozek_uctu': _leaderboard_prumer_polozek(item),
+                'prumer_hodnota_uctenky': _leaderboard_prumer_hodnota_uctenky(item),
             })
 
         # Seřadit desc podle bodů a přidat pozice
@@ -6724,6 +6776,7 @@ def web_prodeje_leaderboard_points(request):
                     _leaderboard_cache_table_available()
                     and LeaderboardMonthPointsCache.objects.filter(month_ym=prev_ym).exists()
                 ),
+                'viceprace_leader': viceprace_leader_from_rows(leaderboard),
             },
         })
     except Exception as e:
@@ -6783,9 +6836,11 @@ def web_prodeje_leaderboard_points_today(request):
                 'total_points': product_points + servis_points,
                 'last_shift_points': last_shift_points_map.get(prodejce_id, 0),
                 'polozky_nad_100': item['polozky_nad_100'] or 0,
+                'viceprace_obrat': round(float(item.get('viceprace_obrat') or 0), 2),
                 'sluzby_celkem': _leaderboard_sluzby_celkem(item),
                 'servis_provize': servis_points,
                 'prumer_polozek_uctu': _leaderboard_prumer_polozek(item),
+                'prumer_hodnota_uctenky': _leaderboard_prumer_hodnota_uctenky(item),
             })
 
         leaderboard.sort(key=lambda x: x['total_points'], reverse=True)
@@ -6804,6 +6859,7 @@ def web_prodeje_leaderboard_points_today(request):
             'meta': {
                 'yesterday_date': yesterday.isoformat(),
                 'yesterday_best': yesterday_best,
+                'viceprace_leader': viceprace_leader_from_rows(leaderboard),
             },
         })
     except Exception as e:
@@ -6818,9 +6874,11 @@ def web_prodeje_leaderboard_average_items(request):
         ym = date.today().strftime('%Y-%m')
         month_queryset = _leaderboard_month_queryset(ym)
 
-        global_polozky_nad_29 = month_queryset.filter(cena_ks_vcl_dph__gte=29).exclude(_excluded_names_q()).count()
-        global_unikatni_doklady = _count_unique_receipts(month_queryset)
-        global_prumer = round(global_polozky_nad_29 / global_unikatni_doklady, 2) if global_unikatni_doklady else 0
+        global_polozky_nad_29 = month_queryset.filter(qualifying_polozka_q()).count()
+        global_unikatni_doklady = _count_active_receipts(month_queryset)
+        global_obrat = float(sum_obrat_s_dph(month_queryset))
+        global_prumer = prumer_polozek_uctu(global_polozky_nad_29, global_unikatni_doklady)
+        global_prumer_hodnota = prumer_hodnota_uctenky(global_obrat, global_unikatni_doklady)
 
         aggregation = list(_leaderboard_seller_aggregation(month_queryset))
 
@@ -6850,6 +6908,9 @@ def web_prodeje_leaderboard_average_items(request):
                 'prodejce': prodejce_jmeno,
                 'prodejna': str(prodejna_nazev),
                 'prumer_polozek_uctu': _leaderboard_prumer_polozek(item),
+                'prumer_hodnota_uctenky': _leaderboard_prumer_hodnota_uctenky(item),
+                'celkovy_obrat': float(item.get('celkovy_obrat') or 0),
+                'unikatni_doklady': item.get('unikatni_doklady') or 0,
                 'polozky_nad_100': item['polozky_nad_100'] or 0,
                 'total_points': calculate_points_for_data(_leaderboard_item_points_data(item)),
             })
@@ -6871,6 +6932,8 @@ def web_prodeje_leaderboard_average_items(request):
                 'global_polozky_nad_29': global_polozky_nad_29,
                 'global_unikatni_doklady': global_unikatni_doklady,
                 'global_average': global_prumer,
+                'global_obrat': global_obrat,
+                'global_prumer_hodnota_uctenky': global_prumer_hodnota,
             }
         })
     except Exception as e:

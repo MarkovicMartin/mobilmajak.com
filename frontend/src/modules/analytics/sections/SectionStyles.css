@@ -2150,6 +2150,25 @@
     text-align: center;
 }
 
+.service-item.highlight-yellow {
+    background: #fff8e1;
+    border-color: #f9a825;
+}
+
+.service-item.highlight-yellow .service-name {
+    color: #f57f17;
+}
+
+.service-item.highlight-yellow .service-count {
+    background: #ffeb3b;
+    color: #333;
+    padding: 2px 8px;
+    border-radius: 4px;
+    min-width: 28px;
+    text-align: center;
+    font-weight: 600;
+}
+
 .seller-performance {
     display: flex;
     flex-direction: column;

@@ -12,7 +12,9 @@ const LeaderboardModule = () => {
     const [pointsData, setPointsData] = useState([]);
     const [pointsTodayData, setPointsTodayData] = useState([]);
     const [pointsTodayMeta, setPointsTodayMeta] = useState(null);
+    const [pointsMonthMeta, setPointsMonthMeta] = useState(null);
     const [averageItemsData, setAverageItemsData] = useState([]);
+    const [averageItemsMeta, setAverageItemsMeta] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
@@ -47,6 +49,7 @@ const LeaderboardModule = () => {
             const data = await response.json();
             if (data.success) {
                 setPointsData(data.data || []);
+                setPointsMonthMeta(data.meta || null);
             } else {
                 throw new Error(data.error || 'Neznámá chyba');
             }
@@ -112,6 +115,7 @@ const LeaderboardModule = () => {
             const data = await response.json();
             if (data.success) {
                 setAverageItemsData(data.data || []);
+                setAverageItemsMeta(data.meta || null);
             } else {
                 throw new Error(data.error || 'Neznámá chyba');
             }
@@ -200,6 +204,7 @@ const LeaderboardModule = () => {
                         loading={loading}
                         currentUser={user}
                         period="month"
+                        vicepraceLeader={pointsMonthMeta?.viceprace_leader}
                     />
                 )}
                 {activeTab === 'points' && pointsSubTab === 'today' && (
@@ -209,11 +214,13 @@ const LeaderboardModule = () => {
                         currentUser={user}
                         period="day"
                         yesterdayBest={pointsTodayMeta?.yesterday_best}
+                        vicepraceLeader={pointsTodayMeta?.viceprace_leader}
                     />
                 )}
                 {activeTab === 'average' && (
                     <AverageItemsLeaderboard 
                         data={averageItemsData} 
+                        meta={averageItemsMeta}
                         loading={loading}
                         currentUser={user}
                     />

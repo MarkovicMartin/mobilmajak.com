@@ -6,6 +6,7 @@ import {
     CT300_INFO_KEY,
     CT300_INFO_LABEL,
 } from '../../constants/productCommissions';
+import { VICEPRACE_LABEL, formatVicepraceObrat } from '../../constants/viceprace';
 import './ProfileAnalytics.css';
 
 const SERVIS_RATE = 0.1;
@@ -192,6 +193,10 @@ const ProfileAnalytics = ({ userId }) => {
                             <div className="metric-label">Služby celkem</div>
                         </div>
                         <div className="metric-item">
+                            <div className="metric-value">{formatVicepraceObrat(data.viceprace_obrat)}</div>
+                            <div className="metric-label">{VICEPRACE_LABEL}</div>
+                        </div>
+                        <div className="metric-item">
                             <div className="metric-value">{(data.prumer_polozek_uctu ?? data.pol_dok ?? 0).toFixed(2)}</div>
                             <div className="metric-label">Průměr pol./účtu</div>
                         </div>
@@ -232,6 +237,14 @@ const ProfileAnalytics = ({ userId }) => {
                                     {formatServisCalculation(breakdown?.servis_marze)}
                                 </span>
                             </div>
+                            {(data.viceprace_obrat || 0) > 0 && (
+                                <div className="product-item product-item-info">
+                                    <span>{VICEPRACE_LABEL}:</span>
+                                    <span className="product-calc">
+                                        {formatVicepraceObrat(data.viceprace_obrat)} (0 bodů)
+                                    </span>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

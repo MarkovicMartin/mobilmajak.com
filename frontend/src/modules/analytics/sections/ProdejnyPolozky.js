@@ -4,7 +4,22 @@ import AnalyticsSectionWrapper from '../AnalyticsSectionWrapper';
 import CustomDropdown from '../../../components/CustomDropdown';
 import AnalyticsDateRange from '../../../components/AnalyticsDateRange';
 import { formatISODate } from '../../../utils/analyticsDateRange';
+import {
+    VICEPRACE_LABEL,
+    VICEPRACE_LEADER_LABEL,
+    formatVicepraceObrat,
+} from '../../../constants/viceprace';
 import './SectionStyles.css';
+
+const formatCurrency = (value) => {
+    const n = Number(value) || 0;
+    return new Intl.NumberFormat('cs-CZ', {
+        style: 'currency',
+        currency: 'CZK',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+    }).format(Math.round(n));
+};
 
 const ProdejnyPolozky = () => {
     const [salesData, setSalesData] = useState([]);
@@ -136,6 +151,11 @@ const ProdejnyPolozky = () => {
     // "Z toho" služby a "Z toho" Sunshine
     const totalSluzby = salesData.reduce((sum, item) => sum + (item.sluzby_celkem || 0), 0);
     const totalSunshine = salesData.reduce((sum, item) => sum + (item.sunshine || 0), 0);
+    const totalObrat = salesData.reduce((sum, item) => sum + (item.celkovy_obrat || 0), 0);
+    const totalAktivniDoklady = salesData.reduce((sum, item) => sum + (item.unikatni_doklady || 0), 0);
+    const avgHodnotaUctenky = totalAktivniDoklady > 0
+        ? formatCurrency(totalObrat / totalAktivniDoklady)
+        : formatCurrency(0);
     const avgPolDok = salesData.length > 0
         ? (salesData.reduce((sum, item) => sum + (item.pol_dok || 0), 0) / salesData.length).toFixed(2)
         : 0;
@@ -143,6 +163,10 @@ const ProdejnyPolozky = () => {
 
     const nejlepsiProdejce = salesData.reduce((best, current) =>
         (current.polozky_nad_100 > (best.polozky_nad_100 || 0)) ? current : best, {});
+
+    const totalViceprace = salesData.reduce((sum, item) => sum + (item.viceprace_obrat || 0), 0);
+    const nejlepsiDyskar = salesData.reduce((best, current) =>
+        ((current.viceprace_obrat || 0) > (best.viceprace_obrat || 0)) ? current : best, {});
 
     return (
         <AnalyticsSectionWrapper title="Prodejny - Položky" icon="📱">
@@ -307,9 +331,9 @@ const ProdejnyPolozky = () => {
                             <div className="stat-change positive">Prodejní kódy služeb</div>
                         </div>
                         <div className="stat-card">
-                            <h4>Z toho SUNSHINE</h4>
-                            <div className="stat-value">{totalSunshine}</div>
-                            <div className="stat-change positive">Počet prodaných fólií</div>
+                            <h4>Průměrná hodnota účtenky</h4>
+                            <div className="stat-value">{avgHodnotaUctenky}</div>
+                            <div className="stat-change">Obrat s DPH / aktivní účtenky</div>
                         </div>
                         <div className="stat-card">
                             <h4>Průměr položek/účtenka</h4>
@@ -320,6 +344,13 @@ const ProdejnyPolozky = () => {
                             <h4>Nejlepší prodejce</h4>
                             <div className="stat-value">{nejlepsiProdejce.prodejce || 'N/A'}</div>
                             <div className="stat-change positive">{nejlepsiProdejce.polozky_nad_100 || 0} položek</div>
+                        </div>
+                        <div className="stat-card">
+                            <h4>{VICEPRACE_LEADER_LABEL}</h4>
+                            <div className="stat-value">{nejlepsiDyskar.prodejce || 'N/A'}</div>
+                            <div className="stat-change positive">
+                                {formatVicepraceObrat(nejlepsiDyskar.viceprace_obrat)} · celkem {formatVicepraceObrat(totalViceprace)}
+                            </div>
                         </div>
                     </div>
 
@@ -353,8 +384,10 @@ const ProdejnyPolozky = () => {
                                                 <span className="metric-value highlight-green">{item.sluzby_celkem || 0}</span>
                                             </div>
                                             <div className="metric-item primary">
-                                                <span className="metric-label">Z toho SUNSHINE</span>
-                                                <span className="metric-value highlight-yellow">{item.sunshine || 0}</span>
+                                                <span className="metric-label">Prům. hodnota účtenky</span>
+                                                <span className="metric-value highlight-yellow">
+                                                    {formatCurrency(item.prumer_hodnota_uctenky ?? 0)}
+                                                </span>
                                             </div>
                                             <div className="metric-item">
                                                 <span className="metric-label">Průměr pol./účt.</span>
@@ -376,6 +409,10 @@ const ProdejnyPolozky = () => {
                                                 <div className="service-item service-item-servis" title={item.servisni_prace != null ? '10 % marže servisních prací' : 'Uživatel nemá technik_id'}>
                                                     <span className="service-name">Servis</span>
                                                     <span className="service-count">{item.servis_provize ?? 0}</span>
+                                                </div>
+                                                <div className="service-item service-item-viceprace" title="Kód P63615, obrat s DPH, nepočítá se do položek nad 100 Kč ani do bodů">
+                                                    <span className="service-name">{VICEPRACE_LABEL}</span>
+                                                    <span className="service-count">{formatVicepraceObrat(item.viceprace_obrat)}</span>
                                                 </div>
                                                 <div className="service-item">
                                                     <span className="service-name">CT300</span>
@@ -432,6 +469,10 @@ const ProdejnyPolozky = () => {
                                                 <div className="service-item highlight">
                                                     <span className="service-name font-bold">Výkup</span>
                                                     <span className="service-count font-bold">{item.vykupy || 0}</span>
+                                                </div>
+                                                <div className="service-item highlight-yellow">
+                                                    <span className="service-name">SUNSHINE</span>
+                                                    <span className="service-count">{item.sunshine || 0}</span>
                                                 </div>
                                             </div>
                                         </div>
