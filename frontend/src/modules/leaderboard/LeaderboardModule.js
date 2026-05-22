@@ -11,6 +11,7 @@ const LeaderboardModule = () => {
     const [pointsSubTab, setPointsSubTab] = useState('month');
     const [pointsData, setPointsData] = useState([]);
     const [pointsTodayData, setPointsTodayData] = useState([]);
+    const [pointsTodayMeta, setPointsTodayMeta] = useState(null);
     const [averageItemsData, setAverageItemsData] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -80,6 +81,7 @@ const LeaderboardModule = () => {
             const data = await response.json();
             if (data.success) {
                 setPointsTodayData(data.data || []);
+                setPointsTodayMeta(data.meta || null);
             } else {
                 throw new Error(data.error || 'Neznámá chyba');
             }
@@ -206,6 +208,7 @@ const LeaderboardModule = () => {
                         loading={loading}
                         currentUser={user}
                         period="day"
+                        yesterdayBest={pointsTodayMeta?.yesterday_best}
                     />
                 )}
                 {activeTab === 'average' && (

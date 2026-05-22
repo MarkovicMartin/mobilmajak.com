@@ -6529,6 +6529,50 @@ def _servis_points_map_for_day(day):
     return dict(points_by_user)
 
 
+def _compute_per_seller_last_shift_points_map(before_day, excluded_ids=None, seller_ids=None):
+    """Body z posledního prodejního dne každého prodejce před before_day (individuální směna)."""
+    from django.db.models import Max
+    from users.exclusions import get_excluded_report_user_ids
+
+    excluded_ids = excluded_ids if excluded_ids is not None else get_excluded_report_user_ids()
+    qs = WebProdejeAll.objects.filter(typ__lt=before_day, id_prodejce__isnull=False)
+    if excluded_ids:
+        qs = qs.exclude(id_prodejce__in=excluded_ids)
+    if seller_ids is not None:
+        qs = qs.filter(id_prodejce__in=seller_ids)
+
+    last_by_seller = list(qs.values('id_prodejce').annotate(last_typ=Max('typ')))
+    if not last_by_seller:
+        return {}
+
+    by_date = {}
+    for row in last_by_seller:
+        pid = int(row['id_prodejce'])
+        by_date.setdefault(row['last_typ'], []).append(pid)
+
+    result = {}
+    for shift_day, pids in by_date.items():
+        day_map = _compute_day_total_points_map(shift_day)
+        for pid in pids:
+            result[pid] = day_map.get(pid, 0)
+    return result
+
+
+def _leaderboard_best_from_points_map(points_map, excluded_ids):
+    """Nejlepší prodejce v dané mapě bodů (včera / minulý měsíc), nezávisle na dnešním žebříčku."""
+    candidates = {
+        int(pid): int(pts)
+        for pid, pts in points_map.items()
+        if int(pid) not in excluded_ids and int(pts) > 0
+    }
+    if not candidates:
+        return None
+    best_id = max(candidates, key=candidates.get)
+    user = WebUser.objects.filter(id=best_id).first()
+    name = f"{user.jmeno} {user.prijmeni}".strip() if user else f"Prodejce {best_id}"
+    return {'id': best_id, 'prodejce': name, 'points': candidates[best_id]}
+
+
 def _compute_day_total_points_map(day):
     """Celkové body za jeden den – produkty + servis."""
     day_queryset = _leaderboard_day_queryset(day)
@@ -6692,8 +6736,8 @@ def web_prodeje_leaderboard_points_today(request):
     """Žebříček bodů za dnešek – stejná agregace jako měsíční, filtr typ=dnes."""
     try:
         today = date.today()
-        day_queryset = _leaderboard_day_queryset(today)
         yesterday = today - timedelta(days=1)
+        day_queryset = _leaderboard_day_queryset(today)
         yesterday_points_map = _compute_day_total_points_map(yesterday)
 
         current_aggregation = list(_leaderboard_seller_aggregation(day_queryset))
@@ -6702,7 +6746,12 @@ def web_prodeje_leaderboard_points_today(request):
         from users.exclusions import get_excluded_report_user_ids
         excluded_ids = get_excluded_report_user_ids()
 
-        prodejci_ids = [item['id_prodejce'] for item in current_aggregation]
+        prodejci_ids = [int(item['id_prodejce']) for item in current_aggregation]
+        last_shift_points_map = _compute_per_seller_last_shift_points_map(
+            today,
+            excluded_ids=excluded_ids,
+            seller_ids=prodejci_ids,
+        )
         users = {u.id: u for u in WebUser.objects.filter(id__in=prodejci_ids)}
         home_store_map = _leaderboard_home_store_map(users)
         workplace_map = _leaderboard_dominant_stredisko_map(day_queryset, prodejci_ids)
@@ -6732,7 +6781,7 @@ def web_prodeje_leaderboard_points_today(request):
                 'prodejce': prodejce_jmeno,
                 'prodejna': str(prodejna_nazev),
                 'total_points': product_points + servis_points,
-                'yesterday_points': yesterday_points_map.get(prodejce_id, 0),
+                'last_shift_points': last_shift_points_map.get(prodejce_id, 0),
                 'polozky_nad_100': item['polozky_nad_100'] or 0,
                 'sluzby_celkem': _leaderboard_sluzby_celkem(item),
                 'servis_provize': servis_points,
@@ -6743,6 +6792,8 @@ def web_prodeje_leaderboard_points_today(request):
         for idx, item in enumerate(leaderboard):
             item['position'] = idx + 1
 
+        yesterday_best = _leaderboard_best_from_points_map(yesterday_points_map, excluded_ids)
+
         return JsonResponse({
             'success': True,
             'data': leaderboard,
@@ -6752,6 +6803,7 @@ def web_prodeje_leaderboard_points_today(request):
             'source': 'WEB_PRODEJE_ALL',
             'meta': {
                 'yesterday_date': yesterday.isoformat(),
+                'yesterday_best': yesterday_best,
             },
         })
     except Exception as e:

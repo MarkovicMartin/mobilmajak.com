@@ -1,12 +1,14 @@
 import React from 'react';
 import './PointsLeaderboard.css';
 
-const PointsLeaderboard = ({ data, loading, currentUser, period = 'month' }) => {
+const PointsLeaderboard = ({ data, loading, currentUser, period = 'month', yesterdayBest = null }) => {
     const isDay = period === 'day';
     const periodLabel = isDay ? 'dnešek' : 'aktuální měsíc';
-    const compareLabel = isDay ? 'Body včera' : 'Skóre minulý měsíc';
-    const getComparePoints = (seller) =>
-        isDay ? (seller.yesterday_points || 0) : (seller.last_month_points || 0);
+    const statCardLabel = isDay ? 'Body včera' : 'Skóre minulý měsíc';
+    const tableShiftLabel = isDay ? 'Body minulou směnu' : 'Skóre minulý měsíc';
+    const getLastShiftPoints = (seller) =>
+        isDay ? (seller.last_shift_points || 0) : (seller.last_month_points || 0);
+    const getMonthComparePoints = (seller) => seller.last_month_points || 0;
     if (loading) {
         return (
             <div className="loading-container">
@@ -28,11 +30,17 @@ const PointsLeaderboard = ({ data, loading, currentUser, period = 'month' }) => 
     const topThree = data.slice(0, 3);
     const restOfList = data;
 
-    /** Nejvyšší body v porovnávacím období (včera / minulý měsíc), ne lídr dnešního žebříčku. */
-    const topByCompare = data.reduce(
-        (best, seller) => (getComparePoints(seller) > getComparePoints(best) ? seller : best),
+    /** Karta: nejlepší včera (den) nebo minulý měsíc – z API meta, ne dnešní lídr žebříčku. */
+    const topByMonthCompare = data.reduce(
+        (best, seller) => (getMonthComparePoints(seller) > getMonthComparePoints(best) ? seller : best),
         data[0],
     );
+    const statTopPoints = isDay
+        ? (yesterdayBest?.points > 0 ? yesterdayBest.points : 0)
+        : getMonthComparePoints(topByMonthCompare);
+    const statTopName = isDay
+        ? (yesterdayBest?.points > 0 ? yesterdayBest.prodejce : '—')
+        : (statTopPoints > 0 ? topByMonthCompare?.prodejce : '—');
 
     const getCurrentUserPosition = () => {
         if (!currentUser) return null;
@@ -84,13 +92,15 @@ const PointsLeaderboard = ({ data, loading, currentUser, period = 'month' }) => 
                     <div className="stat-change">Na prodejce</div>
                 </div>
                 <div className="stat-card">
-                    <h4>🎯 {compareLabel}</h4>
-                    <div className="stat-value">{getComparePoints(topByCompare).toLocaleString()}</div>
+                    <h4>🎯 {statCardLabel}</h4>
+                    <div className="stat-value">{statTopPoints.toLocaleString()}</div>
                     <div className="stat-change">
-                        {topByCompare?.prodejce || 'N/A'}
-                        <span className="stat-change-hint">
-                            {isDay ? ' · nejlepší včera' : ' · nejlepší minulý měsíc'}
-                        </span>
+                        {statTopName}
+                        {statTopPoints > 0 && (
+                            <span className="stat-change-hint">
+                                {isDay ? ' · nejlepší včera' : ' · nejlepší minulý měsíc'}
+                            </span>
+                        )}
                     </div>
                 </div>
             </div>
@@ -157,7 +167,7 @@ const PointsLeaderboard = ({ data, loading, currentUser, period = 'month' }) => 
                                     <th>Prodejna</th>
                                     <th>Celkové body</th>
                                     <th>Průměr pol./účt.</th>
-                                    <th>{compareLabel}</th>
+                                    <th>{tableShiftLabel}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -188,7 +198,7 @@ const PointsLeaderboard = ({ data, loading, currentUser, period = 'month' }) => 
                                         <td>{seller.prumer_polozek_uctu.toFixed(2)}</td>
                                         <td>
                                             <span className="score-highlight">
-                                                {getComparePoints(seller).toLocaleString()}
+                                                {getLastShiftPoints(seller).toLocaleString()}
                                             </span>
                                         </td>
                                     </tr>
