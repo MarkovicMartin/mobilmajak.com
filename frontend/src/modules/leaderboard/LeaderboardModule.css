@@ -5,36 +5,12 @@
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
-.leaderboard-header {
-    text-align: center;
-    margin-bottom: 10px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 12px;
-    padding: 14px 16px;
-    color: white;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
-}
-
-.leaderboard-header h1 {
-    font-size: 1.35rem;
-    font-weight: 700;
-    margin: 0 0 4px 0;
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
-}
-
-.leaderboard-header p {
-    font-size: 0.8rem;
-    opacity: 0.9;
-    margin: 0;
-    line-height: 1.25;
-}
-
 .error-message {
     background: linear-gradient(135deg, #ff6b6b, #ee5a24);
     color: white;
-    padding: 15px 20px;
+    padding: 12px 16px;
     border-radius: 10px;
-    margin-bottom: 20px;
+    margin-bottom: 10px;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -51,36 +27,87 @@
     margin-left: 10px;
 }
 
-.points-subtabs {
+.leaderboard-period-bar {
     display: flex;
     gap: 8px;
     margin-bottom: 10px;
-    justify-content: center;
-    flex-wrap: wrap;
+    align-items: stretch;
 }
 
-.subtab-button {
-    background: #fff;
+.period-tab {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
     border: 2px solid #e1e8ff;
-    border-radius: 10px;
-    padding: 6px 14px;
+    border-radius: 12px;
+    padding: 10px 16px;
     font-size: 0.85rem;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: flex 0.25s ease, background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
     color: #5a67d8;
+    background: #fff;
+    flex: 0 1 auto;
+    min-width: 0;
+    text-align: center;
+    font-family: inherit;
+    appearance: none;
 }
 
-.subtab-button:hover {
+.period-tab:hover:not(.period-tab--expanded) {
     border-color: #c7d2fe;
     background: #f8f9ff;
 }
 
-.subtab-button.active {
-    background: linear-gradient(135deg, #667eea, #764ba2);
+.period-tab--expanded {
+    flex: 1 1 0;
+    justify-content: flex-start;
+    text-align: left;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     border-color: #667eea;
     color: white;
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    box-shadow: 0 4px 14px rgba(102, 126, 234, 0.28);
+    padding: 10px 14px;
+}
+
+.period-tab--expanded .period-tab-title {
+    color: white;
+}
+
+.period-tab-label {
+    white-space: nowrap;
+    line-height: 1.2;
+}
+
+.period-tab-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.2);
+    font-size: 0.95rem;
+}
+
+.period-tab-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+    .leaderboard-period-bar {
+        flex-direction: column;
+    }
+
+    .period-tab--expanded {
+        flex: none;
+        width: 100%;
+    }
 }
 
 .leaderboard-content {
@@ -92,20 +119,20 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 60px 20px;
+    padding: 40px 20px;
     background: linear-gradient(135deg, #f8f9ff, #e8eeff);
-    border-radius: 20px;
+    border-radius: 12px;
     border: 2px dashed #c7d2fe;
 }
 
 .loading-spinner {
-    width: 50px;
-    height: 50px;
+    width: 40px;
+    height: 40px;
     border: 4px solid #e1e8ff;
     border-top: 4px solid #667eea;
     border-radius: 50%;
     animation: spin 1s linear infinite;
-    margin-bottom: 15px;
+    margin-bottom: 12px;
 }
 
 @keyframes spin {
@@ -115,54 +142,27 @@
 
 .loading-container p {
     color: #5a67d8;
-    font-size: 1.1rem;
+    font-size: 0.95rem;
     font-weight: 500;
     margin: 0;
 }
 
 .no-data {
     text-align: center;
-    padding: 60px 20px;
+    padding: 40px 20px;
     background: linear-gradient(135deg, #f8f9ff, #e8eeff);
-    border-radius: 20px;
+    border-radius: 12px;
     border: 2px dashed #c7d2fe;
 }
 
 .no-data h3 {
     color: #5a67d8;
-    font-size: 1.5rem;
-    margin-bottom: 10px;
+    font-size: 1.2rem;
+    margin-bottom: 8px;
 }
 
 .no-data p {
     color: #718096;
-    font-size: 1rem;
+    font-size: 0.9rem;
     margin: 0;
 }
-
-/* Responzivní design */
-@media (max-width: 768px) {
-    .leaderboard-module {
-        padding: 15px;
-    }
-    
-    .leaderboard-header {
-        padding: 30px 15px;
-    }
-    
-    .leaderboard-header h1 {
-        font-size: 2rem;
-    }
-    
-}
-
-@media (max-width: 480px) {
-    .leaderboard-header h1 {
-        font-size: 1.8rem;
-    }
-    
-    .leaderboard-header p {
-        font-size: 1rem;
-    }
-    
-} 

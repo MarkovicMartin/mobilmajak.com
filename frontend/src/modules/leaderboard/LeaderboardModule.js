@@ -88,19 +88,8 @@ const LeaderboardModule = () => {
         }
     };
 
-    const isToday = pointsSubTab === 'today';
-
     return (
         <div className="leaderboard-module">
-            <div className="leaderboard-header">
-                <h1>🏆 Žebříček prodejců</h1>
-                <p>
-                    {isToday
-                        ? 'Nejlepší prodejci podle bodového hodnocení za dnešek'
-                        : 'Nejlepší prodejci podle bodového hodnocení za aktuální měsíc'}
-                </p>
-            </div>
-
             {error && (
                 <div className="error-message">
                     <span>⚠️ {error}</span>
@@ -108,20 +97,42 @@ const LeaderboardModule = () => {
                 </div>
             )}
 
-            <div className="points-subtabs">
+            <div className="leaderboard-period-bar" role="tablist" aria-label="Období žebříčku">
                 <button
                     type="button"
-                    className={`subtab-button ${pointsSubTab === 'month' ? 'active' : ''}`}
+                    role="tab"
+                    aria-selected={pointsSubTab === 'month'}
+                    className={`period-tab ${pointsSubTab === 'month' ? 'period-tab--expanded' : ''}`}
                     onClick={() => setPointsSubTab('month')}
                 >
-                    Měsíční žebříček
+                    {pointsSubTab === 'month' ? (
+                        <>
+                            <span className="period-tab-icon" aria-hidden="true">
+                                <i className="fas fa-calendar-alt" />
+                            </span>
+                            <span className="period-tab-title">Měsíční</span>
+                        </>
+                    ) : (
+                        <span className="period-tab-label">Měsíční</span>
+                    )}
                 </button>
                 <button
                     type="button"
-                    className={`subtab-button ${pointsSubTab === 'today' ? 'active' : ''}`}
+                    role="tab"
+                    aria-selected={pointsSubTab === 'today'}
+                    className={`period-tab ${pointsSubTab === 'today' ? 'period-tab--expanded' : ''}`}
                     onClick={() => setPointsSubTab('today')}
                 >
-                    Dnešní body
+                    {pointsSubTab === 'today' ? (
+                        <>
+                            <span className="period-tab-icon" aria-hidden="true">
+                                <i className="fas fa-sun" />
+                            </span>
+                            <span className="period-tab-title">Dnešní žebříček</span>
+                        </>
+                    ) : (
+                        <span className="period-tab-label">Dnešní žebříček</span>
+                    )}
                 </button>
             </div>
 

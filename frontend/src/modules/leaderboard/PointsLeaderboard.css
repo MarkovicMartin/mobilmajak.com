@@ -2,28 +2,31 @@
     padding: 0;
 }
 
-/* Statistiky */
+/* Statistiky – kompaktní dlaždice */
 .leaderboard-stats {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
+    gap: 6px;
     margin-bottom: 10px;
+    max-width: 520px;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 .stat-card {
     background: linear-gradient(135deg, #f8f9ff, #e8eeff);
-    border: 2px solid #e1e8ff;
-    border-radius: 10px;
-    padding: 10px 8px;
+    border: 1px solid #e1e8ff;
+    border-radius: 8px;
+    padding: 6px 6px;
     text-align: center;
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    min-height: 82px;
-    gap: 2px;
+    min-height: 58px;
+    gap: 1px;
 }
 
 .stat-card.clickable {
@@ -45,11 +48,11 @@
 }
 
 .stat-card-title {
-    font-size: 0.78rem;
+    font-size: 0.65rem;
     color: #5a67d8;
     margin: 0;
     font-weight: 600;
-    line-height: 1.2;
+    line-height: 1.15;
     width: 100%;
     white-space: nowrap;
     overflow: hidden;
@@ -57,10 +60,10 @@
 }
 
 .stat-card .stat-value {
-    font-size: 1.35rem;
+    font-size: 1rem;
     font-weight: 700;
     color: #2d3748;
-    margin: 2px 0;
+    margin: 1px 0;
     line-height: 1.1;
     width: 100%;
     white-space: nowrap;
@@ -69,10 +72,10 @@
 }
 
 .stat-card-foot {
-    font-size: 0.72rem;
+    font-size: 0.62rem;
     color: #718096;
     margin: 0;
-    line-height: 1.2;
+    line-height: 1.15;
     width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -80,49 +83,33 @@
 }
 
 .stat-card-foot-hint {
-    font-size: 0.68rem;
+    font-size: 0.58rem;
     opacity: 0.9;
 }
 
-/* TOP 3 – kompaktní řada */
+/* TOP 3 – zvýrazněné karty */
 .top-three-section {
-    margin-bottom: 10px;
+    margin-bottom: 12px;
     text-align: center;
-}
-
-.top-three-section h3 {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    font-size: 1rem;
-    font-weight: 700;
-    margin: 0 0 2px 0;
-}
-
-.top-three-section p {
-    color: #718096;
-    font-size: 0.78rem;
-    margin: 0 0 8px 0;
-    line-height: 1.25;
 }
 
 .top-three-cards {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
+    gap: 12px;
     margin-top: 0;
 }
 
 .top-seller-card {
     background: white;
-    border-radius: 10px;
-    padding: 10px 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+    border-radius: 14px;
+    padding: 18px 14px;
+    min-height: 150px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
     transition: box-shadow 0.2s ease;
     position: relative;
     overflow: hidden;
-    border: 2px solid transparent;
+    border: 3px solid transparent;
 }
 
 .top-seller-card:hover {
@@ -148,40 +135,40 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 4px;
-    margin-bottom: 4px;
+    gap: 8px;
+    margin-bottom: 10px;
 }
 
 .medal {
-    font-size: 1.1rem;
+    font-size: 2rem;
     line-height: 1;
 }
 
 .position-number {
     background: linear-gradient(135deg, #667eea, #764ba2);
     color: white;
-    width: 22px;
-    height: 22px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: 700;
-    font-size: 0.7rem;
+    font-size: 0.95rem;
     flex-shrink: 0;
 }
 
 .seller-info {
     text-align: center;
-    margin-bottom: 4px;
+    margin-bottom: 10px;
     min-width: 0;
 }
 
 .seller-info h4 {
-    font-size: 0.8rem;
+    font-size: 1rem;
     font-weight: 700;
     color: #2d3748;
-    margin: 0;
+    margin: 0 0 4px 0;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -189,7 +176,7 @@
 
 .store-name {
     color: #718096;
-    font-size: 0.68rem;
+    font-size: 0.82rem;
     margin: 0;
     font-weight: 500;
     white-space: nowrap;
@@ -200,21 +187,21 @@
 .score-section {
     text-align: center;
     margin-bottom: 0;
-    padding: 6px 4px;
+    padding: 12px 10px;
     background: rgba(255, 255, 255, 0.65);
-    border-radius: 8px;
+    border-radius: 10px;
 }
 
 .total-score {
-    font-size: 1.15rem;
+    font-size: 1.85rem;
     font-weight: 700;
     color: #667eea;
-    margin-bottom: 0;
+    margin-bottom: 2px;
     line-height: 1.1;
 }
 
 .score-label {
-    font-size: 0.65rem;
+    font-size: 0.75rem;
     font-weight: 600;
     color: #718096;
     letter-spacing: 0.5px;
@@ -447,7 +434,7 @@
 
 @media (max-width: 900px) {
     .leaderboard-stats {
-        grid-template-columns: 1fr;
+        max-width: 100%;
     }
 
     .top-three-cards {
@@ -467,7 +454,7 @@
 
 @media (max-width: 768px) {
     .stat-card {
-        min-height: 72px;
+        min-height: 54px;
     }
 
     .position-info {

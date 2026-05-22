@@ -115,21 +115,34 @@ const DockNavbar = ({
                             <nav className="dock-nav-icons" aria-label="Hlavní navigace">
                                 {visibleNavItems.map((item) => {
                                     const active = isNavActive(item.path, location.pathname);
+                                    const showExpandedLabel = active;
                                     return (
                                         <motion.div
                                             key={item.sectionKey}
-                                            className="dock-nav-item-wrap"
-                                            whileHover={{ scale: 1.12, rotate: -4 }}
+                                            className={`dock-nav-item-wrap ${showExpandedLabel ? 'dock-nav-item-wrap--expanded' : ''}`}
+                                            whileHover={showExpandedLabel ? { scale: 1.04 } : { scale: 1.12, rotate: -4 }}
                                             transition={springHover}
                                         >
-                                            <button
+                                            <motion.button
                                                 type="button"
-                                                className={`dock-icon-btn ${active ? 'dock-icon-btn--active' : ''}`}
+                                                layout
+                                                className={`dock-icon-btn ${active ? 'dock-icon-btn--active' : ''} ${showExpandedLabel ? 'dock-icon-btn--with-label' : ''}`}
                                                 onClick={() => navigate(item.path)}
-                                                data-tooltip={item.label}
+                                                data-tooltip={showExpandedLabel ? undefined : item.label}
                                                 title={item.label}
+                                                transition={springHover}
                                             >
                                                 <i className={`fas ${item.icon}`} />
+                                                {showExpandedLabel && (
+                                                    <motion.span
+                                                        className="dock-nav-label"
+                                                        initial={{ opacity: 0, maxWidth: 0 }}
+                                                        animate={{ opacity: 1, maxWidth: 160 }}
+                                                        transition={{ duration: 0.22, ease: 'easeOut' }}
+                                                    >
+                                                        {item.label}
+                                                    </motion.span>
+                                                )}
                                                 {active && (
                                                     <motion.span
                                                         layoutId="dock-active-dot"
@@ -137,7 +150,7 @@ const DockNavbar = ({
                                                         transition={springHover}
                                                     />
                                                 )}
-                                            </button>
+                                            </motion.button>
                                         </motion.div>
                                     );
                                 })}
@@ -168,15 +181,35 @@ const DockNavbar = ({
                                 <BugButton user={user} onOpen={() => setMobileNavOpen(false)} />
                             </motion.div>
 
-                            <motion.div whileHover={{ scale: 1.12, rotate: -4 }} transition={springHover}>
-                                <button
+                            <motion.div
+                                className={location.pathname === '/profile' ? 'dock-nav-item-wrap--expanded' : ''}
+                                whileHover={
+                                    location.pathname === '/profile'
+                                        ? { scale: 1.04 }
+                                        : { scale: 1.12, rotate: -4 }
+                                }
+                                transition={springHover}
+                            >
+                                <motion.button
                                     type="button"
-                                    className={`dock-icon-btn ${location.pathname === '/profile' ? 'dock-icon-btn--active' : ''}`}
+                                    layout
+                                    className={`dock-icon-btn ${location.pathname === '/profile' ? 'dock-icon-btn--active dock-icon-btn--with-label' : ''}`}
                                     onClick={() => navigate('/profile')}
-                                    data-tooltip="Můj profil"
+                                    data-tooltip={location.pathname === '/profile' ? undefined : 'Můj profil'}
                                     title="Můj profil"
+                                    transition={springHover}
                                 >
                                     <i className="fas fa-user" />
+                                    {location.pathname === '/profile' && (
+                                        <motion.span
+                                            className="dock-nav-label"
+                                            initial={{ opacity: 0, maxWidth: 0 }}
+                                            animate={{ opacity: 1, maxWidth: 160 }}
+                                            transition={{ duration: 0.22, ease: 'easeOut' }}
+                                        >
+                                            Můj profil
+                                        </motion.span>
+                                    )}
                                     {location.pathname === '/profile' && (
                                         <motion.span
                                             layoutId="dock-active-dot-profile"
@@ -184,7 +217,7 @@ const DockNavbar = ({
                                             transition={springHover}
                                         />
                                     )}
-                                </button>
+                                </motion.button>
                             </motion.div>
 
                             <motion.div whileHover={{ scale: 1.12, rotate: -4 }} transition={springHover}>

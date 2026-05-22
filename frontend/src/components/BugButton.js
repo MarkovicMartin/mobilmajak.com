@@ -1,9 +1,12 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import TicketForm from '../modules/tickets/TicketForm';
 import { ticketAPI } from '../services/api';
 import './BugButton.css';
+
+const springHover = { type: 'spring', stiffness: 300, damping: 22 };
 
 const POLL_MS = 90000;
 
@@ -109,6 +112,9 @@ const BugButton = ({ user, onOpen }) => {
         setTimeout(() => setSuccessMsg(null), 3500);
     };
 
+    const showExpandedLabel = location.pathname === '/my-tickets';
+    const expandedLabel = 'Tikety';
+
     const menuContent = (
         <>
             <div className="bug-dropdown-header">
@@ -162,15 +168,45 @@ const BugButton = ({ user, onOpen }) => {
     return (
         <>
             <div className="bug-dropdown" ref={dropdownRef}>
-                <button
-                    className={`bug-toggle ${isOpen ? 'active' : ''} ${unreadCount > 0 ? 'bug-toggle-has-unread' : ''}`}
-                    onClick={handleToggle}
-                    title="Tikety / nahlásit problém"
-                    type="button"
-                    aria-label={unreadCount > 0 ? `Tikety, ${unreadCount} nepřečtených` : 'Tikety / nahlásit problém'}
+                <motion.div
+                    className={`dock-nav-item-wrap ${showExpandedLabel ? 'dock-nav-item-wrap--expanded' : ''}`}
+                    whileHover={showExpandedLabel ? { scale: 1.04 } : { scale: 1.08 }}
+                    transition={springHover}
                 >
-                    🐛
-                </button>
+                    <motion.button
+                        type="button"
+                        layout
+                        className={`dock-icon-btn bug-toggle-dock ${isOpen ? 'bug-toggle-dock--open' : ''} ${showExpandedLabel ? 'dock-icon-btn--active dock-icon-btn--with-label' : ''} ${unreadCount > 0 && !showExpandedLabel ? 'bug-toggle-has-unread' : ''}`}
+                        onClick={handleToggle}
+                        data-tooltip={showExpandedLabel ? undefined : 'Tikety'}
+                        title="Tikety / nahlásit problém"
+                        aria-label={unreadCount > 0 ? `Tikety, ${unreadCount} nepřečtených` : 'Tikety / nahlásit problém'}
+                        transition={springHover}
+                        aria-expanded={isOpen}
+                    >
+                        <i className="fas fa-bug" />
+                        {showExpandedLabel && (
+                            <motion.span
+                                className="dock-nav-label"
+                                initial={{ opacity: 0, maxWidth: 0 }}
+                                animate={{ opacity: 1, maxWidth: 160 }}
+                                transition={{ duration: 0.22, ease: 'easeOut' }}
+                            >
+                                {expandedLabel}
+                            </motion.span>
+                        )}
+                        {showExpandedLabel && (
+                            <motion.span
+                                layoutId="dock-active-dot-bug"
+                                className="dock-active-dot"
+                                transition={springHover}
+                            />
+                        )}
+                        {unreadCount > 0 && (
+                            <span className="bug-unread-badge" aria-hidden="true" />
+                        )}
+                    </motion.button>
+                </motion.div>
 
                 {isOpen && (
                     <>

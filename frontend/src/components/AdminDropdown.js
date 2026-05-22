@@ -1,7 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { ADMIN_SECTIONS, getAdminSectionFromPath } from './adminSections';
 import './AdminDropdown.css';
+
+const springHover = { type: 'spring', stiffness: 300, damping: 22 };
 
 const AdminDropdown = ({ onOpen }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -9,6 +13,10 @@ const AdminDropdown = ({ onOpen }) => {
     const mobileDrawerRef = useRef(null);
     const navigate = useNavigate();
     const location = useLocation();
+
+    const activeSection = getAdminSectionFromPath(location.pathname);
+    const showExpandedLabel = !!activeSection;
+    const expandedLabel = activeSection?.name ?? 'Nastavení';
 
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -38,13 +46,6 @@ const AdminDropdown = ({ onOpen }) => {
         document.body.style.overflow = '';
     }, [isOpen]);
 
-    const adminOptions = [
-        { id: 'users', name: 'Uživatelé', icon: '👥', description: 'Správa uživatelů systému' },
-        { id: 'categories', name: 'Kategorie', icon: '🏷️', description: 'Správa kategorií novinek' },
-        { id: 'stores', name: 'Prodejny', icon: '🏪', description: 'Správa prodejen' },
-        { id: 'tickets', name: 'Tikety', icon: '🐛', description: 'Správa tiketů od prodejců' },
-    ];
-
     const handleOptionClick = (optionId) => {
         navigate(`/${optionId}`);
         setIsOpen(false);
@@ -55,9 +56,7 @@ const AdminDropdown = ({ onOpen }) => {
         setIsOpen((o) => !o);
     };
 
-    const isCurrentSection = (sectionId) => {
-        return location.pathname === `/${sectionId}`;
-    };
+    const isCurrentSection = (sectionId) => location.pathname === `/${sectionId}`;
 
     const menuContent = (
         <>
@@ -66,7 +65,7 @@ const AdminDropdown = ({ onOpen }) => {
                 <span className="admin-subtitle">Správa systému</span>
             </div>
             <div className="admin-options">
-                {adminOptions.map((option) => (
+                {ADMIN_SECTIONS.map((option) => (
                     <button
                         key={option.id}
                         className={`admin-option ${isCurrentSection(option.id) ? 'active' : ''}`}
@@ -86,7 +85,7 @@ const AdminDropdown = ({ onOpen }) => {
 
     const mobileMenuContent = (
         <ul className="mobile-nav-list">
-            {adminOptions.map((option) => (
+            {ADMIN_SECTIONS.map((option) => (
                 <li key={option.id}>
                     <button
                         className={`mobile-nav-link ${isCurrentSection(option.id) ? 'active' : ''}`}
@@ -103,14 +102,41 @@ const AdminDropdown = ({ onOpen }) => {
 
     return (
         <div className="admin-dropdown" ref={dropdownRef}>
-            <button
-                className={`admin-toggle ${isOpen ? 'active' : ''}`}
-                onClick={handleToggle}
-                title="Administrátorské nastavení"
-                type="button"
+            <motion.div
+                className={`dock-nav-item-wrap ${showExpandedLabel ? 'dock-nav-item-wrap--expanded' : ''}`}
+                whileHover={showExpandedLabel ? { scale: 1.04 } : { scale: 1.08 }}
+                transition={springHover}
             >
-                ⚙️
-            </button>
+                <motion.button
+                    type="button"
+                    layout
+                    className={`dock-icon-btn admin-toggle-dock ${isOpen ? 'admin-toggle-dock--open' : ''} ${showExpandedLabel ? 'dock-icon-btn--active dock-icon-btn--with-label' : ''}`}
+                    onClick={handleToggle}
+                    data-tooltip={showExpandedLabel ? undefined : 'Nastavení'}
+                    title={expandedLabel}
+                    transition={springHover}
+                    aria-expanded={isOpen}
+                >
+                    <i className="fas fa-cog" />
+                    {showExpandedLabel && (
+                        <motion.span
+                            className="dock-nav-label"
+                            initial={{ opacity: 0, maxWidth: 0 }}
+                            animate={{ opacity: 1, maxWidth: 160 }}
+                            transition={{ duration: 0.22, ease: 'easeOut' }}
+                        >
+                            {expandedLabel}
+                        </motion.span>
+                    )}
+                    {showExpandedLabel && (
+                        <motion.span
+                            layoutId="dock-active-dot-admin"
+                            className="dock-active-dot"
+                            transition={springHover}
+                        />
+                    )}
+                </motion.button>
+            </motion.div>
 
             {isOpen && (
                 <>
@@ -142,4 +168,4 @@ const AdminDropdown = ({ onOpen }) => {
     );
 };
 
-export default AdminDropdown; 
+export default AdminDropdown;

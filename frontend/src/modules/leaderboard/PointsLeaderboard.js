@@ -46,13 +46,6 @@ const PointsLeaderboard = ({
         [data, rankMetric, isDay],
     );
 
-    const rankSubtitle = useMemo(() => {
-        if (rankMetric === METRIC_KEYS.LAST_PERIOD) {
-            return isDay ? METRICS[METRIC_KEYS.LAST_PERIOD].rankSubtitleDay : METRICS[METRIC_KEYS.LAST_PERIOD].rankSubtitle;
-        }
-        return metricConfig.rankSubtitle;
-    }, [rankMetric, isDay, metricConfig.rankSubtitle]);
-
     const handleMetricSelect = (metricKey) => {
         if (rankMetric === metricKey) {
             if (isExpandableMetric(metricKey)) {
@@ -231,14 +224,6 @@ const PointsLeaderboard = ({
 
             {topThree.length > 0 && (
                 <div className="top-three-section">
-                    <h3>🏆 Žebříček prodejců</h3>
-                    <p>
-                        Nejlepší prodejci podle {rankSubtitle} za {periodLabel}
-                        {showBreakdown && (
-                            <span className="expand-hint"> · rozkliknuto</span>
-                        )}
-                    </p>
-
                     <div className="top-three-cards">
                         {topThree.map((seller) => (
                             <div

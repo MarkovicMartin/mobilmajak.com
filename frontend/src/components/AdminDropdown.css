@@ -3,32 +3,6 @@
     display: inline-block;
 }
 
-.admin-toggle {
-    background: none;
-    border: none;
-    font-size: 1.5rem;
-    cursor: pointer;
-    padding: 8px;
-    border-radius: 50%;
-    transition: all 0.3s ease;
-    color: var(--text-inverse);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 40px;
-    height: 40px;
-}
-
-.admin-toggle:hover {
-    background-color: var(--hover-bg);
-    transform: scale(1.1);
-}
-
-.admin-toggle.active {
-    background-color: var(--hover-bg);
-    transform: rotate(90deg);
-}
-
 .admin-dropdown-menu {
     position: absolute;
     top: 100%;
