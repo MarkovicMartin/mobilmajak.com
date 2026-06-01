@@ -1,7 +1,7 @@
 # Stav backfillu na VPS (2024-01 .. 2026-03)
 $ErrorActionPreference = "Stop"
 $RepoRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
-$key = Join-Path $RepoRoot ".ssh\webmajak_vps\napojeno_ed25519"
+$key = Join-Path $RepoRoot ".ssh\webmajak_vps\mobilmajak_vps_ed25519"
 $actor = "/opt/actor/ACTOR_FINALL_WEB_PRODEJE_ALL"
 
 Write-Host "=== Backfill log (tail) ==="

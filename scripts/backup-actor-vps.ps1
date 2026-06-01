@@ -1,7 +1,7 @@
 # Kompletní záloha actoru na VPS (bez změny produkčního main.js)
 $ErrorActionPreference = "Stop"
 $RepoRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
-$key = Join-Path $RepoRoot ".ssh\webmajak_vps\napojeno_ed25519"
+$key = Join-Path $RepoRoot ".ssh\webmajak_vps\mobilmajak_vps_ed25519"
 if (-not (Test-Path $key)) { throw "SSH key not found: $key" }
 
 $stamp = Get-Date -Format "yyyyMMdd-HHmmss"

@@ -1,6 +1,6 @@
 # Nasazení technik_utils + views na VPS (vyžaduje SSH klíč)
 # Použití:
-#   $env:SSH_KEY = "$env:USERPROFILE\.ssh\napojeno_ed25519"
+#   $env:SSH_KEY = "$env:USERPROFILE\.ssh\mobilmajak_vps_ed25519"
 #   .\scripts\deploy-technik-backend.ps1
 #
 # Nebo s heslem / jiným uživatelem:

@@ -51,7 +51,7 @@ Veškeré informace najdeš v **ZADÁNÍ.md**:
 ```bash
 # Staging (default)
 cd frontend && npm run build
-scp -i ~/.ssh/napojeno_ed25519 -r build/* root@194.182.87.138:/home/webmajak/staging/frontend/build/
+scp -i ~/.ssh/mobilmajak_vps_ed25519 -r build/* root@194.182.87.138:/home/webmajak/staging/frontend/build/
 
 # Produkce (POUZE na explicitní požádání!)
 # ... viz ZADÁNÍ.md

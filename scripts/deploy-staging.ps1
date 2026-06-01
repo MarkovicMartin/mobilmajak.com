@@ -16,10 +16,10 @@ $Frontend = Join-Path $RepoRoot "frontend"
 $BuildDir = Join-Path $Frontend "build"
 $Archive = Join-Path $env:TEMP "mobilmajak-staging-backend.tar.gz"
 
-$defaultKey = Join-Path $RepoRoot ".ssh\webmajak_vps\napojeno_ed25519"
+$defaultKey = Join-Path $RepoRoot ".ssh\webmajak_vps\mobilmajak_vps_ed25519"
 $SshKey = if ($env:SSH_KEY -and (Test-Path $env:SSH_KEY)) { $env:SSH_KEY }
           elseif (Test-Path $defaultKey) { $defaultKey }
-          else { "$env:USERPROFILE\.ssh\napojeno_ed25519" }
+          else { "$env:USERPROFILE\.ssh\mobilmajak_vps_ed25519" }
 
 if (-not (Test-Path $SshKey)) { throw "SSH key not found: $SshKey" }
 
