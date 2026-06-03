@@ -122,3 +122,30 @@ class MzdovaOdmenaMesic(models.Model):
 
     def __str__(self):
         return f"{self.user_id} – {self.mesic.strftime('%m/%Y')}: {self.castka} bodů"
+
+
+class ProdejnaPohybUdalost(models.Model):
+    """Pilot: signál pohyb / klid z brány v LAN (bez uložení obrazu)."""
+
+    prodejna = models.ForeignKey(
+        'stores.Prodejna',
+        on_delete=models.CASCADE,
+        related_name='pohyb_udalosti',
+    )
+    pohyb = models.BooleanField(verbose_name='Detekován pohyb')
+    cas = models.DateTimeField(db_index=True)
+    zdroj = models.CharField(max_length=32, default='gateway')
+    vytvoreno = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'WEB_PRODEJNA_POHYB_UDALOST'
+        verbose_name = 'Pohyb na prodejně'
+        verbose_name_plural = 'Pohyb na prodejnách'
+        ordering = ['-cas']
+        indexes = [
+            models.Index(fields=['prodejna', '-cas'], name='idx_pohyb_prodejna_cas'),
+        ]
+
+    def __str__(self):
+        st = 'pohyb' if self.pohyb else 'klid'
+        return f'{self.prodejna_id} – {st} – {self.cas}'

@@ -1,0 +1,8 @@
+{
+  "mobilmajak_api": "https://vase-staging-domena.cz",
+  "prodejna_id": 12,
+  "motion_secret": "nahradte_secretem_z_camera_motion_secrets.json",
+  "nvr_host": "192.168.1.64",
+  "nvr_user": "admin",
+  "nvr_pass": "heslo_nvr_v_lan"
+}

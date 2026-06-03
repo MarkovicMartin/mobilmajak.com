@@ -30,3 +30,13 @@ Nebo na serveru:
 sudo -u webmajak bash -lc 'cd /home/webmajak/staging && source venv/bin/activate && export DJANGO_SETTINGS_MODULE=webapp.settings_production && python manage.py grant_tickets_admin markovic'
 ```
 Po změně modulů: **odhlásit a znovu přihlásit** v prohlížeči.
+
+**Pilot pohybu kamer (bez obrazu na serveru):**
+
+| Soubor | Účel |
+|--------|------|
+| `secrets/camera_motion_secrets.json` | `{"ID_PRODEJNY":"hex_secret"}` – jeden secret na pilotní prodejnu |
+
+Na VPS v `backend/.env` (nebo systemd): `CAMERA_MOTION_SECRETS_FILE=/home/webmajak/secrets/camera_motion_secrets.json`
+
+Brána na PC v LAN: `scripts/camera_motion_gateway.py` (čte ISAPI alertStream z NVR, posílá jen `motion: true/false`).

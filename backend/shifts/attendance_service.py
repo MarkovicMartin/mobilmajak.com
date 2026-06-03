@@ -7,6 +7,7 @@ from datetime import datetime, time, timedelta
 
 from django.utils import timezone
 
+from .camera_motion import attach_motion_to_stores
 from .models import Smena, SmenaDochazka
 
 AUTO_CLOSE_NOTE = 'Automatické ukončení po 20:30'
@@ -175,6 +176,9 @@ def build_absent_stores_report(now=None):
         elif data['active_shifts']:
             data['status'] = 'ok'
             ok_stores.append(data)
+
+    attach_motion_to_stores(absent)
+    attach_motion_to_stores(ok_stores)
 
     return {
         'checked_at': now.isoformat(),

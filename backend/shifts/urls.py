@@ -1,6 +1,7 @@
 from django.urls import path
 from . import views
 from . import payroll_views
+from . import camera_views
 
 urlpatterns = [
     # Počet směn prodejce na prodejně v měsíci (typ=prace)
@@ -35,4 +36,5 @@ urlpatterns = [
     path('attendance/open/', payroll_views.attendance_open, name='attendance_open'),
     path('attendance/my-status/', payroll_views.attendance_my_status, name='attendance_my_status'),
     path('attendance/absent-stores/', payroll_views.attendance_absent_stores, name='attendance_absent_stores'),
+    path('camera-events/', camera_views.camera_motion_event, name='camera_motion_event'),
 ] 

@@ -8,9 +8,19 @@ Současný stav
 
 Doporučená architektura (fáze 2–3)
 ----------------------------------
-1. **Lokální brána na síti prodejny** (mini-PC / NVR ve stejné VLAN jako kamery)
-   - ISAPI / SDK Hikvision pouze z interní sítě.
-   - Žádný port forwarding RTSP na internet.
+**Potřebujete další PC na prodejně?** Ne – stačí **NVR** (běží pořád) a kamery. Samotný VPS ale NVR
+**neuvidí**, pokud má jen soukromou IP (192.168.x.x) a neotevíráte ji na internet. Nutná je
+**síťová cesta ze serveru k NVR** (viz níže), ne druhý počítač v prodejně.
+
+| Varianta | Extra PC na prodejně | Co běží |
+|--------|----------------------|---------|
+| **A – VPN (doporučeno)** | Ne | NVR + VPN (router / Tailscale na NVR nebo bráně). VPS polluje ISAPI přes tunel. |
+| **B – Mini brána** | Ano (Raspberry / starý mini-PC) | Skript v LAN posílá webhooky na VPS. |
+| **C – Hik-Connect cloud** | Ne | NVR v účtu Hik-Connect; VPS volá Hikvision cloud API (závislost na účtu/limitech). |
+
+1. **Cíl: ISAPI na NVR** (Hikvision / HiLook – stejné rozhraní u většiny NVR)
+   - Žádný veřejný RTSP / port forwarding do internetu.
+   - Ze serveru jen HTTP(S) požadavky (stav, události pohybu, případně jas snímku).
 
 2. **Signály pro docházku (bez live videa v prohlížeči)**
    a) **Pohyb / obsazení** – ISAPI event subscription (line crossing, VMD) → webhook na backend.
@@ -27,16 +37,27 @@ Doporučená architektura (fáze 2–3)
    - Credentials jen v `secrets/` na VPS nebo na bráně; rotace hesel ISAPI.
    - Audit log kdo otevřel náhled (pokud později přidáme zabezpečený proxy náhled pro admina).
 
+Alternativa bez kamer: PC na prodejně (heartbeat)
+-----------------------------------------------
+- Při **zapnutí / přihlášení / probuzení** malý skript (Plánovač úloh / systemd) pošle
+  `POST` na backend (token per prodejna, HMAC) – **odchozí** spojení, VPN nepotřebujete.
+- Vhodné jako **doplňkový** signál („technické spuštění“), ne náhrada příchodu v aplikaci.
+- **Usínání PC:** při spánku heartbeat ustane → falešné „prodejna zavřená“; probuzení musí
+  spouštět další úlohu (Windows: událost Resume). Někdo může být v práci i s uspaným PC.
+- Zapnutí PC ≠ prodejce zaklikl příchod (úklid, aktualizace, kolega bez přihlášení).
+
 Fáze 1 (nyní)
 -------------
 - Přehled „Není v práci“ pouze z docházky (příchod v aplikaci).
-- Kamera: statický status `planned` v API odpovědi.
+- Kamera / PC heartbeat: statický status `planned` v API odpovědi.
 
-Implementační kroky pro fázi 2
-------------------------------
-- [ ] NVR/gateway skript: poll ISAPI `/ISAPI/System/Video/inputs/channels` nebo event stream.
-- [ ] Webhook `POST /api/shifts/camera-events/` (HMAC podpis).
-- [ ] Admin UI: sloupec „Kamera“ u prodejny (🟢 pohyb / ⚪ ticho / ❓ offline).
+Implementační kroky (pilot pohybu – hotovo v kódu)
+--------------------------------------------------
+- [x] Webhook `POST /api/shifts/camera-events/` (HMAC, bez obrazu).
+- [x] Tabulka `ProdejnaPohybUdalost`, vyhodnocení pohyb/klid v okně N minut.
+- [x] Admin UI „Není v práci“: štítek pohybu u prodejny.
+- [ ] Brána na prodejně: `scripts/camera_motion_gateway.py` + ISAPI k NVR.
+- [ ] `CAMERA_MOTION_SECRETS` na VPS (viz `secrets/README.md`).
 """
 
 
@@ -83,14 +104,33 @@ NVR_ACCESS_GUIDE = {
 
 
 def camera_module_status():
-    """Stav integrace kamer pro API (zatím bez live napojení)."""
+    """Stav integrace kamer pro API."""
+    from .camera_motion import (
+        MOTION_WINDOW_MINUTES,
+        load_motion_secrets,
+        motion_pilot_prodejna_ids,
+    )
+
+    secrets = load_motion_secrets()
+    pilot_ids = motion_pilot_prodejna_ids()
+    enabled = bool(secrets)
     return {
-        'enabled': False,
-        'phase': 'planned',
-        'label': 'Kontrola kamer (Hikvision) – připravuje se',
-        'hint': (
-            'Ověření přes lokální bránu v síti prodejny (ISAPI události / jas scény). '
-            'Bez veřejného RTSP do aplikace.'
+        'enabled': enabled,
+        'phase': 'pilot' if enabled else 'planned',
+        'label': (
+            'Pilot pohybu na kameře (bez streamu obrazu)'
+            if enabled
+            else 'Kontrola kamer (Hikvision) – připravuje se'
         ),
+        'hint': (
+            'Brána v LAN posílá jen „pohyb“ / „klid“. Obraz zůstává na NVR. '
+            f'Pilot prodejny: {", ".join(str(i) for i in pilot_ids) or "— (nastavte CAMERA_MOTION_SECRETS)"}.'
+            if enabled
+            else (
+                'Ověření přes lokální bránu v síti prodejny (ISAPI události). '
+                'Bez veřejného RTSP do aplikace.'
+            )
+        ),
+        'motion_window_minutes': MOTION_WINDOW_MINUTES,
         'nvr_access': NVR_ACCESS_GUIDE,
     }

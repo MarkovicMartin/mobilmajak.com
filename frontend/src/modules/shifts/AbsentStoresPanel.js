@@ -29,6 +29,22 @@ function AbsentStoresPanel() {
         return () => clearInterval(id);
     }, [load]);
 
+    const motionBadge = (motion) => {
+        if (!motion?.in_pilot) return null;
+        const cls =
+            motion.status === 'active'
+                ? 'motion-badge motion-active'
+                : motion.status === 'quiet'
+                    ? 'motion-badge motion-quiet'
+                    : 'motion-badge motion-unknown';
+        const icon = motion.status === 'active' ? '🟢' : motion.status === 'quiet' ? '⚪' : '❓';
+        return (
+            <span className={cls} title={motion.last_event_at ? `Poslední signál: ${motion.last_event_at}` : ''}>
+                {icon} {motion.label}
+            </span>
+        );
+    };
+
     const formatCheckedAt = (iso) => {
         if (!iso) return '';
         return new Date(iso).toLocaleString('cs-CZ', {
@@ -70,9 +86,14 @@ function AbsentStoresPanel() {
             {error && <div className="error-message">{error}</div>}
 
             {camera && (
-                <div className="camera-planned-card">
+                <div className={`camera-planned-card${camera.enabled ? ' camera-pilot-active' : ''}`}>
                     <strong>{camera.label}</strong>
                     <p>{camera.hint}</p>
+                    {camera.enabled && camera.motion_window_minutes && (
+                        <p className="camera-pilot-window">
+                            Pohyb = událost za posledních {camera.motion_window_minutes} min (bez obrazu na serveru).
+                        </p>
+                    )}
                     {camera.nvr_access && (
                         <details className="camera-nvr-guide">
                             <summary>{camera.nvr_access.title}</summary>
@@ -114,7 +135,10 @@ function AbsentStoresPanel() {
                             className="absent-store-card"
                             style={{ borderLeftColor: store.prodejna_barva || '#ef4444' }}
                         >
-                            <h4>{store.prodejna_nazev}</h4>
+                            <h4>
+                                {store.prodejna_nazev}
+                                {motionBadge(store.motion)}
+                            </h4>
                             <p className="absent-store-meta">
                                 {store.missing_shifts.length}{' '}
                                 {store.missing_shifts.length === 1
@@ -142,17 +166,21 @@ function AbsentStoresPanel() {
                 <details className="absent-ok-details">
                     <summary>V pořádku ({okStores.length} prodejen)</summary>
                     <ul className="absent-ok-list">
-                        {okStores.map((store) => (
+                        {okStores.map((store) => {
+                            const badge = motionBadge(store.motion);
+                            return (
                             <li key={store.prodejna_id}>
                                 <span
                                     className="absent-ok-dot"
                                     style={{ backgroundColor: store.prodejna_barva || '#22c55e' }}
                                 />
                                 {store.prodejna_nazev}
+                                {badge && <span className="absent-ok-motion"> {badge}</span>}
                                 {' — '}
                                 {store.present_shifts.map((s) => s.jmeno).join(', ')}
                             </li>
-                        ))}
+                            );
+                        })}
                     </ul>
                 </details>
             )}
