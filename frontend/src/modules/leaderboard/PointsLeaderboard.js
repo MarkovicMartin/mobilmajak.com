@@ -42,7 +42,6 @@ const PointsLeaderboard = ({
     const isDay = period === 'day';
     const periodLabel = isDay ? 'dnešek' : 'aktuální měsíc';
     const defaultEmptyMessage = `Pro ${periodLabel} nejsou k dispozici žádná data o bodovém hodnocení.`;
-    const statCardLabel = isDay ? 'Body včera' : 'Skóre minulý měsíc';
     const tableShiftLabel = isDay ? 'Body minulou směnu' : 'Skóre minulý měsíc';
     const metricConfig = METRICS[rankMetric] || METRICS[METRIC_KEYS.TOTAL_POINTS];
 
@@ -50,10 +49,27 @@ const PointsLeaderboard = ({
         isDay ? (seller.last_shift_points || 0) : (seller.last_month_points || 0);
     const getMonthComparePoints = (seller) => seller.last_month_points || 0;
 
+    /** Měsíční: bez prodeje v aktuálním měsíci skrytí, dokud neřadíte podle minulého měsíce. */
+    const tableData = useMemo(() => {
+        if (!data?.length) return [];
+        if (isDay || rankMetric === METRIC_KEYS.LAST_PERIOD) return data;
+        return data.filter((s) => (s.total_points || 0) > 0);
+    }, [data, isDay, rankMetric]);
+
     const sortedData = useMemo(
-        () => (data?.length ? sortByMetric(data, rankMetric, isDay) : []),
-        [data, rankMetric, isDay],
+        () => (tableData.length ? sortByMetric(tableData, rankMetric, isDay) : []),
+        [tableData, rankMetric, isDay],
     );
+
+    const topByMonthCompare = useMemo(() => {
+        if (!data?.length || isDay) return null;
+        return data.reduce(
+            (best, seller) => (
+                getMonthComparePoints(seller) > getMonthComparePoints(best) ? seller : best
+            ),
+            data[0],
+        );
+    }, [data, isDay]);
 
     const handleMetricSelect = (metricKey) => {
         if (rankMetric === metricKey) {
@@ -86,16 +102,12 @@ const PointsLeaderboard = ({
 
     const topThree = sortedData.slice(0, 3);
 
-    const topByMonthCompare = data.reduce(
-        (best, seller) => (getMonthComparePoints(seller) > getMonthComparePoints(best) ? seller : best),
-        data[0],
-    );
     const statTopPoints = isDay
-        ? (yesterdayBest?.points > 0 ? yesterdayBest.points : 0)
-        : getMonthComparePoints(topByMonthCompare);
+        ? (yesterdayBest?.points ?? 0)
+        : (topByMonthCompare ? getMonthComparePoints(topByMonthCompare) : 0);
     const statTopName = isDay
-        ? (yesterdayBest?.points > 0 ? yesterdayBest.prodejce : '—')
-        : (statTopPoints > 0 ? topByMonthCompare?.prodejce : '—');
+        ? (yesterdayBest?.prodejce || '—')
+        : (topByMonthCompare?.prodejce || '—');
 
     const getCurrentUserPosition = () => {
         if (!currentUser) return null;
@@ -177,7 +189,7 @@ const PointsLeaderboard = ({
             return vicepraceTopObrat > 0 ? vicepraceTopName : null;
         }
         if (metricKey === METRIC_KEYS.LAST_PERIOD) {
-            return statTopPoints > 0 ? statTopName : null;
+            return statTopName !== '—' ? statTopName : null;
         }
         const top = getTopByMetric(data, metricKey, isDay);
         return top.value > 0 ? top.name : null;
@@ -189,9 +201,11 @@ const PointsLeaderboard = ({
             return `${meta?.icon || '🎁'} ${VICEPRACE_TOP_CARD_TITLE}`;
         }
         if (metricKey === METRIC_KEYS.LAST_PERIOD) {
-            return `${meta?.icon || '🎯'} ${statCardLabel}`;
+            const title = isDay ? meta?.titleDay : meta?.titleMonth;
+            return `${meta?.icon || '🎯'} ${title || METRICS[metricKey].label}`;
         }
-        return `${meta?.icon || ''} ${meta?.title || METRICS[metricKey]?.label || ''}`.trim();
+        const title = meta?.title || METRICS[metricKey]?.label || '';
+        return `${meta?.icon || ''} ${title}`.trim();
     };
 
     const statsGridClass = hideLastPeriodColumn
@@ -272,11 +286,8 @@ const PointsLeaderboard = ({
                         >
                             <h4 className="stat-card-title">{getStatCardTitle(metricKey)}</h4>
                             <div className="stat-value">{renderStatCardValue(metricKey)}</div>
-                            {foot && <p className="stat-card-foot" title={foot}>{foot}</p>}
-                            {metricKey === METRIC_KEYS.LAST_PERIOD && statTopPoints > 0 && (
-                                <p className="stat-card-foot stat-card-foot-hint">
-                                    {isDay ? 'Nejlepší včera' : 'Nejlepší minulý měsíc'}
-                                </p>
+                            {foot && (
+                                <p className="stat-card-foot stat-card-name" title={foot}>{foot}</p>
                             )}
                         </button>
                     );
@@ -314,6 +325,13 @@ const PointsLeaderboard = ({
                         ))}
                     </div>
                 </div>
+            )}
+
+            {!isDay && sortedData.length === 0 && data.length > 0 && rankMetric !== METRIC_KEYS.LAST_PERIOD && (
+                <p className="leaderboard-filter-hint">
+                    V aktuálním měsíci zatím není evidovaný prodej. Pro srovnání podle minulého měsíce
+                    (včetně všech prodejců) klikněte na kartu „Nejlepší skóre minulý měsíc“.
+                </p>
             )}
 
             {sortedData.length > 0 && (

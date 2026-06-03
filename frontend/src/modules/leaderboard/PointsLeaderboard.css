@@ -114,9 +114,20 @@
     white-space: nowrap;
 }
 
-.stat-card-foot-hint {
-    font-size: 0.58rem;
-    opacity: 0.9;
+.stat-card-name {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #4a5568;
+}
+
+.leaderboard-filter-hint {
+    font-size: 0.85rem;
+    color: #4a5568;
+    background: #edf2f7;
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin: 0 0 12px;
+    line-height: 1.4;
 }
 
 /* TOP 3 – zvýrazněné karty */

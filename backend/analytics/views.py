@@ -6715,6 +6715,44 @@ def _leaderboard_cache_table_available():
         return False
 
 
+def _leaderboard_prev_month_points_for_user(user, prev_month_points_map):
+    """Body minulého měsíce – id prodejce v datech může být WebUser.id nebo technik_id."""
+    pts = int(prev_month_points_map.get(user.id, 0) or 0)
+    if pts:
+        return pts
+    tid = getattr(user, 'technik_id', None)
+    if tid:
+        return int(prev_month_points_map.get(tid, 0) or 0)
+    return 0
+
+
+def _leaderboard_staff_roster():
+    """Aktivní prodejci/vedoucí/brigádníci ve žebříčku (bez systémových a admin výjimek)."""
+    from users.exclusions import is_excluded_from_leaderboard, real_sales_staff_queryset
+
+    return [
+        u for u in real_sales_staff_queryset().order_by('jmeno', 'prijmeni')
+        if not is_excluded_from_leaderboard(user=u)
+    ]
+
+
+def _leaderboard_zero_month_row(user, prodejna_nazev, last_month_points):
+    """Řádek bez prodeje v aktuálním měsíci – pro filtrování podle minulého měsíce."""
+    return {
+        'id': user.id,
+        'prodejce': f"{user.jmeno} {user.prijmeni}".strip(),
+        'prodejna': str(prodejna_nazev),
+        'total_points': 0,
+        'last_month_points': last_month_points,
+        'polozky_nad_100': 0,
+        'viceprace_obrat': 0.0,
+        'sluzby_celkem': 0,
+        'servis_provize': 0,
+        'prumer_polozek_uctu': 0.0,
+        'prumer_hodnota_uctenky': 0.0,
+    }
+
+
 def _get_cached_prev_month_points(prev_ym, today=None):
     """
     Body za minulý kalendářní měsíc z cache.
@@ -6780,33 +6818,48 @@ def web_prodeje_leaderboard_points(request):
         from users.exclusions import get_leaderboard_excluded_prodejce_ids
         excluded_ids = get_leaderboard_excluded_prodejce_ids()
 
+        staff_roster = _leaderboard_staff_roster()
         prodejci_ids = [item['id_prodejce'] for item in current_aggregation]
         users = {u.id: u for u in WebUser.objects.filter(id__in=prodejci_ids)}
+        users_by_technik = {}
+        for staff_user in staff_roster:
+            users[staff_user.id] = staff_user
+            if staff_user.technik_id:
+                users_by_technik[staff_user.technik_id] = staff_user
+        for u in WebUser.objects.exclude(technik_id__isnull=True).exclude(technik_id=0):
+            if u.technik_id and u.technik_id not in users_by_technik:
+                users_by_technik[u.technik_id] = u
         home_store_map = _leaderboard_home_store_map(users)
 
         leaderboard = []
+        seen_ids = set()
 
         for item in current_aggregation:
             prodejce_id = int(item['id_prodejce'])
             if prodejce_id in excluded_ids:
                 continue
-            user = users.get(prodejce_id)
+            user = users.get(prodejce_id) or users_by_technik.get(prodejce_id)
             if user:
                 prodejce_jmeno = f"{user.jmeno} {user.prijmeni}".strip()
-                prodejna_nazev = home_store_map.get(prodejce_id, 'Neznámá')
+                prodejna_nazev = home_store_map.get(user.id, home_store_map.get(prodejce_id, 'Neznámá'))
+                row_id = user.id
             else:
                 prodejce_jmeno = f"Prodejce {prodejce_id}"
                 prodejna_nazev = item.get('prodejna_nazev') or 'Neznámá'
+                row_id = prodejce_id
 
             product_points = calculate_points_for_data(_leaderboard_item_points_data(item))
-            servis_points = servis_map.get(prodejce_id, 0)
+            servis_points = servis_map.get(prodejce_id, 0) or servis_map.get(row_id, 0)
+            last_month_pts = _leaderboard_prev_month_points_for_user(user, prev_month_points_map) if user else (
+                int(prev_month_points_map.get(prodejce_id, 0) or 0)
+            )
 
             leaderboard.append({
-                'id': prodejce_id,
+                'id': row_id,
                 'prodejce': prodejce_jmeno,
                 'prodejna': str(prodejna_nazev),
                 'total_points': product_points + servis_points,
-                'last_month_points': prev_month_points_map.get(prodejce_id, 0),
+                'last_month_points': last_month_pts,
                 'polozky_nad_100': item['polozky_nad_100'] or 0,
                 'viceprace_obrat': round(float(item.get('viceprace_obrat') or 0), 2),
                 'sluzby_celkem': _leaderboard_sluzby_celkem(item),
@@ -6814,6 +6867,17 @@ def web_prodeje_leaderboard_points(request):
                 'prumer_polozek_uctu': _leaderboard_prumer_polozek(item),
                 'prumer_hodnota_uctenky': _leaderboard_prumer_hodnota_uctenky(item),
             })
+            seen_ids.add(row_id)
+
+        for staff_user in staff_roster:
+            if staff_user.id in excluded_ids or staff_user.id in seen_ids:
+                continue
+            leaderboard.append(_leaderboard_zero_month_row(
+                staff_user,
+                home_store_map.get(staff_user.id, 'Neznámá'),
+                _leaderboard_prev_month_points_for_user(staff_user, prev_month_points_map),
+            ))
+            seen_ids.add(staff_user.id)
 
         # Seřadit desc podle bodů a přidat pozice
         leaderboard.sort(key=lambda x: x['total_points'], reverse=True)

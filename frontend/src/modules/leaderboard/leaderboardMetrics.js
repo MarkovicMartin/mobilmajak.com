@@ -42,8 +42,8 @@ export const METRICS = {
     },
     [METRIC_KEYS.LAST_PERIOD]: {
         sortKey: null,
-        label: 'Skóre minulý měsíc',
-        labelDay: 'Body včera',
+        label: 'Minulý měsíc',
+        labelDay: 'Minulá směna',
         scoreLabel: 'BODŮ',
         rankSubtitle: 'skóre z minulého měsíce',
         rankSubtitleDay: 'bodů z minulé směny',
@@ -133,5 +133,9 @@ export const STAT_CARD_META = {
     [METRIC_KEYS.VICEPRACE]: { icon: '🎁', title: null },
     [METRIC_KEYS.PRUMER_POLOZEK]: { icon: '📊', title: 'Top pol./účt.' },
     [METRIC_KEYS.PRUMER_HODNOTA]: { icon: '💰', title: 'Top hodn. účt.' },
-    [METRIC_KEYS.LAST_PERIOD]: { icon: '🎯', title: null },
+    [METRIC_KEYS.LAST_PERIOD]: {
+        icon: '🎯',
+        titleMonth: 'Nejlepší skóre minulý měsíc',
+        titleDay: 'Nejlepší výkon včera',
+    },
 };
