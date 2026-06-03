@@ -67,6 +67,6 @@ def viceprace_leader_from_rows(rows):
         return None
     return {
         'id': best.get('id') or best.get('id_prodejce'),
-        'prodejce': best.get('prodejce'),
+        'prodejce': best.get('prodejce') or best.get('prodejna'),
         'obrat': _round_obrat(best_obrat),
     }

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { getApiEndpoints } from '../../config/apiConfig';
 import PointsLeaderboard from './PointsLeaderboard';
+import StoresLeaderboard from './StoresLeaderboard';
 import './LeaderboardModule.css';
 
 const LeaderboardModule = () => {
@@ -11,12 +12,16 @@ const LeaderboardModule = () => {
     const [pointsTodayData, setPointsTodayData] = useState([]);
     const [pointsTodayMeta, setPointsTodayMeta] = useState(null);
     const [pointsMonthMeta, setPointsMonthMeta] = useState(null);
+    const [storesData, setStoresData] = useState([]);
+    const [storesMeta, setStoresMeta] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
     useEffect(() => {
         if (pointsSubTab === 'today') {
             fetchPointsTodayLeaderboard();
+        } else if (pointsSubTab === 'stores') {
+            fetchStoresLeaderboard();
         } else {
             fetchPointsLeaderboard();
         }
@@ -88,6 +93,41 @@ const LeaderboardModule = () => {
         }
     };
 
+    const fetchStoresLeaderboard = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const endpoints = getApiEndpoints();
+            const url = endpoints.leaderboardStores;
+            if (!url) {
+                throw new Error('Endpoint pro žebříček prodejen není k dispozici');
+            }
+            const response = await fetch(url, {
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error('Chyba při načítání žebříčku prodejen');
+            }
+
+            const data = await response.json();
+            if (data.success) {
+                setStoresData(data.data || []);
+                setStoresMeta(data.meta || null);
+            } else {
+                throw new Error(data.error || 'Neznámá chyba');
+            }
+        } catch (err) {
+            setError(err.message);
+            console.error('Chyba při načítání žebříčku prodejen:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <div className="leaderboard-module">
             {error && (
@@ -134,10 +174,28 @@ const LeaderboardModule = () => {
                         <span className="period-tab-label">Dnešní žebříček</span>
                     )}
                 </button>
+                <button
+                    type="button"
+                    role="tab"
+                    aria-selected={pointsSubTab === 'stores'}
+                    className={`period-tab ${pointsSubTab === 'stores' ? 'period-tab--expanded' : ''}`}
+                    onClick={() => setPointsSubTab('stores')}
+                >
+                    {pointsSubTab === 'stores' ? (
+                        <>
+                            <span className="period-tab-icon" aria-hidden="true">
+                                <i className="fas fa-store" />
+                            </span>
+                            <span className="period-tab-title">Prodejny</span>
+                        </>
+                    ) : (
+                        <span className="period-tab-label">Prodejny</span>
+                    )}
+                </button>
             </div>
 
             <div className="leaderboard-content">
-                {pointsSubTab === 'month' ? (
+                {pointsSubTab === 'month' && (
                     <PointsLeaderboard
                         data={pointsData}
                         loading={loading}
@@ -145,7 +203,8 @@ const LeaderboardModule = () => {
                         period="month"
                         vicepraceLeader={pointsMonthMeta?.viceprace_leader}
                     />
-                ) : (
+                )}
+                {pointsSubTab === 'today' && (
                     <PointsLeaderboard
                         data={pointsTodayData}
                         loading={loading}
@@ -153,6 +212,13 @@ const LeaderboardModule = () => {
                         period="day"
                         yesterdayBest={pointsTodayMeta?.yesterday_best}
                         vicepraceLeader={pointsTodayMeta?.viceprace_leader}
+                    />
+                )}
+                {pointsSubTab === 'stores' && (
+                    <StoresLeaderboard
+                        data={storesData}
+                        loading={loading}
+                        vicepraceLeader={storesMeta?.viceprace_leader}
                     />
                 )}
             </div>

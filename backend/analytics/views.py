@@ -1343,10 +1343,10 @@ def get_leaderboard_monthly_points(request):
         
         leaderboard = []
         
-        from users.exclusions import is_excluded_report_user
+        from users.exclusions import is_excluded_from_leaderboard
 
         for data in monthly_data:
-            if data.uzivatel and is_excluded_report_user(user=data.uzivatel):
+            if data.uzivatel and is_excluded_from_leaderboard(user=data.uzivatel):
                 continue
             # Převod dat na formát pro výpočet bodů
             data_dict = {
@@ -1531,12 +1531,12 @@ def get_leaderboard_average_items(request):
             prumer_polozek_uctu__gt=0  # Pouze s průměrem větším než 0
         ).select_related('uzivatel').order_by('-prumer_polozek_uctu')
         
-        from users.exclusions import is_excluded_report_user
+        from users.exclusions import is_excluded_from_leaderboard
 
         leaderboard = []
         
         for data in monthly_data:
-            if data.uzivatel and is_excluded_report_user(user=data.uzivatel):
+            if data.uzivatel and is_excluded_from_leaderboard(user=data.uzivatel):
                 continue
             leaderboard.append({
                 'id': data.uzivatel.id,
@@ -6365,10 +6365,10 @@ def _leaderboard_doklad_q():
 
 def _leaderboard_month_queryset(month_ym):
     """Měsíční prodeje bez systémových / admin účtů."""
-    from users.exclusions import get_excluded_report_user_ids
+    from users.exclusions import get_leaderboard_excluded_prodejce_ids
 
     qs = WebProdejeAll.objects.filter(typ__startswith=month_ym)
-    excluded = get_excluded_report_user_ids()
+    excluded = get_leaderboard_excluded_prodejce_ids()
     if excluded:
         qs = qs.exclude(id_prodejce__in=excluded)
     return qs
@@ -6376,10 +6376,10 @@ def _leaderboard_month_queryset(month_ym):
 
 def _leaderboard_day_queryset(day):
     """Denní prodeje bez systémových / admin účtů."""
-    from users.exclusions import get_excluded_report_user_ids
+    from users.exclusions import get_leaderboard_excluded_prodejce_ids
 
     qs = WebProdejeAll.objects.filter(typ=day)
-    excluded = get_excluded_report_user_ids()
+    excluded = get_leaderboard_excluded_prodejce_ids()
     if excluded:
         qs = qs.exclude(id_prodejce__in=excluded)
     return qs
@@ -6412,6 +6412,42 @@ def _leaderboard_seller_aggregation(month_queryset):
             default=0,
         ),
         prodejna_nazev=Max('stredisko'),
+    )
+
+
+def _leaderboard_store_aggregation(month_queryset):
+    """Měsíční agregace metrik po prodejně (středisko v prodejních datech)."""
+    return (
+        month_queryset
+        .filter(stredisko__isnull=False)
+        .exclude(stredisko='')
+        .values('stredisko')
+        .annotate(
+            id_prodejny=Max('id_prodejny'),
+            polozky_nad_100=Sum('pocet_kusu', filter=polozky_nad_100_q()),
+            viceprace_obrat=viceprace_obrat_sum(),
+            ct300=Count('id', filter=Q(kod='P114194')),
+            ct600=Count('id', filter=Q(kod='CT600')),
+            ct1200=Count('id', filter=Q(kod='CT1200')),
+            akt=Count('id', filter=Q(kod='AKT')),
+            zah250=Count('id', filter=Q(kod='ZAH250')),
+            nap=Count('id', filter=Q(kod__in=['NAP', 'NAN'])),
+            zah500=Count('id', filter=Q(kod='ZAH500')),
+            kop250=Count('id', filter=Q(kod='KOP250')),
+            kop500=Count('id', filter=Q(kod='KOP500')),
+            pz1=Count('id', filter=Q(kod='PZ1')),
+            knz=Count('id', filter=Q(kod='KNZ')),
+            polozky_nad_29=Count('id', filter=qualifying_polozka_q()),
+            unikatni_doklady=Count(
+                'doklad',
+                distinct=True,
+                filter=_leaderboard_doklad_q() & qualifying_polozka_q(),
+            ),
+            celkovy_obrat=Sum(
+                F('pocet_kusu') * F('cena_ks_vcl_dph'),
+                default=0,
+            ),
+        )
     )
 
 
@@ -6507,12 +6543,12 @@ def _leaderboard_dominant_stredisko_map(queryset, seller_ids):
 
 def _servis_points_map_for_month(month_ym):
     """Body ze servisu (10 % marže) pro všechny prodejce – jeden průchod DB + mapování techniků."""
-    from users.exclusions import is_excluded_report_user
+    from users.exclusions import is_excluded_from_leaderboard
 
     id_to_name, _ = _load_technik_maps()
     name_to_user_id = {}
     for user in WebUser.objects.exclude(technik_id__isnull=True).exclude(technik_id=0):
-        if is_excluded_report_user(user=user):
+        if is_excluded_from_leaderboard(user=user):
             continue
         name = f'{user.jmeno} {user.prijmeni}'.strip()
         if name:
@@ -6544,12 +6580,12 @@ def _servis_points_map_for_month(month_ym):
 
 def _servis_points_map_for_day(day):
     """Body ze servisu (10 % marže) pro všechny prodejce za jeden den."""
-    from users.exclusions import is_excluded_report_user
+    from users.exclusions import is_excluded_from_leaderboard
 
     id_to_name, _ = _load_technik_maps()
     name_to_user_id = {}
     for user in WebUser.objects.exclude(technik_id__isnull=True).exclude(technik_id=0):
-        if is_excluded_report_user(user=user):
+        if is_excluded_from_leaderboard(user=user):
             continue
         name = f'{user.jmeno} {user.prijmeni}'.strip()
         if name:
@@ -6579,12 +6615,34 @@ def _servis_points_map_for_day(day):
     return dict(points_by_user)
 
 
+def _servis_points_map_for_month_by_store(month_ym):
+    """Body ze servisu (10 % marže) agregované po středisku / prodejně."""
+    prace_qs = (
+        WebProdejeAll.objects.filter(typ__startswith=month_ym)
+        .filter(_base_servis_q())
+        .filter(_servisni_prace_segment_q())
+        .exclude(stredisko__isnull=True)
+        .exclude(stredisko='')
+    )
+    by_store = prace_qs.values('stredisko').annotate(
+        marze=Sum(F('pocet_kusu') * F('zisk'), default=0),
+    )
+    points_by_store = {}
+    for row in by_store:
+        stredisko = row.get('stredisko')
+        if not stredisko:
+            continue
+        marze = float(row['marze'] or 0)
+        points_by_store[stredisko] = int(round(marze * float(SERVIS_ODMENA_RATE)))
+    return points_by_store
+
+
 def _compute_per_seller_last_shift_points_map(before_day, excluded_ids=None, seller_ids=None):
     """Body z posledního prodejního dne každého prodejce před before_day (individuální směna)."""
     from django.db.models import Max
-    from users.exclusions import get_excluded_report_user_ids
+    from users.exclusions import get_leaderboard_excluded_prodejce_ids
 
-    excluded_ids = excluded_ids if excluded_ids is not None else get_excluded_report_user_ids()
+    excluded_ids = excluded_ids if excluded_ids is not None else get_leaderboard_excluded_prodejce_ids()
     qs = WebProdejeAll.objects.filter(typ__lt=before_day, id_prodejce__isnull=False)
     if excluded_ids:
         qs = qs.exclude(id_prodejce__in=excluded_ids)
@@ -6719,8 +6777,8 @@ def web_prodeje_leaderboard_points(request):
         current_aggregation = list(_leaderboard_seller_aggregation(month_queryset))
         servis_map = _servis_points_map_for_month(ym)
 
-        from users.exclusions import get_excluded_report_user_ids
-        excluded_ids = get_excluded_report_user_ids()
+        from users.exclusions import get_leaderboard_excluded_prodejce_ids
+        excluded_ids = get_leaderboard_excluded_prodejce_ids()
 
         prodejci_ids = [item['id_prodejce'] for item in current_aggregation]
         users = {u.id: u for u in WebUser.objects.filter(id__in=prodejci_ids)}
@@ -6796,8 +6854,8 @@ def web_prodeje_leaderboard_points_today(request):
         current_aggregation = list(_leaderboard_seller_aggregation(day_queryset))
         servis_map = _servis_points_map_for_day(today)
 
-        from users.exclusions import get_excluded_report_user_ids
-        excluded_ids = get_excluded_report_user_ids()
+        from users.exclusions import get_leaderboard_excluded_prodejce_ids
+        excluded_ids = get_leaderboard_excluded_prodejce_ids()
 
         prodejci_ids = [int(item['id_prodejce']) for item in current_aggregation]
         last_shift_points_map = _compute_per_seller_last_shift_points_map(
@@ -6882,8 +6940,8 @@ def web_prodeje_leaderboard_average_items(request):
 
         aggregation = list(_leaderboard_seller_aggregation(month_queryset))
 
-        from users.exclusions import get_excluded_report_user_ids
-        excluded_ids = get_excluded_report_user_ids()
+        from users.exclusions import get_leaderboard_excluded_prodejce_ids
+        excluded_ids = get_leaderboard_excluded_prodejce_ids()
 
         prodejci_ids = [item['id_prodejce'] for item in aggregation]
         users = {u.id: u for u in WebUser.objects.filter(id__in=prodejci_ids)}
@@ -6935,6 +6993,77 @@ def web_prodeje_leaderboard_average_items(request):
                 'global_obrat': global_obrat,
                 'global_prumer_hodnota_uctenky': global_prumer_hodnota,
             }
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e), 'data': []}, status=500)
+
+
+@require_http_methods(["GET"])
+@permission_classes([AllowAny])
+def web_prodeje_leaderboard_stores(request):
+    """Žebříček prodejen podle bodů za aktuální měsíc (agregace po středisku)."""
+    try:
+        today = date.today()
+        ym = today.strftime('%Y-%m')
+        month_queryset = _leaderboard_month_queryset(ym)
+        aggregation = list(_leaderboard_store_aggregation(month_queryset))
+        servis_map = _servis_points_map_for_month_by_store(ym)
+
+        from stores.models import Prodejna
+
+        prodejny_by_id = {p.id: p for p in Prodejna.objects.filter(aktivni=True)}
+        stredisko_to_nazev = {}
+        for p in Prodejna.objects.filter(aktivni=True):
+            if p.nazev_google_sheets:
+                stredisko_to_nazev[p.nazev_google_sheets.strip()] = p.nazev
+            stredisko_to_nazev[p.nazev.strip()] = p.nazev
+            if p.nazev_kratkiy:
+                stredisko_to_nazev[p.nazev_kratkiy.strip()] = p.nazev
+
+        leaderboard = []
+        for item in aggregation:
+            stredisko = (item.get('stredisko') or '').strip()
+            if not stredisko:
+                continue
+            pid = item.get('id_prodejny')
+            if pid and pid in prodejny_by_id:
+                prodejna_nazev = prodejny_by_id[pid].nazev
+            else:
+                prodejna_nazev = stredisko_to_nazev.get(stredisko, stredisko)
+
+            product_points = calculate_points_for_data(_leaderboard_item_points_data(item))
+            servis_points = servis_map.get(stredisko, 0)
+            row_id = int(pid) if pid else abs(hash(stredisko)) % (10 ** 9)
+
+            leaderboard.append({
+                'id': row_id,
+                'prodejna': str(prodejna_nazev),
+                'stredisko': stredisko,
+                'total_points': product_points + servis_points,
+                'polozky_nad_100': item['polozky_nad_100'] or 0,
+                'viceprace_obrat': round(float(item.get('viceprace_obrat') or 0), 2),
+                'sluzby_celkem': _leaderboard_sluzby_celkem(item),
+                'servis_provize': servis_points,
+                'prumer_polozek_uctu': _leaderboard_prumer_polozek(item),
+                'prumer_hodnota_uctenky': _leaderboard_prumer_hodnota_uctenky(item),
+                'celkovy_obrat': float(item.get('celkovy_obrat') or 0),
+            })
+
+        leaderboard.sort(key=lambda x: x['total_points'], reverse=True)
+        for idx, item in enumerate(leaderboard):
+            item['position'] = idx + 1
+
+        return JsonResponse({
+            'success': True,
+            'data': leaderboard,
+            'count': len(leaderboard),
+            'month': int(today.strftime('%m')),
+            'year': int(today.strftime('%Y')),
+            'type': 'stores',
+            'source': 'WEB_PRODEJE_ALL',
+            'meta': {
+                'viceprace_leader': viceprace_leader_from_rows(leaderboard),
+            },
         })
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e), 'data': []}, status=500)

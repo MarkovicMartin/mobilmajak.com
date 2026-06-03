@@ -68,6 +68,7 @@ const API_ENDPOINTS = {
         leaderboardPoints: '/api/analytics/web-prodeje/leaderboard/points/',
         leaderboardPointsToday: '/api/analytics/web-prodeje/leaderboard/points/today/',
         leaderboardAverageItems: '/api/analytics/web-prodeje/leaderboard/average-items/',
+        leaderboardStores: '/api/analytics/web-prodeje/leaderboard/stores/',
         chartsData: '/api/analytics/web-prodeje-charts-data/',
         backupInfo: '/api/analytics/backup-info/', // Backup info endpoint
         name: 'WEB_PRODEJE (nejnovější)',

@@ -22,6 +22,12 @@ const PointsLeaderboard = ({
     period = 'month',
     yesterdayBest = null,
     vicepraceLeader = null,
+    hideLastPeriodColumn = false,
+    tableTitle = '🏅 Kompletní žebříček',
+    sellerColumnLabel = 'Prodejce',
+    hideStoreColumn = false,
+    emptyTitle = '📊 Žádná data k zobrazení',
+    emptyMessage = null,
 }) => {
     const [rankMetric, setRankMetric] = useState(METRIC_KEYS.TOTAL_POINTS);
     const [expandedMetric, setExpandedMetric] = useState(null);
@@ -33,6 +39,7 @@ const PointsLeaderboard = ({
 
     const isDay = period === 'day';
     const periodLabel = isDay ? 'dnešek' : 'aktuální měsíc';
+    const defaultEmptyMessage = `Pro ${periodLabel} nejsou k dispozici žádná data o bodovém hodnocení.`;
     const statCardLabel = isDay ? 'Body včera' : 'Skóre minulý měsíc';
     const tableShiftLabel = isDay ? 'Body minulou směnu' : 'Skóre minulý měsíc';
     const metricConfig = METRICS[rankMetric] || METRICS[METRIC_KEYS.TOTAL_POINTS];
@@ -69,8 +76,8 @@ const PointsLeaderboard = ({
     if (!data || data.length === 0) {
         return (
             <div className="no-data">
-                <h3>📊 Žádná data k zobrazení</h3>
-                <p>Pro {periodLabel} nejsou k dispozici žádná data o bodovém hodnocení.</p>
+                <h3>{emptyTitle}</h3>
+                <p>{emptyMessage || defaultEmptyMessage}</p>
             </div>
         );
     }
@@ -185,7 +192,7 @@ const PointsLeaderboard = ({
 
     return (
         <div className="points-leaderboard">
-            <div className="leaderboard-stats">
+            <div className={`leaderboard-stats ${hideLastPeriodColumn ? 'leaderboard-stats--two-cols' : ''}`}>
                 <button
                     type="button"
                     className={statCardClass(METRIC_KEYS.TOTAL_POINTS)}
@@ -206,20 +213,22 @@ const PointsLeaderboard = ({
                     <div className="stat-value">{formatVicepraceObrat(vicepraceTopObrat)}</div>
                     <p className="stat-card-foot" title={vicepraceTopName}>{vicepraceTopName}</p>
                 </button>
-                <button
-                    type="button"
-                    className={statCardClass(METRIC_KEYS.LAST_PERIOD)}
-                    onClick={() => handleMetricSelect(METRIC_KEYS.LAST_PERIOD)}
-                >
-                    <h4 className="stat-card-title">🎯 {statCardLabel}</h4>
-                    <div className="stat-value">{statTopPoints.toLocaleString('cs-CZ')}</div>
-                    <p className="stat-card-foot" title={statTopName}>{statTopName}</p>
-                    {statTopPoints > 0 && (
-                        <p className="stat-card-foot stat-card-foot-hint">
-                            {isDay ? 'Nejlepší včera' : 'Nejlepší minulý měsíc'}
-                        </p>
-                    )}
-                </button>
+                {!hideLastPeriodColumn && (
+                    <button
+                        type="button"
+                        className={statCardClass(METRIC_KEYS.LAST_PERIOD)}
+                        onClick={() => handleMetricSelect(METRIC_KEYS.LAST_PERIOD)}
+                    >
+                        <h4 className="stat-card-title">🎯 {statCardLabel}</h4>
+                        <div className="stat-value">{statTopPoints.toLocaleString('cs-CZ')}</div>
+                        <p className="stat-card-foot" title={statTopName}>{statTopName}</p>
+                        {statTopPoints > 0 && (
+                            <p className="stat-card-foot stat-card-foot-hint">
+                                {isDay ? 'Nejlepší včera' : 'Nejlepší minulý měsíc'}
+                            </p>
+                        )}
+                    </button>
+                )}
             </div>
 
             {topThree.length > 0 && (
@@ -237,7 +246,9 @@ const PointsLeaderboard = ({
 
                                 <div className="seller-info">
                                     <h4 title={seller.prodejce}>{seller.prodejce}</h4>
-                                    <p className="store-name" title={seller.prodejna}>{seller.prodejna}</p>
+                                    {!hideStoreColumn && (
+                                        <p className="store-name" title={seller.prodejna}>{seller.prodejna}</p>
+                                    )}
                                 </div>
 
                                 <div className="score-section">
@@ -256,20 +267,20 @@ const PointsLeaderboard = ({
 
             {sortedData.length > 0 && (
                 <div className="leaderboard-table-section">
-                    <h4>🏅 Kompletní žebříček</h4>
+                    <h4>{tableTitle}</h4>
                     <div className="table-wrapper">
                         <table className="leaderboard-table">
                             <thead>
                                 <tr>
                                     <th className="col-position">Poz.</th>
-                                    <th className="col-seller">Prodejce</th>
-                                    <th className="col-store">Prodejna</th>
+                                    <th className="col-seller">{sellerColumnLabel}</th>
+                                    {!hideStoreColumn && <th className="col-store">Prodejna</th>}
                                     {renderSortableHeader(METRIC_KEYS.TOTAL_POINTS, 'Body')}
                                     {renderSortableHeader(METRIC_KEYS.SERVIS, 'Servis')}
                                     {renderSortableHeader(METRIC_KEYS.VICEPRACE, VICEPRACE_LABEL)}
                                     {renderSortableHeader(METRIC_KEYS.PRUMER_POLOZEK, 'Pol./účt.')}
                                     {renderSortableHeader(METRIC_KEYS.PRUMER_HODNOTA, 'Hodn. účt.')}
-                                    {renderSortableHeader(
+                                    {!hideLastPeriodColumn && renderSortableHeader(
                                         METRIC_KEYS.LAST_PERIOD,
                                         isDay ? 'Min. směna' : 'Min. měsíc',
                                     )}
@@ -294,7 +305,9 @@ const PointsLeaderboard = ({
                                                 )}
                                             </div>
                                         </td>
-                                        <td className="col-store" title={seller.prodejna}>{seller.prodejna}</td>
+                                        {!hideStoreColumn && (
+                                            <td className="col-store" title={seller.prodejna}>{seller.prodejna}</td>
+                                        )}
                                         <td className={`col-num ${rankMetric === METRIC_KEYS.TOTAL_POINTS ? 'cell-active' : ''}`}>
                                             <span className="points-value">
                                                 {seller.total_points.toLocaleString('cs-CZ')}
@@ -314,11 +327,13 @@ const PointsLeaderboard = ({
                                         <td className={`col-num ${rankMetric === METRIC_KEYS.PRUMER_HODNOTA ? 'cell-active' : ''}`}>
                                             {formatPrumerHodnotaUctenky(seller.prumer_hodnota_uctenky)}
                                         </td>
-                                        <td className={`col-num ${rankMetric === METRIC_KEYS.LAST_PERIOD ? 'cell-active' : ''}`}>
-                                            <span className="score-highlight">
-                                                {getLastShiftPoints(seller).toLocaleString('cs-CZ')}
-                                            </span>
-                                        </td>
+                                        {!hideLastPeriodColumn && (
+                                            <td className={`col-num ${rankMetric === METRIC_KEYS.LAST_PERIOD ? 'cell-active' : ''}`}>
+                                                <span className="score-highlight">
+                                                    {getLastShiftPoints(seller).toLocaleString('cs-CZ')}
+                                                </span>
+                                            </td>
+                                        )}
                                     </tr>
                                 ))}
                             </tbody>

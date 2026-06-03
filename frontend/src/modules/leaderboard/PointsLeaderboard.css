@@ -13,6 +13,11 @@
     margin-right: auto;
 }
 
+.leaderboard-stats--two-cols {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-width: 360px;
+}
+
 .stat-card {
     background: linear-gradient(135deg, #f8f9ff, #e8eeff);
     border: 1px solid #e1e8ff;

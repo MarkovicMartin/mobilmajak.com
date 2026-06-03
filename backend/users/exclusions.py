@@ -20,6 +20,12 @@ _EXCLUDED_NAME_PAIRS = frozenset({
 })
 
 _excluded_ids_cache = None
+_leaderboard_excluded_ids_cache = None
+
+# Aktivní prodej na pultu – ve žebříčku i při roli ADMIN (výplata dál podle is_excluded_report_user)
+_LEADERBOARD_INCLUDED_NAME_PAIRS = frozenset({
+    ('radek', 'bulandra'),
+})
 
 
 def _normalize_pair(jmeno, prijmeni):
@@ -59,6 +65,45 @@ def get_excluded_report_user_ids():
 def invalidate_excluded_user_ids_cache():
     global _excluded_ids_cache
     _excluded_ids_cache = None
+    invalidate_leaderboard_excluded_ids_cache()
+
+
+def is_leaderboard_included_user(jmeno=None, prijmeni=None, user=None):
+    """Uživatel, který má být ve žebříčku i když je jinak vynechaný (typicky ADMIN)."""
+    if user is not None:
+        jmeno = getattr(user, 'jmeno', None)
+        prijmeni = getattr(user, 'prijmeni', None)
+    return _normalize_pair(jmeno, prijmeni) in _LEADERBOARD_INCLUDED_NAME_PAIRS
+
+
+def is_excluded_from_leaderboard(role=None, jmeno=None, prijmeni=None, user=None):
+    """True = nepatří do žebříčků (s výjimkou _LEADERBOARD_INCLUDED_NAME_PAIRS)."""
+    if is_leaderboard_included_user(jmeno=jmeno, prijmeni=prijmeni, user=user):
+        return False
+    return is_excluded_report_user(role=role, jmeno=jmeno, prijmeni=prijmeni, user=user)
+
+
+def get_leaderboard_excluded_prodejce_ids():
+    """
+    ID vynechaná z žebříčku – WebUser.id i technik_id (v prodejních datech bývá technik_id).
+    """
+    global _leaderboard_excluded_ids_cache
+    if _leaderboard_excluded_ids_cache is None:
+        excluded = set(get_excluded_report_user_ids())
+        for uid, technik_id, jmeno, prijmeni in WebUser.objects.values_list(
+            'id', 'technik_id', 'jmeno', 'prijmeni',
+        ):
+            if _normalize_pair(jmeno, prijmeni) in _LEADERBOARD_INCLUDED_NAME_PAIRS:
+                excluded.discard(uid)
+                if technik_id:
+                    excluded.discard(technik_id)
+        _leaderboard_excluded_ids_cache = excluded
+    return _leaderboard_excluded_ids_cache
+
+
+def invalidate_leaderboard_excluded_ids_cache():
+    global _leaderboard_excluded_ids_cache
+    _leaderboard_excluded_ids_cache = None
 
 
 def real_sales_staff_queryset():
