@@ -167,20 +167,27 @@ const ProfileAnalytics = ({ userId }) => {
         const { breakdown, totalPoints } = resolvePointsContext(data, pointsPayload);
 
         const ct300Count = breakdown?.[CT300_INFO_KEY]?.count ?? data[CT300_INFO_KEY] ?? 0;
-        const servisMarze = breakdown?.servis_marze?.marze ?? 0;
-        const commissionRows = PRODUCT_COMMISSIONS.map(({ key, label, rate }) => {
+
+        const renderCommissionLine = ({ key, label, rate }) => {
             const item = breakdown?.[key];
             if (item?.informational) return null;
             const count = item?.count ?? data[key] ?? 0;
-            if (!count) return null;
             const points = item?.points ?? count * rate;
             return (
-                <div key={key} className="product-item">
+                <div
+                    key={key}
+                    className={`product-item${count ? '' : ' product-item--zero'}`}
+                >
                     <span>{label}</span>
                     <span className="product-calc">{formatCalculation(count, rate, points)}</span>
                 </div>
             );
-        }).filter(Boolean);
+        };
+
+        const sunshineCommission = PRODUCT_COMMISSIONS.find((p) => p.key === 'sunshine');
+        const mainCommissions = PRODUCT_COMMISSIONS.filter((p) => p.key !== 'sunshine');
+        const mainCommissionRows = mainCommissions.map(renderCommissionLine).filter(Boolean);
+        const sunshineRow = sunshineCommission ? renderCommissionLine(sunshineCommission) : null;
 
         return (
             <div className="data-card data-card--compact">
@@ -213,27 +220,32 @@ const ProfileAnalytics = ({ userId }) => {
                     </div>
 
                     <div className="products-list products-list--compact">
-                        {ct300Count > 0 && (
-                            <div className="product-item product-item-info">
+                        <div className="products-list__grid">
+                            {mainCommissionRows}
+                            <div className={`product-item product-item-info${ct300Count ? '' : ' product-item--zero'}`}>
                                 <span>{CT300_INFO_LABEL}</span>
-                                <span className="product-calc">{ct300Count} ks</span>
-                            </div>
-                        )}
-                        {commissionRows}
-                        {(servisMarze > 0 || (breakdown?.servis_marze?.points ?? 0) > 0) && (
-                            <div className="product-item product-item-servis">
-                                <span>Servis</span>
-                                <span className="product-calc product-calc-servis">
-                                    {formatServisCalculation(breakdown?.servis_marze)}
+                                <span className="product-calc">
+                                    {ct300Count > 0 ? `${ct300Count} ks` : '0 ks (bez bodů)'}
                                 </span>
                             </div>
-                        )}
-                        {(data.viceprace_obrat || 0) > 0 && (
-                            <div className="product-item product-item-info">
+                        </div>
+                        <div className="products-list-pre-servis">
+                            {sunshineRow}
+                            <div className={`product-item product-item-info${(data.viceprace_obrat || 0) > 0 ? '' : ' product-item--zero'}`}>
                                 <span>{VICEPRACE_LABEL}</span>
-                                <span className="product-calc">0 b.</span>
+                                <span className="product-calc">
+                                    {(data.viceprace_obrat || 0) > 0
+                                        ? `${formatVicepraceObrat(data.viceprace_obrat)} (0 b.)`
+                                        : '0 (0 b.)'}
+                                </span>
                             </div>
-                        )}
+                        </div>
+                        <div className="product-item product-item-servis">
+                            <span>Servis</span>
+                            <span className="product-calc product-calc-servis">
+                                {formatServisCalculation(breakdown?.servis_marze)}
+                            </span>
+                        </div>
                     </div>
                 </div>
             </div>
