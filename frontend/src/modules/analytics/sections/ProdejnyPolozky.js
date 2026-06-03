@@ -471,7 +471,7 @@ const ProdejnyPolozky = () => {
                                                     <span className="service-count font-bold">{item.vykupy || 0}</span>
                                                 </div>
                                                 <div className="service-item highlight-yellow">
-                                                    <span className="service-name">SUNSHINE</span>
+                                                    <span className="service-name">Sunshine</span>
                                                     <span className="service-count">{item.sunshine || 0}</span>
                                                 </div>
                                             </div>

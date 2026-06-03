@@ -350,37 +350,6 @@
     margin-bottom: 14px;
 }
 
-.celkova-cisla-metrics .metric-card--bazar .metric-content {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-.celkova-cisla-metrics .metric-bazar-row {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 0.35rem 0.5rem;
-}
-
-.celkova-cisla-metrics .metric-bazar-label {
-    font-size: 0.72rem;
-    font-weight: 600;
-    color: #7f8c8d;
-    min-width: 6.5rem;
-}
-
-.celkova-cisla-metrics .metric-value--compact {
-    font-size: 1.05rem;
-    margin: 0;
-}
-
-.celkova-cisla-metrics .metric-subtitle--inline {
-    margin: 0;
-    flex: 1 1 100%;
-    padding-left: 6.85rem;
-}
-
 .celkova-cisla-controls {
     display: flex;
     flex-wrap: wrap;

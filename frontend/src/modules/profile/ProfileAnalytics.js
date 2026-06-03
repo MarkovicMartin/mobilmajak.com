@@ -166,128 +166,119 @@ const ProfileAnalytics = ({ userId }) => {
 
         const { breakdown, totalPoints } = resolvePointsContext(data, pointsPayload);
 
+        const ct300Count = breakdown?.[CT300_INFO_KEY]?.count ?? data[CT300_INFO_KEY] ?? 0;
+        const servisMarze = breakdown?.servis_marze?.marze ?? 0;
+        const commissionRows = PRODUCT_COMMISSIONS.map(({ key, label, rate }) => {
+            const item = breakdown?.[key];
+            if (item?.informational) return null;
+            const count = item?.count ?? data[key] ?? 0;
+            if (!count) return null;
+            const points = item?.points ?? count * rate;
+            return (
+                <div key={key} className="product-item">
+                    <span>{label}</span>
+                    <span className="product-calc">{formatCalculation(count, rate, points)}</span>
+                </div>
+            );
+        }).filter(Boolean);
+
         return (
-            <div className="data-card">
-                <div className="card-header">
+            <div className="data-card data-card--compact">
+                <div className="card-header card-header--compact">
                     <h3>{title}</h3>
-                    <div className="card-date">
-                        {formatDate(data.date || data.timestamp || new Date())}
+                    <div className="metric-item-body metric-item-body--chip">
+                        <span className="metric-value">{formatNumber(totalPoints)}</span>
+                        <span className="metric-label">bodů</span>
                     </div>
                 </div>
 
-                <div className="card-content">
-                    <div className="metrics-summary metrics-summary-body">
-                        <div className="metric-item metric-item-body">
-                            <div className="metric-value">{formatNumber(totalPoints)}</div>
-                            <div className="metric-label">Body</div>
+                <div className="card-content card-content--compact">
+                    <div className="metrics-mini-grid">
+                        <div className="metric-item metric-item--mini">
+                            <span className="metric-value">{data.polozky_nad_100 || 0}</span>
+                            <span className="metric-label">Nad 100 Kč</span>
+                        </div>
+                        <div className="metric-item metric-item--mini">
+                            <span className="metric-value">{data.sluzby_celkem || 0}</span>
+                            <span className="metric-label">Služby</span>
+                        </div>
+                        <div className="metric-item metric-item--mini">
+                            <span className="metric-value">{formatVicepraceObrat(data.viceprace_obrat)}</span>
+                            <span className="metric-label">{VICEPRACE_LABEL}</span>
+                        </div>
+                        <div className="metric-item metric-item--mini">
+                            <span className="metric-value">{(data.prumer_polozek_uctu ?? data.pol_dok ?? 0).toFixed(2)}</span>
+                            <span className="metric-label">Ø pol./účet</span>
                         </div>
                     </div>
 
-                    <div className="metrics-summary metrics-summary-classic">
-                        <div className="metric-item">
-                            <div className="metric-value">{data.polozky_nad_100 || 0}</div>
-                            <div className="metric-label">Položky nad 100 Kč</div>
-                        </div>
-                        <div className="metric-item">
-                            <div className="metric-value">{data.sluzby_celkem || 0}</div>
-                            <div className="metric-label">Služby celkem</div>
-                        </div>
-                        <div className="metric-item">
-                            <div className="metric-value">{formatVicepraceObrat(data.viceprace_obrat)}</div>
-                            <div className="metric-label">{VICEPRACE_LABEL}</div>
-                        </div>
-                        <div className="metric-item">
-                            <div className="metric-value">{(data.prumer_polozek_uctu ?? data.pol_dok ?? 0).toFixed(2)}</div>
-                            <div className="metric-label">Průměr pol./účtu</div>
-                        </div>
-                    </div>
-
-                    <div className="products-grid">
-                        <div className="products-list products-list-calculations">
-                            {(() => {
-                                const ct300Item = breakdown?.[CT300_INFO_KEY];
-                                const ct300Count = ct300Item?.count ?? data[CT300_INFO_KEY] ?? 0;
-                                if (ct300Count > 0) {
-                                    return (
-                                        <div key={CT300_INFO_KEY} className="product-item product-item-info">
-                                            <span>{CT300_INFO_LABEL}:</span>
-                                            <span className="product-calc">{ct300Count} ks (bez bodů)</span>
-                                        </div>
-                                    );
-                                }
-                                return null;
-                            })()}
-                            {PRODUCT_COMMISSIONS.map(({ key, label, rate }) => {
-                                const item = breakdown?.[key];
-                                if (item?.informational) return null;
-                                const count = item?.count ?? data[key] ?? 0;
-                                const points = item?.points ?? count * rate;
-                                return (
-                                    <div key={key} className="product-item">
-                                        <span>{label}:</span>
-                                        <span className="product-calc">
-                                            {formatCalculation(count, rate, points)}
-                                        </span>
-                                    </div>
-                                );
-                            })}
+                    <div className="products-list products-list--compact">
+                        {ct300Count > 0 && (
+                            <div className="product-item product-item-info">
+                                <span>{CT300_INFO_LABEL}</span>
+                                <span className="product-calc">{ct300Count} ks</span>
+                            </div>
+                        )}
+                        {commissionRows}
+                        {(servisMarze > 0 || (breakdown?.servis_marze?.points ?? 0) > 0) && (
                             <div className="product-item product-item-servis">
-                                <span>Servis:</span>
+                                <span>Servis</span>
                                 <span className="product-calc product-calc-servis">
                                     {formatServisCalculation(breakdown?.servis_marze)}
                                 </span>
                             </div>
-                            {(data.viceprace_obrat || 0) > 0 && (
-                                <div className="product-item product-item-info">
-                                    <span>{VICEPRACE_LABEL}:</span>
-                                    <span className="product-calc">
-                                        {formatVicepraceObrat(data.viceprace_obrat)} (0 bodů)
-                                    </span>
-                                </div>
-                            )}
-                        </div>
+                        )}
+                        {(data.viceprace_obrat || 0) > 0 && (
+                            <div className="product-item product-item-info">
+                                <span>{VICEPRACE_LABEL}</span>
+                                <span className="product-calc">0 b.</span>
+                            </div>
+                        )}
                     </div>
-                </div>
-
-                <div className="data-source">
-                    <small>Zdroj: {data.source === 'database' ? 'Databáze' : 'Google Sheets'}</small>
                 </div>
             </div>
         );
     };
 
+    const dataSource = todayData?.source || monthlyData?.source;
+
     return (
-        <div className="profile-analytics">
+        <div className="profile-analytics profile-analytics--fit">
             {error && (
                 <div className="error-message">
                     {error}
                 </div>
             )}
 
-            <div className="analytics-controls">
+            <div className="analytics-controls analytics-controls--compact">
                 <AnalyticsDateInput
                     id="date-select"
-                    label="Vyberte datum:"
+                    label="Datum:"
                     value={selectedDate}
                     onApply={setSelectedDate}
-                    wrapperClassName="date-picker"
+                    wrapperClassName="date-picker date-picker--compact"
                     showError={false}
                     highlightDates={highlightDates}
                     onMonthChange={loadActiveDates}
                 />
                 {selectedDate && (
-                    <p className="date-picker-hint">
-                        Zobrazen den {formatDate(selectedDate)} a měsíc {formatMonthLabel(selectedDate)}
-                    </p>
+                    <span className="date-picker-hint">
+                        Den {formatDate(selectedDate)} · měsíc {formatMonthLabel(selectedDate)}
+                    </span>
                 )}
+                {loading && <span className="analytics-loading-inline">Načítám…</span>}
             </div>
 
-            {loading && <div className="loading analytics-loading">Načítání výsledků…</div>}
-
-            <div className="analytics-grid">
+            <div className="analytics-grid analytics-grid--fit">
                 {renderDataCard(dailyTitle, todayData, todayPoints)}
                 {renderDataCard(monthlyTitle, monthlyData, monthlyPoints)}
             </div>
+
+            {dataSource && dataSource !== 'none' && (
+                <p className="profile-analytics-source">
+                    Zdroj: {dataSource === 'database' ? 'databáze' : 'Google Sheets'}
+                </p>
+            )}
         </div>
     );
 };

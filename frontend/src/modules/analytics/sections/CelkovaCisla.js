@@ -1222,30 +1222,29 @@ const CelkovaCislaView = ({ isComparison = false, paneRole = 'single', filtersFr
                             </div>
                         </div>
 
-                        <div className="metric-card metric-card--bazar" style={{ borderLeft: '4px solid #f39c12' }}>
+                        <div className="metric-card" style={{ borderLeft: '4px solid #f39c12' }}>
                             <div className="metric-icon">🔄</div>
                             <div className="metric-content">
-                                <h3>Nákup / prodej bazar</h3>
-                                <div className="metric-bazar-row">
-                                    <span className="metric-bazar-label">Výkupy</span>
-                                    <span className="metric-value metric-value--compact">
-                                        {formatNumber(data.aggregations.vykupy_pocet)} ks
-                                    </span>
-                                    <span className="metric-subtitle metric-subtitle--inline">
-                                        {formatCurrency(data.aggregations.vykupy_suma)} bez DPH
-                                    </span>
+                                <h3>Výkupy</h3>
+                                <div className="metric-value">{formatNumber(data.aggregations.vykupy_pocet)} ks</div>
+                                <div className="metric-subtitle">
+                                    {formatCurrency(data.aggregations.vykupy_suma)} bez DPH
                                 </div>
-                                <div className="metric-bazar-row">
-                                    <span className="metric-bazar-label">Prodané bazar</span>
-                                    <span className="metric-value metric-value--compact">
-                                        {formatNumber(data.aggregations.bazar_prodano_pocet ?? 0)} ks
-                                    </span>
-                                    <span className="metric-subtitle metric-subtitle--inline">
-                                        {formatCurrency(data.aggregations.bazar_prodano_suma ?? 0)} bez DPH
-                                        {(data.aggregations.bazar_prodano_marze ?? 0) > 0 && (
-                                            <> · marže {formatCurrency(data.aggregations.bazar_prodano_marze)}</>
-                                        )}
-                                    </span>
+                            </div>
+                        </div>
+
+                        <div className="metric-card" style={{ borderLeft: '4px solid #e67e22' }}>
+                            <div className="metric-icon">📲</div>
+                            <div className="metric-content">
+                                <h3>Prodané bazar</h3>
+                                <div className="metric-value">
+                                    {formatNumber(data.aggregations.bazar_prodano_pocet ?? 0)} ks
+                                </div>
+                                <div className="metric-subtitle">
+                                    {formatCurrency(data.aggregations.bazar_prodano_suma ?? 0)} bez DPH
+                                    {(data.aggregations.bazar_prodano_marze ?? 0) > 0 && (
+                                        <> · marže {formatCurrency(data.aggregations.bazar_prodano_marze)}</>
+                                    )}
                                 </div>
                             </div>
                         </div>

@@ -14,7 +14,7 @@ export const PRODUCT_COMMISSIONS = [
     { key: 'kop500', label: 'KOP500', rate: 35 },
     { key: 'pz1', label: 'PZ1', rate: 85 },
     { key: 'knz', label: 'KNZ', rate: 15 },
-    { key: 'sunshine', label: 'SUNSHINE fólie (+15 nad položku)', rate: 15 },
+    { key: 'sunshine', label: 'Sunshine', rate: 15 },
 ];
 
 /** CT300 – pouze počet kusů, nezapočítává se do bodů */

@@ -617,3 +617,211 @@
     color: #1a7f37;
     font-weight: 600;
 }
+
+/* Kompaktní přehled – obě tabulky na jednu obrazovku */
+.profile-analytics--fit {
+    max-width: 1280px;
+}
+
+.profile-analytics--fit .analytics-controls--compact {
+    margin-bottom: 8px;
+    gap: 8px 12px;
+    align-items: center;
+}
+
+.profile-analytics--fit .date-picker--compact label {
+    font-size: 0.8rem;
+    margin: 0;
+}
+
+.profile-analytics--fit .date-picker--compact input,
+.profile-analytics--fit .date-picker--compact .analytics-date-picker-input {
+    padding: 6px 8px;
+    font-size: 0.82rem;
+}
+
+.profile-analytics--fit .date-picker-hint {
+    font-size: 0.78rem;
+    color: #6c757d;
+    flex: 1 1 auto;
+}
+
+.profile-analytics--fit .analytics-loading-inline {
+    font-size: 0.78rem;
+    color: #667eea;
+    font-weight: 600;
+}
+
+.profile-analytics--fit .analytics-grid--fit {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 6px;
+    align-items: stretch;
+}
+
+.profile-analytics--fit .data-card--compact {
+    padding: 8px 10px;
+    border-radius: 8px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.profile-analytics--fit .data-card--compact:hover {
+    transform: none;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.profile-analytics--fit .card-header--compact {
+    margin-bottom: 6px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #e9ecef;
+    gap: 8px;
+}
+
+.profile-analytics--fit .card-header--compact h3 {
+    font-size: 0.82rem;
+    font-weight: 700;
+    line-height: 1.2;
+    flex: 1;
+    min-width: 0;
+}
+
+.profile-analytics--fit .metric-item-body--chip {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
+    flex-shrink: 0;
+}
+
+.profile-analytics--fit .metric-item-body--chip .metric-value {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #fff;
+    line-height: 1;
+}
+
+.profile-analytics--fit .metric-item-body--chip .metric-label {
+    font-size: 0.68rem;
+    color: rgba(255, 255, 255, 0.95);
+    margin: 0;
+    font-weight: 600;
+}
+
+.profile-analytics--fit .card-content--compact {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.profile-analytics--fit .metrics-mini-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 4px;
+}
+
+.profile-analytics--fit .metric-item--mini {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 4px 2px;
+    background: #f4f6f8;
+    border-radius: 6px;
+    border: 1px solid #e9ecef;
+}
+
+.profile-analytics--fit .metric-item--mini .metric-value {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #2c3e50;
+    line-height: 1.15;
+}
+
+.profile-analytics--fit .metric-item--mini .metric-label {
+    font-size: 0.62rem;
+    color: #6c757d;
+    margin-top: 2px;
+    line-height: 1.1;
+    font-weight: 600;
+}
+
+.profile-analytics--fit .products-list--compact {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3px 6px;
+    margin: 0;
+    flex: 1;
+    align-content: start;
+}
+
+.profile-analytics--fit .product-item {
+    padding: 3px 6px;
+    font-size: 0.72rem;
+    border-radius: 4px;
+    gap: 4px;
+    min-height: 0;
+}
+
+.profile-analytics--fit .product-item span:first-child {
+    font-weight: 600;
+    color: #495057;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+
+.profile-analytics--fit .product-calc {
+    font-size: 0.7rem;
+    flex-shrink: 0;
+}
+
+.profile-analytics--fit .product-item-servis {
+    grid-column: 1 / -1;
+}
+
+.profile-analytics--fit .profile-analytics-source {
+    margin: 4px 0 0;
+    text-align: center;
+    font-size: 0.68rem;
+    color: #9aa5b1;
+    font-style: italic;
+}
+
+.profile-analytics--fit .data-card.no-data {
+    padding: 12px;
+}
+
+.profile-analytics--fit .data-card.no-data h3 {
+    font-size: 0.85rem;
+}
+
+.profile-analytics--fit .data-card.no-data p {
+    font-size: 0.78rem;
+    margin: 4px 0 0;
+}
+
+@media (max-width: 900px) {
+    .profile-analytics--fit .analytics-grid--fit {
+        grid-template-columns: 1fr;
+    }
+
+    .profile-analytics--fit .metrics-mini-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 480px) {
+    .profile-analytics--fit .products-list--compact {
+        grid-template-columns: 1fr;
+    }
+}

@@ -10,7 +10,7 @@ splní podmínku polozky_nad_100_q). Celkem tedy typicky 30 bodů/kus oproti 15 
 from django.db.models import Q, Sum
 
 SUNSHINE_METRIC_KEY = 'sunshine'
-SUNSHINE_UI_LABEL = 'SUNSHINE fólie'
+SUNSHINE_UI_LABEL = 'Sunshine'
 SUNSHINE_POINTS_PER_UNIT = 15
 
 
