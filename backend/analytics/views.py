@@ -1915,6 +1915,98 @@ from decimal import Decimal
 from users.models import WebUser
 
 
+def _web_prodeje_shipping_exclude_q():
+    """Logistické položky – stejná definice jako v modulu E-shop."""
+    return (
+        Q(nazev__icontains='Zásilkovna') | Q(nazev__icontains='ZASILKOVNA') |
+        Q(nazev__icontains='Zásielkovňa') | Q(nazev__icontains='ZASIELKOVNA') |
+        Q(nazev__icontains='Balíkovna') | Q(nazev__icontains='BALIKOVNA') |
+        Q(nazev__icontains='Osobní odběr') | Q(nazev__icontains='OSOBNI ODBER') |
+        Q(nazev__icontains='Česká pošta') | Q(nazev__icontains='Ceska posta') |
+        Q(nazev__icontains='Allegro doručení') | Q(nazev__icontains='Allegro doruceni')
+    )
+
+
+def _resolve_web_prodeje_period(period, selected_month, start_date, end_date):
+    """Vrátí (start, end) jako date nebo (None, None)."""
+    if period not in ('custom', 'monthly_select'):
+        today = date.today()
+        if period == 'daily':
+            return today, today
+        if period == 'weekly':
+            return today - timedelta(days=7), today
+        if period == 'monthly':
+            return today.replace(day=1), today
+    if period == 'monthly_select' and selected_month:
+        try:
+            y, m = selected_month.split('-')
+            y, m = int(y), int(m)
+            start = date(y, m, 1)
+            if m == 12:
+                end = date(y + 1, 1, 1) - timedelta(days=1)
+            else:
+                end = date(y, m + 1, 1) - timedelta(days=1)
+            return start, end
+        except Exception:
+            pass
+    sd = ed = None
+    if start_date:
+        try:
+            sd = parse_date(start_date).date() if isinstance(start_date, str) else start_date
+        except Exception:
+            pass
+    if end_date:
+        try:
+            ed = parse_date(end_date).date() if isinstance(end_date, str) else end_date
+        except Exception:
+            pass
+    return sd, ed
+
+
+def _apply_web_prodeje_date_filters(queryset, start_date=None, end_date=None, period='custom', selected_month=None):
+    """typ__gte start, typ__lt end+1 den – konzistentní napříč Celková čísla a E-shop."""
+    sd, ed = _resolve_web_prodeje_period(period, selected_month, start_date, end_date)
+    if sd:
+        queryset = queryset.filter(typ__gte=sd.strftime('%Y-%m-%d'))
+    if ed:
+        end_upper = (ed + timedelta(days=1)).strftime('%Y-%m-%d')
+        queryset = queryset.filter(typ__lt=end_upper)
+    return queryset, sd, ed
+
+
+def _eshop_pure_queryset(base_qs):
+    return (
+        base_qs.filter(marketingovy_kanal='e-shop')
+        .filter(Q(objednavku_zalozil__isnull=True) | Q(objednavku_zalozil=''))
+        .filter(Q(poznamka__isnull=True) | Q(poznamka=''))
+        .exclude(dropshipping='Baselinker')
+        .exclude(kategorie_1__icontains='!Servis')
+        .exclude(Q(kategorie__isnull=True) | Q(kategorie='') | Q(kategorie__iexact='Nezařazeno'))
+        .exclude(_web_prodeje_shipping_exclude_q())
+    )
+
+
+def _allegro_queryset(base_qs):
+    return (
+        base_qs.filter(dropshipping='Baselinker')
+        .exclude(Q(kategorie__isnull=True) | Q(kategorie='') | Q(kategorie__iexact='Nezařazeno'))
+        .exclude(_web_prodeje_shipping_exclude_q())
+    )
+
+
+def _servis_channel_queryset(base_qs):
+    return base_qs.filter(objednavku_zalozil__icontains='servis eda', k_servisu='ANO')
+
+
+def _aggregate_kanaly_metrics(qs):
+    return qs.aggregate(
+        obrat=Sum(F('pocet_kusu') * F('cena_ks_bez_dph'), default=0),
+        marze=Sum(F('pocet_kusu') * F('zisk'), default=0),
+        polozky=Count('id'),
+        objednavky=Count('doklad', distinct=True),
+    )
+
+
 @api_view(['GET'])
 @permission_classes([AllowAny])  # Povolíme přístup pro testování
 def celkova_cisla_view(request):
@@ -1935,56 +2027,13 @@ def celkova_cisla_view(request):
         
         # Základní QuerySet - NOVĚ používáme WEB_PRODEJE_ALL
         queryset = WebProdejeAll.objects.all()
-        
-        # Filtrování podle data
-        if period != 'custom' and period != 'monthly_select':
-            # Automatické období
-            today = date.today()
-            if period == 'daily':
-                start_date = today
-                end_date = today
-            elif period == 'weekly':
-                start_date = today - timedelta(days=7)
-                end_date = today
-            elif period == 'monthly':
-                start_date = today.replace(day=1)
-                end_date = today
-                
-        if start_date:
-            try:
-                start_date_parsed = parse_date(start_date).date() if isinstance(start_date, str) else start_date
-                # Filtrování podle sloupce 'Vystaveno' z WEB_PRODEJE_ALL
-                queryset = queryset.filter(typ__gte=start_date_parsed.strftime('%Y-%m-%d'))
-            except:
-                pass
-                
-        if end_date:
-            try:
-                end_date_parsed = parse_date(end_date).date() if isinstance(end_date, str) else end_date
-                # Pokud je ve sloupci 'Vystaveno' i čas, použijeme horní mez následující den (strictly < next day)
-                end_upper = (end_date_parsed + timedelta(days=1)).strftime('%Y-%m-%d')
-                queryset = queryset.filter(typ__lt=end_upper)
-            except:
-                pass
-                
-        # Filtrování podle vybraného měsíce
-        if period == 'monthly_select' and selected_month:
-            try:
-                # selected_month je ve formátu YYYY-MM
-                year, month = selected_month.split('-')
-                start_date = date(int(year), int(month), 1)
-                # Poslední den měsíce
-                if int(month) == 12:
-                    end_date = date(int(year) + 1, 1, 1) - timedelta(days=1)
-                else:
-                    end_date = date(int(year), int(month) + 1, 1) - timedelta(days=1)
-                
-                queryset = queryset.filter(
-                    typ__gte=start_date.strftime('%Y-%m-%d'),
-                    typ__lte=end_date.strftime('%Y-%m-%d')
-                )
-            except:
-                pass
+        queryset, start_date_parsed, end_date_parsed = _apply_web_prodeje_date_filters(
+            queryset, start_date, end_date, period, selected_month
+        )
+        if start_date_parsed:
+            start_date = start_date_parsed
+        if end_date_parsed:
+            end_date = end_date_parsed
         
         # NOVÉ filtrování podle prodejního kanálu pro WEB_PRODEJE_ALL
         if kanal == 'eshop':
@@ -2085,47 +2134,10 @@ def celkova_cisla_view(request):
         aggregations['vykupy_pocet'] = vykupy_stats.get('pocet_kusu', 0)
         aggregations['vykupy_suma'] = float(vykupy_stats.get('celkova_cena_bez_dph') or 0)
         
-        # NOVÝ rozklad podle kanálů pro WEB_PRODEJE_ALL
-        # Vyloučení logistických názvů (stejná logika jako v E‑shop analytice)
-        shipping_exclude_q = (
-            Q(nazev__icontains='Zásilkovna') | Q(nazev__icontains='ZASILKOVNA') |
-            Q(nazev__icontains='Zásielkovňa') | Q(nazev__icontains='ZASIELKOVNA') |
-            Q(nazev__icontains='Balíkovna') | Q(nazev__icontains='BALIKOVNA') |
-            Q(nazev__icontains='Osobní odběr') | Q(nazev__icontains='OSOBNI ODBER')
-        )
-
-        # ESHOP: přísná definice jako v sekci E-shop (čistý e-shop)
-        eshop_metrics = queryset.filter(
-                marketingovy_kanal='e-shop'
-            ).filter(
-                Q(objednavku_zalozil__isnull=True) | Q(objednavku_zalozil='')
-            ).filter(
-                Q(poznamka__isnull=True) | Q(poznamka='')
-            ).exclude(
-                dropshipping='Baselinker'
-            ).exclude(
-                kategorie_1__icontains='!Servis'
-            ).exclude(
-                shipping_exclude_q
-            ).aggregate(
-                obrat=Sum(F('pocet_kusu') * F('cena_ks_bez_dph'), default=0),
-                marze=Sum(F('pocet_kusu') * F('zisk'), default=0),
-                polozky=Count('id')
-            )
-
-        # ALLEGRO: dropshipping = Baselinker
-        allegro_metrics = queryset.filter(dropshipping='Baselinker').aggregate(
-                obrat=Sum(F('pocet_kusu') * F('cena_ks_bez_dph'), default=0),
-                marze=Sum(F('pocet_kusu') * F('zisk'), default=0),
-                polozky=Count('id')
-            )
-
-        # SERVIS: objednavku_zalozil obsahuje "servis eda" A k_servisu='ANO'
-        servis_metrics = queryset.filter(objednavku_zalozil__icontains='servis eda', k_servisu='ANO').aggregate(
-                obrat=Sum(F('pocet_kusu') * F('cena_ks_bez_dph'), default=0),
-                marze=Sum(F('pocet_kusu') * F('zisk'), default=0),
-                polozky=Count('id')
-            )
+        # Rozklad podle kanálů – stejná definice e-shop / Allegro jako v modulu E-shop
+        eshop_metrics = _aggregate_kanaly_metrics(_eshop_pure_queryset(queryset))
+        allegro_metrics = _aggregate_kanaly_metrics(_allegro_queryset(queryset))
+        servis_metrics = _aggregate_kanaly_metrics(_servis_channel_queryset(queryset))
 
         # PRODEJNA = celkový součet MINUS (eshop + allegro + servis) – zaručený součet
         total_obrat = aggregations.get('celkovy_obrat_bez_dph') or 0
@@ -2357,52 +2369,13 @@ def celkova_categories_timeseries_view(request):
             return JsonResponse({'success': False, 'error': 'Neplatná dimenze'}, status=400)
 
         qs = WebProdejeAll.objects.all()
-
-        # datumové filtry
-        if period != 'custom' and period != 'monthly_select':
-            today = date.today()
-            if period == 'daily':
-                start_date = today
-                end_date = today
-            elif period == 'weekly':
-                start_date = today - timedelta(days=7)
-                end_date = today
-            elif period == 'monthly':
-                start_date = today.replace(day=1)
-                end_date = today
-        elif period == 'monthly_select' and selected_month:
-            # YYYY-MM
-            try:
-                y, m = selected_month.split('-')
-                start_date = date(int(y), int(m), 1)
-                # end to next month -1 day
-                if int(m) == 12:
-                    end_date = date(int(y)+1, 1, 1) - timedelta(days=1)
-                else:
-                    end_date = date(int(y), int(m)+1, 1) - timedelta(days=1)
-            except Exception:
-                pass
-
-        if start_date:
-            try:
-                sd = parse_date(start_date).date() if isinstance(start_date, str) else start_date
-                qs = qs.filter(typ__gte=sd.strftime('%Y-%m-%d'))
-            except Exception:
-                pass
-        if end_date:
-            try:
-                ed = parse_date(end_date).date() if isinstance(end_date, str) else end_date
-                qs = qs.filter(typ__lte=ed.strftime('%Y-%m-%d'))
-            except Exception:
-                pass
+        qs, _, _ = _apply_web_prodeje_date_filters(qs, start_date, end_date, period, selected_month)
 
         # filtr kanálu – logika jako v celkova_cisla_view
         if kanal == 'eshop':
-            qs = qs.filter(marketingovy_kanal='e-shop').exclude(
-                Q(objednavku_zalozil__icontains='servis eda')
-            ).exclude(dropshipping='Baselinker')
+            qs = _eshop_pure_queryset(qs)
         elif kanal == 'allegro':
-            qs = qs.filter(dropshipping='Baselinker')
+            qs = _allegro_queryset(qs)
         elif kanal == 'servis':
             qs = qs.filter(objednavku_zalozil__icontains='servis eda', k_servisu='ANO')
         elif kanal == 'prodejna':
@@ -2608,41 +2581,13 @@ def celkova_channel_items_view(request):
         limit = int(request.GET.get('limit','200'))
 
         qs = WebProdejeAll.objects.all()
-
-        if period != 'custom' and period != 'monthly_select':
-            today = date.today()
-            if period == 'daily':
-                start_date = today; end_date = today
-            elif period == 'weekly':
-                start_date = today - timedelta(days=7); end_date = today
-            elif period == 'monthly':
-                start_date = today.replace(day=1); end_date = today
-        elif period == 'monthly_select' and selected_month:
-            try:
-                y,m = selected_month.split('-')
-                start_date = date(int(y), int(m), 1)
-                end_date = (date(int(y)+1,1,1)-timedelta(days=1)) if int(m)==12 else (date(int(y),int(m)+1,1)-timedelta(days=1))
-            except Exception:
-                pass
-
-        if start_date:
-            try:
-                sd = parse_date(start_date).date() if isinstance(start_date, str) else start_date
-                qs = qs.filter(typ__gte=sd.strftime('%Y-%m-%d'))
-            except Exception:
-                pass
-        if end_date:
-            try:
-                ed = parse_date(end_date).date() if isinstance(end_date, str) else end_date
-                qs = qs.filter(typ__lte=ed.strftime('%Y-%m-%d'))
-            except Exception:
-                pass
+        qs, _, _ = _apply_web_prodeje_date_filters(qs, start_date, end_date, period, selected_month)
 
         if channel == 'eshop':
-            qs = qs.filter(marketingovy_kanal='e-shop').filter(Q(objednavku_zalozil__isnull=True)|Q(objednavku_zalozil='')).filter(Q(poznamka__isnull=True)|Q(poznamka='')).exclude(dropshipping='Baselinker').exclude(kategorie_1__icontains='!Servis')
+            qs = _eshop_pure_queryset(qs)
             items = list(qs.order_by('-typ').values('objednavka','nazev','kod')[:max(1,min(limit,1000))])
         elif channel == 'allegro':
-            qs = qs.filter(dropshipping='Baselinker')
+            qs = _allegro_queryset(qs)
             items = list(qs.order_by('-typ').values('objednavka','nazev','kod')[:max(1,min(limit,1000))])
         elif channel == 'servis':
             qs = qs.filter(objednavku_zalozil__icontains='servis eda', k_servisu='ANO')
@@ -2681,93 +2626,25 @@ def eshop_data_view(request):
         period = request.GET.get('period', 'custom')  # daily, weekly, monthly, custom
         exclude_allegro = request.GET.get('exclude_allegro', 'false') == 'true'  # Vyloučit ALLEGRO z celkových počtů
 
+        selected_month = request.GET.get('selected_month')
+
         # Základní QuerySet nad WEB_PRODEJE_ALL
         queryset = WebProdejeAll.objects.all()
-
-        # Filtrování podle data
-        if period != 'custom':
-            # Automatické období
-            today = date.today()
-            if period == 'daily':
-                start_date = today
-                end_date = today
-            elif period == 'weekly':
-                start_date = today - timedelta(days=7)
-                end_date = today
-            elif period == 'monthly':
-                start_date = today.replace(day=1)
-                end_date = today
-
-        if start_date:
-            try:
-                start_date_parsed = parse_date(start_date).date() if isinstance(start_date, str) else start_date
-                queryset = queryset.filter(typ__gte=start_date_parsed.strftime('%Y-%m-%d'))
-            except Exception:
-                pass
-
-        if end_date:
-            try:
-                end_date_parsed = parse_date(end_date).date() if isinstance(end_date, str) else end_date
-                queryset = queryset.filter(typ__lte=end_date_parsed.strftime('%Y-%m-%d'))
-            except Exception:
-                pass
-
-        # Podmnožiny: e-shop čistý a allegro
-        # Vyloučíme i logistické/pickup položky (nepatří do analytiky): Zásilkovna/Zásielkovňa/Balíkovna/Osobní odběr
-        shipping_exclude_q = (
-            Q(nazev__icontains='Zásilkovna') |
-            Q(nazev__icontains='ZASILKOVNA') |
-            Q(nazev__icontains='Zásielkovňa') |
-            Q(nazev__icontains='ZASIELKOVNA') |
-            Q(nazev__icontains='Balíkovna') |
-            Q(nazev__icontains='BALIKOVNA') |
-            Q(nazev__icontains='Osobní odběr') |
-            Q(nazev__icontains='OSOBNI ODBER') |
-            Q(nazev__icontains='Česká pošta') |
-            Q(nazev__icontains='Ceska posta') |
-            Q(nazev__icontains='Allegro doručení') |
-            Q(nazev__icontains='Allegro doruceni')
+        queryset, start_date_parsed, end_date_parsed = _apply_web_prodeje_date_filters(
+            queryset, start_date, end_date, period, selected_month
         )
-        eshop_pure_qs = (
-            queryset
-            .filter(marketingovy_kanal='e-shop')
-            .filter(Q(objednavku_zalozil__isnull=True) | Q(objednavku_zalozil=''))  # sloupec 11 prázdný
-            .filter(Q(poznamka__isnull=True) | Q(poznamka=''))                      # sloupec 10 prázdný
-            .exclude(dropshipping='Baselinker')                                      # vyloučit Allegro
-            .exclude(kategorie_1__icontains='!Servis')                               # sloupec 23 nesmí obsahovat !Servis
-            .exclude(Q(kategorie__isnull=True) | Q(kategorie='') | Q(kategorie__iexact='Nezařazeno'))  # nevstupuje Nezařazeno (doručení)
-            .exclude(shipping_exclude_q)
-        )
+        if start_date_parsed:
+            start_date = start_date_parsed
+        if end_date_parsed:
+            end_date = end_date_parsed
 
-        allegro_qs = (
-            queryset
-            .filter(dropshipping='Baselinker')
-            .exclude(Q(kategorie__isnull=True) | Q(kategorie='') | Q(kategorie__iexact='Nezařazeno'))  # nevstupuje Nezařazeno (doručení)
-            .exclude(shipping_exclude_q)
+        eshop_pure_qs = _eshop_pure_queryset(queryset)
+        allegro_qs = _allegro_queryset(queryset)
+        shipping_qs = queryset.filter(_web_prodeje_shipping_exclude_q())
+        servis_qs = _servis_channel_queryset(WebProdejeAll.objects.all())
+        servis_qs, _, _ = _apply_web_prodeje_date_filters(
+            servis_qs, start_date, end_date, period, selected_month
         )
-
-        # Výhradně dopravné (zobrazení v samostatné dlaždici) – suma bez DPH
-        shipping_qs = queryset.filter(shipping_exclude_q)
-
-        # Servisová množina (pro obrat bez DPH celého servisu)
-        base_servis_q = (
-            Q(objednavku_zalozil__icontains='servis eda') &
-            Q(k_servisu='ANO')
-        )
-        servis_qs = WebProdejeAll.objects.filter(base_servis_q)
-        # Aplikace stejných datumových filtrů i na servis
-        if start_date:
-            try:
-                start_date_parsed = parse_date(start_date).date() if isinstance(start_date, str) else start_date
-                servis_qs = servis_qs.filter(typ__gte=start_date_parsed.strftime('%Y-%m-%d'))
-            except Exception:
-                pass
-        if end_date:
-            try:
-                end_date_parsed = parse_date(end_date).date() if isinstance(end_date, str) else end_date
-                servis_qs = servis_qs.filter(typ__lte=end_date_parsed.strftime('%Y-%m-%d'))
-            except Exception:
-                pass
 
         # Agregace
         allegro_aggs = allegro_qs.aggregate(
@@ -2866,46 +2743,17 @@ def eshop_channel_detail_view(request):
         start_date = request.GET.get('start_date')
         end_date = request.GET.get('end_date')
         period = request.GET.get('period', 'custom')
+        selected_month = request.GET.get('selected_month')
 
         qs = WebProdejeAll.objects.all()
+        qs, _, _ = _apply_web_prodeje_date_filters(qs, start_date, end_date, period, selected_month)
 
-        # Datumové filtry
-        if period != 'custom':
-            today = date.today()
-            if period == 'daily':
-                start_date = today
-                end_date = today
-            elif period == 'weekly':
-                start_date = today - timedelta(days=7)
-                end_date = today
-            elif period == 'monthly':
-                start_date = today.replace(day=1)
-                end_date = today
-
-        if start_date:
-            try:
-                sd = parse_date(start_date).date() if isinstance(start_date, str) else start_date
-                qs = qs.filter(typ__gte=sd.strftime('%Y-%m-%d'))
-            except Exception:
-                pass
-        if end_date:
-            try:
-                ed = parse_date(end_date).date() if isinstance(end_date, str) else end_date
-                qs = qs.filter(typ__lte=ed.strftime('%Y-%m-%d'))
-            except Exception:
-                pass
-
-        # Filtr kanálu
         if channel == 'allegro':
-            qs = qs.filter(dropshipping='Baselinker')
-        else:  # eshop (bez Allegra) – striktní definice: mk='e-shop', objednavku_zalozil prázdné, poznamka prázdná, kategorie_1 neobsahuje !Servis
-            qs = (
-                qs.filter(marketingovy_kanal='e-shop')
-                  .filter(Q(objednavku_zalozil__isnull=True) | Q(objednavku_zalozil=''))
-                  .filter(Q(poznamka__isnull=True) | Q(poznamka=''))
-                  .exclude(dropshipping='Baselinker')
-                  .exclude(kategorie_1__icontains='!Servis')
-            )
+            qs = _allegro_queryset(qs)
+        else:
+            qs = _eshop_pure_queryset(qs)
+
+        totals = _aggregate_kanaly_metrics(qs)
 
         # Agregace
         def agg(values_field):
@@ -2947,6 +2795,10 @@ def eshop_channel_detail_view(request):
             'success': True,
             'channel': channel,
             'breakdown': convert({
+                'obrat_bez_dph': totals.get('obrat') or 0,
+                'zisk': totals.get('marze') or 0,
+                'polozky': totals.get('polozky') or 0,
+                'objednavky': totals.get('objednavky') or 0,
                 'kategorie': kategorie,
                 'kategorie_1': kategorie_1,
                 'kategorie_2': kategorie_2,
@@ -2983,64 +2835,15 @@ def eshop_channel_items_view(request):
         start_date = request.GET.get('start_date')
         end_date = request.GET.get('end_date')
         period = request.GET.get('period', 'custom')
+        selected_month = request.GET.get('selected_month')
 
         qs = WebProdejeAll.objects.all()
-
-        # datum
-        if period != 'custom':
-            today = date.today()
-            if period == 'daily':
-                start_date = today
-                end_date = today
-            elif period == 'weekly':
-                start_date = today - timedelta(days=7)
-                end_date = today
-            elif period == 'monthly':
-                start_date = today.replace(day=1)
-                end_date = today
-
-        if start_date:
-            try:
-                sd = parse_date(start_date).date() if isinstance(start_date, str) else start_date
-                qs = qs.filter(typ__gte=sd.strftime('%Y-%m-%d'))
-            except Exception:
-                pass
-        if end_date:
-            try:
-                ed = parse_date(end_date).date() if isinstance(end_date, str) else end_date
-                qs = qs.filter(typ__lte=ed.strftime('%Y-%m-%d'))
-            except Exception:
-                pass
+        qs, _, _ = _apply_web_prodeje_date_filters(qs, start_date, end_date, period, selected_month)
 
         if channel == 'allegro':
-            qs = qs.filter(dropshipping='Baselinker').exclude(
-                Q(nazev__icontains='Zásilkovna') |
-                Q(nazev__icontains='ZASILKOVNA') |
-                Q(nazev__icontains='Zásielkovňa') |
-                Q(nazev__icontains='ZASIELKOVNA') |
-                Q(nazev__icontains='Balíkovna') |
-                Q(nazev__icontains='BALIKOVNA') |
-                Q(nazev__icontains='Osobní odběr') |
-                Q(nazev__icontains='OSOBNI ODBER')
-            )
+            qs = _allegro_queryset(qs)
         else:
-            qs = (
-                qs.filter(marketingovy_kanal='e-shop')
-                  .filter(Q(objednavku_zalozil__isnull=True) | Q(objednavku_zalozil=''))
-                  .filter(Q(poznamka__isnull=True) | Q(poznamka=''))
-                  .exclude(dropshipping='Baselinker')
-                  .exclude(kategorie_1__icontains='!Servis')
-                  .exclude(
-                      Q(nazev__icontains='Zásilkovna') |
-                      Q(nazev__icontains='ZASILKOVNA') |
-                      Q(nazev__icontains='Zásielkovňa') |
-                      Q(nazev__icontains='ZASIELKOVNA') |
-                      Q(nazev__icontains='Balíkovna') |
-                      Q(nazev__icontains='BALIKOVNA') |
-                      Q(nazev__icontains='Osobní odběr') |
-                      Q(nazev__icontains='OSOBNI ODBER')
-                  )
-            )
+            qs = _eshop_pure_queryset(qs)
 
         # segment
         if segment == 'produkt':

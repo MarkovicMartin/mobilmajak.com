@@ -569,7 +569,7 @@ const CelkovaCislaView = ({ isComparison = false }) => {
             to = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         } else if (type === 'thisMonth') {
             from = new Date(now.getFullYear(), now.getMonth(), 1);
-            to = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+            to = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         } else if (type === 'prevMonth') {
             from = new Date(now.getFullYear(), now.getMonth() - 1, 1);
             to = new Date(now.getFullYear(), now.getMonth(), 0);

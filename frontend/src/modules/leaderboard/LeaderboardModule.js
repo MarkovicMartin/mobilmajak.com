@@ -18,6 +18,10 @@ const LeaderboardModule = () => {
     const [error, setError] = useState(null);
 
     useEffect(() => {
+        window.scrollTo(0, 0);
+    }, []);
+
+    useEffect(() => {
         if (pointsSubTab === 'today') {
             fetchPointsTodayLeaderboard();
         } else if (pointsSubTab === 'stores') {

@@ -1,8 +1,15 @@
 .leaderboard-module {
     max-width: 1200px;
     margin: 0 auto;
-    padding: 10px 12px 16px;
+    padding: 16px 12px 16px;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Odsazení lišty období pod sticky dock (aktivní položka s popiskem) */
+@media (min-width: 769px) {
+    .leaderboard-module {
+        padding-top: 12px;
+    }
 }
 
 .error-message {
@@ -30,8 +37,15 @@
 .leaderboard-period-bar {
     display: flex;
     gap: 8px;
-    margin-bottom: 10px;
+    margin: 8px 0 10px;
     align-items: stretch;
+    scroll-margin-top: 6.5rem;
+}
+
+@media (min-width: 769px) {
+    .leaderboard-period-bar {
+        margin-top: 14px;
+    }
 }
 
 .period-tab {
@@ -97,6 +111,12 @@
     font-weight: 700;
     line-height: 1.2;
     white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+    .leaderboard-period-bar {
+        margin-top: 10px;
+    }
 }
 
 @media (max-width: 640px) {

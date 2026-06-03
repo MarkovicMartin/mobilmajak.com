@@ -13,6 +13,11 @@
     .dashboard-main {
         padding-top: 0.75rem;
     }
+
+    /* Žebříček: lišta Měsíční / Dnešní / Prodejny pod rozšířeným dockem */
+    .dashboard-main:has(.leaderboard-module) {
+        padding-top: 1.35rem;
+    }
 }
 
 /* Seller dashboard minimal overrides */
