@@ -1,5 +1,5 @@
 .analytics-module {
-    padding: 0.5rem 0.75rem 0.75rem;
+    padding: 0.25rem 0 0.5rem;
     background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
     min-height: 0;
 }
@@ -10,6 +10,6 @@
 
 @media (max-width: 768px) {
     .analytics-module {
-        padding: 0.35rem 0.5rem 0.5rem;
+        padding: 0.15rem 0 0.35rem;
     }
 } 

@@ -1974,6 +1974,26 @@ def _apply_web_prodeje_date_filters(queryset, start_date=None, end_date=None, pe
     return queryset, sd, ed
 
 
+def _first_day_months_ago(months_back):
+    """První den kalendářního měsíce N měsíců zpět (0 = aktuální měsíc)."""
+    today = date.today()
+    y, m = today.year, today.month - months_back
+    while m <= 0:
+        m += 12
+        y -= 1
+    return date(y, m, 1)
+
+
+def _serialize_analytics_period(value):
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value.date().isoformat()
+    if isinstance(value, date):
+        return value.isoformat()
+    return str(value)[:10]
+
+
 def _eshop_pure_queryset(base_qs):
     return (
         base_qs.filter(marketingovy_kanal='e-shop')
@@ -2364,12 +2384,27 @@ def celkova_categories_timeseries_view(request):
         end_date = request.GET.get('end_date')
         period = request.GET.get('period', 'custom')
         selected_month = request.GET.get('selected_month')
+        timeseries_months_raw = request.GET.get('timeseries_months')
 
         if dimension not in {'kategorie','kategorie_1','kategorie_2','stredisko'}:
             return JsonResponse({'success': False, 'error': 'Neplatná dimenze'}, status=400)
 
         qs = WebProdejeAll.objects.all()
-        qs, _, _ = _apply_web_prodeje_date_filters(qs, start_date, end_date, period, selected_month)
+        chart_range = None
+        if timeseries_months_raw:
+            try:
+                months_n = max(1, min(int(timeseries_months_raw), 24))
+            except (TypeError, ValueError):
+                months_n = 12
+            sd = _first_day_months_ago(months_n - 1)
+            ed = date.today()
+            qs = qs.filter(typ__gte=sd.strftime('%Y-%m-%d'))
+            end_upper = (ed + timedelta(days=1)).strftime('%Y-%m-%d')
+            qs = qs.filter(typ__lt=end_upper)
+            chart_range = {'start': sd.isoformat(), 'end': ed.isoformat(), 'months': months_n}
+            group_by = 'monthly'
+        else:
+            qs, sd, ed = _apply_web_prodeje_date_filters(qs, start_date, end_date, period, selected_month)
 
         # filtr kanálu – logika jako v celkova_cisla_view
         if kanal == 'eshop':
@@ -2423,7 +2458,7 @@ def celkova_categories_timeseries_view(request):
             if key not in series_map:
                 series_map[key] = []
             series_map[key].append({
-                'date': r['period'],
+                'date': _serialize_analytics_period(r['period']),
                 'obrat': float(r['obrat'] or 0),
                 'zisk': float(r['zisk'] or 0),
                 'kusy': r['kusy'] or 0,
@@ -2439,6 +2474,7 @@ def celkova_categories_timeseries_view(request):
             'selected': selected,
             'group_by': group_by,
             'data': data,
+            'chart_range': chart_range,
         })
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)

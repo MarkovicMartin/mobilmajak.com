@@ -1,9 +1,34 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import AnalyticsSectionWrapper from '../AnalyticsSectionWrapper';
 import CustomDropdown from '../../../components/CustomDropdown';
 import AnalyticsDateRange from '../../../components/AnalyticsDateRange';
 import { formatISODate } from '../../../utils/analyticsDateRange';
+import {
+    buildInitialCelkovaFilters,
+    shiftFiltersOneYearBack,
+    formatFiltersPeriodLabel,
+    formatChartRangeLabel,
+    formatMonthKeyLabel,
+    periodToMonthKey,
+    buildLastMonthKeys,
+} from './celkovaPeriodUtils';
 import './CelkovaCisla.css';
+
+const TIMESERIES_MONTHS = 12;
+
+const PeriodEdgeBadge = ({ label, sublabel }) => (
+    <div className="celkova-period-edge-badge" title={sublabel || label}>
+        <span className="celkova-period-edge-badge__icon">📅</span>
+        <span className="celkova-period-edge-badge__text">{label}</span>
+    </div>
+);
+
+const PaneWithPeriodBadge = ({ periodLabel, children, className = '' }) => (
+    <div className={`celkova-pane-shell ${className}`.trim()}>
+        <PeriodEdgeBadge label={periodLabel} />
+        {children}
+    </div>
+);
 
 const CategoryTimeseries = ({ filters, defaultGroupBy, defaultSelected }) => {
     const [data, setData] = useState(null);
@@ -13,20 +38,24 @@ const CategoryTimeseries = ({ filters, defaultGroupBy, defaultSelected }) => {
     const [groupBy, setGroupBy] = useState('monthly');
     const [selected, setSelected] = useState([]);
     const [tip, setTip] = useState({ visible: false, x: 0, y: 0, text: '' });
+    const [chartRangeLabel, setChartRangeLabel] = useState('Posledních 12 měsíců');
 
     useEffect(() => {
         const load = async () => {
             setLoading(true); setError(null);
             try {
                 const p = new URLSearchParams();
-                Object.keys(filters).forEach(k => { if (filters[k] !== undefined && filters[k] !== null && filters[k] !== '') p.append(k, filters[k]); });
-                p.set('dimension', dimension); p.set('group_by', groupBy);
+                if (filters?.kanal) p.set('kanal', filters.kanal);
+                p.set('timeseries_months', String(TIMESERIES_MONTHS));
+                p.set('dimension', dimension);
+                p.set('group_by', 'monthly');
                 selected.forEach(v => p.append('selected[]', v));
                 const res = await fetch(`/api/analytics/celkova-cisla/categories-timeseries/?${p}`, { credentials: 'include' });
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const json = await res.json();
                 if (!json.success && json.data === undefined) throw new Error(json.error || 'Chyba');
                 setData(json);
+                setChartRangeLabel(formatChartRangeLabel(json.chart_range));
                 if (!selected.length) {
                     const avail = (json.available || []);
                     // prefer defaultSelected if exist in available
@@ -44,12 +73,10 @@ const CategoryTimeseries = ({ filters, defaultGroupBy, defaultSelected }) => {
             } catch (e) { setError(e.message); } finally { setLoading(false); }
         };
         load();
-    }, [filters, dimension, groupBy, JSON.stringify(selected)]);
+    }, [filters?.kanal, dimension, JSON.stringify(selected)]);
 
-    // React on default group-by from parent quick selection
     useEffect(() => {
-        if (defaultGroupBy) { setGroupBy(defaultGroupBy); }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        if (defaultGroupBy) setGroupBy(defaultGroupBy);
     }, [defaultGroupBy]);
 
     const fmt = new Intl.NumberFormat('cs-CZ');
@@ -57,10 +84,22 @@ const CategoryTimeseries = ({ filters, defaultGroupBy, defaultSelected }) => {
     if (error) return <div className="celkova-cisla-top"><h3>📅 Prodeje v čase</h3><div className="celkova-cisla-error">{error}</div></div>;
     if (!data) return null;
 
+    const monthKeys = buildLastMonthKeys(TIMESERIES_MONTHS);
+    const series = data.data || [];
+    const hasPoints = series.some((s) => (s.points || []).some((p) => (p.kusy || 0) > 0));
+
     return (
-        <div className="celkova-cisla-top">
-            <h3>📅 Prodeje v čase</h3>
-            <div className="filter-row" style={{ marginBottom: 10 }}>
+        <div className="celkova-cisla-top celkova-cisla-top--chart">
+            <PeriodEdgeBadge label={chartRangeLabel} sublabel="Rozsah grafu – posledních 12 měsíců" />
+            <div className="celkova-cisla-top__head">
+                <div>
+                    <h3>📅 Prodeje v čase</h3>
+                    <p className="celkova-chart-hint">
+                        Sloupcový přehled po měsících pro srovnání trendů. Metriky nahoře používají filtr období; graf vždy ukazuje {TIMESERIES_MONTHS} měsíců.
+                    </p>
+                </div>
+            </div>
+            <div className="filter-row celkova-chart-filters">
                 <div className="filter-group">
                     <label>Dimenze</label>
                     <select value={dimension} onChange={(e) => setDimension(e.target.value)}>
@@ -69,53 +108,144 @@ const CategoryTimeseries = ({ filters, defaultGroupBy, defaultSelected }) => {
                         <option value="stredisko">Prodejny</option>
                     </select>
                 </div>
-                <div className="filter-group">
-                    <label>Agregace</label>
-                    <select value={groupBy} onChange={(e) => setGroupBy(e.target.value)}>
-                        <option value="monthly">Měsíčně</option>
-                        <option value="weekly">Týdně</option>
-                        <option value="daily">Denně</option>
-                    </select>
-                </div>
-                <div className="filter-group" style={{ flex: 1 }}>
-                    <label>Výběr (max 6)</label>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <div className="filter-group celkova-chart-filters__series">
+                    <label>Série (max 6)</label>
+                    <div className="celkova-series-chips">
                         {(data.available || []).slice(0, 20).map((name, i) => {
                             const sel = selected.includes(name);
                             return (
-                                <button key={i} className="refresh-btn" style={{ background: sel ? '#2ecc71' : '#e0e0e0', color: sel ? '#fff' : '#2c3e50', padding: '6px 10px' }} onClick={() => {
-                                    setSelected(prev => { const next = sel ? prev.filter(v => v !== name) : [...prev, name]; return next.slice(-6); });
-                                }}>{name || 'Nezařazeno'}</button>
+                                <button
+                                    key={i}
+                                    type="button"
+                                    className={`celkova-series-chip${sel ? ' celkova-series-chip--on' : ''}`}
+                                    onClick={() => {
+                                        setSelected((prev) => {
+                                            const next = sel ? prev.filter((v) => v !== name) : [...prev, name];
+                                            return next.slice(-6);
+                                        });
+                                    }}
+                                >
+                                    {name || 'Nezařazeno'}
+                                </button>
                             );
                         })}
                     </div>
                 </div>
             </div>
-            <div style={{ overflowX: 'auto' }}>
-                <svg width="100%" height="360" viewBox="0 0 940 360" preserveAspectRatio="xMidYMid meet">
+            {!hasPoints && (
+                <p className="celkova-chart-empty">Pro vybrané série nejsou v posledních {TIMESERIES_MONTHS} měsících data.</p>
+            )}
+            <div className="celkova-chart-scroll">
+                <svg width="100%" height="300" viewBox="0 0 960 300" preserveAspectRatio="xMidYMid meet">
                     {(() => {
-                        const series = data.data || []; const all = [].concat(...series.map(s => s.points));
-                        const dates = Array.from(new Set(all.map(p => p.date))).sort();
-                        const left = 70, right = 920, top = 40, bottom = 320; const w = right - left, h = bottom - top;
-                        const maxYraw = Math.max(1, ...all.map(p => p.kusy || 0)); const pow = Math.pow(10, Math.floor(Math.log10(maxYraw))); const nice = [2, 5, 10].find(k => maxYraw <= k * pow) || 10; const yMax = nice * pow;
-                        const py = v => bottom - (h * (v / yMax)); const groupW = dates.length ? w / dates.length : w; const palette = ['#e74c3c', '#3498db', '#27ae60', '#9b59b6', '#f39c12', '#2ecc71'];
-                        const barGap = 4; const barW = Math.max(8, Math.min(26, (groupW - 8) / Math.max(1, series.length) - barGap));
+                        const dates = monthKeys;
+                        const left = 56;
+                        const right = 940;
+                        const top = 36;
+                        const bottom = 258;
+                        const w = right - left;
+                        const h = bottom - top;
+                        const allVals = series.flatMap((s) =>
+                            dates.map((d) => {
+                                const p = (s.points || []).find((pt) => periodToMonthKey(pt.date) === d);
+                                return p?.kusy || 0;
+                            })
+                        );
+                        const maxYraw = Math.max(1, ...allVals);
+                        const pow = 10 ** Math.floor(Math.log10(maxYraw));
+                        const nice = [2, 5, 10].find((k) => maxYraw <= k * pow) || 10;
+                        const yMax = nice * pow;
+                        const py = (v) => bottom - (h * (v / yMax));
+                        const groupW = dates.length ? w / dates.length : w;
+                        const palette = ['#e74c3c', '#3498db', '#27ae60', '#9b59b6', '#f39c12', '#2ecc71'];
+                        const barGap = 3;
+                        const barW = Math.max(6, Math.min(22, (groupW - 6) / Math.max(1, series.length) - barGap));
                         return (
                             <g>
-                                {[0, 1, 2, 3, 4, 5].map(i => { const val = (yMax / 5) * i; const y = py(val); return (<g key={i}><line x1={left} y1={y} x2={right} y2={y} stroke="#eef1f5" /><text x={left - 10} y={y + 4} fontSize="10" textAnchor="end" fill="#7f8c8d">{fmt.format(Math.round(val))}</text></g>); })}
-                                <line x1={left} y1={bottom} x2={right} y2={bottom} stroke="#cbd3da" />
-                                <line x1={left} y1={top} x2={left} y2={bottom} stroke="#cbd3da" />
-                                {dates.map((d, i) => { const x = left + groupW * (i + 0.5); return (<text key={i} transform={`translate(${x}, ${bottom + 22}) rotate(-30)`} fontSize="10" textAnchor="end" fill="#7f8c8d">{String(d).slice(0, 10)}</text>); })}
-                                {series.map((s, si) => {
-                                    const color = palette[si % palette.length]; return (
-                                        <g key={si}>
-                                            {dates.map((d, i) => { const p = s.points.find(pt => pt.date === d) || { kusy: 0, obrat: 0 }; const center = left + groupW * (i + 0.5); const total = (series.length * barW) + Math.max(0, series.length - 1) * barGap; const x0 = center - total / 2; const x = x0 + si * (barW + barGap); const y = py(p.kusy || 0); const hh = bottom - y; const obratText = new Intl.NumberFormat('cs-CZ', { style: 'currency', currency: 'CZK', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.round(p.obrat || 0)); return <rect key={i} x={x} y={y} width={barW} height={hh} fill={color} rx="3" onMouseEnter={() => setTip({ visible: true, x: x + barW / 2, y: y - 10, text: `${fmt.format(p.kusy || 0)} ks • ${obratText} bez DPH` })} onMouseLeave={() => setTip(prev => ({ ...prev, visible: false }))} onMouseMove={() => setTip(prev => ({ ...prev, x: x + barW / 2, y: y - 10 }))} /> })}
-                                            <rect x={left} y={top - 28 + si * 16} width="10" height="10" fill={color} rx="2" />
-                                            <text x={left + 16} y={top - 19 + si * 16} fontSize="12" fill="#2c3e50">{s.key || 'Nezařazeno'}</text>
+                                {[0, 1, 2, 3, 4, 5].map((i) => {
+                                    const val = (yMax / 5) * i;
+                                    const y = py(val);
+                                    return (
+                                        <g key={i}>
+                                            <line x1={left} y1={y} x2={right} y2={y} stroke="#eef1f5" />
+                                            <text x={left - 8} y={y + 4} fontSize="10" textAnchor="end" fill="#7f8c8d">
+                                                {fmt.format(Math.round(val))}
+                                            </text>
                                         </g>
                                     );
                                 })}
-                                {tip.visible && (<g pointerEvents="none" transform={`translate(${tip.x}, ${tip.y})`}><rect x={-45} y={-24} width={90} height={20} rx="4" fill="#fff" stroke="#cbd3da" /><text y={-10} textAnchor="middle" fontSize="12" fill="#2c3e50">{tip.text}</text></g>)}
+                                <line x1={left} y1={bottom} x2={right} y2={bottom} stroke="#cbd3da" />
+                                <line x1={left} y1={top} x2={left} y2={bottom} stroke="#cbd3da" />
+                                {dates.map((d, i) => {
+                                    const x = left + groupW * (i + 0.5);
+                                    return (
+                                        <text
+                                            key={d}
+                                            transform={`translate(${x}, ${bottom + 18}) rotate(-35)`}
+                                            fontSize="10"
+                                            textAnchor="end"
+                                            fill="#7f8c8d"
+                                        >
+                                            {formatMonthKeyLabel(d)}
+                                        </text>
+                                    );
+                                })}
+                                {series.map((s, si) => {
+                                    const color = palette[si % palette.length];
+                                    return (
+                                        <g key={s.key || si}>
+                                            {dates.map((d, i) => {
+                                                const p =
+                                                    (s.points || []).find((pt) => periodToMonthKey(pt.date) === d) ||
+                                                    { kusy: 0, obrat: 0 };
+                                                const center = left + groupW * (i + 0.5);
+                                                const total = series.length * barW + Math.max(0, series.length - 1) * barGap;
+                                                const x0 = center - total / 2;
+                                                const x = x0 + si * (barW + barGap);
+                                                const y = py(p.kusy || 0);
+                                                const hh = Math.max(0, bottom - y);
+                                                const obratText = new Intl.NumberFormat('cs-CZ', {
+                                                    style: 'currency',
+                                                    currency: 'CZK',
+                                                    minimumFractionDigits: 0,
+                                                    maximumFractionDigits: 0,
+                                                }).format(Math.round(p.obrat || 0));
+                                                return (
+                                                    <rect
+                                                        key={`${si}-${d}`}
+                                                        x={x}
+                                                        y={y}
+                                                        width={barW}
+                                                        height={hh}
+                                                        fill={color}
+                                                        rx="2"
+                                                        onMouseEnter={() =>
+                                                            setTip({
+                                                                visible: true,
+                                                                x: x + barW / 2,
+                                                                y: y - 10,
+                                                                text: `${s.key || 'Nezařazeno'}: ${fmt.format(p.kusy || 0)} ks • ${obratText} bez DPH`,
+                                                            })
+                                                        }
+                                                        onMouseLeave={() => setTip((prev) => ({ ...prev, visible: false }))}
+                                                    />
+                                                );
+                                            })}
+                                            <rect x={left} y={top - 22 + si * 14} width="8" height="8" fill={color} rx="2" />
+                                            <text x={left + 12} y={top - 14 + si * 14} fontSize="11" fill="#2c3e50">
+                                                {s.key || 'Nezařazeno'}
+                                            </text>
+                                        </g>
+                                    );
+                                })}
+                                {tip.visible && (
+                                    <g pointerEvents="none" transform={`translate(${tip.x}, ${tip.y})`}>
+                                        <rect x={-80} y={-28} width={160} height={22} rx="4" fill="#fff" stroke="#cbd3da" />
+                                        <text y={-12} textAnchor="middle" fontSize="11" fill="#2c3e50">
+                                            {tip.text}
+                                        </text>
+                                    </g>
+                                )}
                             </g>
                         );
                     })()}
@@ -125,7 +255,7 @@ const CategoryTimeseries = ({ filters, defaultGroupBy, defaultSelected }) => {
     );
 };
 
-const CelkovaCislaView = ({ isComparison = false }) => {
+const CelkovaCislaView = ({ isComparison = false, paneRole = 'single', filtersFromParent, onFiltersChange }) => {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -162,22 +292,23 @@ const CelkovaCislaView = ({ isComparison = false }) => {
     const [servisDetailData, setServisDetailData] = useState(null);
 
     // Filtry
-    const [filters, setFilters] = useState(() => {
-        const now = new Date();
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        const formatLocal = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-        return {
-            period: 'custom',
-            start_date: formatLocal(startOfMonth),
-            end_date: formatLocal(now),
-            selected_month: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`,
-            kanal: 'all',
-            prodejna_id: '',
-            kategorie: ''
-        };
-    });
+    const [filters, setFilters] = useState(() => filtersFromParent || buildInitialCelkovaFilters());
+    const periodLabel = formatFiltersPeriodLabel(filters);
+    const isYoYReferencePane = paneRole === 'right' && !!filtersFromParent;
     const [dateError, setDateError] = useState('');
     const [quickKey, setQuickKey] = useState('custom'); // today|yesterday|thisWeek|thisMonth|prevMonth|custom
+
+    useEffect(() => {
+        if (filtersFromParent) {
+            setFilters(filtersFromParent);
+        }
+    }, [filtersFromParent]);
+
+    useEffect(() => {
+        if (paneRole === 'left' && onFiltersChange) {
+            onFiltersChange(filters);
+        }
+    }, [filters, paneRole, onFiltersChange]);
 
     // Načtení dat z API
     const fetchData = async () => {
@@ -902,11 +1033,22 @@ const CelkovaCislaView = ({ isComparison = false }) => {
     );
 
     return (
-        <div className={`celkova-cisla-view ${isComparison ? 'is-comparison' : ''}`}>
+        <div className={`celkova-cisla-view ${isComparison ? 'is-comparison' : ''} celkova-cisla-view--${paneRole}`}>
+            {isComparison && (
+                <div className="celkova-pane-title">
+                    {paneRole === 'right' ? 'Stejné období loni' : 'Vybrané období'}
+                    <span className="celkova-pane-title__range">{periodLabel}</span>
+                </div>
+            )}
 
             {/* Filtry */}
             <div className="celkova-cisla-filters">
-                <div className="filter-row">
+                {isYoYReferencePane && (
+                    <p className="celkova-yoy-note">
+                        Období se řídí levým sloupcem – automaticky stejný úsek před rokem.
+                    </p>
+                )}
+                <div className={`filter-row${isYoYReferencePane ? ' filter-row--readonly' : ''}`}>
                     {/* Období – custom dropdown s měsíci */}
                     <div className="filter-group">
                         <label>Období:</label>
@@ -1047,6 +1189,7 @@ const CelkovaCislaView = ({ isComparison = false }) => {
             {data && !loading && (
                 <>
                     {/* Hlavní metriky */}
+                    <PaneWithPeriodBadge periodLabel={periodLabel} className="celkova-metrics-shell">
                     <div className="celkova-cisla-metrics">
                         <div className="metric-card">
                             <div className="metric-icon">💰</div>
@@ -1103,8 +1246,10 @@ const CelkovaCislaView = ({ isComparison = false }) => {
                             </div>
                         </div>
                     </div>
+                    </PaneWithPeriodBadge>
 
                     {/* Rozklad podle kanálů */}
+                    <PaneWithPeriodBadge periodLabel={periodLabel} className="celkova-breakdown-shell">
                     <div className="celkova-cisla-breakdown">
                         <h3>📊 Rozklad podle prodejních kanálů</h3>
                         <div className="breakdown-cards">
@@ -1177,8 +1322,10 @@ const CelkovaCislaView = ({ isComparison = false }) => {
                                 </div>
                             </div>
                         </div>
+                    </div>
+                    </PaneWithPeriodBadge>
 
-                        {isComparison && detailOpen && detailChannel === 'prodejna' && (
+                    {isComparison && detailOpen && detailChannel === 'prodejna' && (
                             <div className="inline-detail-panel" ref={inlinePanelRef}>
                                 <div className="inline-detail-header">
                                     <h4>{detailTitle}{selectedEntity?.stredisko ? ` – ${selectedEntity.stredisko}` : ''}</h4>
@@ -1231,7 +1378,6 @@ const CelkovaCislaView = ({ isComparison = false }) => {
                                 <div className="inline-detail-body">{renderZasilkovnaContent()}</div>
                             </div>
                         )}
-                    </div>
 
                     {/* Interaktivní graf kategorií / prodejen */}
                     <CategoryTimeseries
@@ -1340,56 +1486,44 @@ const CelkovaCislaView = ({ isComparison = false }) => {
 
 const CelkovaCisla = () => {
     const [isComparison, setIsComparison] = useState(false);
+    const [leftFilters, setLeftFilters] = useState(() => buildInitialCelkovaFilters());
+    const yoyFilters = useMemo(() => shiftFiltersOneYearBack(leftFilters), [leftFilters]);
+    const handleLeftFiltersChange = useCallback((next) => setLeftFilters(next), []);
 
     return (
         <AnalyticsSectionWrapper title="Celková čísla" icon="💰">
             <div className={`celkova-cisla-container ${isComparison ? 'comparison-mode' : ''}`}>
-                <div className="celkova-cisla-controls" style={{
-                    display: 'flex',
-                    justifyContent: 'flex-end',
-                    padding: '0 20px 10px',
-                    marginBottom: '10px'
-                }}>
+                <div className="celkova-cisla-controls">
+                    <p className="celkova-comparison-hint">
+                        {isComparison
+                            ? 'Vlevo zvolte období – vpravo se automaticky ukáže stejné období před rokem (1.–3. 6. → 1.–3. 6. loni, květen 25 → květen 24).'
+                            : 'Srovnání zobrazí vybrané období vedle stejného úseku před rokem.'}
+                    </p>
                     <button
+                        type="button"
                         className={`comparison-toggle ${isComparison ? 'active' : ''}`}
-                        onClick={() => setIsComparison(!isComparison)}
-                        style={{
-                            padding: '8px 16px',
-                            background: isComparison ? '#e74c3c' : '#3498db',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                            fontWeight: '600',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px'
-                        }}
+                        onClick={() => setIsComparison((v) => !v)}
                     >
                         {isComparison ? '🛑 Zrušit srovnání' : '🆚 Srovnání'}
                     </button>
                 </div>
 
-                <div className="celkova-cisla-views" style={{
-                    display: 'flex',
-                    gap: isComparison ? '20px' : '0'
-                }}>
-                    <div className="view-pane left-pane" style={{
-                        flex: 1,
-                        minWidth: 0, // fix for flexbox overflow
-                        transition: 'all 0.3s ease'
-                    }}>
-                        <CelkovaCislaView isComparison={isComparison} />
+                <div className={`celkova-cisla-views${isComparison ? ' celkova-cisla-views--split' : ''}`}>
+                    <div className="view-pane left-pane">
+                        <CelkovaCislaView
+                            isComparison={isComparison}
+                            paneRole="left"
+                            onFiltersChange={handleLeftFiltersChange}
+                        />
                     </div>
 
                     {isComparison && (
-                        <div className="view-pane right-pane" style={{
-                            flex: 1,
-                            minWidth: 0,
-                            borderLeft: '1px dashed #cbd3da',
-                            paddingLeft: '20px'
-                        }}>
-                            <CelkovaCislaView isComparison={isComparison} />
+                        <div className="view-pane right-pane">
+                            <CelkovaCislaView
+                                isComparison={isComparison}
+                                paneRole="right"
+                                filtersFromParent={yoyFilters}
+                            />
                         </div>
                     )}
                 </div>

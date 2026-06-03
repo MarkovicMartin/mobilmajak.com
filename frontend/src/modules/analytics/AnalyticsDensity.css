@@ -1,0 +1,209 @@
+/**
+ * Vyvážená hustota analytiky – pod .analytics-module přepíše rozměrné dlaždice/filtry.
+ * Načítá se z AnalyticsModule (vyšší specificita než .metric-card v sekcích).
+ */
+.analytics-module .analytics-section,
+.analytics-module .celkova-cisla-container,
+.analytics-module .celkova-cisla,
+.analytics-module .servis,
+.analytics-module .eshop-analytics {
+    padding: 0.75rem 0;
+    min-height: 0;
+    background: transparent;
+}
+
+.analytics-module .section-filters,
+.analytics-module .servis-filters,
+.analytics-module .eshop-filters,
+.analytics-module .celkova-cisla-filters {
+    gap: 0.65rem 1rem;
+    margin-bottom: 0.85rem;
+    padding: 0.65rem 0.85rem;
+}
+
+.analytics-module .filter-group label {
+    font-size: 0.8rem;
+}
+
+.analytics-module .filter-group select,
+.analytics-module .filter-group input {
+    padding: 0.4rem 0.55rem;
+    font-size: 0.85rem;
+}
+
+.analytics-module .toggle-btn {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.8rem;
+}
+
+.analytics-module .stats-cards,
+.analytics-module .metrics-overview,
+.analytics-module .servis-metrics,
+.analytics-module .eshop-metrics,
+.analytics-module .celkova-cisla-metrics,
+.analytics-module .overview-cards,
+.analytics-module .breakdown-cards,
+.analytics-module .kanaly-grid {
+    gap: 0.65rem;
+    margin-bottom: 0.85rem;
+}
+
+.analytics-module .stats-cards {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.analytics-module .metrics-overview,
+.analytics-module .servis-metrics,
+.analytics-module .eshop-metrics,
+.analytics-module .celkova-cisla-metrics {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.analytics-module .overview-cards {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0.65rem;
+}
+
+.analytics-module .breakdown-cards {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.analytics-module .stat-card,
+.analytics-module .summary-card,
+.analytics-module .metric-card,
+.analytics-module .overview-card,
+.analytics-module .breakdown-card,
+.analytics-module .kanal-card {
+    padding: 0.75rem 0.9rem;
+    border-radius: 8px;
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.07);
+}
+
+.analytics-module .servis-metrics .metric-card,
+.analytics-module .eshop-metrics .metric-card,
+.analytics-module .celkova-cisla-metrics .metric-card {
+    gap: 0.65rem;
+}
+
+.analytics-module .metric-icon {
+    font-size: 1.65rem;
+}
+
+.analytics-module .stat-value,
+.analytics-module .metric-value,
+.analytics-module .overview-value {
+    font-size: 1.35rem;
+    margin-bottom: 0.2rem;
+}
+
+.analytics-module .metric-content h3,
+.analytics-module .metric-card h4,
+.analytics-module .stat-card h4 {
+    font-size: 0.8rem;
+    margin-bottom: 0.35rem;
+}
+
+.analytics-module .metric-subtitle,
+.analytics-module .overview-detail {
+    font-size: 0.75rem;
+}
+
+.analytics-module .overview-card h3,
+.analytics-module .overview-card h4 {
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.analytics-module .overview-value {
+    font-size: 1.5rem;
+}
+
+.analytics-module .servis-breakdown,
+.analytics-module .eshop-breakdown,
+.analytics-module .celkova-cisla-breakdown,
+.analytics-module .analysis-section,
+.analytics-module .data-table,
+.analytics-module .backup-info {
+    padding: 0.85rem 1rem;
+    margin-bottom: 0.85rem;
+    border-radius: 8px;
+}
+
+.analytics-module .servis-breakdown h3,
+.analytics-module .eshop-breakdown h3,
+.analytics-module .analysis-section h3,
+.analytics-module .data-table h4 {
+    font-size: 1rem;
+    margin-bottom: 0.65rem;
+}
+
+.analytics-module .breakdown-card h4 {
+    font-size: 0.95rem;
+    margin-bottom: 0.35rem;
+}
+
+.analytics-module .data-table th,
+.analytics-module .data-table td {
+    padding: 0.45rem 0.55rem;
+    font-size: 0.85rem;
+}
+
+.analytics-module .last-update,
+.analytics-module .backup-info {
+    margin-bottom: 0.65rem;
+    padding: 0.45rem 0.65rem;
+}
+
+.analytics-module .traffic-tile {
+    padding: 0.75rem 0.85rem;
+}
+
+.analytics-module .traffic-tile-value {
+    font-size: 1.35rem;
+}
+
+.analytics-module .traffic-tile-icon {
+    font-size: 1.25rem;
+}
+
+.analytics-module .charts-section,
+.analytics-module .chart-container {
+    padding: 0.85rem;
+    margin-bottom: 0.85rem;
+}
+
+.analytics-module .loading-container,
+.analytics-module .error-container {
+    padding: 1.5rem 1rem;
+}
+
+/* Duplicitní velké nadpisy sekcí – navigace je v záložkách */
+.analytics-module .servis-header,
+.analytics-module .eshop-header,
+.analytics-module .celkova-cisla-header {
+    display: none;
+}
+
+.analytics-module .celkova-cisla-controls {
+    padding: 0 0 0.5rem !important;
+    margin-bottom: 0.5rem !important;
+}
+
+.analytics-module .metric-card:hover,
+.analytics-module .breakdown-card:hover {
+    transform: translateY(-1px);
+}
+
+.analytics-module .analytics-nav {
+    margin-bottom: 0.75rem;
+    padding: 0.55rem 0.75rem;
+}
+
+.analytics-module .analytics-nav-tab {
+    padding: 0.4rem 0.7rem;
+    font-size: 0.82rem;
+}
+
+.analytics-module .analytics-content {
+    min-height: 0;
+}

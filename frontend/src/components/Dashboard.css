@@ -20,8 +20,8 @@
     }
 
     .dashboard-main:has(.analytics-module) {
-        padding: 0.35rem 1.25rem 0.75rem;
-        max-width: 1280px;
+        padding: 0.65rem 1.35rem 1.15rem;
+        max-width: 1400px;
     }
 }
 

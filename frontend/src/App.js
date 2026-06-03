@@ -5,6 +5,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import LoginForm from './components/LoginForm';
 import Dashboard from './components/Dashboard';
 import ScrollToTop from './components/ScrollToTop';
+import ClarityPageTracker from './components/ClarityPageTracker';
 import './App.css';
 import './styles/theme.css';
 
@@ -27,6 +28,7 @@ function App() {
   return (
     <Router>
       <ScrollToTop />
+      <ClarityPageTracker />
       <ThemeProvider>
         <AuthProvider>
           <div className="App">
