@@ -749,7 +749,12 @@ const CelkovaCislaView = ({ isComparison = false, paneRole = 'single', filtersFr
                                 <div>Marže: <strong>{formatCurrency(p.marze)}</strong></div>
                                 <div>Položky: <strong>{formatNumber(p.polozky)}</strong></div>
                                 <div>Doklady: <strong>{formatNumber(p.doklady)}</strong></div>
-                                <div style={{ color: '#f39c12' }}>Výkupy: <strong>{formatCurrency(p.vykupy_suma)}</strong> ({formatNumber(p.vykupy_pocet)} ks)</div>
+                                <div style={{ color: '#f39c12' }}>
+                                    Výkupy: <strong>{formatCurrency(p.vykupy_suma)}</strong> ({formatNumber(p.vykupy_pocet)} ks)
+                                </div>
+                                <div style={{ color: '#e67e22' }}>
+                                    Prodané bazar: <strong>{formatCurrency(p.bazar_prodano_suma)}</strong> ({formatNumber(p.bazar_prodano_pocet)} ks)
+                                </div>
                             </div>
                             <div className="click-hint">Klikni pro položky</div>
                         </div>
@@ -1236,13 +1241,31 @@ const CelkovaCislaView = ({ isComparison = false, paneRole = 'single', filtersFr
                             </div>
                         </div>
 
-                        {/* VÝKUPY - Nová dlaždice */}
-                        <div className="metric-card" style={{ borderLeft: '4px solid #f39c12' }}>
+                        <div className="metric-card metric-card--bazar" style={{ borderLeft: '4px solid #f39c12' }}>
                             <div className="metric-icon">🔄</div>
                             <div className="metric-content">
-                                <h3>Výkupy</h3>
-                                <div className="metric-value">{formatNumber(data.aggregations.vykupy_pocet)} ks</div>
-                                <div className="metric-subtitle">Cena: {formatCurrency(data.aggregations.vykupy_suma)} bez DPH</div>
+                                <h3>Nákup / prodej bazar</h3>
+                                <div className="metric-bazar-row">
+                                    <span className="metric-bazar-label">Výkupy</span>
+                                    <span className="metric-value metric-value--compact">
+                                        {formatNumber(data.aggregations.vykupy_pocet)} ks
+                                    </span>
+                                    <span className="metric-subtitle metric-subtitle--inline">
+                                        {formatCurrency(data.aggregations.vykupy_suma)} bez DPH
+                                    </span>
+                                </div>
+                                <div className="metric-bazar-row">
+                                    <span className="metric-bazar-label">Prodané bazar</span>
+                                    <span className="metric-value metric-value--compact">
+                                        {formatNumber(data.aggregations.bazar_prodano_pocet ?? 0)} ks
+                                    </span>
+                                    <span className="metric-subtitle metric-subtitle--inline">
+                                        {formatCurrency(data.aggregations.bazar_prodano_suma ?? 0)} bez DPH
+                                        {(data.aggregations.bazar_prodano_marze ?? 0) > 0 && (
+                                            <> · marže {formatCurrency(data.aggregations.bazar_prodano_marze)}</>
+                                        )}
+                                    </span>
+                                </div>
                             </div>
                         </div>
                     </div>

@@ -1,9 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { getApiEndpoints } from '../../config/apiConfig';
 import PointsLeaderboard from './PointsLeaderboard';
 import StoresLeaderboard from './StoresLeaderboard';
 import './LeaderboardModule.css';
+
+/** Denní žebříček – častější obnova během směny */
+const POLL_MS_TODAY = 60 * 1000;
+/** Měsíční / prodejny – stejný interval jako objednávky */
+const POLL_MS_MONTH_STORES = 120 * 1000;
 
 const LeaderboardModule = () => {
     const { user } = useAuth();
@@ -16,19 +21,10 @@ const LeaderboardModule = () => {
     const [storesMeta, setStoresMeta] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [lastUpdated, setLastUpdated] = useState(null);
 
-    useEffect(() => {
-        if (pointsSubTab === 'today') {
-            fetchPointsTodayLeaderboard();
-        } else if (pointsSubTab === 'stores') {
-            fetchStoresLeaderboard();
-        } else {
-            fetchPointsLeaderboard();
-        }
-    }, [pointsSubTab]);
-
-    const fetchPointsLeaderboard = async () => {
-        setLoading(true);
+    const fetchPointsLeaderboard = useCallback(async ({ silent = false } = {}) => {
+        if (!silent) setLoading(true);
         setError(null);
         try {
             const endpoints = getApiEndpoints();
@@ -47,19 +43,20 @@ const LeaderboardModule = () => {
             if (data.success) {
                 setPointsData(data.data || []);
                 setPointsMonthMeta(data.meta || null);
+                setLastUpdated(new Date());
             } else {
                 throw new Error(data.error || 'Neznámá chyba');
             }
         } catch (err) {
-            setError(err.message);
+            if (!silent) setError(err.message);
             console.error('Chyba při načítání žebříčku bodů:', err);
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
         }
-    };
+    }, []);
 
-    const fetchPointsTodayLeaderboard = async () => {
-        setLoading(true);
+    const fetchPointsTodayLeaderboard = useCallback(async ({ silent = false } = {}) => {
+        if (!silent) setLoading(true);
         setError(null);
         try {
             const endpoints = getApiEndpoints();
@@ -82,19 +79,20 @@ const LeaderboardModule = () => {
             if (data.success) {
                 setPointsTodayData(data.data || []);
                 setPointsTodayMeta(data.meta || null);
+                setLastUpdated(new Date());
             } else {
                 throw new Error(data.error || 'Neznámá chyba');
             }
         } catch (err) {
-            setError(err.message);
+            if (!silent) setError(err.message);
             console.error('Chyba při načítání denního žebříčku bodů:', err);
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
         }
-    };
+    }, []);
 
-    const fetchStoresLeaderboard = async () => {
-        setLoading(true);
+    const fetchStoresLeaderboard = useCallback(async ({ silent = false } = {}) => {
+        if (!silent) setLoading(true);
         setError(null);
         try {
             const endpoints = getApiEndpoints();
@@ -117,16 +115,50 @@ const LeaderboardModule = () => {
             if (data.success) {
                 setStoresData(data.data || []);
                 setStoresMeta(data.meta || null);
+                setLastUpdated(new Date());
             } else {
                 throw new Error(data.error || 'Neznámá chyba');
             }
         } catch (err) {
-            setError(err.message);
+            if (!silent) setError(err.message);
             console.error('Chyba při načítání žebříčku prodejen:', err);
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
         }
-    };
+    }, []);
+
+    const refreshActiveTab = useCallback(
+        (opts = {}) => {
+            if (pointsSubTab === 'today') return fetchPointsTodayLeaderboard(opts);
+            if (pointsSubTab === 'stores') return fetchStoresLeaderboard(opts);
+            return fetchPointsLeaderboard(opts);
+        },
+        [pointsSubTab, fetchPointsLeaderboard, fetchPointsTodayLeaderboard, fetchStoresLeaderboard],
+    );
+
+    useEffect(() => {
+        refreshActiveTab();
+    }, [refreshActiveTab]);
+
+    useEffect(() => {
+        const pollMs = pointsSubTab === 'today' ? POLL_MS_TODAY : POLL_MS_MONTH_STORES;
+        const id = window.setInterval(() => refreshActiveTab({ silent: true }), pollMs);
+        const onFocus = () => refreshActiveTab({ silent: true });
+        const onVis = () => {
+            if (document.visibilityState === 'visible') refreshActiveTab({ silent: true });
+        };
+        window.addEventListener('focus', onFocus);
+        document.addEventListener('visibilitychange', onVis);
+        return () => {
+            clearInterval(id);
+            window.removeEventListener('focus', onFocus);
+            document.removeEventListener('visibilitychange', onVis);
+        };
+    }, [pointsSubTab, refreshActiveTab]);
+
+    const lastUpdatedLabel = lastUpdated
+        ? lastUpdated.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' })
+        : null;
 
     return (
         <div className="leaderboard-module">
@@ -193,6 +225,21 @@ const LeaderboardModule = () => {
                     )}
                 </button>
             </div>
+
+            {lastUpdatedLabel && (
+                <p className="leaderboard-updated" aria-live="polite">
+                    Aktualizováno v {lastUpdatedLabel}
+                    <button
+                        type="button"
+                        className="leaderboard-updated-refresh"
+                        onClick={() => refreshActiveTab()}
+                        disabled={loading}
+                        title="Obnovit žebříček"
+                    >
+                        ↻
+                    </button>
+                </p>
+            )}
 
             <div className="leaderboard-content">
                 {pointsSubTab === 'month' && (

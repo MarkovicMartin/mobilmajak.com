@@ -2027,6 +2027,14 @@ def _aggregate_kanaly_metrics(qs):
     )
 
 
+def _bazar_prodane_q():
+    """Prodeje bazarových telefonů – stejná logika jako plnění BAZAROVE_TELEFONY."""
+    return (
+        Q(kategorie__iexact='POUŽITÉ TELEFONY') |
+        Q(kategorie__icontains='!Výkup bazaru')
+    )
+
+
 @api_view(['GET'])
 @permission_classes([AllowAny])  # Povolíme přístup pro testování
 def celkova_cisla_view(request):
@@ -2145,6 +2153,12 @@ def celkova_cisla_view(request):
                 # Pro data bez času stačí lte, ale pro jistotu (pokud by DB měla čas) používáme logiku
                 vykupy_qs = vykupy_qs.filter(vystaveno__lte=ed)
             except: pass
+
+        if prodejna_id:
+            try:
+                vykupy_qs = vykupy_qs.filter(id_prodejny=int(prodejna_id))
+            except (TypeError, ValueError):
+                pass
             
         vykupy_stats = vykupy_qs.aggregate(
             pocet_kusu=Count('id'),
@@ -2153,6 +2167,23 @@ def celkova_cisla_view(request):
         
         aggregations['vykupy_pocet'] = vykupy_stats.get('pocet_kusu', 0)
         aggregations['vykupy_suma'] = float(vykupy_stats.get('celkova_cena_bez_dph') or 0)
+
+        bazar_stats = queryset.filter(_bazar_prodane_q()).aggregate(
+            pocet_kusu=Sum('pocet_kusu', default=0),
+            obrat_bez_dph=Sum(
+                F('pocet_kusu') * F('cena_ks_bez_dph'),
+                output_field=DecimalField(max_digits=15, decimal_places=2),
+                default=0,
+            ),
+            marze_bez_dph=Sum(
+                F('pocet_kusu') * F('zisk'),
+                output_field=DecimalField(max_digits=15, decimal_places=2),
+                default=0,
+            ),
+        )
+        aggregations['bazar_prodano_pocet'] = int(bazar_stats.get('pocet_kusu') or 0)
+        aggregations['bazar_prodano_suma'] = float(bazar_stats.get('obrat_bez_dph') or 0)
+        aggregations['bazar_prodano_marze'] = float(bazar_stats.get('marze_bez_dph') or 0)
         
         # Rozklad podle kanálů – stejná definice e-shop / Allegro jako v modulu E-shop
         eshop_metrics = _aggregate_kanaly_metrics(_eshop_pure_queryset(queryset))
@@ -2568,6 +2599,23 @@ def celkova_prodejna_detail_view(request):
         # Převod na dict pro rychlé vyhledávání
         vykupy_map = {v['id_prodejny']: {'suma': v['vykupy_suma'], 'pocet': v['vykupy_pocet']} for v in vykupy_agg}
 
+        bazar_agg = (
+            qs.filter(_bazar_prodane_q())
+            .values('id_prodejny')
+            .annotate(
+                bazar_suma=Sum(
+                    F('pocet_kusu') * F('cena_ks_bez_dph'),
+                    output_field=DecimalField(max_digits=15, decimal_places=2),
+                    default=0,
+                ),
+                bazar_pocet=Sum('pocet_kusu', default=0),
+            )
+        )
+        bazar_map = {
+            b['id_prodejny']: {'suma': b['bazar_suma'], 'pocet': b['bazar_pocet']}
+            for b in bazar_agg
+        }
+
         def convert(obj):
             if isinstance(obj, Decimal):
                 return float(obj)
@@ -2588,6 +2636,9 @@ def celkova_prodejna_detail_view(request):
             vyk = vykupy_map.get(id_prod, {'suma': 0, 'pocet': 0})
             p_dict['vykupy_suma'] = float(vyk['suma']) if vyk['suma'] else 0
             p_dict['vykupy_pocet'] = vyk['pocet'] or 0
+            baz = bazar_map.get(id_prod, {'suma': 0, 'pocet': 0})
+            p_dict['bazar_prodano_suma'] = float(baz['suma']) if baz['suma'] else 0
+            p_dict['bazar_prodano_pocet'] = int(baz['pocet'] or 0)
             prodejny_list.append(p_dict)
 
         return JsonResponse({'success': True, 'breakdown': {'prodejny': convert(prodejny_list), 'top_kategorie': convert(list(top_kategorie))}})

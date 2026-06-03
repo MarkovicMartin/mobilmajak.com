@@ -34,6 +34,36 @@
     margin-left: 10px;
 }
 
+.leaderboard-updated {
+    margin: 0 0 8px;
+    font-size: 0.8rem;
+    color: #7f8c8d;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.leaderboard-updated-refresh {
+    border: 1px solid #dfe6e9;
+    background: #fff;
+    color: #636e72;
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    line-height: 1.2;
+}
+
+.leaderboard-updated-refresh:hover:not(:disabled) {
+    border-color: #e24b8f;
+    color: #e24b8f;
+}
+
+.leaderboard-updated-refresh:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
 .leaderboard-period-bar {
     display: flex;
     gap: 8px;
