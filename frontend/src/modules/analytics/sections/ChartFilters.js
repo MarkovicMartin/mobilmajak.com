@@ -1,3 +1,4 @@
+import { analyticsGet } from '../../../utils/analyticsRequest';
 import React from 'react';
 import AnalyticsDateRange from '../../../components/AnalyticsDateRange';
 import './ChartFilters.css';

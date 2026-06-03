@@ -23,18 +23,13 @@ export const AuthProvider = ({ children }) => {
 
     const checkAuthStatus = async () => {
         try {
-            console.log('Kontroluji autentifikaci...');
             const response = await userAPI.getCurrentUser();
-            console.log('Odpověď z API:', response);
             if (response.success) {
                 setUser(response.user);
-                console.log('Uživatel načten:', response.user);
             } else {
-                console.log('Uživatel není přihlášen:', response.message);
                 setUser(null);
             }
-        } catch (error) {
-            console.log('Uživatel není přihlášen - chyba:', error.message);
+        } catch {
             setUser(null);
         } finally {
             setLoading(false);
@@ -74,14 +69,7 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    const hasModuleAccess = (moduleName) => {
-        if (!user) return false;
-        return user.moduly && user.moduly.includes(moduleName);
-    };
-
-    const isAdmin = () => {
-        return user && user.role === 'ADMIN';
-    };
+    const isAdmin = () => user?.role === 'ADMIN';
 
     const canManageTickets = () => {
         if (!user) return false;
@@ -96,7 +84,6 @@ export const AuthProvider = ({ children }) => {
         error,
         login,
         logout,
-        hasModuleAccess,
         isAdmin,
         canManageTickets,
     };

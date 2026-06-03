@@ -33,15 +33,21 @@ class WebUserSerializer(serializers.ModelSerializer):
     
     def get_prodejna(self, obj):
         """Vrátí název prodejny podle prodejna_id"""
-        if obj.prodejna_id:
-            try:
-                store = Prodejna.objects.get(id=obj.prodejna_id)
-                return store.nazev
-            except Prodejna.DoesNotExist:
-                return None
-        return None
+        if not obj.prodejna_id:
+            return None
+        prodejna_map = self.context.get('prodejna_map')
+        if prodejna_map is not None:
+            store = prodejna_map.get(obj.prodejna_id)
+            return store.nazev if store else None
+        try:
+            return Prodejna.objects.get(id=obj.prodejna_id).nazev
+        except Prodejna.DoesNotExist:
+            return None
 
     def get_vedouci_prodejna_id(self, obj):
+        vedouci_map = self.context.get('vedouci_store_by_user_id')
+        if vedouci_map is not None:
+            return vedouci_map.get(obj.id)
         row = Prodejna.objects.filter(vedouci_user_id=obj.id).first()
         return row.id if row else None
 

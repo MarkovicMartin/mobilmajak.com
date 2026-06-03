@@ -16,6 +16,7 @@ import os
 import uuid
 
 from .models import WebUser, ProfilovyObrazek
+from .list_context import build_user_list_serializer_context
 from .serializers import (
     WebUserSerializer, WebUserCreateSerializer, WebUserUpdateSerializer,
     LoginSerializer, WebUserProfileSerializer, WebUserPasswordChangeSerializer,
@@ -70,132 +71,6 @@ def login_view(request):
     print(f"LOGIN: validation failed, errors={serializer.errors}")
     return Response({'success': False, 'message': 'Neplatné přihlašovací údaje', 'errors': serializer.errors}, status=status.HTTP_401_UNAUTHORIZED)
 
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def user_list(request):
-    """Seznam uživatelů (pro ADMIN a VEDOUCI)"""
-    # Kontrola, zda je uživatel admin nebo vedoucí
-    if not hasattr(request.user, 'role') or request.user.role not in ['ADMIN', 'VEDOUCI']:
-        return Response({
-            'success': False,
-            'message': 'Nemáte oprávnění k zobrazení seznamu uživatelů'
-        }, status=status.HTTP_403_FORBIDDEN)
-    
-    users = WebUser.objects.all()
-    serializer = WebUserSerializer(users, many=True, context={'request': request})
-    
-    return Response({
-        'success': True,
-        'users': serializer.data
-    })
-
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def create_user(request):
-    """Vytvoření nového uživatele (pouze pro adminy)"""
-    # Kontrola, zda je uživatel admin
-    if not hasattr(request.user, 'role') or request.user.role != 'ADMIN':
-        return Response({
-            'success': False,
-            'message': 'Nemáte oprávnění k vytváření uživatelů'
-        }, status=status.HTTP_403_FORBIDDEN)
-    
-    serializer = WebUserCreateSerializer(data=request.data)
-    if serializer.is_valid():
-        serializer.save()
-        return Response({
-            'success': True,
-            'message': 'Uživatel byl úspěšně vytvořen',
-            'user': serializer.data
-        })
-    
-    return Response({
-        'success': False,
-        'message': 'Chyba při vytváření uživatele',
-        'errors': serializer.errors
-    }, status=status.HTTP_400_BAD_REQUEST)
-
-@api_view(['PUT'])
-@permission_classes([IsAuthenticated])
-def update_user(request, user_id):
-    """Aktualizace uživatele (pouze pro adminy)"""
-    # Kontrola, zda je uživatel admin
-    if not hasattr(request.user, 'role') or request.user.role != 'ADMIN':
-        return Response({
-            'success': False,
-            'message': 'Nemáte oprávnění k úpravě uživatelů'
-        }, status=status.HTTP_403_FORBIDDEN)
-    
-    try:
-        user = WebUser.objects.get(id=user_id)
-    except WebUser.DoesNotExist:
-        return Response({
-            'success': False,
-            'message': 'Uživatel nebyl nalezen'
-        }, status=status.HTTP_404_NOT_FOUND)
-    
-    serializer = WebUserCreateSerializer(user, data=request.data, partial=True)
-    if serializer.is_valid():
-        serializer.save()
-        return Response({
-            'success': True,
-            'message': 'Uživatel byl úspěšně aktualizován',
-            'user': serializer.data
-        })
-    
-    return Response({
-        'success': False,
-        'message': 'Chyba při aktualizaci uživatele',
-        'errors': serializer.errors
-    }, status=status.HTTP_400_BAD_REQUEST)
-
-@api_view(['DELETE'])
-@permission_classes([IsAuthenticated])
-def delete_user(request, user_id):
-    """Smazání uživatele (pouze pro adminy)"""
-    # Kontrola, zda je uživatel admin
-    if not hasattr(request.user, 'role') or request.user.role != 'ADMIN':
-        return Response({
-            'success': False,
-            'message': 'Nemáte oprávnění k mazání uživatelů'
-        }, status=status.HTTP_403_FORBIDDEN)
-    
-    # Zabránit smazání sebe sama
-    if request.user.id == user_id:
-        return Response({
-            'success': False,
-            'message': 'Nemůžete smazat svůj vlastní účet'
-        }, status=status.HTTP_400_BAD_REQUEST)
-    
-    try:
-        user = WebUser.objects.get(id=user_id)
-        user.delete()
-        return Response({
-            'success': True,
-            'message': 'Uživatel byl úspěšně smazán'
-        })
-    except WebUser.DoesNotExist:
-        return Response({
-            'success': False,
-            'message': 'Uživatel nebyl nalezen'
-        }, status=status.HTTP_404_NOT_FOUND)
-
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def current_user(request):
-    """Informace o aktuálně přihlášeném uživateli"""
-    if isinstance(request.user, AnonymousUser):
-        return Response({
-            'success': False,
-            'message': 'Uživatel není přihlášen'
-        }, status=status.HTTP_401_UNAUTHORIZED)
-    
-    serializer = WebUserSerializer(request.user)
-    return Response({
-        'success': True,
-        'user': serializer.data
-    })
-
 @api_view(['POST'])
 @permission_classes([])  # Povolíme přístup bez autentifikace
 @csrf_exempt
@@ -229,7 +104,10 @@ def users_list_view(request):
     elif aktivni_param in ('false', '0', 'no'):
         users = users.filter(aktivni=False)
     # aktivni=all → bez filtru (správa uživatelů)
-    serializer = WebUserSerializer(users, many=True)
+    users = list(users)
+    ctx = build_user_list_serializer_context(users)
+    ctx['request'] = request
+    serializer = WebUserSerializer(users, many=True, context=ctx)
     return Response({
         'success': True,
         'users': serializer.data

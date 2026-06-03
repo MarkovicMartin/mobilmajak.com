@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getApiEndpoints } from '../config/apiConfig';
 import { AnalyticsDateInput } from './AnalyticsDateRange';
-import { taskAPI } from '../services/api';
+import { taskAPI, plansAPI, newsAPI, shiftsAPI } from '../services/api';
 import { useUnreadPoll } from '../hooks/useUnreadPoll';
+import { useSalespersonMetrics } from '../hooks/useSalespersonMetrics';
+import { useTasks } from '../hooks/useTasks';
 import { showAppToast } from './AppToast';
 import './SellerDashboard.css';
 import AttendancePanel from '../modules/shifts/AttendancePanel';
@@ -34,11 +35,12 @@ function MetricCard({ title, value, sub, delta }) {
 
 export default function SellerDashboard({ user }) {
   const navigate = useNavigate();
-  const endpoints = useMemo(() => getApiEndpoints(), []);
-  const [today, setToday] = useState(null);
-  const [month, setMonth] = useState(null);
-  const [todayPoints, setTodayPoints] = useState(null);
-  const [monthPoints, setMonthPoints] = useState(null);
+  const {
+    today,
+    month,
+    todayPoints,
+    monthPoints,
+  } = useSalespersonMetrics(user?.id, { enabled: !!user });
   const [deltaTodayPoints, setDeltaTodayPoints] = useState('');
   const [deltaMonthPoints, setDeltaMonthPoints] = useState('');
   const [deltaAvgToday, setDeltaAvgToday] = useState('');
@@ -48,7 +50,6 @@ export default function SellerDashboard({ user }) {
   const [mujPlanError, setMujPlanError] = useState(null);
   const [mujPlanMesic, setMujPlanMesic] = useState(null); // {rok, mesic} pro dropdown
   const [mujPlanView, setMujPlanView] = useState('denni'); // 'denni' | 'mesicni' – výchozí denní
-  const [tasks, setTasks] = useState([]);
   const [newTask, setNewTask] = useState({ ukol: '', priorita: 'stredni', deadline: '' });
 
   const fetchTaskUnread = useCallback(async () => {
@@ -66,23 +67,33 @@ export default function SellerDashboard({ user }) {
     fetchCount: fetchTaskUnread,
     onNotify: notifyTasks,
   });
+
+  const { tasks, create: createTaskItem, toggleDone: toggleTaskDone, load: loadTasks } = useTasks({
+    autoLoad: !!user,
+    onLoaded: refreshTaskUnread,
+  });
   const [news, setNews] = useState([]);
   const [upcoming, setUpcoming] = useState([]);
 
   useEffect(() => {
-    if (!user) return;
-    const uid = user.id;
-    fetch(`${endpoints.salespersonToday}?user_id=${uid}`, { credentials: 'include' })
-      .then((r) => r.json()).then((d)=>{ setToday(d); if (d?.compare) setDeltaAvgToday(fmtDelta(d.compare.delta_avg)); }).catch(() => {});
-    fetch(`${endpoints.salespersonMonthly}?user_id=${uid}`, { credentials: 'include' })
-      .then((r) => r.json()).then((d)=>{ setMonth(d); if (d?.compare) setDeltaAvgMonth(fmtDelta(d.compare.delta_avg)); }).catch(() => {});
-    fetch(`${endpoints.salespersonPointsToday}?user_id=${uid}`, { credentials: 'include' })
-      .then((r) => r.json()).then((d)=>{ setTodayPoints(d); setDeltaTodayPoints(fmtDelta(d?.compare?.delta_points,' b.'));}).catch(() => {});
-    fetch(`${endpoints.salespersonPointsMonthly}?user_id=${uid}`, { credentials: 'include' })
-      .then((r) => r.json()).then((d)=>{ setMonthPoints(d); setDeltaMonthPoints(fmtDelta(d?.compare?.delta_points,' b.'));}).catch(() => {});
+    if (today?.compare) setDeltaAvgToday(fmtDelta(today.compare.delta_avg));
+  }, [today]);
 
+  useEffect(() => {
+    if (month?.compare) setDeltaAvgMonth(fmtDelta(month.compare.delta_avg));
+  }, [month]);
+
+  useEffect(() => {
+    setDeltaTodayPoints(fmtDelta(todayPoints?.compare?.delta_points, ' b.'));
+  }, [todayPoints]);
+
+  useEffect(() => {
+    setDeltaMonthPoints(fmtDelta(monthPoints?.compare?.delta_points, ' b.'));
+  }, [monthPoints]);
+
+  useEffect(() => {
+    if (!user) return;
     loadMujPlan();
-    loadTasks();
     loadNews();
     loadUpcoming();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -95,9 +106,7 @@ export default function SellerDashboard({ user }) {
       const today = new Date();
       const r = rok ?? today.getFullYear();
       const m = mesic ?? today.getMonth() + 1;
-      const res = await fetch(`/api/plans/muj-plan/?rok=${r}&mesic=${m}`, { credentials: 'include' });
-      if (!res.ok) throw new Error('Nepodařilo se načíst plán');
-      const data = await res.json();
+      const data = await plansAPI.getMujPlan(r, m);
       setMujPlan(data);
       setMujPlanMesic({ rok: r, mesic: m });
     } catch (err) {
@@ -108,62 +117,43 @@ export default function SellerDashboard({ user }) {
     }
   };
 
-  const loadTasks = async (stav = 'vse') => {
-    const res = await fetch(`/api/tasks/?stav=${stav}`, { credentials: 'include' });
-    if (res.ok) {
-      setTasks(await res.json());
-      refreshTaskUnread();
-    }
-  };
-
   const createTask = async () => {
     if (!newTask.ukol) return;
-    const res = await fetch('/api/tasks/', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({
+    try {
+      await createTaskItem({
         ukol: newTask.ukol,
         priorita: newTask.priorita,
         deadline: newTask.deadline || null,
-      }),
-    });
-    if (res.ok) {
+      });
       setNewTask({ ukol: '', priorita: 'stredni', deadline: '' });
-      loadTasks('vse');
+    } catch {
+      /* tiché */
     }
   };
 
-  const toggleDone = async (task) => {
-    const res = await fetch(`/api/tasks/${task.id}/`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ stav: task.stav === 'hotovo' ? 'v_procesu' : 'hotovo' }),
-    });
-    if (res.ok) loadTasks('vse');
-  };
-
   const loadNews = async () => {
-    const res = await fetch('/api/news/', { credentials: 'include' });
-    if (res.ok) {
-      const data = await res.json();
+    try {
+      const data = await newsAPI.list();
       setNews((data || []).slice(0, 5));
+    } catch {
+      /* tiché */
     }
   };
 
   const loadUpcoming = async () => {
     const today = new Date();
     const ym = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
-    const res = await fetch(`/api/shifts/?mesic=${ym}`, { credentials: 'include' });
-    if (!res.ok) return;
-    const data = await res.json();
-    const todayStr = today.toISOString().split('T')[0];
-    const future = (data || [])
-      .filter((s) => s.datum >= todayStr)
-      .sort((a, b) => (a.datum < b.datum ? -1 : a.datum > b.datum ? 1 : (a.cas_od || '').localeCompare(b.cas_od || '')))
-      .slice(0, 3);
-    setUpcoming(future);
+    try {
+      const data = await shiftsAPI.listByMonth(ym);
+      const todayStr = today.toISOString().split('T')[0];
+      const future = (data || [])
+        .filter((s) => s.datum >= todayStr)
+        .sort((a, b) => (a.datum < b.datum ? -1 : a.datum > b.datum ? 1 : (a.cas_od || '').localeCompare(b.cas_od || '')))
+        .slice(0, 3);
+      setUpcoming(future);
+    } catch {
+      /* tiché */
+    }
   };
 
   const pointsTodayVal = number(todayPoints?.total_points || 0);
@@ -365,7 +355,7 @@ export default function SellerDashboard({ user }) {
                 {tasks.map((t)=> (
                   <div key={t.id} className="task-item">
                     <div className="task-left">
-                      <input type="checkbox" checked={t.stav==='hotovo'} onChange={()=>toggleDone(t)} />
+                      <input type="checkbox" checked={t.stav==='hotovo'} onChange={()=>toggleTaskDone(t)} />
                       <div>
                         <div className="task-title">{t.ukol}</div>
                         <div className="metric-sub">Priorita: {t.priorita} {t.deadline && `· do ${new Date(t.deadline).toLocaleDateString('cs-CZ')}`}</div>

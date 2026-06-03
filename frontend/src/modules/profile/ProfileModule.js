@@ -1,52 +1,38 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../context/AuthContext';
+import { profileAPI } from '../../services/api';
 import './ProfileModule.css';
 import ProfileInfo from './ProfileInfo';
 import ProfileAnalytics from './ProfileAnalytics';
 
 const ProfileModule = () => {
+    const { user: authUser } = useAuth();
     const [activeTab, setActiveTab] = useState('analytics');
-    const [user, setUser] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const [profileUser, setProfileUser] = useState(null);
+    const [profileLoading, setProfileLoading] = useState(true);
+    const [profileError, setProfileError] = useState(false);
 
     useEffect(() => {
+        let cancelled = false;
+
+        const fetchUserProfile = async () => {
+            setProfileLoading(true);
+            setProfileError(false);
+            try {
+                const userData = await profileAPI.getProfile();
+                if (!cancelled) setProfileUser(userData);
+            } catch {
+                if (!cancelled) setProfileError(true);
+            } finally {
+                if (!cancelled) setProfileLoading(false);
+            }
+        };
+
         fetchUserProfile();
+        return () => { cancelled = true; };
     }, []);
 
-    const fetchUserProfile = async () => {
-        try {
-            const response = await fetch('/api/users/profile/', {
-                credentials: 'include'
-            });
-
-            if (response.ok) {
-                const userData = await response.json();
-                setUser(userData);
-            } else {
-                console.error('Chyba při načítání profilu');
-            }
-        } catch (error) {
-            console.error('Chyba při načítání profilu:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleProfileUpdate = (updatedUser) => {
-        setUser(updatedUser);
-    };
-
-    if (loading) {
-        return (
-            <div className="profile-module">
-                <div className="loading-spinner">
-                    <div className="spinner"></div>
-                    <p>Načítám profil...</p>
-                </div>
-            </div>
-        );
-    }
-
-    if (!user) {
+    if (!authUser) {
         return (
             <div className="profile-module">
                 <div className="error-message">
@@ -56,6 +42,8 @@ const ProfileModule = () => {
             </div>
         );
     }
+
+    const infoUser = profileUser || authUser;
 
     return (
         <div className="profile-module">
@@ -84,14 +72,31 @@ const ProfileModule = () => {
 
             <div className="profile-content">
                 {activeTab === 'analytics' && (
-                    <ProfileAnalytics userId={user.id} />
+                    <ProfileAnalytics userId={authUser.id} />
                 )}
                 {activeTab === 'info' && (
-                    <ProfileInfo
-                        user={user}
-                        onProfileUpdate={handleProfileUpdate}
-                        onImageUpdate={fetchUserProfile}
-                    />
+                    profileLoading ? (
+                        <div className="loading-spinner">
+                            <div className="spinner" />
+                            <p>Načítám osobní údaje…</p>
+                        </div>
+                    ) : profileError ? (
+                        <div className="error-message">
+                            <p>Nepodařilo se načíst osobní údaje.</p>
+                        </div>
+                    ) : (
+                        <ProfileInfo
+                            user={infoUser}
+                            onProfileUpdate={setProfileUser}
+                            onImageUpdate={async () => {
+                                try {
+                                    setProfileUser(await profileAPI.getProfile());
+                                } catch {
+                                    /* profil zůstane beze změny */
+                                }
+                            }}
+                        />
+                    )
                 )}
             </div>
         </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
+import api, { plansAPI } from '../../services/api';
 
 export default function PlanProdejcuPanel({ planProdejnaId }) {
   const [data, setData] = useState(null);
@@ -18,8 +18,8 @@ export default function PlanProdejcuPanel({ planProdejnaId }) {
     setLoading(true);
     setChyba(null);
     try {
-      const res = await axios.get(`/api/plans/prodejna/${planProdejnaId}/prodejci/`);
-      setData(res.data);
+      const res = await plansAPI.getProdejci(planProdejnaId);
+      setData(res);
     } catch {
       setChyba('Nepodařilo se načíst plán prodejců.');
     } finally {
@@ -75,8 +75,8 @@ export default function PlanProdejcuPanel({ planProdejnaId }) {
     setChyba(null);
     setUspech(null);
     try {
-      const res = await axios.post(`/api/plans/prodejna/${planProdejnaId}/prodejci/ulozit/`, { prodejci });
-      setData(prev => ({ ...prev, ...res.data }));
+      const res = await plansAPI.ulozitProdejci(planProdejnaId, { prodejci });
+      setData(prev => ({ ...prev, ...res }));
       setUspech(editujProdejceId ? 'Plán prodejce upraven.' : 'Prodejce přidán.');
       setVybranyProdejce(null);
       setFormKusy({});
@@ -105,8 +105,8 @@ export default function PlanProdejcuPanel({ planProdejnaId }) {
     setChyba(null);
     setUspech(null);
     try {
-      const res = await axios.post(`/api/plans/prodejna/${planProdejnaId}/prodejci/ulozit/`, { prodejci });
-      setData(prev => ({ ...prev, ...res.data }));
+      const res = await plansAPI.ulozitProdejci(planProdejnaId, { prodejci });
+      setData(prev => ({ ...prev, ...res }));
       setUspech('Prodejce odebrán.');
       if (editujProdejceId === uzivatelId) {
         setEditujProdejceId(null);
@@ -144,7 +144,7 @@ export default function PlanProdejcuPanel({ planProdejnaId }) {
     setChyba(null);
     try {
       const mesicStr = `${data.rok}-${String(data.mesic).padStart(2, '0')}`;
-      const res = await axios.get('/api/shifts/count/', {
+      const res = await api.get('/shifts/count/', {
         params: { user_id: uzivatelId, prodejna_id: data.prodejna_id, mesic: mesicStr },
       });
       const pocetSmen = res.data.pocet_smen ?? 0;

@@ -65,26 +65,8 @@ from .receipt_metrics import (
 )
 
 
-def _count_unique_receipts(queryset):
-    """Spočítá unikátní doklady - jen podle čísla dokladu (legacy / traffic)."""
-    cleaned = queryset.exclude(doklad__isnull=True).exclude(doklad='')
-    return cleaned.values('doklad').distinct().count()
+from .query_helpers import count_active_receipts_from_queryset as _count_active_receipts
 
-
-def _count_active_receipts(queryset):
-    """Varianta 1: jen doklady s alespoň jednou položkou ≥29 Kč s kódem."""
-    return count_active_receipts(queryset)
-
-
-def _excluded_names_q():
-    """Q výraz pro vyloučení přeprav/služeb, které se nemají započítat do průměru položek/účtenka
-    
-    Doprava se pozná podle toho, že NEMÁ vyplněný KÓD (sloupec 'kod' je prázdný nebo NULL).
-    """
-    return (
-        Q(kod__isnull=True) |
-        Q(kod__exact='')
-    )
 
 @method_decorator(permission_classes([AllowAny]), name='dispatch')
 class ProdejnyDataView(View):

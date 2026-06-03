@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { plansAPI } from '../../services/api';
 import { castkaBezDphZCelkem } from '../../utils/dph';
 import './PlansModule.css';
 import ProdejnaKarta from './ProdejnaKarta';
@@ -102,8 +102,8 @@ export default function PlansModule() {
   const loadPlneni = useCallback(async (rok, mesic) => {
     setPlneniLoading(true);
     try {
-      const res = await axios.get(`/api/plans/${rok}/${mesic}/plneni/`);
-      setPlneniData(res.data.plneni);
+      const res = await plansAPI.getPlneni(rok, mesic);
+      setPlneniData(res.plneni);
     } catch {
       setPlneniData(null);
     } finally {
@@ -114,8 +114,8 @@ export default function PlansModule() {
   const loadPlneniProdejci = useCallback(async (rok, mesic) => {
     setPlneniLoading(true);
     try {
-      const res = await axios.get(`/api/plans/${rok}/${mesic}/plneni-prodejci/`);
-      setPlneniProdejciData(res.data.prodejci || []);
+      const res = await plansAPI.getPlneniProdejci(rok, mesic);
+      setPlneniProdejciData(res.prodejci || []);
     } catch {
       setPlneniProdejciData([]);
     } finally {
@@ -195,9 +195,9 @@ export default function PlansModule() {
     setChyba(null);
     setWarnings([]);
     try {
-      const res = await axios.get(`/api/plans/${rok}/${mesic}/`);
-      setVerze(res.data.verze || []);
-      const aktualni = res.data.aktualni;
+      const res = await plansAPI.getPlan(rok, mesic);
+      setVerze(res.verze || []);
+      const aktualni = res.aktualni;
       if (aktualni) {
         setAktivniPlan(aktualni);
         nactiVerziDoPlaneru(aktualni);
@@ -222,8 +222,8 @@ export default function PlansModule() {
   const loadVerzi = async (verzeId) => {
     setLoading(true);
     try {
-      const res = await axios.get(`/api/plans/verze/${verzeId}/`);
-      nactiVerziDoPlaneru(res.data);
+      const res = await plansAPI.getVerze(verzeId);
+      nactiVerziDoPlaneru(res);
       setVybranaVezeId(verzeId);
     } catch {
       setChyba('Nepodařilo se načíst verzi.');
@@ -241,12 +241,12 @@ export default function PlansModule() {
     setLoading(true);
     setChyba(null);
     try {
-      const res = await axios.post(`/api/plans/${vybraneMesic.rok}/${vybraneMesic.mesic}/`, {
+      const res = await plansAPI.createPlan(vybraneMesic.rok, vybraneMesic.mesic, {
         castka_celkem: castka,
         copy_from_previous: copyFromPrevious,
       });
-      setAktivniPlan(res.data);
-      nactiVerziDoPlaneru(res.data);
+      setAktivniPlan(res);
+      nactiVerziDoPlaneru(res);
       await loadPlan(vybraneMesic.rok, vybraneMesic.mesic);
       setUspech('Plán byl vytvořen.');
     } catch (e) {
@@ -265,12 +265,12 @@ export default function PlansModule() {
     setLoading(true);
     setChyba(null);
     try {
-      const res = await axios.post(`/api/plans/${vybraneMesic.rok}/${vybraneMesic.mesic}/`, {
+      const res = await plansAPI.createPlan(vybraneMesic.rok, vybraneMesic.mesic, {
         create_from_history: true,
         rust_procent: rust,
       });
-      setAktivniPlan(res.data);
-      nactiVerziDoPlaneru(res.data);
+      setAktivniPlan(res);
+      nactiVerziDoPlaneru(res);
       await loadPlan(vybraneMesic.rok, vybraneMesic.mesic);
       setUspech('Plán byl vytvořen z historie a růstu.');
     } catch (e) {
@@ -337,8 +337,8 @@ export default function PlansModule() {
           total_lock: totalLock,
           prodejny: buildPayloadProdejny(),
         };
-        const res = await axios.post(`/api/plans/${vybraneMesic.rok}/${vybraneMesic.mesic}/prepocet/`, payload);
-        setPrepocet(res.data);
+        const res = await plansAPI.prepocet(vybraneMesic.rok, vybraneMesic.mesic, payload);
+        setPrepocet(res);
       } catch (_e) {
         setPrepocet(null);
       } finally {
@@ -400,12 +400,12 @@ export default function PlansModule() {
         nova_verze: novaVerze,
         prodejny: buildPayloadProdejny(),
       };
-      const res = await axios.put(`/api/plans/${vybraneMesic.rok}/${vybraneMesic.mesic}/ulozit/`, payload);
-      setAktivniPlan(res.data);
-      nactiVerziDoPlaneru(res.data);
+      const res = await plansAPI.ulozit(vybraneMesic.rok, vybraneMesic.mesic, payload);
+      setAktivniPlan(res);
+      nactiVerziDoPlaneru(res);
       await loadPlan(vybraneMesic.rok, vybraneMesic.mesic);
       setUspech('Plán byl uložen.');
-      setWarnings(res.data?.warnings || []);
+      setWarnings(res?.warnings || []);
       setNovaVerze(false);
     } catch (e) {
       setChyba(e.response?.data?.error || 'Nepodařilo se uložit plán.');
@@ -416,7 +416,7 @@ export default function PlansModule() {
 
   const setAktualniVerzi = async (verzeId) => {
     try {
-      await axios.post(`/api/plans/verze/${verzeId}/set-aktualni/`);
+      await plansAPI.setAktualniVerze(verzeId);
       await loadPlan(vybraneMesic.rok, vybraneMesic.mesic);
       setUspech('Verze nastavena jako aktuální.');
     } catch {

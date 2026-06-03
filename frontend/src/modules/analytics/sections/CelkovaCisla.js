@@ -1,8 +1,10 @@
+import { analyticsGet } from '../../../utils/analyticsRequest';
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import AnalyticsSectionWrapper from '../AnalyticsSectionWrapper';
 import CustomDropdown from '../../../components/CustomDropdown';
 import AnalyticsDateRange from '../../../components/AnalyticsDateRange';
 import { formatISODate } from '../../../utils/analyticsDateRange';
+import { buildAnalyticsMonthFilterOptions } from '../../../utils/analyticsMonthOptions';
 import {
     buildInitialCelkovaFilters,
     shiftFiltersOneYearBack,
@@ -33,9 +35,7 @@ const CategoryTimeseries = ({ filters, defaultGroupBy, defaultSelected }) => {
                 p.set('dimension', dimension);
                 p.set('group_by', 'monthly');
                 selected.forEach(v => p.append('selected[]', v));
-                const res = await fetch(`/api/analytics/celkova-cisla/categories-timeseries/?${p}`, { credentials: 'include' });
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                const json = await res.json();
+                const json = await analyticsGet('celkova-cisla/categories-timeseries/', p);
                 if (!json.success && json.data === undefined) throw new Error(json.error || 'Chyba');
                 setData(json);
                 if (!selected.length) {
@@ -304,24 +304,7 @@ const CelkovaCislaView = ({ isComparison = false, paneRole = 'single', filtersFr
                 }
             });
 
-            console.log('CelkovaCisla: fetchData called with filters:', filters);
-            console.log('CelkovaCisla: API URL:', `/api/analytics/celkova-cisla/?${params}`);
-
-            const response = await fetch(`/api/analytics/celkova-cisla/?${params}`, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                credentials: 'include'
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-
-            const result = await response.json();
-
-            console.log('CelkovaCisla: API response:', result);
+            const result = await analyticsGet('celkova-cisla/', params);
 
             if (result.success) {
                 setData(result);
@@ -350,23 +333,17 @@ const CelkovaCislaView = ({ isComparison = false, paneRole = 'single', filtersFr
             const p = new URLSearchParams();
             Object.keys(filters).forEach(k => { if (filters[k]) p.append(k, filters[k]); });
             if (channel === 'prodejna') {
-                const res = await fetch(`/api/analytics/celkova-cisla/prodejna-detail/?${p}`, { credentials: 'include' });
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                const json = await res.json();
+                const json = await analyticsGet('celkova-cisla/prodejna-detail/', p);
                 if (!json.success) throw new Error(json.error || 'Chyba detailu');
                 setDetailData(json.breakdown || json);
             } else if (channel === 'servis') {
-                const res = await fetch(`/api/analytics/celkova-cisla/servis-detail/?${p}`, { credentials: 'include' });
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                const json = await res.json();
+                const json = await analyticsGet('celkova-cisla/servis-detail/', p);
                 if (!json.success) throw new Error(json.error || 'Chyba detailu');
                 setDetailData(json.breakdown || json);
             } else {
                 p.set('channel', channel);
                 p.set('limit', '200');
-                const res = await fetch(`/api/analytics/celkova-cisla/channel-items/?${p}`, { credentials: 'include' });
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                const json = await res.json();
+                const json = await analyticsGet('celkova-cisla/channel-items/', p);
                 if (!json.success) throw new Error(json.error || 'Chyba položek');
                 setDetailData({ items: json.items, count: json.count });
             }
@@ -388,9 +365,7 @@ const CelkovaCislaView = ({ isComparison = false, paneRole = 'single', filtersFr
             p.set('channel', detailChannel || 'prodejna');
             if (stredisko) p.set('stredisko', stredisko);
             p.set('limit', '200');
-            const res = await fetch(`/api/analytics/celkova-cisla/channel-items/?${p}`, { credentials: 'include' });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const json = await res.json();
+            const json = await analyticsGet('celkova-cisla/channel-items/', p);
             if (!json.success) throw new Error(json.error || 'Chyba položek');
             setDetailData(prev => ({ ...(prev || {}), items: json.items, count: json.count }));
         } catch (e) {
@@ -424,11 +399,7 @@ const CelkovaCislaView = ({ isComparison = false, paneRole = 'single', filtersFr
             });
             params.set('channel', 'allegro'); // Důležité: používám stejný endpoint jako E-shop
 
-            const response = await fetch(`/api/analytics/eshop/channel-detail/?${params}`, {
-                credentials: 'include'
-            });
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            const result = await response.json();
+            const result = await analyticsGet('eshop/channel-detail/', params);
             if (!result.success) throw new Error(result.error || 'Chyba načítání ALLEGRO detailů');
             setAllegroDetailData(result);
         } catch (e) {
@@ -455,11 +426,7 @@ const CelkovaCislaView = ({ isComparison = false, paneRole = 'single', filtersFr
             if (extra.kod) params.set('kod', extra.kod);
             params.set('limit', '200');
 
-            const response = await fetch(`/api/analytics/eshop/channel-items/?${params}`, {
-                credentials: 'include'
-            });
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            const result = await response.json();
+            const result = await analyticsGet('eshop/channel-items/', params);
             if (!result.success) throw new Error(result.error || 'Chyba načítání položek');
             setAllegroDetailData(prev => ({
                 ...prev,
@@ -499,11 +466,7 @@ const CelkovaCislaView = ({ isComparison = false, paneRole = 'single', filtersFr
             });
             params.set('channel', 'eshop'); // Důležité: používám stejný endpoint jako E-shop
 
-            const response = await fetch(`/api/analytics/eshop/channel-detail/?${params}`, {
-                credentials: 'include'
-            });
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            const result = await response.json();
+            const result = await analyticsGet('eshop/channel-detail/', params);
             if (!result.success) throw new Error(result.error || 'Chyba načítání E-shop detailů');
             setEshopDetailData(result);
         } catch (e) {
@@ -533,11 +496,7 @@ const CelkovaCislaView = ({ isComparison = false, paneRole = 'single', filtersFr
                 }
             });
 
-            const response = await fetch(`/api/analytics/eshop/channel-items/?${params}`, {
-                credentials: 'include'
-            });
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            const result = await response.json();
+            const result = await analyticsGet('eshop/channel-items/', params);
             if (!result.success) throw new Error(result.error || 'Chyba načítání položek');
 
             setEshopDetailData(prev => ({
@@ -573,11 +532,7 @@ const CelkovaCislaView = ({ isComparison = false, paneRole = 'single', filtersFr
                 }
             });
 
-            const response = await fetch(`/api/analytics/celkova-cisla/zasilkovna-detail/?${params}`, {
-                credentials: 'include'
-            });
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            const result = await response.json();
+            const result = await analyticsGet('celkova-cisla/zasilkovna-detail/', params);
             if (!result.success) throw new Error(result.error || 'Chyba načítání Zásilkovna detailů');
             setZasilkovnaDetailData(result);
         } catch (e) {
@@ -609,11 +564,7 @@ const CelkovaCislaView = ({ isComparison = false, paneRole = 'single', filtersFr
                 }
             });
 
-            const response = await fetch(`/api/analytics/celkova-cisla/servis-detail/?${params}`, {
-                credentials: 'include'
-            });
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            const result = await response.json();
+            const result = await analyticsGet('celkova-cisla/servis-detail/', params);
             if (!result.success) throw new Error(result.error || 'Chyba načítání SERVIS detailů');
             setServisDetailData(result);
         } catch (e) {
@@ -1039,59 +990,26 @@ const CelkovaCislaView = ({ isComparison = false, paneRole = 'single', filtersFr
                     <div className="filter-group">
                         <label>Období:</label>
                         {(() => {
-                            const monthNames = ['leden', 'únor', 'březen', 'duben', 'květen', 'červen', 'červenec', 'srpen', 'září', 'říjen', 'listopad', 'prosinec'];
-                            const opts = [];
+                                const opts = buildAnalyticsMonthFilterOptions();
 
-                            // Generujeme měsíce od ledna 2024 do aktuálního měsíce
-                            const startYear = 2024;
-                            const startMonth = 0; // leden = 0
-                            const now = new Date();
-                            const currentYear = now.getFullYear();
-                            const currentMonth = now.getMonth();
-
-                            for (let year = startYear; year <= currentYear; year++) {
-                                const monthStart = (year === startYear) ? startMonth : 0;
-                                const monthEnd = (year === currentYear) ? currentMonth : 11;
-
-                                for (let month = monthStart; month <= monthEnd; month++) {
-                                    const ym = `${year}-${String(month + 1).padStart(2, '0')}`;
-                                    const label = `${monthNames[month].charAt(0).toUpperCase() + monthNames[month].slice(1)} ${year}`;
-                                    opts.push({ value: `month:${ym}`, label });
-                                }
-                            }
-
-                            // Přidáme vlastní období na začátek
-                            opts.unshift({ value: 'custom', label: '🗓️ Vlastní období' });
-
-                            // Řadíme měsíce od nejnovějšího k nejstaršímu (kromě první možnosti)
-                            const customOption = opts.shift();
-                            opts.reverse();
-                            opts.unshift(customOption);
-
-                            const currentValue = filters.period === 'monthly_select' ? `month:${filters.selected_month}` : 'custom';
+                                const currentValue = filters.period === 'monthly_select' ? `month:${filters.selected_month}` : 'custom';
                             return (
                                 <CustomDropdown
                                     options={opts}
                                     value={currentValue}
                                     placeholder="Vyberte období"
-                                    onChange={(selectedValue) => {
-                                        console.log('CelkovaCisla: CustomDropdown onChange:', selectedValue);
-                                        if (selectedValue === 'custom') {
+                                        onChange={(selectedValue) => {
+                                            if (selectedValue === 'custom') {
                                             handleFilterChange('period', 'custom');
                                         } else if (selectedValue.startsWith('month:')) {
                                             const ym = selectedValue.split(':')[1];
-                                            console.log('CelkovaCisla: Setting month:', ym);
-                                            setFilters(prev => {
-                                                const newFilters = {
-                                                    ...prev,
-                                                    period: 'monthly_select',
-                                                    selected_month: ym,
-                                                    start_date: '', // Vyčistit start_date
-                                                    end_date: ''    // Vyčistit end_date
-                                                };
-                                                console.log('CelkovaCisla: New filters:', newFilters);
-                                                return newFilters;
-                                            });
+                                            setFilters(prev => ({
+                                                ...prev,
+                                                period: 'monthly_select',
+                                                selected_month: ym,
+                                                start_date: '',
+                                                end_date: '',
+                                            }));
                                             setDateError('');
                                         }
                                     }}

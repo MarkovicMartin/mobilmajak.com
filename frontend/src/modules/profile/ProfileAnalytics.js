@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { getApiEndpoints } from '../../config/apiConfig';
 import { AnalyticsDateInput } from '../../components/AnalyticsDateRange';
+import { useSalespersonMetrics } from '../../hooks/useSalespersonMetrics';
 import {
     PRODUCT_COMMISSIONS,
     CT300_INFO_KEY,
@@ -51,43 +52,15 @@ const formatMonthLabel = (isoDate) => {
 
 const ProfileAnalytics = ({ userId }) => {
     const [selectedDate, setSelectedDate] = useState('');
-    const [todayData, setTodayData] = useState(null);
-    const [monthlyData, setMonthlyData] = useState(null);
-    const [todayPoints, setTodayPoints] = useState(null);
-    const [monthlyPoints, setMonthlyPoints] = useState(null);
     const [highlightDates, setHighlightDates] = useState([]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
-
-    const dateQuery = selectedDate ? `&date=${selectedDate}` : '';
-
-    const loadPeriodData = useCallback(async () => {
-        setLoading(true);
-        setError('');
-        try {
-            const endpoints = getApiEndpoints();
-            const base = `user_id=${userId}${dateQuery}`;
-            const [dailyRes, monthlyRes, dailyPtsRes, monthlyPtsRes] = await Promise.all([
-                fetch(`${endpoints.salespersonToday}?${base}`, { credentials: 'include' }),
-                fetch(`${endpoints.salespersonMonthly}?${base}`, { credentials: 'include' }),
-                fetch(`${endpoints.salespersonPointsToday}?${base}`, { credentials: 'include' }),
-                fetch(`${endpoints.salespersonPointsMonthly}?${base}`, { credentials: 'include' }),
-            ]);
-
-            if (dailyRes.ok) setTodayData(await dailyRes.json());
-            else setError('Chyba při načítání denních dat');
-
-            if (monthlyRes.ok) setMonthlyData(await monthlyRes.json());
-            else setError('Chyba při načítání měsíčních dat');
-
-            if (dailyPtsRes.ok) setTodayPoints(await dailyPtsRes.json());
-            if (monthlyPtsRes.ok) setMonthlyPoints(await monthlyPtsRes.json());
-        } catch {
-            setError('Chyba při komunikaci se serverem');
-        } finally {
-            setLoading(false);
-        }
-    }, [userId, dateQuery]);
+    const {
+        today: todayData,
+        month: monthlyData,
+        todayPoints,
+        monthPoints: monthlyPoints,
+        loading,
+        error,
+    } = useSalespersonMetrics(userId, { date: selectedDate, enabled: !!userId });
 
     const loadActiveDates = useCallback(async (yearMonth) => {
         const endpoints = getApiEndpoints();
@@ -106,10 +79,6 @@ const ProfileAnalytics = ({ userId }) => {
             /* podbarvení je doplňkové */
         }
     }, [userId]);
-
-    useEffect(() => {
-        loadPeriodData();
-    }, [loadPeriodData]);
 
     useEffect(() => {
         loadActiveDates();

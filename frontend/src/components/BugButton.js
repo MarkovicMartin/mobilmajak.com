@@ -5,26 +5,44 @@ import { motion } from 'framer-motion';
 import TicketForm from '../modules/tickets/TicketForm';
 import { useAuth } from '../context/AuthContext';
 import { ticketAPI } from '../services/api';
+import { useUnreadPoll } from '../hooks/useUnreadPoll';
 import { showAppToast } from './AppToast';
+import { springHover } from '../constants/motion';
 import './BugButton.css';
-
-const springHover = { type: 'spring', stiffness: 300, damping: 22 };
-
-const POLL_MS = 90000;
 
 const BugButton = ({ user, onOpen }) => {
     const { canManageTickets } = useAuth();
     const isTicketManager = canManageTickets();
     const [isOpen, setIsOpen] = useState(false);
-    const [unreadCount, setUnreadCount] = useState(0);
     const [showForm, setShowForm] = useState(false);
     const [successMsg, setSuccessMsg] = useState(null);
     const dropdownRef = useRef(null);
     const mobileDrawerRef = useRef(null);
-    const prevUnreadRef = useRef(0);
-    const initialUnreadRef = useRef(true);
     const navigate = useNavigate();
     const location = useLocation();
+
+    const fetchTicketUnread = useCallback(async () => {
+        if (!user) return 0;
+        const res = await ticketAPI.getUnreadSummary();
+        if (!res.success || typeof res.unread_count !== 'number') return 0;
+        return { count: res.unread_count, role: res.role };
+    }, [user]);
+
+    const notifyTickets = useCallback((delta, _next, meta) => {
+        const msg = meta?.role === 'manager'
+            ? (delta === 1 ? '🔔 Máte nový ticket' : `🔔 ${delta} nových ticketů`)
+            : (delta === 1
+                ? '🔔 Aktualizace u vašeho ticketu'
+                : `🔔 ${delta} aktualizací u vašich ticketů`);
+        showAppToast(msg);
+    }, []);
+
+    const { count: unreadCount, refresh: fetchUnread } = useUnreadPoll({
+        enabled: !!user,
+        fetchCount: fetchTicketUnread,
+        onNotify: notifyTickets,
+        refreshEventName: 'tickets-unread-refresh',
+    });
 
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -40,58 +58,6 @@ const BugButton = ({ user, onOpen }) => {
     useEffect(() => {
         setIsOpen(false);
     }, [location.pathname]);
-
-    const fetchUnread = useCallback(async () => {
-        if (!user) {
-            setUnreadCount(0);
-            return;
-        }
-        try {
-            const res = await ticketAPI.getUnreadSummary();
-            if (!res.success || typeof res.unread_count !== 'number') {
-                setUnreadCount(0);
-                return;
-            }
-            const next = res.unread_count;
-            if (!initialUnreadRef.current && next > prevUnreadRef.current) {
-                const delta = next - prevUnreadRef.current;
-                const msg = res.role === 'manager'
-                    ? (delta === 1 ? '🔔 Máte nový ticket' : `🔔 ${delta} nových ticketů`)
-                    : (delta === 1
-                        ? '🔔 Aktualizace u vašeho ticketu'
-                        : `🔔 ${delta} aktualizací u vašich ticketů`);
-                showAppToast(msg);
-            }
-            initialUnreadRef.current = false;
-            prevUnreadRef.current = next;
-            setUnreadCount(next);
-        } catch {
-            setUnreadCount(0);
-        }
-    }, [user]);
-
-    useEffect(() => {
-        fetchUnread();
-    }, [fetchUnread]);
-
-    useEffect(() => {
-        if (!user) return undefined;
-        const id = window.setInterval(fetchUnread, POLL_MS);
-        const onFocus = () => fetchUnread();
-        const onVis = () => {
-            if (document.visibilityState === 'visible') fetchUnread();
-        };
-        const onRefresh = () => fetchUnread();
-        window.addEventListener('focus', onFocus);
-        document.addEventListener('visibilitychange', onVis);
-        window.addEventListener('tickets-unread-refresh', onRefresh);
-        return () => {
-            clearInterval(id);
-            window.removeEventListener('focus', onFocus);
-            document.removeEventListener('visibilitychange', onVis);
-            window.removeEventListener('tickets-unread-refresh', onRefresh);
-        };
-    }, [user, fetchUnread]);
 
     useEffect(() => {
         if (isOpen) {

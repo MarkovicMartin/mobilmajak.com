@@ -4,8 +4,6 @@ import { userAPI, storeAPI } from '../../services/api';
 import { useModalKeyboard } from '../../utils/useModalKeyboard';
 import './ShiftForm.css';
 
-const PRODEJNY = ['Globus', 'Senimo', 'Zlín', 'Přerov', 'Vsetín', 'Šternberk'];
-
 function ShiftForm({ user, onClose, onSuccess }) {
     const [formData, setFormData] = useState({
         datum: '',

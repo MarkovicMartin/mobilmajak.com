@@ -1,7 +1,9 @@
+import { analyticsGet } from '../../../utils/analyticsRequest';
 import React, { useState, useEffect } from 'react';
 import AnalyticsSectionWrapper from '../AnalyticsSectionWrapper';
 import CustomDropdown from '../../../components/CustomDropdown';
 import AnalyticsDateRange from '../../../components/AnalyticsDateRange';
+import { buildAnalyticsMonthFilterOptions } from '../../../utils/analyticsMonthOptions';
 import './Servis.css';
 
 const Servis = () => {
@@ -41,19 +43,7 @@ const Servis = () => {
                 }
             });
             
-            const response = await fetch(`/api/analytics/servis/?${params}`, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                credentials: 'include'
-            });
-            
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-            
-            const result = await response.json();
+            const result = await analyticsGet('servis/', params);
             
             if (result.success) {
                 setData(result);
@@ -89,13 +79,7 @@ const Servis = () => {
             if (prodejna.id_prodejny) params.set('prodejna_id', prodejna.id_prodejny);
             if (prodejna.stredisko) params.set('stredisko', prodejna.stredisko);
 
-            const response = await fetch(`/api/analytics/servis/prodejna-detail/?${params}`, {
-                method: 'GET',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include'
-            });
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            const result = await response.json();
+            const result = await analyticsGet('servis/prodejna-detail/', params);
             if (!result.success) throw new Error(result.error || 'Chyba detailu prodejny');
             setProdejnaDetail(result.detail.breakdown);
         } catch (e) {
@@ -121,13 +105,7 @@ const Servis = () => {
                 }
             });
             params.set('technik', technikName);
-            const response = await fetch(`/api/analytics/servis/technik-detail/?${params}`, {
-                method: 'GET',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include'
-            });
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            const result = await response.json();
+            const result = await analyticsGet('servis/technik-detail/', params);
             if (!result.success) throw new Error(result.error || 'Chyba detailu technika');
             setProdejnaDetail(result.detail.breakdown);
         } catch (e) {
@@ -155,13 +133,7 @@ const Servis = () => {
             params.set('typ_servisu', typServisu.kategorie_1);
             params.set('limit', '200');
 
-            const response = await fetch(`/api/analytics/servis/typ-items/?${params}`, {
-                method: 'GET',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include'
-            });
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            const result = await response.json();
+            const result = await analyticsGet('servis/typ-items/', params);
             if (!result.success) throw new Error(result.error || 'Chyba načítání položek typu servisu');
             
             // Uložím seznam položek do stavu
@@ -205,13 +177,7 @@ const Servis = () => {
             params.set('segment', segment);
             params.set('limit', '200');
 
-            const response = await fetch(`${endpoint}?${params}`, {
-                method: 'GET',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include'
-            });
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            const result = await response.json();
+            const result = await analyticsGet(endpoint.replace('/api/analytics/', ''), params);
             if (!result.success) throw new Error(result.error || 'Chyba načítání položek');
             setProdejnaDetail(prev => ({ ...prev, [`${segment}_items`]: result.items, [`${segment}_count`]: result.count }));
         } catch (e) {
@@ -313,34 +279,7 @@ const Servis = () => {
                     <div className="filter-group">
                         <label>Období:</label>
                         {(()=>{
-                            const monthNames=['leden','únor','březen','duben','květen','červen','červenec','srpen','září','říjen','listopad','prosinec'];
-                            const opts=[];
-                            
-                            // Generujeme měsíce od ledna 2024 do aktuálního měsíce
-                            const startYear = 2024;
-                            const startMonth = 0; // leden = 0
-                            const now = new Date();
-                            const currentYear = now.getFullYear();
-                            const currentMonth = now.getMonth();
-                            
-                            for(let year = startYear; year <= currentYear; year++) {
-                                const monthStart = (year === startYear) ? startMonth : 0;
-                                const monthEnd = (year === currentYear) ? currentMonth : 11;
-                                
-                                for(let month = monthStart; month <= monthEnd; month++) {
-                                    const ym = `${year}-${String(month + 1).padStart(2, '0')}`;
-                                    const label = `${monthNames[month].charAt(0).toUpperCase() + monthNames[month].slice(1)} ${year}`;
-                                    opts.push({value: `month:${ym}`, label});
-                                }
-                            }
-                            
-                            // Přidáme vlastní období na začátek
-                            opts.unshift({value: 'custom', label: '🗓️ Vlastní období'});
-                            
-                            // Řadíme měsíce od nejnovějšího k nejstaršímu (kromě první možnosti)
-                            const customOption = opts.shift();
-                            opts.reverse();
-                            opts.unshift(customOption);
+                            const opts = buildAnalyticsMonthFilterOptions();
                             
                             const currentValue = filters.period === 'monthly_select' && filters.selected_month ? 
                                 `month:${filters.selected_month}` : 'custom';

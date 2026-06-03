@@ -4,8 +4,6 @@ import './BulkShiftForm.css';
 import UnifiedCalendar from './UnifiedCalendar';
 import { parse, isBefore } from 'date-fns';
 
-const PRODEJNY = ['Globus', 'Senimo', 'Zlín', 'Přerov', 'Vsetín', 'Šternberk'];
-
 function BulkShiftForm({ user, onClose, onSuccess }) {
     const [formData, setFormData] = useState({
         prodejna: user?.prodejna_id || null,
@@ -69,62 +67,6 @@ function BulkShiftForm({ user, onClose, onSuccess }) {
             } catch (_e) {}
         })();
     }, [user]);
-
-    const generateCalendar = () => {
-        const [year, monthNum] = currentMonth.split('-').map(Number);
-        const firstDay = new Date(year, monthNum - 1, 1);
-        const lastDay = new Date(year, monthNum, 0);
-        const daysInMonth = lastDay.getDate();
-        const startDay = firstDay.getDay();
-        
-        const calendar = [];
-        const daysFromPrevMonth = startDay === 0 ? 6 : startDay - 1;
-        
-        // Dny z předchozího měsíce (neaktivní)
-        for (let i = daysFromPrevMonth; i > 0; i--) {
-            const prevMonth = new Date(year, monthNum - 1, 0);
-            const day = prevMonth.getDate() - i + 1;
-            calendar.push({
-                day,
-                date: null,
-                isCurrentMonth: false,
-                isSelectable: false
-            });
-        }
-        
-        // Dny aktuálního měsíce
-        const today = new Date();
-        const currentMonthStart = new Date(year, monthNum - 1, 1);
-        
-        for (let day = 1; day <= daysInMonth; day++) {
-            const date = new Date(year, monthNum - 1, day);
-            // Oprava: Použijeme lokální formátování místo UTC
-            const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-            const isSelectable = (user && ['ADMIN', 'VEDOUCI'].includes(user.role)) || date >= currentMonthStart;
-            
-            calendar.push({
-                day,
-                date: dateStr,
-                isCurrentMonth: true,
-                isSelectable,
-                isToday: date.toDateString() === today.toDateString()
-            });
-        }
-        
-        // Dny z následujícího měsíce (neaktivní)
-        const totalCells = Math.ceil(calendar.length / 7) * 7;
-        const remainingCells = totalCells - calendar.length;
-        for (let day = 1; day <= remainingCells; day++) {
-            calendar.push({
-                day,
-                date: null,
-                isCurrentMonth: false,
-                isSelectable: false
-            });
-        }
-        
-        return calendar;
-    };
 
     const handleDateToggle = (dateStr) => {
         if (!dateStr) return;
@@ -205,8 +147,6 @@ function BulkShiftForm({ user, onClose, onSuccess }) {
             setLoading(false);
         }
     };
-
-    const calendar = generateCalendar(); // kept for legacy but not used with UnifiedCalendar
 
     return (
         <div className="bulk-shift-overlay" onClick={onClose}>

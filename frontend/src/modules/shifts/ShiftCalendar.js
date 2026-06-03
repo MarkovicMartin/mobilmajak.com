@@ -96,66 +96,6 @@ function ShiftCalendar({ prodejna, month, user, refreshTrigger, onRefresh, allSt
         }
     };
 
-    const generateCalendar = () => {
-        const [year, monthNum] = month.split('-').map(Number);
-        
-        const firstDay = new Date(year, monthNum - 1, 1);
-        const daysInMonth = new Date(year, monthNum, 0).getDate();
-        const startDay = firstDay.getDay();
-        
-        // Převod neděle (0) na 7 pro pondělí jako první den
-        const mondayStartDay = startDay === 0 ? 6 : startDay - 1;
-        
-        const calendar = [];
-        
-        // Dny z předchozího měsíce
-        const prevMonth = new Date(year, monthNum - 1, 0);
-        for (let i = mondayStartDay; i > 0; i--) {
-            const day = prevMonth.getDate() - i + 1;
-            const date = new Date(prevMonth.getFullYear(), prevMonth.getMonth(), day);
-            // Oprava: Použijeme lokální formátování místo UTC
-            const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-            calendar.push({
-                day,
-                date: dateStr,
-                isCurrentMonth: false,
-                isToday: false
-            });
-        }
-        
-        // Dny aktuálního měsíce
-        const today = new Date();
-        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-        for (let day = 1; day <= daysInMonth; day++) {
-            const date = new Date(year, monthNum - 1, day);
-            // Oprava: Použijeme lokální formátování místo UTC
-            const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-            calendar.push({
-                day,
-                date: dateStr,
-                isCurrentMonth: true,
-                isToday: dateStr === todayStr
-            });
-        }
-        
-        // Dny z následujícího měsíce - dokončíme mřížku na 35 nebo 42 dní
-        const totalCells = Math.ceil(calendar.length / 7) * 7;
-        const remainingCells = totalCells - calendar.length;
-        for (let day = 1; day <= remainingCells; day++) {
-            const date = new Date(year, monthNum, day);
-            // Oprava: Použijeme lokální formátování místo UTC
-            const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-            calendar.push({
-                day,
-                date: dateStr,
-                isCurrentMonth: false,
-                isToday: false
-            });
-        }
-        
-        return calendar;
-    };
-
     const getShiftsForDate = (dateStr) => kalendarData[dateStr] || [];
 
     const isStaffingManager = showAllEmployees && STAFFING_MANAGER_ROLES.includes(user?.role);
@@ -271,8 +211,6 @@ function ShiftCalendar({ prodejna, month, user, refreshTrigger, onRefresh, allSt
             </div>
         );
     }
-
-    const calendar = generateCalendar(); // retained for previous logic but no longer used for grid
 
     return (
         <div className="shift-calendar">

@@ -1,3 +1,4 @@
+import { analyticsGet } from '../../../utils/analyticsRequest';
 import React, { useState, useEffect } from 'react';
 import {
     ComposedChart,
@@ -16,6 +17,7 @@ import {
 import AnalyticsSectionWrapper from '../AnalyticsSectionWrapper';
 import CustomDropdown from '../../../components/CustomDropdown';
 import AnalyticsDateRange from '../../../components/AnalyticsDateRange';
+import { buildAnalyticsMonthFilterOptions } from '../../../utils/analyticsMonthOptions';
 import './SectionStyles.css';
 
 const SalespersonBreakdown = ({ filters }) => {
@@ -32,9 +34,7 @@ const SalespersonBreakdown = ({ filters }) => {
             try{
                 const p = new URLSearchParams();
                 Object.keys(filters).forEach(k=>{ if(filters[k]) p.append(k, filters[k]); });
-                const res = await fetch(`/api/analytics/prodejni-analytika/phones-accessories/by-salesperson/?${p}`, { credentials:'include' });
-                if(!res.ok) throw new Error(`HTTP ${res.status}`);
-                const json = await res.json();
+                const json = await analyticsGet('prodejni-analytika/phones-accessories/by-salesperson/', p);
                 if(!json.success) throw new Error(json.error||'Chyba');
                 setRows((json.rows||[]).sort((a,b)=> (b.phones_kusy||0)-(a.phones_kusy||0)));
             }catch(e){ setError(e.message);} finally{ setLoading(false);}    
@@ -49,9 +49,7 @@ const SalespersonBreakdown = ({ filters }) => {
             Object.keys(filters).forEach(k=>{ if(filters[k]) p.append(k, filters[k]); });
             p.set('prodejce_id', String(prodejce_id));
             p.set('kind', kind);
-            const res = await fetch(`/api/analytics/prodejni-analytika/phones-accessories/salesperson-receipts/?${p}`, { credentials:'include' });
-            if(!res.ok) throw new Error(`HTTP ${res.status}`);
-            const json = await res.json();
+            const json = await analyticsGet('prodejni-analytika/phones-accessories/salesperson-receipts/', p);
             if(!json.success) throw new Error(json.error||'Chyba');
             setOpen(prev=> ({ ...(prev||{}), loading:false, receipts: json.receipts||[] }));
         }catch(e){ setOpen(prev=> ({ ...(prev||{}), loading:false, error: e.message })); }
@@ -177,18 +175,7 @@ const ProdejniAnalytika = ({ currentUser }) => {
                 params.set('kategorie', filters.kategorie);
             }
 
-            const response = await fetch(`${url}?${params}`, {
-                credentials: 'include',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const result = await response.json();
+            const result = await analyticsGet(url.replace('/api/analytics/', ''), params);
             
             if (result.success) {
                 setData(result);
@@ -258,15 +245,6 @@ const ProdejniAnalytika = ({ currentUser }) => {
         return null;
     };
 
-    // Debug informace
-    console.log('ProdejniAnalytika - Debug:', {
-        loading,
-        error,
-        data,
-        selectedAnalysis,
-        filters
-    });
-
     if (loading) {
         return (
             <div className="analytics-section">
@@ -314,34 +292,7 @@ const ProdejniAnalytika = ({ currentUser }) => {
                 <div className="filter-group">
                     <label>Období:</label>
                     {(()=>{
-                        const monthNames=['leden','únor','březen','duben','květen','červen','červenec','srpen','září','říjen','listopad','prosinec'];
-                        const opts=[];
-                        
-                        // Generujeme měsíce od ledna 2024 do aktuálního měsíce
-                        const startYear = 2024;
-                        const startMonth = 0; // leden = 0
-                        const now = new Date();
-                        const currentYear = now.getFullYear();
-                        const currentMonth = now.getMonth();
-                        
-                        for(let year = startYear; year <= currentYear; year++) {
-                            const monthStart = (year === startYear) ? startMonth : 0;
-                            const monthEnd = (year === currentYear) ? currentMonth : 11;
-                            
-                            for(let month = monthStart; month <= monthEnd; month++) {
-                                const ym = `${year}-${String(month + 1).padStart(2, '0')}`;
-                                const label = `${monthNames[month].charAt(0).toUpperCase() + monthNames[month].slice(1)} ${year}`;
-                                opts.push({value: `month:${ym}`, label});
-                            }
-                        }
-                        
-                        // Přidáme vlastní období na začátek
-                        opts.unshift({value: 'custom', label: '🗓️ Vlastní období'});
-                        
-                        // Řadíme měsíce od nejnovějšího k nejstaršímu (kromě první možnosti)
-                        const customOption = opts.shift();
-                        opts.reverse();
-                        opts.unshift(customOption);
+                        const opts = buildAnalyticsMonthFilterOptions();
                         
                         const currentValue = filters.period==='monthly_select' ? `month:${filters.selected_month}` : 'custom';
                         return (
@@ -756,9 +707,7 @@ const ProdejniAnalytika = ({ currentUser }) => {
                                                             setReceiptLoading(true); setReceiptError(null); setReceiptItems(null);
                                                             try{
                                                                 const p = new URLSearchParams({ doklad: r.doklad, threshold: '100' });
-                                                                const res = await fetch(`/api/analytics/prodejni-analytika/phones-accessories/receipt-items/?${p}`, { credentials:'include' });
-                                                                if(!res.ok) throw new Error(`HTTP ${res.status}`);
-                                                                const json = await res.json();
+                                                                const json = await analyticsGet('prodejni-analytika/phones-accessories/receipt-items/', p);
                                                                 if(!json.success) throw new Error(json.error||'Chyba');
                                                                 setReceiptItems({ doklad: r.doklad, items: json.items });
                                                             }catch(e){ setReceiptError(e.message);} finally{ setReceiptLoading(false);} 

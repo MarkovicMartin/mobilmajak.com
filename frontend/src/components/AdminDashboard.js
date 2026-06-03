@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { format, getDaysInMonth } from 'date-fns';
 import { cs } from 'date-fns/locale';
 import { useAuth } from '../context/AuthContext';
-import api, { analyticsAPI, userAPI } from '../services/api';
+import api, { analyticsAPI, userAPI, newsAPI, shiftsAPI, plansAPI } from '../services/api';
+import { useTasks } from '../hooks/useTasks';
 import { castkaBezDphZCelkem } from '../utils/dph';
 import './AdminDashboard.css';
 
@@ -44,9 +45,9 @@ export default function AdminDashboard() {
     const [monthStats, setMonthStats] = useState(null);
     const [todayShifts, setTodayShifts] = useState([]);
     const [latestNews, setLatestNews] = useState([]);
-    const [tasks, setTasks] = useState([]);
     const [users, setUsers] = useState([]);
     const [newTask, setNewTask] = useState({ ukol: '', priorita: 'stredni', deadline: '', id_prodejce_ukol: '' });
+    const { tasks, create: createTaskItem, markDone, load: loadTasks } = useTasks({ autoLoad: false });
     const [planDashboardBundle, setPlanDashboardBundle] = useState(null);
     const [planProdejciList, setPlanProdejciList] = useState([]);
 
@@ -68,23 +69,17 @@ export default function AdminDashboard() {
         };
 
         const fetchShifts = async () => {
-            const resp = await api.get(`/shifts/?mesic=${currentMonth}`);
-            console.log('API odpověď směny:', resp.data); // Debug log
-            const onlyToday = (resp.data || []).filter((s) => s.datum?.startsWith(todayStr));
-            console.log('Dnešní směny:', onlyToday); // Debug log
+            const data = await shiftsAPI.listByMonth(currentMonth);
+            const onlyToday = (data || []).filter((s) => s.datum?.startsWith(todayStr));
             setTodayShifts(onlyToday);
         };
 
         const fetchNews = async () => {
-            const resp = await api.get(`/news/`);
-            const list = (resp.data || []).slice(0, 3);
+            const list = (await newsAPI.list() || []).slice(0, 3);
             setLatestNews(list);
         };
 
-        const fetchTasks = async () => {
-            const resp = await api.get(`/tasks/?stav=vse`);
-            setTasks(resp.data || []);
-        };
+        const fetchTasks = () => loadTasks('vse');
 
         const fetchUsers = async () => {
             try {
@@ -100,9 +95,9 @@ export default function AdminDashboard() {
             try {
                 const y = today.getFullYear();
                 const m = today.getMonth() + 1;
-                const res = await api.get(`/plans/${y}/${m}/plneni/`);
-                if (res.data?.plan && res.data?.plneni) {
-                    setPlanDashboardBundle({ plan: res.data.plan, plneni: res.data.plneni });
+                const res = await plansAPI.getPlneni(y, m);
+                if (res?.plan && res?.plneni) {
+                    setPlanDashboardBundle({ plan: res.plan, plneni: res.plneni });
                 } else {
                     setPlanDashboardBundle(null);
                 }
@@ -115,8 +110,8 @@ export default function AdminDashboard() {
             try {
                 const y = today.getFullYear();
                 const m = today.getMonth() + 1;
-                const res = await api.get(`/plans/${y}/${m}/plneni-prodejci/`);
-                setPlanProdejciList(Array.isArray(res.data?.prodejci) ? res.data.prodejci : []);
+                const res = await plansAPI.getPlneniProdejci(y, m);
+                setPlanProdejciList(Array.isArray(res?.prodejci) ? res.prodejci : []);
             } catch (_e) {
                 setPlanProdejciList([]);
             }
@@ -132,20 +127,16 @@ export default function AdminDashboard() {
         fetchUsers();
         fetchPlanDashboard();
         fetchPlanProdejci();
-    }, [isAdmin, currentMonth, todayStr, today]);
+    }, [isAdmin, currentMonth, todayStr, today, loadTasks]);
 
     const groupedShifts = useMemo(() => {
         const groups = {};
-        console.log('Zpracovávám směny pro skupiny:', todayShifts); // Debug log
         todayShifts.forEach((s) => {
-            console.log('Zpracovávám směnu:', s); // Debug log pro každou směnu
             const key = s.prodejna || 'Neznámá prodejna';
             if (!groups[key]) groups[key] = [];
             const full = [s.user?.jmeno, s.user?.prijmeni].filter(Boolean).join(' ').trim();
-            console.log(`Jméno pro ${key}:`, full); // Debug log pro jméno
             groups[key].push(full || s.user_name || '');
         });
-        console.log('Skupiny směn:', groups); // Debug log
         return groups;
     }, [todayShifts]);
 
@@ -251,19 +242,13 @@ export default function AdminDashboard() {
     const handleCreateTask = async (e) => {
         e.preventDefault();
         if (!newTask.ukol || !newTask.id_prodejce_ukol) return;
-        const resp = await api.post('/tasks/', {
+        await createTaskItem({
             ukol: newTask.ukol,
             priorita: newTask.priorita || 'stredni',
             deadline: newTask.deadline || null,
             id_prodejce_ukol: Number(newTask.id_prodejce_ukol),
-        });
-        setTasks((t) => [resp.data, ...t]);
+        }, { prepend: true });
         setNewTask({ ukol: '', priorita: 'stredni', deadline: '', id_prodejce_ukol: '' });
-    };
-
-    const markDone = async (taskId) => {
-        const resp = await api.put(`/tasks/${taskId}/`, { stav: 'hotovo' });
-        setTasks((list) => list.map((t) => (t.id === taskId ? resp.data : t)));
     };
 
     if (!isAdmin()) return null;

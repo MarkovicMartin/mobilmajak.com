@@ -3,6 +3,7 @@ from rest_framework import status, viewsets, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.db.models import Q
+from users.models import WebUser
 from .models import Prodejna
 from .serializers import ProdejnaSerializer, ProdejnaListSerializer, ProdejnaChoiceSerializer
 from .vedouci_sync import assign_vedouci_prodejny
@@ -44,16 +45,24 @@ class ProdejnaViewSet(viewsets.ModelViewSet):
         
         return queryset.order_by('poradi', 'nazev')
     
+    def _build_vedouci_user_map(self, stores):
+        vedouci_ids = {s.vedouci_user_id for s in stores if s.vedouci_user_id}
+        if not vedouci_ids:
+            return {}
+        return {u.id: u for u in WebUser.objects.filter(id__in=vedouci_ids)}
+
     def list(self, request):
         """Seznam všech prodejen"""
         try:
-            queryset = self.get_queryset()
-            serializer = self.get_serializer(queryset, many=True)
-            
+            stores = list(self.get_queryset())
+            ctx = self.get_serializer_context()
+            ctx['vedouci_user_map'] = self._build_vedouci_user_map(stores)
+            serializer = self.get_serializer(stores, many=True, context=ctx)
+
             return Response({
                 'success': True,
                 'stores': serializer.data,
-                'count': queryset.count()
+                'count': len(stores)
             })
         except Exception as e:
             return Response({

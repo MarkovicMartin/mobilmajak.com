@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, LayoutGroup } from 'framer-motion';
 import AdminDropdown from './AdminDropdown';
 import BugButton from './BugButton';
+import { springHover } from '../constants/motion';
 import './DockNavbar.css';
 
 export const NAV_ITEMS = [
@@ -19,8 +20,6 @@ export const isNavActive = (path, locationPath) => {
     if (path === '/') return locationPath === '/';
     return locationPath === path || locationPath.startsWith(path + '/');
 };
-
-const springHover = { type: 'spring', stiffness: 300, damping: 22 };
 
 const DockNavbar = ({
     user,

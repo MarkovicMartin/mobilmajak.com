@@ -6,6 +6,20 @@ from .models import Prodejna
 from .oteviraci_doba_utils import normalize_oteviraci_doba
 
 
+def _vedouci_jmeno_from_context(obj, context):
+    if not obj.vedouci_user_id:
+        return None
+    vedouci_map = context.get('vedouci_user_map')
+    if vedouci_map is not None:
+        user = vedouci_map.get(obj.vedouci_user_id)
+        return f'{user.jmeno} {user.prijmeni}'.strip() if user else None
+    try:
+        u = WebUser.objects.get(pk=obj.vedouci_user_id)
+        return f'{u.jmeno} {u.prijmeni}'.strip()
+    except WebUser.DoesNotExist:
+        return None
+
+
 class ProdejnaSerializer(serializers.ModelSerializer):
     """Serializer pro kompletní správu prodejen"""
 
@@ -24,13 +38,7 @@ class ProdejnaSerializer(serializers.ModelSerializer):
         read_only_fields = ['datum_vytvoreni', 'datum_upravy', 'vedouci_jmeno']
 
     def get_vedouci_jmeno(self, obj):
-        if not obj.vedouci_user_id:
-            return None
-        try:
-            u = WebUser.objects.get(pk=obj.vedouci_user_id)
-            return f'{u.jmeno} {u.prijmeni}'.strip()
-        except WebUser.DoesNotExist:
-            return None
+        return _vedouci_jmeno_from_context(obj, self.context)
 
     def validate_oteviraci_doba(self, value):
         return normalize_oteviraci_doba(value)
@@ -97,13 +105,7 @@ class ProdejnaListSerializer(serializers.ModelSerializer):
         ]
 
     def get_vedouci_jmeno(self, obj):
-        if not obj.vedouci_user_id:
-            return None
-        try:
-            u = WebUser.objects.get(pk=obj.vedouci_user_id)
-            return f'{u.jmeno} {u.prijmeni}'.strip()
-        except WebUser.DoesNotExist:
-            return None
+        return _vedouci_jmeno_from_context(obj, self.context)
 
 
 class ProdejnaChoiceSerializer(serializers.ModelSerializer):

@@ -1,4 +1,5 @@
 
+import { analyticsGet } from '../../../utils/analyticsRequest';
 import React, { useState, useEffect } from 'react';
 import {
     ResponsiveContainer,
@@ -13,6 +14,7 @@ import api from '../../../services/api';
 import AnalyticsSectionWrapper from '../AnalyticsSectionWrapper';
 import CustomDropdown from '../../../components/CustomDropdown';
 import AnalyticsDateRange from '../../../components/AnalyticsDateRange';
+import { buildAnalyticsMonthFilterOptions } from '../../../utils/analyticsMonthOptions';
 import './Prodejnyzakaznici.css';
 
 const ProdejnyTrafficView = ({ isComparison = false }) => {
@@ -253,34 +255,7 @@ const ProdejnyTrafficView = ({ isComparison = false }) => {
                         <div className="filter-group">
                             <label>Období:</label>
                             {(() => {
-                                const monthNames = ['leden', 'únor', 'březen', 'duben', 'květen', 'červen', 'červenec', 'srpen', 'září', 'říjen', 'listopad', 'prosinec'];
-                                const opts = [];
-
-                                // Generujeme měsíce od ledna 2024 do aktuálního měsíce
-                                const startYear = 2024;
-                                const startMonth = 0; // leden = 0
-                                const now = new Date();
-                                const currentYear = now.getFullYear();
-                                const currentMonth = now.getMonth();
-
-                                for (let year = startYear; year <= currentYear; year++) {
-                                    const monthStart = (year === startYear) ? startMonth : 0;
-                                    const monthEnd = (year === currentYear) ? currentMonth : 11;
-
-                                    for (let month = monthStart; month <= monthEnd; month++) {
-                                        const ym = `${year}-${String(month + 1).padStart(2, '0')}`;
-                                        const label = `${monthNames[month].charAt(0).toUpperCase() + monthNames[month].slice(1)} ${year}`;
-                                        opts.push({ value: `month:${ym}`, label });
-                                    }
-                                }
-
-                                // Přidáme vlastní období na začátek
-                                opts.unshift({ value: 'custom', label: '🗓️ Vlastní období' });
-
-                                // Řadíme měsíce od nejnovějšího k nejstaršímu (kromě první možnosti)
-                                const customOption = opts.shift();
-                                opts.reverse();
-                                opts.unshift(customOption);
+                                const opts = buildAnalyticsMonthFilterOptions();
 
                                 const currentValue = filters.period === 'monthly_select' ? `month:${filters.selected_month}` : 'custom';
                                 return (

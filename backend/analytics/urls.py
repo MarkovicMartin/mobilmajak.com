@@ -1,38 +1,9 @@
 from django.urls import path
 from . import views
-# from . import views_apify  # Commented out as file may not exist
 
 app_name = 'analytics'
 
 urlpatterns = [
-    # NOVÉ APIFY ENDPOINTY (DOPORUČENÉ) - COMMENTED OUT AS views_apify DOESN'T EXIST
-    # ===================================
-    
-    # # API endpoint pro načítání dat z Apify tabulek
-    # path('apify/data/', views_apify.ApifyDataView.as_view(), name='apify_data'),
-    
-    # # API endpoint pro data podle konkrétního data z Apify tabulek
-    # path('apify/data/by-date/', views_apify.get_apify_data_by_date, name='apify_data_by_date'),
-    
-    # # Apify endpointy pro analytiku prodejce
-    # path('apify/salesperson/today/', views_apify.get_salesperson_today_data_apify, name='apify_salesperson_today'),
-    # path('apify/salesperson/monthly/', views_apify.get_salesperson_monthly_data_apify, name='apify_salesperson_monthly'),
-    
-    # # Apify endpointy pro body prodejce
-    # path('apify/salesperson/points/today/', views_apify.get_salesperson_points_today_apify, name='apify_salesperson_points_today'),
-    # path('apify/salesperson/points/monthly/', views_apify.get_salesperson_points_monthly_apify, name='apify_salesperson_points_monthly'),
-    
-    # # Apify endpointy pro žebříčky
-    # path('apify/leaderboard/points/', views_apify.get_leaderboard_monthly_points_apify, name='apify_leaderboard_monthly_points'),
-    # path('apify/leaderboard/average-items/', views_apify.get_leaderboard_average_items_apify, name='apify_leaderboard_average_items'),
-    
-    # # Apify endpoint pro interaktivní grafy
-    # path('apify/charts-data/', views_apify.get_charts_data_apify, name='apify_charts_data'),
-    
-    # # Endpoint pro informace o posledním Apify importu
-    # path('apify/backup-info/', views_apify.get_apify_backup_info, name='apify_backup_info'),
-    
-    
     # WEB_PRODEJE ENDPOINTY (NEJNOVĚJŠÍ - PŘÍMO Z PRODEJNÍ TABULKY)
     # =============================================================
     

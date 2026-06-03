@@ -26,9 +26,6 @@ api.interceptors.request.use((config) => {
     
     if (csrfToken) {
         config.headers['X-CSRFToken'] = csrfToken;
-        console.log('CSRF token přidán:', csrfToken);
-    } else {
-        console.log('CSRF token nenalezen v cookies');
     }
     
     return config;
@@ -238,24 +235,84 @@ export const taskAPI = {
         const response = await api.get('/tasks/unread-summary/');
         return response.data;
     },
-};
-
-export default api; 
-
-// API funkce pro analytiku
-export const analyticsAPI = {
-    // Stav Apify/actor importu (poslední běh, počty záznamů)
-    getActorStatus: async () => {
-        // Preferujeme nové WEB_PRODEJE info; apify slouží jako fallback
-        try {
-            const response = await api.get('/analytics/backup-info/');
-            return response.data;
-        } catch (_e) {
-            const response = await api.get('/analytics/apify/backup-info/');
-            return response.data;
-        }
+    list: async (stav = 'vse') => {
+        const response = await api.get('/tasks/', { params: { stav } });
+        return response.data;
+    },
+    create: async (payload) => {
+        const response = await api.post('/tasks/', payload);
+        return response.data;
+    },
+    update: async (id, payload) => {
+        const response = await api.put(`/tasks/${id}/`, payload);
+        return response.data;
     },
 };
 
-// API pro chatbota (admin-only)
-// (chatbot odstraněn)
+export const profileAPI = {
+    getProfile: async () => {
+        const response = await api.get('/users/profile/');
+        return response.data;
+    },
+};
+
+export const newsAPI = {
+    list: async () => {
+        const response = await api.get('/news/');
+        return response.data;
+    },
+};
+
+export const shiftsAPI = {
+    listByMonth: async (mesic) => {
+        const response = await api.get('/shifts/', { params: { mesic } });
+        return response.data;
+    },
+};
+
+export const leaderboardAPI = {
+    /** @param {string} url – plná cesta z getApiEndpoints() */
+    fetch: async (url, params = {}) => {
+        const path = url.startsWith('/api') ? url.slice(4) : url;
+        const response = await api.get(path, { params });
+        return response.data;
+    },
+};
+
+export const plansAPI = {
+    getPlneni: async (rok, mesic) => (await api.get(`/plans/${rok}/${mesic}/plneni/`)).data,
+    getPlneniProdejci: async (rok, mesic) => (await api.get(`/plans/${rok}/${mesic}/plneni-prodejci/`)).data,
+    getPlan: async (rok, mesic) => (await api.get(`/plans/${rok}/${mesic}/`)).data,
+    getVerze: async (verzeId) => (await api.get(`/plans/verze/${verzeId}/`)).data,
+    createPlan: async (rok, mesic, payload) => (await api.post(`/plans/${rok}/${mesic}/`, payload)).data,
+    prepocet: async (rok, mesic, payload) => (await api.post(`/plans/${rok}/${mesic}/prepocet/`, payload)).data,
+    ulozit: async (rok, mesic, payload) => (await api.put(`/plans/${rok}/${mesic}/ulozit/`, payload)).data,
+    setAktualniVerze: async (verzeId) => (await api.post(`/plans/verze/${verzeId}/set-aktualni/`)).data,
+    getProdejci: async (planProdejnaId) => (await api.get(`/plans/prodejna/${planProdejnaId}/prodejci/`)).data,
+    ulozitProdejci: async (planProdejnaId, payload) => (
+        await api.post(`/plans/prodejna/${planProdejnaId}/prodejci/ulozit/`, payload)
+    ).data,
+    getMujPlan: async (rok, mesic) => (
+        await api.get('/plans/muj-plan/', { params: { rok, mesic } })
+    ).data,
+};
+
+export default api;
+
+export const analyticsAPI = {
+    getActorStatus: async () => {
+        const response = await api.get('/analytics/backup-info/');
+        return response.data;
+    },
+    get: async (path, params = {}) => {
+        const clean = path
+            .replace(/^\/api\/analytics\//, '')
+            .replace(/^\/analytics\//, '')
+            .replace(/^\//, '');
+        const queryParams = params instanceof URLSearchParams
+            ? Object.fromEntries(params.entries())
+            : params;
+        const response = await api.get(`/analytics/${clean}`, { params: queryParams });
+        return response.data;
+    },
+};

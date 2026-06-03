@@ -9,6 +9,12 @@
     margin: 0 auto;
 }
 
+.dashboard-loading {
+    padding: 2rem;
+    text-align: center;
+    color: var(--text-secondary, #666);
+}
+
 @media (min-width: 769px) {
     .dashboard-main {
         padding-top: 0.75rem;

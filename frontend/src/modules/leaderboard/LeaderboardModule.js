@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { getApiEndpoints } from '../../config/apiConfig';
+import { leaderboardAPI } from '../../services/api';
 import PointsLeaderboard from './PointsLeaderboard';
 import StoresLeaderboard from './StoresLeaderboard';
 import './LeaderboardModule.css';
@@ -9,6 +10,24 @@ import './LeaderboardModule.css';
 const POLL_MS_TODAY = 60 * 1000;
 /** Měsíční / prodejny – stejný interval jako objednávky */
 const POLL_MS_MONTH_STORES = 120 * 1000;
+
+const TAB_CONFIG = {
+    month: {
+        urlKey: 'leaderboardPoints',
+        params: {},
+        errorMsg: 'Chyba při načítání žebříčku bodů',
+    },
+    today: {
+        urlKey: 'leaderboardPoints',
+        params: { period: 'today' },
+        errorMsg: 'Chyba při načítání denního žebříčku bodů',
+    },
+    stores: {
+        urlKey: 'leaderboardStores',
+        params: {},
+        errorMsg: 'Chyba při načítání žebříčku prodejen',
+    },
+};
 
 const LeaderboardModule = () => {
     const { user } = useAuth();
@@ -23,117 +42,47 @@ const LeaderboardModule = () => {
     const [error, setError] = useState(null);
     const [lastUpdated, setLastUpdated] = useState(null);
 
-    const fetchPointsLeaderboard = useCallback(async ({ silent = false } = {}) => {
-        if (!silent) setLoading(true);
-        setError(null);
-        try {
-            const endpoints = getApiEndpoints();
-            const response = await fetch(endpoints.leaderboardPoints, {
-                credentials: 'include',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-            });
-
-            if (!response.ok) {
-                throw new Error('Chyba při načítání žebříčku bodů');
-            }
-
-            const data = await response.json();
-            if (data.success) {
-                setPointsData(data.data || []);
-                setPointsMonthMeta(data.meta || null);
-                setLastUpdated(new Date());
-            } else {
-                throw new Error(data.error || 'Neznámá chyba');
-            }
-        } catch (err) {
-            if (!silent) setError(err.message);
-            console.error('Chyba při načítání žebříčku bodů:', err);
-        } finally {
-            if (!silent) setLoading(false);
+    const applyTabResult = useCallback((tab, rows, meta) => {
+        if (tab === 'today') {
+            setPointsTodayData(rows);
+            setPointsTodayMeta(meta);
+        } else if (tab === 'stores') {
+            setStoresData(rows);
+            setStoresMeta(meta);
+        } else {
+            setPointsData(rows);
+            setPointsMonthMeta(meta);
         }
     }, []);
 
-    const fetchPointsTodayLeaderboard = useCallback(async ({ silent = false } = {}) => {
+    const fetchTab = useCallback(async (tab, { silent = false } = {}) => {
+        const config = TAB_CONFIG[tab];
+        if (!config) return;
+
         if (!silent) setLoading(true);
         setError(null);
+
         try {
             const endpoints = getApiEndpoints();
-            if (!endpoints.leaderboardPoints) {
-                throw new Error('Endpoint pro denní žebříček není k dispozici');
-            }
-            const url = `${endpoints.leaderboardPoints}?period=today`;
-            const response = await fetch(url, {
-                credentials: 'include',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-            });
+            const url = endpoints[config.urlKey];
+            if (!url) throw new Error('Endpoint pro žebříček není k dispozici');
 
-            if (!response.ok) {
-                throw new Error('Chyba při načítání denního žebříčku bodů');
-            }
+            const data = await leaderboardAPI.fetch(url, config.params);
+            if (!data.success) throw new Error(data.error || 'Neznámá chyba');
 
-            const data = await response.json();
-            if (data.success) {
-                setPointsTodayData(data.data || []);
-                setPointsTodayMeta(data.meta || null);
-                setLastUpdated(new Date());
-            } else {
-                throw new Error(data.error || 'Neznámá chyba');
-            }
+            applyTabResult(tab, data.data || [], data.meta || null);
+            setLastUpdated(new Date());
         } catch (err) {
-            if (!silent) setError(err.message);
-            console.error('Chyba při načítání denního žebříčku bodů:', err);
+            if (!silent) setError(err.message || config.errorMsg);
+            console.error(config.errorMsg, err);
         } finally {
             if (!silent) setLoading(false);
         }
-    }, []);
-
-    const fetchStoresLeaderboard = useCallback(async ({ silent = false } = {}) => {
-        if (!silent) setLoading(true);
-        setError(null);
-        try {
-            const endpoints = getApiEndpoints();
-            const url = endpoints.leaderboardStores;
-            if (!url) {
-                throw new Error('Endpoint pro žebříček prodejen není k dispozici');
-            }
-            const response = await fetch(url, {
-                credentials: 'include',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-            });
-
-            if (!response.ok) {
-                throw new Error('Chyba při načítání žebříčku prodejen');
-            }
-
-            const data = await response.json();
-            if (data.success) {
-                setStoresData(data.data || []);
-                setStoresMeta(data.meta || null);
-                setLastUpdated(new Date());
-            } else {
-                throw new Error(data.error || 'Neznámá chyba');
-            }
-        } catch (err) {
-            if (!silent) setError(err.message);
-            console.error('Chyba při načítání žebříčku prodejen:', err);
-        } finally {
-            if (!silent) setLoading(false);
-        }
-    }, []);
+    }, [applyTabResult]);
 
     const refreshActiveTab = useCallback(
-        (opts = {}) => {
-            if (pointsSubTab === 'today') return fetchPointsTodayLeaderboard(opts);
-            if (pointsSubTab === 'stores') return fetchStoresLeaderboard(opts);
-            return fetchPointsLeaderboard(opts);
-        },
-        [pointsSubTab, fetchPointsLeaderboard, fetchPointsTodayLeaderboard, fetchStoresLeaderboard],
+        (opts = {}) => fetchTab(pointsSubTab, opts),
+        [pointsSubTab, fetchTab],
     );
 
     useEffect(() => {

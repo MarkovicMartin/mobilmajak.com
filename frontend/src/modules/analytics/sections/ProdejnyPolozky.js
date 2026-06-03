@@ -1,9 +1,11 @@
+import { analyticsGet } from '../../../utils/analyticsRequest';
 import React, { useState, useEffect } from 'react';
 import { getApiEndpoints } from '../../../config/apiConfig';
 import AnalyticsSectionWrapper from '../AnalyticsSectionWrapper';
 import CustomDropdown from '../../../components/CustomDropdown';
 import AnalyticsDateRange from '../../../components/AnalyticsDateRange';
 import { formatISODate } from '../../../utils/analyticsDateRange';
+import { buildAnalyticsMonthFilterOptions } from '../../../utils/analyticsMonthOptions';
 import {
     VICEPRACE_LABEL,
     VICEPRACE_LEADER_LABEL,
@@ -97,24 +99,7 @@ const ProdejnyPolozky = () => {
                 }
             });
 
-            console.log('ProdejnyPolozky: fetchData called with filters:', filters);
-            console.log('ProdejnyPolozky: API URL:', `${endpoints.webProdejePolozky}?${params}`);
-
-            const response = await fetch(`${endpoints.webProdejePolozky}?${params}`, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                credentials: 'include'
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-
-            const result = await response.json();
-
-            console.log('ProdejnyPolozky: API response:', result);
+            const result = await analyticsGet('web-prodeje/polozky/', params);
 
             if (result.success && Array.isArray(result.data)) {
                 setSalesData(result.data);
@@ -179,34 +164,7 @@ const ProdejnyPolozky = () => {
                         <div className="filter-group">
                             <label>Období:</label>
                             {(() => {
-                                const monthNames = ['leden', 'únor', 'březen', 'duben', 'květen', 'červen', 'červenec', 'srpen', 'září', 'říjen', 'listopad', 'prosinec'];
-                                const opts = [];
-
-                                // Generujeme měsíce od ledna 2024 do aktuálního měsíce
-                                const startYear = 2024;
-                                const startMonth = 0; // leden = 0
-                                const now = new Date();
-                                const currentYear = now.getFullYear();
-                                const currentMonth = now.getMonth();
-
-                                for (let year = startYear; year <= currentYear; year++) {
-                                    const monthStart = (year === startYear) ? startMonth : 0;
-                                    const monthEnd = (year === currentYear) ? currentMonth : 11;
-
-                                    for (let month = monthStart; month <= monthEnd; month++) {
-                                        const ym = `${year}-${String(month + 1).padStart(2, '0')}`;
-                                        const label = `${monthNames[month].charAt(0).toUpperCase() + monthNames[month].slice(1)} ${year}`;
-                                        opts.push({ value: `month:${ym}`, label });
-                                    }
-                                }
-
-                                // Přidáme vlastní období na začátek
-                                opts.unshift({ value: 'custom', label: '🗓️ Vlastní období' });
-
-                                // Řadíme měsíce od nejnovějšího k nejstaršímu (kromě první možnosti)
-                                const customOption = opts.shift();
-                                opts.reverse();
-                                opts.unshift(customOption);
+                                const opts = buildAnalyticsMonthFilterOptions();
 
                                 const currentValue = filters.period === 'monthly_select' ? `month:${filters.selected_month}` : 'custom';
                                 return (
@@ -215,23 +173,17 @@ const ProdejnyPolozky = () => {
                                         value={currentValue}
                                         placeholder="Vyberte období"
                                         onChange={(selectedValue) => {
-                                            console.log('ProdejnyPolozky: CustomDropdown onChange:', selectedValue);
                                             if (selectedValue === 'custom') {
                                                 handleFilterChange('period', 'custom');
                                             } else if (selectedValue.startsWith('month:')) {
                                                 const ym = selectedValue.split(':')[1];
-                                                console.log('ProdejnyPolozky: Setting month:', ym);
-                                                setFilters(prev => {
-                                                    const newFilters = {
-                                                        ...prev,
-                                                        period: 'monthly_select',
-                                                        selected_month: ym,
-                                                        start_date: '',
-                                                        end_date: ''
-                                                    };
-                                                    console.log('ProdejnyPolozky: New filters:', newFilters);
-                                                    return newFilters;
-                                                });
+                                                setFilters(prev => ({
+                                                    ...prev,
+                                                    period: 'monthly_select',
+                                                    selected_month: ym,
+                                                    start_date: '',
+                                                    end_date: '',
+                                                }));
                                                 setDateError('');
                                             }
                                         }}
