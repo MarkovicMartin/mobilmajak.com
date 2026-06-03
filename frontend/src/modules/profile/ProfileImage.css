@@ -354,4 +354,129 @@
     .upload-tips li {
         font-size: 0.8rem;
     }
-} 
+}
+
+/* Vložený do Osobních údajů */
+.profile-image--embedded {
+    flex: 1 1 280px;
+    min-width: 0;
+    margin: 0;
+}
+
+.profile-image--embedded .message {
+    margin-bottom: 10px;
+}
+
+.profile-image-embedded {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+}
+
+.profile-image-embedded__avatar .profile-preview {
+    width: 88px;
+    height: 88px;
+    margin-bottom: 0;
+}
+
+.profile-image-embedded__avatar .no-image-icon {
+    width: 88px;
+    height: 88px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 4.5rem;
+    color: #c5ccd6;
+    border-radius: 50%;
+    background: #eef1f5;
+}
+
+.profile-image-embedded__body {
+    flex: 1;
+    min-width: 0;
+}
+
+.profile-image-embedded__name {
+    margin: 0 0 4px;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #2c3e50;
+}
+
+.profile-image-embedded__meta {
+    margin: 0 0 10px;
+    font-size: 0.8rem;
+    color: #7f8c8d;
+}
+
+.profile-image--embedded .upload-area {
+    margin-bottom: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.profile-image--embedded .upload-button--compact {
+    flex-direction: row;
+    padding: 8px 14px;
+    border-style: solid;
+    border-width: 1px;
+    border-color: #dde3ea;
+    border-radius: 8px;
+}
+
+.profile-image--embedded .upload-button--compact i {
+    font-size: 1rem;
+}
+
+.profile-image--embedded .upload-button--compact span {
+    font-size: 0.88rem;
+}
+
+.profile-image--embedded .delete-button--compact {
+    padding: 8px 14px;
+    font-size: 0.85rem;
+    border-radius: 8px;
+}
+
+.profile-image--embedded .file-selected--compact {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+}
+
+.profile-image--embedded .preview-image--compact {
+    width: 56px;
+    height: 56px;
+    border-radius: 8px;
+}
+
+.profile-image--embedded .file-actions {
+    margin: 0;
+    gap: 8px;
+}
+
+@media (max-width: 600px) {
+    .profile-info-top {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .profile-info-top .edit-button {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .profile-image-embedded {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+
+    .profile-image--embedded .upload-area {
+        justify-content: center;
+    }
+}

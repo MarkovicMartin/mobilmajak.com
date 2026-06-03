@@ -5,6 +5,7 @@ from django.db.models import Count, Q, Sum
 
 from analytics.models import WebProdejeAll
 from analytics.points_config import POINTS_METRIC_KEYS, calculate_product_points
+from analytics.sunshine_config import SUNSHINE_METRIC_KEY, sunshine_kusy_sum, sunshine_row_q
 from analytics.viceprace_config import polozky_nad_100_q
 from analytics.views import (
     _build_points_payload,
@@ -61,6 +62,12 @@ def batch_sales_metrics_for_month(rok, mesic_cislo, user_ids):
             uid = row['id_prodejce']
             if uid in metrics:
                 metrics[uid][key] = row['v'] or 0
+
+    sunshine_rows = base.values('id_prodejce').annotate(v=sunshine_kusy_sum())
+    for row in sunshine_rows:
+        uid = row['id_prodejce']
+        if uid in metrics and (row['v'] or 0):
+            metrics[uid][SUNSHINE_METRIC_KEY] = int(row['v'] or 0)
 
     return metrics
 

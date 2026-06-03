@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import './ProfileInfo.css';
+import ProfileImage from './ProfileImage';
 
-const ProfileInfo = ({ user, onProfileUpdate }) => {
+const ProfileInfo = ({ user, onProfileUpdate, onImageUpdate }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [isChangingPassword, setIsChangingPassword] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -134,24 +135,25 @@ const ProfileInfo = ({ user, onProfileUpdate }) => {
 
     return (
         <div className="profile-info">
-            <div className="info-header">
-                <h2>Osobní údaje</h2>
-                {!isEditing && (
-                    <button 
-                        className="edit-button"
-                        onClick={() => setIsEditing(true)}
-                    >
-                        <i className="fas fa-edit"></i>
-                        Upravit
-                    </button>
-                )}
-            </div>
-
             {message && (
                 <div className={`message ${messageType}`}>
                     {message}
                 </div>
             )}
+
+            <div className="profile-info-top">
+                <ProfileImage user={user} onImageUpdate={onImageUpdate} embedded />
+                {!isEditing && (
+                    <button
+                        type="button"
+                        className="edit-button"
+                        onClick={() => setIsEditing(true)}
+                    >
+                        <i className="fas fa-edit" aria-hidden="true" />
+                        Upravit údaje
+                    </button>
+                )}
+            </div>
 
             <div className="info-sections">
                 {/* Osobní údaje */}

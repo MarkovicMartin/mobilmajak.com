@@ -1,6 +1,6 @@
 /**
- * Bodové sazby – shodné s backend analytics/points_config.py
- * (u služeb příplatek nad základ 15 bodů/kus u položek nad 100 Kč).
+ * Bodové sazby – shodné s backend analytics/points_config.py a sunshine_config.py
+ * (u služeb příplatek nad základ 15 bodů/kus; SUNSHINE +15 bodů/kus navíc k položce nad 100 Kč).
  */
 export const PRODUCT_COMMISSIONS = [
     { key: 'polozky_nad_100', label: 'Položky nad 100 Kč', rate: 15 },
@@ -14,6 +14,7 @@ export const PRODUCT_COMMISSIONS = [
     { key: 'kop500', label: 'KOP500', rate: 35 },
     { key: 'pz1', label: 'PZ1', rate: 85 },
     { key: 'knz', label: 'KNZ', rate: 15 },
+    { key: 'sunshine', label: 'SUNSHINE fólie (+15 nad položku)', rate: 15 },
 ];
 
 /** CT300 – pouze počet kusů, nezapočítává se do bodů */

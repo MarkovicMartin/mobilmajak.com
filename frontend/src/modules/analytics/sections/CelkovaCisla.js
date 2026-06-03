@@ -7,7 +7,6 @@ import {
     buildInitialCelkovaFilters,
     shiftFiltersOneYearBack,
     formatFiltersPeriodLabel,
-    formatChartRangeLabel,
     formatMonthKeyLabel,
     periodToMonthKey,
     buildLastMonthKeys,
@@ -15,20 +14,6 @@ import {
 import './CelkovaCisla.css';
 
 const TIMESERIES_MONTHS = 12;
-
-const PeriodEdgeBadge = ({ label, sublabel }) => (
-    <div className="celkova-period-edge-badge" title={sublabel || label}>
-        <span className="celkova-period-edge-badge__icon">📅</span>
-        <span className="celkova-period-edge-badge__text">{label}</span>
-    </div>
-);
-
-const PaneWithPeriodBadge = ({ periodLabel, children, className = '' }) => (
-    <div className={`celkova-pane-shell ${className}`.trim()}>
-        <PeriodEdgeBadge label={periodLabel} />
-        {children}
-    </div>
-);
 
 const CategoryTimeseries = ({ filters, defaultGroupBy, defaultSelected }) => {
     const [data, setData] = useState(null);
@@ -38,8 +23,6 @@ const CategoryTimeseries = ({ filters, defaultGroupBy, defaultSelected }) => {
     const [groupBy, setGroupBy] = useState('monthly');
     const [selected, setSelected] = useState([]);
     const [tip, setTip] = useState({ visible: false, x: 0, y: 0, text: '' });
-    const [chartRangeLabel, setChartRangeLabel] = useState('Posledních 12 měsíců');
-
     useEffect(() => {
         const load = async () => {
             setLoading(true); setError(null);
@@ -55,7 +38,6 @@ const CategoryTimeseries = ({ filters, defaultGroupBy, defaultSelected }) => {
                 const json = await res.json();
                 if (!json.success && json.data === undefined) throw new Error(json.error || 'Chyba');
                 setData(json);
-                setChartRangeLabel(formatChartRangeLabel(json.chart_range));
                 if (!selected.length) {
                     const avail = (json.available || []);
                     // prefer defaultSelected if exist in available
@@ -90,7 +72,6 @@ const CategoryTimeseries = ({ filters, defaultGroupBy, defaultSelected }) => {
 
     return (
         <div className="celkova-cisla-top celkova-cisla-top--chart">
-            <PeriodEdgeBadge label={chartRangeLabel} sublabel="Rozsah grafu – posledních 12 měsíců" />
             <div className="celkova-cisla-top__head">
                 <div>
                     <h3>📅 Prodeje v čase</h3>
@@ -1194,7 +1175,7 @@ const CelkovaCislaView = ({ isComparison = false, paneRole = 'single', filtersFr
             {data && !loading && (
                 <>
                     {/* Hlavní metriky */}
-                    <PaneWithPeriodBadge periodLabel={periodLabel} className="celkova-metrics-shell">
+                    <div className="celkova-metrics-shell">
                     <div className="celkova-cisla-metrics">
                         <div className="metric-card">
                             <div className="metric-icon">💰</div>
@@ -1269,10 +1250,10 @@ const CelkovaCislaView = ({ isComparison = false, paneRole = 'single', filtersFr
                             </div>
                         </div>
                     </div>
-                    </PaneWithPeriodBadge>
+                    </div>
 
                     {/* Rozklad podle kanálů */}
-                    <PaneWithPeriodBadge periodLabel={periodLabel} className="celkova-breakdown-shell">
+                    <div className="celkova-breakdown-shell">
                     <div className="celkova-cisla-breakdown">
                         <h3>📊 Rozklad podle prodejních kanálů</h3>
                         <div className="breakdown-cards">
@@ -1346,7 +1327,7 @@ const CelkovaCislaView = ({ isComparison = false, paneRole = 'single', filtersFr
                             </div>
                         </div>
                     </div>
-                    </PaneWithPeriodBadge>
+                    </div>
 
                     {isComparison && detailOpen && detailChannel === 'prodejna' && (
                             <div className="inline-detail-panel" ref={inlinePanelRef}>

@@ -1,21 +1,22 @@
 .profile-info {
-    max-width: 800px;
+    max-width: 900px;
     margin: 0 auto;
 }
 
-.info-header {
+.profile-info-top {
     display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
     justify-content: space-between;
-    align-items: center;
-    margin-bottom: 30px;
-    padding-bottom: 15px;
-    border-bottom: 2px solid #f0f0f0;
+    gap: 12px 16px;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #e8ecf1;
 }
 
-.info-header h2 {
-    color: #333;
-    font-size: 1.8rem;
-    margin: 0;
+.profile-info-top .edit-button {
+    align-self: center;
+    flex-shrink: 0;
 }
 
 .edit-button {
@@ -59,21 +60,21 @@
 
 .info-sections {
     display: grid;
-    gap: 30px;
+    gap: 16px;
 }
 
 .info-section {
     background: #f8f9fa;
-    padding: 25px;
-    border-radius: 12px;
+    padding: 16px 18px;
+    border-radius: 10px;
     border: 1px solid #e9ecef;
 }
 
 .info-section h3 {
     color: #333;
-    font-size: 1.4rem;
-    margin-bottom: 20px;
-    padding-bottom: 10px;
+    font-size: 1.05rem;
+    margin: 0 0 14px;
+    padding-bottom: 8px;
     border-bottom: 1px solid #dee2e6;
 }
 

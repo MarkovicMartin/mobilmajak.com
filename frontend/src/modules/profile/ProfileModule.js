@@ -2,10 +2,9 @@ import React, { useState, useEffect } from 'react';
 import './ProfileModule.css';
 import ProfileInfo from './ProfileInfo';
 import ProfileAnalytics from './ProfileAnalytics';
-import ProfileImage from './ProfileImage';
 
 const ProfileModule = () => {
-    const [activeTab, setActiveTab] = useState('info');
+    const [activeTab, setActiveTab] = useState('analytics');
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
@@ -18,7 +17,7 @@ const ProfileModule = () => {
             const response = await fetch('/api/users/profile/', {
                 credentials: 'include'
             });
-            
+
             if (response.ok) {
                 const userData = await response.json();
                 setUser(userData);
@@ -60,50 +59,37 @@ const ProfileModule = () => {
 
     return (
         <div className="profile-module">
-            <div className="profile-header">
-                <h1>Můj profil</h1>
-                <p>Správa osobních údajů a přehled výsledků</p>
-            </div>
-
-            <div className="profile-tabs">
-                <button 
-                    className={`tab-button ${activeTab === 'info' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('info')}
-                >
-                    <i className="fas fa-user"></i>
-                    Osobní údaje
-                </button>
-                <button 
+            <div className="profile-tabs" role="tablist" aria-label="Sekce profilu">
+                <button
+                    type="button"
+                    role="tab"
+                    aria-selected={activeTab === 'analytics'}
                     className={`tab-button ${activeTab === 'analytics' ? 'active' : ''}`}
                     onClick={() => setActiveTab('analytics')}
                 >
-                    <i className="fas fa-chart-line"></i>
+                    <i className="fas fa-chart-line" aria-hidden="true" />
                     Moje výsledky
                 </button>
-                <button 
-                    className={`tab-button ${activeTab === 'image' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('image')}
+                <button
+                    type="button"
+                    role="tab"
+                    aria-selected={activeTab === 'info'}
+                    className={`tab-button ${activeTab === 'info' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('info')}
                 >
-                    <i className="fas fa-camera"></i>
-                    Profilový obrázek
+                    <i className="fas fa-user" aria-hidden="true" />
+                    Osobní údaje
                 </button>
             </div>
 
             <div className="profile-content">
-                {activeTab === 'info' && (
-                    <ProfileInfo 
-                        user={user} 
-                        onProfileUpdate={handleProfileUpdate}
-                    />
-                )}
                 {activeTab === 'analytics' && (
-                    <ProfileAnalytics 
-                        userId={user.id}
-                    />
+                    <ProfileAnalytics userId={user.id} />
                 )}
-                {activeTab === 'image' && (
-                    <ProfileImage 
+                {activeTab === 'info' && (
+                    <ProfileInfo
                         user={user}
+                        onProfileUpdate={handleProfileUpdate}
                         onImageUpdate={fetchUserProfile}
                     />
                 )}
@@ -112,4 +98,4 @@ const ProfileModule = () => {
     );
 };
 
-export default ProfileModule; 
+export default ProfileModule;

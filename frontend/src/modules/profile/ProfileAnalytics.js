@@ -258,11 +258,6 @@ const ProfileAnalytics = ({ userId }) => {
 
     return (
         <div className="profile-analytics">
-            <div className="analytics-header">
-                <h2>Moje výsledky</h2>
-                <p>Přehled vašich prodejních výsledků a bodového hodnocení</p>
-            </div>
-
             {error && (
                 <div className="error-message">
                     {error}

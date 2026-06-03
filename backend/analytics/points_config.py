@@ -6,7 +6,11 @@ základ započtený v položkách nad 100 Kč – v řádcích služeb se proto 
 příplatek nad 15 (plná provize minus 15).
 
 CT300 je pouze informační metrika (počet kusů), nezapočítává se do bodů.
+
+SUNSHINE fólie: +15 bodů/kus navíc k položce nad 100 Kč (viz sunshine_config).
 """
+
+from .sunshine_config import SUNSHINE_METRIC_KEY, SUNSHINE_POINTS_PER_UNIT, calculate_sunshine_points
 
 POLOZKY_NAD_100_POINTS_PER_UNIT = 15
 
@@ -40,7 +44,7 @@ SERVICE_EXTRA_POINT_RATES = {
 }
 
 SERVICE_POINT_KEYS = tuple(SERVICE_EXTRA_POINT_RATES.keys())
-POINTS_METRIC_KEYS = ('polozky_nad_100',) + SERVICE_POINT_KEYS
+POINTS_METRIC_KEYS = ('polozky_nad_100',) + SERVICE_POINT_KEYS + (SUNSHINE_METRIC_KEY,)
 
 
 def normalize_points_metrics(source):
@@ -69,10 +73,11 @@ def points_line(data, key, rate):
 
 
 def calculate_product_points(data):
-    """Body z položek nad 100 Kč a služeb (příplatek nad základ 15), bez CT300."""
+    """Body z položek nad 100 Kč, služeb (příplatek nad základ 15) a SUNSHINE, bez CT300."""
     points = _count(data, 'polozky_nad_100') * POLOZKY_NAD_100_POINTS_PER_UNIT
     for key, rate in SERVICE_EXTRA_POINT_RATES.items():
         points += _count(data, key) * rate
+    points += calculate_sunshine_points(_count(data, SUNSHINE_METRIC_KEY))
     return points
 
 
@@ -85,6 +90,9 @@ def build_product_points_breakdown(data):
     }
     for key, rate in SERVICE_EXTRA_POINT_RATES.items():
         breakdown[key] = points_line(data, key, rate)
+    breakdown[SUNSHINE_METRIC_KEY] = points_line(
+        data, SUNSHINE_METRIC_KEY, SUNSHINE_POINTS_PER_UNIT
+    )
     for key in DISPLAY_ONLY_METRICS:
         count = _count(data, key)
         breakdown[key] = {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './ProfileImage.css';
 
-const ProfileImage = ({ user, onImageUpdate }) => {
+const ProfileImage = ({ user, onImageUpdate, embedded = false }) => {
     const [profileImage, setProfileImage] = useState(null);
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState('');
@@ -137,6 +137,102 @@ const ProfileImage = ({ user, onImageUpdate }) => {
         setMessage('');
     };
 
+    const uploadInputId = embedded ? 'image-upload-embedded' : 'image-upload';
+
+    const uploadControls = (
+        <div className="upload-area">
+            <input
+                type="file"
+                id={uploadInputId}
+                accept="image/jpeg,image/jpg,image/png,image/gif"
+                onChange={handleFileSelect}
+                style={{ display: 'none' }}
+            />
+            {!selectedFile ? (
+                <>
+                    <label htmlFor={uploadInputId} className="upload-button upload-button--compact">
+                        <i className="fas fa-camera" aria-hidden="true" />
+                        <span>{profileImage ? 'Změnit foto' : 'Nahrát foto'}</span>
+                    </label>
+                    {profileImage && (
+                        <button
+                            type="button"
+                            className="delete-button delete-button--compact"
+                            onClick={handleDelete}
+                            disabled={loading}
+                        >
+                            <i className="fas fa-trash" aria-hidden="true" />
+                            Smazat
+                        </button>
+                    )}
+                </>
+            ) : (
+                <div className="file-selected file-selected--compact">
+                    <img src={previewUrl} alt="Náhled" className="preview-image preview-image--compact" />
+                    <div className="file-actions">
+                        <button
+                            type="button"
+                            className="upload-confirm-button"
+                            onClick={handleUpload}
+                            disabled={loading}
+                        >
+                            {loading ? 'Nahrávám…' : 'Nahrát'}
+                        </button>
+                        <button
+                            type="button"
+                            className="cancel-button"
+                            onClick={cancelUpload}
+                            disabled={loading}
+                        >
+                            Zrušit
+                        </button>
+                    </div>
+                </div>
+            )}
+            {!embedded && !selectedFile && (
+                <small className="upload-hint">JPG, PNG nebo GIF (max 5 MB)</small>
+            )}
+        </div>
+    );
+
+    const avatarBlock = profileImage ? (
+        <img
+            src={profileImage.obrazek}
+            alt="Profilový obrázek"
+            className="profile-preview"
+        />
+    ) : (
+        <div className="no-image-icon" aria-hidden="true">
+            <i className="fas fa-user-circle" />
+        </div>
+    );
+
+    if (embedded) {
+        return (
+            <div className="profile-image profile-image--embedded">
+                {message && (
+                    <div className={`message ${messageType}`}>
+                        {message}
+                    </div>
+                )}
+                <div className="profile-image-embedded">
+                    <div className="profile-image-embedded__avatar">{avatarBlock}</div>
+                    <div className="profile-image-embedded__body">
+                        <p className="profile-image-embedded__name">
+                            {[user?.jmeno, user?.prijmeni].filter(Boolean).join(' ') || 'Váš profil'}
+                        </p>
+                        {profileImage?.datum_nahrani && (
+                            <p className="profile-image-embedded__meta">
+                                Foto z {new Date(profileImage.datum_nahrani).toLocaleDateString('cs-CZ')}
+                            </p>
+                        )}
+                        {uploadControls}
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="profile-image">
             <div className="image-header">
@@ -151,24 +247,20 @@ const ProfileImage = ({ user, onImageUpdate }) => {
             )}
 
             <div className="image-content">
-                {/* Aktuální obrázek */}
                 <div className="current-image-section">
                     <h3>Aktuální obrázek</h3>
                     {profileImage ? (
                         <div className="current-image">
-                            <img 
-                                src={profileImage.obrazek} 
-                                alt="Profilový obrázek" 
-                                className="profile-preview"
-                            />
+                            {avatarBlock}
                             <div className="image-info">
                                 <p>Nahráno: {new Date(profileImage.datum_nahrani).toLocaleDateString('cs-CZ')}</p>
-                                <button 
+                                <button
+                                    type="button"
                                     className="delete-button"
                                     onClick={handleDelete}
                                     disabled={loading}
                                 >
-                                    <i className="fas fa-trash"></i>
+                                    <i className="fas fa-trash" aria-hidden="true" />
                                     Smazat obrázek
                                 </button>
                             </div>
@@ -176,69 +268,22 @@ const ProfileImage = ({ user, onImageUpdate }) => {
                     ) : (
                         <div className="no-image">
                             <div className="no-image-icon">
-                                <i className="fas fa-user-circle"></i>
+                                <i className="fas fa-user-circle" aria-hidden="true" />
                             </div>
                             <p>Žádný profilový obrázek</p>
                         </div>
                     )}
                 </div>
 
-                {/* Nahrání nového obrázku */}
                 <div className="upload-section">
                     <h3>Nahrát nový obrázek</h3>
-                    
-                    <div className="upload-area">
-                        <input
-                            type="file"
-                            id="image-upload"
-                            accept="image/jpeg,image/jpg,image/png,image/gif"
-                            onChange={handleFileSelect}
-                            style={{ display: 'none' }}
-                        />
-                        
-                        {!selectedFile ? (
-                            <label htmlFor="image-upload" className="upload-button">
-                                <i className="fas fa-cloud-upload-alt"></i>
-                                <span>Vybrat obrázek</span>
-                                <small>JPG, PNG nebo GIF (max 5MB)</small>
-                            </label>
-                        ) : (
-                            <div className="file-selected">
-                                <div className="file-preview">
-                                    <img src={previewUrl} alt="Náhled" className="preview-image" />
-                                </div>
-                                <div className="file-info">
-                                    <p><strong>Soubor:</strong> {selectedFile.name}</p>
-                                    <p><strong>Velikost:</strong> {(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
-                                    <p><strong>Typ:</strong> {selectedFile.type}</p>
-                                </div>
-                                <div className="file-actions">
-                                    <button 
-                                        className="upload-confirm-button"
-                                        onClick={handleUpload}
-                                        disabled={loading}
-                                    >
-                                        {loading ? 'Nahrávám...' : 'Nahrát obrázek'}
-                                    </button>
-                                    <button 
-                                        className="cancel-button"
-                                        onClick={cancelUpload}
-                                        disabled={loading}
-                                    >
-                                        Zrušit
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
+                    {uploadControls}
                     <div className="upload-tips">
                         <h4>Tipy pro nahrávání:</h4>
                         <ul>
-                            <li>Doporučená velikost: 300x300 pixelů</li>
+                            <li>Doporučená velikost: 300×300 pixelů</li>
                             <li>Podporované formáty: JPG, PNG, GIF</li>
-                            <li>Maximální velikost: 5MB</li>
-                            <li>Pro nejlepší kvalitu použijte čtvercový obrázek</li>
+                            <li>Maximální velikost: 5 MB</li>
                         </ul>
                     </div>
                 </div>

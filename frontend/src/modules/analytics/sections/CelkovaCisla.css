@@ -345,51 +345,9 @@
     color: #95a5a6;
 }
 
-/* Štítek období na okraji dlaždice */
-.celkova-pane-shell {
-    position: relative;
+.celkova-metrics-shell,
+.celkova-breakdown-shell {
     margin-bottom: 14px;
-}
-
-.celkova-period-edge-badge {
-    position: absolute;
-    top: 10px;
-    right: 0;
-    z-index: 2;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    padding: 4px 10px 4px 8px;
-    background: linear-gradient(135deg, #3498db, #2980b9);
-    color: #fff;
-    border-radius: 8px 0 0 8px;
-    box-shadow: -2px 1px 6px rgba(52, 152, 219, 0.35);
-    font-size: 0.72rem;
-    font-weight: 600;
-    line-height: 1.2;
-    max-width: 42%;
-    text-align: right;
-}
-
-.celkova-cisla-top .celkova-period-edge-badge {
-    top: 8px;
-    left: 0;
-    right: auto;
-    border-radius: 0 8px 8px 0;
-    box-shadow: 2px 1px 6px rgba(52, 152, 219, 0.35);
-    text-align: left;
-    max-width: 38%;
-}
-
-.celkova-period-edge-badge__icon {
-    font-size: 0.85rem;
-    flex-shrink: 0;
-}
-
-.celkova-period-edge-badge__text {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
 }
 
 .celkova-cisla-metrics .metric-card--bazar .metric-content {
@@ -421,11 +379,6 @@
     margin: 0;
     flex: 1 1 100%;
     padding-left: 6.85rem;
-}
-
-.celkova-metrics-shell .celkova-cisla-metrics,
-.celkova-breakdown-shell .celkova-cisla-breakdown {
-    padding-right: 8px;
 }
 
 .celkova-cisla-controls {

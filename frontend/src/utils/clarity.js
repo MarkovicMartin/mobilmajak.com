@@ -1,7 +1,9 @@
 /**
- * Bezpečné volání Microsoft Clarity (skript v public/index.html).
- * Tagy „route“ a „screen“ umožní ve filtrech oddělit SPA obrazovky.
+ * Microsoft Clarity – načtení podle REACT_APP_CLARITY_PROJECT_ID (viz frontend/.env.example).
+ * Tagy route/screen pro filtry ve SPA.
  */
+
+const PROJECT_ID = (process.env.REACT_APP_CLARITY_PROJECT_ID || '').trim();
 
 const ROUTE_SCREEN = {
     '/': 'home',
@@ -18,6 +20,37 @@ const ROUTE_SCREEN = {
     '/stores': 'stores',
     '/tickets': 'tickets',
 };
+
+let initStarted = false;
+
+export function getClarityProjectId() {
+    return PROJECT_ID;
+}
+
+export function isClarityEnabled() {
+    return Boolean(PROJECT_ID);
+}
+
+/** Jednorázové vložení oficiálního Clarity tagu (stejný snippet jako dříve v index.html). */
+export function initClarity() {
+    if (!PROJECT_ID || initStarted || typeof document === 'undefined') {
+        return false;
+    }
+    initStarted = true;
+
+    (function (c, l, a, r, i, t, y) {
+        c[a] = c[a] || function () {
+            (c[a].q = c[a].q || []).push(arguments);
+        };
+        t = l.createElement(r);
+        t.async = 1;
+        t.src = 'https://www.clarity.ms/tag/' + i;
+        y = l.getElementsByTagName(r)[0];
+        y.parentNode.insertBefore(t, y);
+    })(window, document, 'clarity', 'script', PROJECT_ID);
+
+    return true;
+}
 
 export function routeToScreen(pathname) {
     if (!pathname || pathname === '/') {
@@ -37,17 +70,18 @@ export function clarityCall(...args) {
     }
 }
 
-/** Virtual page + filtry po obrazovce (React Router pathname). */
 export function trackClarityPage(pathname) {
+    if (!PROJECT_ID) {
+        return;
+    }
     const screen = routeToScreen(pathname);
     clarityCall('set', 'route', pathname);
     clarityCall('set', 'screen', screen);
     clarityCall('event', 'spa_pageview');
 }
 
-/** Vlastní událost (např. chyba formuláře) – zobrazí se v Clarity Events. */
 export function trackClarityEvent(name) {
-    if (name) {
+    if (name && PROJECT_ID) {
         clarityCall('event', name);
     }
 }

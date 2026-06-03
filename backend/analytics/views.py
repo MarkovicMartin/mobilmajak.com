@@ -46,6 +46,7 @@ from .points_config import (
     build_product_points_breakdown,
     normalize_points_metrics,
 )
+from .sunshine_config import sunshine_kusy_sum, sunshine_row_q
 from .viceprace_config import (
     polozky_nad_100_q,
     viceprace_row_q,
@@ -2169,21 +2170,21 @@ def celkova_cisla_view(request):
         aggregations['vykupy_suma'] = float(vykupy_stats.get('celkova_cena_bez_dph') or 0)
 
         bazar_stats = queryset.filter(_bazar_prodane_q()).aggregate(
-            pocet_kusu=Sum('pocet_kusu', default=0),
-            obrat_bez_dph=Sum(
+            bazar_pocet_kusu=Sum('pocet_kusu', default=0),
+            bazar_obrat_bez_dph=Sum(
                 F('pocet_kusu') * F('cena_ks_bez_dph'),
                 output_field=DecimalField(max_digits=15, decimal_places=2),
                 default=0,
             ),
-            marze_bez_dph=Sum(
+            bazar_marze_bez_dph=Sum(
                 F('pocet_kusu') * F('zisk'),
                 output_field=DecimalField(max_digits=15, decimal_places=2),
                 default=0,
             ),
         )
-        aggregations['bazar_prodano_pocet'] = int(bazar_stats.get('pocet_kusu') or 0)
-        aggregations['bazar_prodano_suma'] = float(bazar_stats.get('obrat_bez_dph') or 0)
-        aggregations['bazar_prodano_marze'] = float(bazar_stats.get('marze_bez_dph') or 0)
+        aggregations['bazar_prodano_pocet'] = int(bazar_stats.get('bazar_pocet_kusu') or 0)
+        aggregations['bazar_prodano_suma'] = float(bazar_stats.get('bazar_obrat_bez_dph') or 0)
+        aggregations['bazar_prodano_marze'] = float(bazar_stats.get('bazar_marze_bez_dph') or 0)
         
         # Rozklad podle kanálů – stejná definice e-shop / Allegro jako v modulu E-shop
         eshop_metrics = _aggregate_kanaly_metrics(_eshop_pure_queryset(queryset))
@@ -5707,7 +5708,7 @@ def web_prodeje_polozky_view(request):
                 pz1=Count('id', filter=Q(kod='PZ1')),
                 knz=Count('id', filter=Q(kod='KNZ')),
                 # 3. SUNSHINE
-                sunshine=Count('id', filter=Q(nazev__icontains='SUNSHINE')),
+                sunshine=sunshine_kusy_sum(),
                 # 4. Sklíčka a Lepení
                 sklicka=Count('id', filter=Q(kategorie_1='Skla a fólie')),
                 lepeni=Count('id', filter=Q(kod='LOS')),
@@ -6155,6 +6156,7 @@ def _aggregate_web_prodeje_all_salesperson(queryset, user_id, iso_date):
             'pz1': 0,
             'knz': 0,
             'aligator': 0,
+            'sunshine': 0,
         }
 
     # Základní info
@@ -6166,6 +6168,9 @@ def _aggregate_web_prodeje_all_salesperson(queryset, user_id, iso_date):
 
     # Vynecháváme dopravné (položky bez kódu), počítáme podle Pocet_kusu
     polozky_nad_100 = queryset.filter(polozky_nad_100_q()).aggregate(total=Sum('pocet_kusu', default=0))['total'] or 0
+    sunshine = queryset.filter(sunshine_row_q()).aggregate(
+        total=Sum('pocet_kusu', default=0),
+    )['total'] or 0
     viceprace_data = aggregate_viceprace(queryset)
 
     # Služby
@@ -6220,6 +6225,7 @@ def _aggregate_web_prodeje_all_salesperson(queryset, user_id, iso_date):
         'pz1': pz1,
         'knz': knz,
         'aligator': 0,
+        'sunshine': sunshine,
     }
 
 
@@ -6291,6 +6297,7 @@ def _leaderboard_seller_aggregation(month_queryset):
         kop500=Count('id', filter=Q(kod='KOP500')),
         pz1=Count('id', filter=Q(kod='PZ1')),
         knz=Count('id', filter=Q(kod='KNZ')),
+        sunshine=sunshine_kusy_sum(),
         polozky_nad_29=Count('id', filter=qualifying_polozka_q()),
         unikatni_doklady=Count(
             'doklad',
@@ -6357,6 +6364,7 @@ def _leaderboard_item_points_data(item):
         'pz1': item.get('pz1') or 0,
         'knz': item.get('knz') or 0,
         'aligator': 0,
+        'sunshine': item.get('sunshine') or 0,
     }
 
 
