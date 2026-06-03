@@ -147,10 +147,12 @@ const PointsLeaderboard = ({
         ? (vicepraceLeader.prodejce || '—')
         : (vicepraceTopObrat > 0 ? topVicepraceFromData?.prodejce : '—');
 
-    const statCardKeys = hideLastPeriodColumn
+    const showVykupy = !hideStoreColumn;
+    const statCardKeys = (hideLastPeriodColumn
         ? [
             METRIC_KEYS.TOTAL_POINTS,
             METRIC_KEYS.SERVIS,
+            ...(showVykupy ? [METRIC_KEYS.VYKUPY] : []),
             METRIC_KEYS.VICEPRACE,
             METRIC_KEYS.PRUMER_POLOZEK,
             METRIC_KEYS.PRUMER_HODNOTA,
@@ -158,11 +160,12 @@ const PointsLeaderboard = ({
         : [
             METRIC_KEYS.TOTAL_POINTS,
             METRIC_KEYS.SERVIS,
+            ...(showVykupy ? [METRIC_KEYS.VYKUPY] : []),
             METRIC_KEYS.VICEPRACE,
             METRIC_KEYS.PRUMER_POLOZEK,
             METRIC_KEYS.PRUMER_HODNOTA,
             METRIC_KEYS.LAST_PERIOD,
-        ];
+        ]);
 
     const renderStatCardValue = (metricKey) => {
         if (metricKey === METRIC_KEYS.TOTAL_POINTS) {
@@ -225,6 +228,12 @@ const PointsLeaderboard = ({
                         <span className="breakdown-label">Servis</span>
                         <span className="breakdown-value">{(seller.servis_provize ?? 0).toLocaleString('cs-CZ')}</span>
                     </div>
+                    {showVykupy && (
+                        <div className="breakdown-cell breakdown-vykupy">
+                            <span className="breakdown-label">Výkupy</span>
+                            <span className="breakdown-value">{seller.vykupy ?? 0}</span>
+                        </div>
+                    )}
                     <div className="breakdown-cell breakdown-viceprace">
                         <span className="breakdown-label">{VICEPRACE_LABEL}</span>
                         <span className="breakdown-value">{formatVicepraceObrat(seller.viceprace_obrat)}</span>
@@ -346,6 +355,7 @@ const PointsLeaderboard = ({
                                     {!hideStoreColumn && <th className="col-store">Prodejna</th>}
                                     {renderSortableHeader(METRIC_KEYS.TOTAL_POINTS, 'Body')}
                                     {renderSortableHeader(METRIC_KEYS.SERVIS, 'Servis')}
+                                    {showVykupy && renderSortableHeader(METRIC_KEYS.VYKUPY, 'Výkupy')}
                                     {renderSortableHeader(METRIC_KEYS.VICEPRACE, VICEPRACE_LABEL)}
                                     {renderSortableHeader(METRIC_KEYS.PRUMER_POLOZEK, 'Pol./účt.')}
                                     {renderSortableHeader(METRIC_KEYS.PRUMER_HODNOTA, 'Hodn. účt.')}
@@ -385,6 +395,11 @@ const PointsLeaderboard = ({
                                                 {(seller.servis_provize ?? 0).toLocaleString('cs-CZ')}
                                             </span>
                                         </td>
+                                        {showVykupy && (
+                                            <td className={`col-num ${rankMetric === METRIC_KEYS.VYKUPY ? 'cell-active' : ''}`}>
+                                                {seller.vykupy ?? 0}
+                                            </td>
+                                        )}
                                         <td className={`col-num ${rankMetric === METRIC_KEYS.VICEPRACE ? 'cell-active' : ''}`}>
                                             {formatVicepraceObrat(seller.viceprace_obrat)}
                                         </td>
@@ -419,6 +434,7 @@ const PointsLeaderboard = ({
                             {(rankMetric === METRIC_KEYS.TOTAL_POINTS
                                 || rankMetric === METRIC_KEYS.SERVIS
                                 || rankMetric === METRIC_KEYS.LAST_PERIOD) ? ' bodů' : ''}
+                            {rankMetric === METRIC_KEYS.VYKUPY ? ' ks' : ''}
                         </span>
                         <span className="store">{currentUser.prodejna}</span>
                     </div>

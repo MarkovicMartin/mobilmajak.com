@@ -1,0 +1,194 @@
+.absent-stores {
+    padding: 16px;
+}
+
+.absent-stores.loading {
+    padding: 40px;
+    text-align: center;
+    color: #64748b;
+}
+
+.absent-stores-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 12px;
+}
+
+.absent-stores-toolbar h3 {
+    margin: 0 0 6px;
+    font-size: 1.25rem;
+    color: #b91c1c;
+}
+
+.absent-stores-sub {
+    margin: 0;
+    font-size: 0.88rem;
+    color: #64748b;
+    max-width: 640px;
+    line-height: 1.45;
+}
+
+.absent-checked-at {
+    font-size: 0.8rem;
+    color: #94a3b8;
+    margin: 0 0 12px;
+}
+
+.camera-planned-card {
+    background: #f0f9ff;
+    border: 1px solid #bae6fd;
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-bottom: 16px;
+    font-size: 0.85rem;
+    color: #0c4a6e;
+}
+
+.camera-planned-card p {
+    margin: 6px 0 0;
+    line-height: 1.4;
+}
+
+.camera-nvr-guide {
+    margin-top: 12px;
+    font-size: 0.85rem;
+}
+
+.camera-nvr-guide summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: #0369a1;
+}
+
+.camera-nvr-note {
+    margin: 8px 0;
+    color: #0c4a6e;
+}
+
+.camera-nvr-method {
+    margin: 10px 0;
+}
+
+.camera-nvr-method ol {
+    margin: 6px 0 0;
+    padding-left: 1.2rem;
+}
+
+.camera-nvr-creds {
+    margin: 10px 0 0;
+    padding-left: 1.2rem;
+    color: #334155;
+}
+
+.absent-all-ok {
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 10px;
+    padding: 20px;
+    color: #166534;
+    font-size: 0.95rem;
+}
+
+.absent-ok-count {
+    display: block;
+    margin-top: 6px;
+    font-size: 0.85rem;
+}
+
+.absent-stores-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 12px;
+}
+
+.absent-store-card {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-left-width: 4px;
+    border-radius: 10px;
+    padding: 14px;
+}
+
+.absent-store-card h4 {
+    margin: 0 0 8px;
+    font-size: 1.05rem;
+    color: #991b1b;
+}
+
+.absent-store-meta {
+    margin: 0 0 10px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #b91c1c;
+}
+
+.absent-shift-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.absent-shift-list li {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 6px 0;
+    border-top: 1px solid #fecaca;
+    font-size: 0.88rem;
+}
+
+.absent-name {
+    font-weight: 600;
+    color: #7f1d1d;
+}
+
+.absent-plan {
+    color: #64748b;
+    white-space: nowrap;
+}
+
+.absent-ok-details {
+    margin-top: 20px;
+    font-size: 0.88rem;
+    color: #475569;
+}
+
+.absent-ok-details summary {
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.absent-ok-list {
+    margin: 10px 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.absent-ok-list li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+}
+
+.absent-ok-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+
+.btn-secondary-sm {
+    padding: 6px 12px;
+    border: 1px solid #cbd5e1;
+    background: #fff;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+.btn-secondary-sm:hover {
+    background: #f8fafc;
+}

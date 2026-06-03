@@ -3,6 +3,7 @@ import { VICEPRACE_LABEL, formatVicepraceObrat } from '../../constants/viceprace
 export const METRIC_KEYS = {
     TOTAL_POINTS: 'total_points',
     SERVIS: 'servis',
+    VYKUPY: 'vykupy',
     VICEPRACE: 'viceprace',
     PRUMER_POLOZEK: 'prumer_polozek',
     PRUMER_HODNOTA: 'prumer_hodnota',
@@ -21,6 +22,12 @@ export const METRICS = {
         label: 'Servis',
         scoreLabel: 'BODŮ',
         rankSubtitle: 'servisní provize z marže',
+    },
+    [METRIC_KEYS.VYKUPY]: {
+        sortKey: 'vykupy',
+        label: 'Výkupy',
+        scoreLabel: 'KS',
+        rankSubtitle: 'počtu výkupů (50 b./kus)',
     },
     [METRIC_KEYS.VICEPRACE]: {
         sortKey: 'viceprace_obrat',
@@ -130,6 +137,7 @@ export const getTopByMetric = (data, metricKey, isDay = false) => {
 export const STAT_CARD_META = {
     [METRIC_KEYS.TOTAL_POINTS]: { icon: '🏆', title: 'Celkové body', showSum: true },
     [METRIC_KEYS.SERVIS]: { icon: '🔧', title: 'Top servis' },
+    [METRIC_KEYS.VYKUPY]: { icon: '📦', title: 'Top výkupy' },
     [METRIC_KEYS.VICEPRACE]: { icon: '🎁', title: null },
     [METRIC_KEYS.PRUMER_POLOZEK]: { icon: '📊', title: 'Top pol./účt.' },
     [METRIC_KEYS.PRUMER_HODNOTA]: { icon: '💰', title: 'Top hodn. účt.' },

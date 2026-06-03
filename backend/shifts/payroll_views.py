@@ -11,10 +11,22 @@ from users.models import WebUser
 
 from .models import MzdovaOdmenaMesic, Smena, SmenaDochazka
 from .payroll_service import build_payroll_preview
+from .attendance_service import (
+    attendance_state_from_history,
+    ensure_auto_close_open_shifts,
+    build_absent_stores_report,
+)
+from .camera_integration import camera_module_status
 
 
 def _require_admin(request):
     if getattr(request.user, 'role', None) != 'ADMIN':
+        return Response({'error': 'Nemáte oprávnění'}, status=status.HTTP_403_FORBIDDEN)
+    return None
+
+
+def _require_admin_or_vedouci(request):
+    if getattr(request.user, 'role', None) not in ('ADMIN', 'VEDOUCI'):
         return Response({'error': 'Nemáte oprávnění'}, status=status.HTTP_403_FORBIDDEN)
     return None
 
@@ -28,19 +40,7 @@ def _parse_mesic(mesic):
 
 
 def _attendance_state(history):
-    if not history:
-        return 'bez_zaznamu', None, None
-    sorted_h = sorted(history, key=lambda x: x.cas)
-    prichod = next((h for h in sorted_h if h.typ_akce == 'prichod'), None)
-    odchod = next((h for h in reversed(sorted_h) if h.typ_akce == 'odchod'), None)
-    last = sorted_h[-1]
-    if last.typ_akce in ('prichod', 'pauza_konec'):
-        stav = 'otevreno'
-    elif last.typ_akce == 'odchod':
-        stav = 'uzavreno'
-    else:
-        stav = 'pauza'
-    return stav, prichod, odchod
+    return attendance_state_from_history(history)
 
 
 def _compute_work_hours_from_history(history):
@@ -241,6 +241,7 @@ def attendance_open(request):
 def attendance_my_status(request):
     """Stav docházky pro přihlášeného – upozornění na zapomenutý odchod."""
     user = request.user
+    ensure_auto_close_open_shifts(user=user, max_days_back=2)
     today = date.today()
     yesterday = today - timedelta(days=1)
 
@@ -270,3 +271,17 @@ def attendance_my_status(request):
                 })
 
     return Response({'warnings': warnings})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def attendance_absent_stores(request):
+    """
+    Admin/vedoucí: prodejny kde právě běží směna, ale zaměstnanec nezaklikl příchod.
+    """
+    denied = _require_admin_or_vedouci(request)
+    if denied:
+        return denied
+    report = build_absent_stores_report()
+    report['camera'] = camera_module_status()
+    return Response(report)

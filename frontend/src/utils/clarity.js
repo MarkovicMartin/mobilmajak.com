@@ -18,7 +18,7 @@ const ROUTE_SCREEN = {
     '/users': 'users',
     '/categories': 'categories',
     '/stores': 'stores',
-    '/tickets': 'tickets',
+    '/tickets': 'my-tickets',
 };
 
 let initStarted = false;

@@ -15,14 +15,13 @@ import LeaderboardModule from '../modules/leaderboard/LeaderboardModule';
 import OrdersModule from '../modules/orders/OrdersModule';
 import PlansModule from '../modules/plans/PlansModule';
 import TicketsModule from '../modules/tickets/TicketsModule';
-import MyTickets from '../modules/tickets/MyTickets';
 import './Dashboard.css';
 import AdminDashboard from './AdminDashboard';
 import SellerDashboard from './SellerDashboard';
 import AppToast from './AppToast';
 
 const Dashboard = () => {
-    const { user, logout, isAdmin, canManageTickets } = useAuth();
+    const { user, logout, isAdmin } = useAuth();
     const { isDarkMode, toggleTheme } = useTheme();
 
     return (
@@ -31,7 +30,6 @@ const Dashboard = () => {
             <DockNavbar
                 user={user}
                 isAdmin={isAdmin}
-                canManageTickets={canManageTickets}
                 logout={logout}
                 isDarkMode={isDarkMode}
                 toggleTheme={toggleTheme}
@@ -54,18 +52,15 @@ const Dashboard = () => {
                     <Route path="/leaderboard" element={<LeaderboardModule />} />
                     <Route path="/profile" element={<ProfileModule />} />
                     
-                    <Route path="/my-tickets" element={<MyTickets />} />
+                    <Route path="/my-tickets" element={<TicketsModule />} />
+                    <Route path="/tickets" element={<Navigate to="/my-tickets" replace />} />
 
-                    {/* Admin / správce ticketů */}
-                        {isAdmin() && (
+                    {isAdmin() && (
                         <>
                             <Route path="/users" element={<UserManagement />} />
                             <Route path="/categories" element={<CategoryManager />} />
                             <Route path="/stores" element={<StoreManagement />} />
                         </>
-                    )}
-                    {canManageTickets() && (
-                        <Route path="/tickets" element={<TicketsModule />} />
                     )}
                 </Routes>
             </main>

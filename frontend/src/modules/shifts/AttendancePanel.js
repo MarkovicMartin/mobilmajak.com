@@ -246,6 +246,13 @@ function AttendancePanel({ user }) {
             {error && <div className="error-message">{error}</div>}
 
             {todayShift && (
+                <p className="attendance-auto-hint">
+                    Po 20:30 se stav „v práci“ automaticky ukončí (i bez odkliknutí odchodu).
+                    Další den je nutné znovu zakliknout příchod.
+                </p>
+            )}
+
+            {todayShift && (
                 <div className="attendance-controls">
                     <div className="control-buttons">
                         <button 
@@ -302,7 +309,11 @@ function AttendancePanel({ user }) {
                                         {action.typ_akce === 'prichod' && 'Příchod'}
                                         {action.typ_akce === 'pauza_start' && 'Začátek pauzy'}
                                         {action.typ_akce === 'pauza_konec' && 'Konec pauzy'}
-                                        {action.typ_akce === 'odchod' && 'Odchod'}
+                                        {action.typ_akce === 'odchod' && (
+                                            action.poznamka?.includes('Automatické ukončení')
+                                                ? 'Odchod (auto 20:30)'
+                                                : 'Odchod'
+                                        )}
                                     </div>
                                     <div className="action-time">{formatTime(action.cas)}</div>
                                 </div>

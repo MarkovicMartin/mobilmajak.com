@@ -11,6 +11,7 @@ SUNSHINE fólie: +15 bodů/kus navíc k položce nad 100 Kč (viz sunshine_confi
 """
 
 from .sunshine_config import SUNSHINE_METRIC_KEY, SUNSHINE_POINTS_PER_UNIT, calculate_sunshine_points
+from .vykupy_config import VYKUPY_METRIC_KEY, VYKUPY_POINTS_PER_UNIT, calculate_vykupy_points
 
 POLOZKY_NAD_100_POINTS_PER_UNIT = 15
 
@@ -44,7 +45,7 @@ SERVICE_EXTRA_POINT_RATES = {
 }
 
 SERVICE_POINT_KEYS = tuple(SERVICE_EXTRA_POINT_RATES.keys())
-POINTS_METRIC_KEYS = ('polozky_nad_100',) + SERVICE_POINT_KEYS + (SUNSHINE_METRIC_KEY,)
+POINTS_METRIC_KEYS = ('polozky_nad_100',) + SERVICE_POINT_KEYS + (SUNSHINE_METRIC_KEY, VYKUPY_METRIC_KEY)
 
 
 def normalize_points_metrics(source):
@@ -78,6 +79,7 @@ def calculate_product_points(data):
     for key, rate in SERVICE_EXTRA_POINT_RATES.items():
         points += _count(data, key) * rate
     points += calculate_sunshine_points(_count(data, SUNSHINE_METRIC_KEY))
+    points += calculate_vykupy_points(_count(data, VYKUPY_METRIC_KEY))
     return points
 
 
@@ -92,6 +94,9 @@ def build_product_points_breakdown(data):
         breakdown[key] = points_line(data, key, rate)
     breakdown[SUNSHINE_METRIC_KEY] = points_line(
         data, SUNSHINE_METRIC_KEY, SUNSHINE_POINTS_PER_UNIT
+    )
+    breakdown[VYKUPY_METRIC_KEY] = points_line(
+        data, VYKUPY_METRIC_KEY, VYKUPY_POINTS_PER_UNIT
     )
     for key in DISPLAY_ONLY_METRICS:
         count = _count(data, key)

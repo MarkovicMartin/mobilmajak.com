@@ -11,6 +11,17 @@
     margin: 0.25rem 0;
 }
 
+.attendance-auto-hint {
+    font-size: 0.82rem;
+    color: #64748b;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 12px;
+    line-height: 1.4;
+}
+
 .attendance-panel {
     padding: 20px;
     max-width: 800px;

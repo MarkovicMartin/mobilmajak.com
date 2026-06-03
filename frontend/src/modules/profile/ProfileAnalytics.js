@@ -39,6 +39,7 @@ const sumProductPoints = (breakdown) => {
         if (breakdown[key]?.informational) return;
         total += breakdown[key]?.points || 0;
     });
+    total += breakdown.vykupy?.points || 0;
     total += breakdown.servis_marze?.points || 0;
     return total;
 };
@@ -184,10 +185,14 @@ const ProfileAnalytics = ({ userId }) => {
             );
         };
 
+        const polozkyCommission = PRODUCT_COMMISSIONS.find((p) => p.key === 'polozky_nad_100');
         const sunshineCommission = PRODUCT_COMMISSIONS.find((p) => p.key === 'sunshine');
-        const mainCommissions = PRODUCT_COMMISSIONS.filter((p) => p.key !== 'sunshine');
-        const mainCommissionRows = mainCommissions.map(renderCommissionLine).filter(Boolean);
+        const vykupyCommission = PRODUCT_COMMISSIONS.find((p) => p.key === 'vykupy');
+        const gridCommissions = PRODUCT_COMMISSIONS.filter(
+            (p) => !['polozky_nad_100', 'sunshine', 'vykupy'].includes(p.key),
+        );
         const sunshineRow = sunshineCommission ? renderCommissionLine(sunshineCommission) : null;
+        const vykupyRow = vykupyCommission ? renderCommissionLine(vykupyCommission) : null;
 
         return (
             <div className="data-card data-card--compact">
@@ -217,17 +222,23 @@ const ProfileAnalytics = ({ userId }) => {
                             <span className="metric-value">{(data.prumer_polozek_uctu ?? data.pol_dok ?? 0).toFixed(2)}</span>
                             <span className="metric-label">Ø pol./účet</span>
                         </div>
+                        <div className="metric-item metric-item--mini">
+                            <span className="metric-value">{data.vykupy ?? 0}</span>
+                            <span className="metric-label">Výkupy</span>
+                        </div>
                     </div>
 
-                    <div className="products-list products-list--compact">
+                    <div className="products-list products-list--compact products-list--aligned">
                         <div className="products-list__grid">
-                            {mainCommissionRows}
+                            {polozkyCommission && renderCommissionLine(polozkyCommission)}
                             <div className={`product-item product-item-info${ct300Count ? '' : ' product-item--zero'}`}>
                                 <span>{CT300_INFO_LABEL}</span>
                                 <span className="product-calc">
-                                    {ct300Count > 0 ? `${ct300Count} ks` : '0 ks (bez bodů)'}
+                                    {formatCalculation(ct300Count, 0, 0)}
                                 </span>
                             </div>
+                            {gridCommissions.map((c) => renderCommissionLine(c)).filter(Boolean)}
+                            {vykupyRow}
                         </div>
                         <div className="products-list-pre-servis">
                             {sunshineRow}

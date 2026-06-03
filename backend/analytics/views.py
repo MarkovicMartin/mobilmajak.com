@@ -6053,6 +6053,7 @@ def web_prodeje_salesperson_points_today(request):
         target_iso = target.strftime('%Y-%m-%d')
         today_qs = WebProdejeAll.objects.filter(id_prodejce=user_id, typ=target)
         base = _aggregate_web_prodeje_all_salesperson(today_qs, user_id, target_iso)
+        _apply_vykupy_to_salesperson_base(base, user_id, typ_exact=target)
         product_points = calculate_points_for_data(base)
         servis_points, servis_data = _servis_points_for_points_api(user_id, typ_exact=target_iso)
         total_points = product_points + servis_points
@@ -6067,6 +6068,7 @@ def web_prodeje_salesperson_points_today(request):
             prev_date = last_rec.typ.isoformat()
             prev_qs = WebProdejeAll.objects.filter(id_prodejce=user_id, typ=last_rec.typ)
             prev_base = _aggregate_web_prodeje_all_salesperson(prev_qs, user_id, prev_date)
+            _apply_vykupy_to_salesperson_base(prev_base, user_id, typ_exact=last_rec.typ)
             prev_product_points = calculate_points_for_data(prev_base)
             prev_servis_points, _ = _servis_points_for_user_id(user_id, typ_exact=prev_date)
             prev_points = prev_product_points + prev_servis_points
@@ -6100,6 +6102,7 @@ def web_prodeje_salesperson_points_monthly(request):
         ym = target.strftime('%Y-%m')
         queryset = WebProdejeAll.objects.filter(id_prodejce=user_id).filter(_salesperson_month_filter(target))
         base = _aggregate_web_prodeje_all_salesperson(queryset, user_id, f"{ym}-01")
+        _apply_vykupy_to_salesperson_base(base, user_id, typ_month_prefix=ym)
         product_points = calculate_points_for_data(base)
         servis_points, servis_data = _servis_points_for_points_api(user_id, typ_month_prefix=ym)
         total_points = product_points + servis_points
@@ -6109,6 +6112,7 @@ def web_prodeje_salesperson_points_monthly(request):
             id_prodejce=user_id, typ__year=prev_y, typ__month=prev_m
         )
         prev_base = _aggregate_web_prodeje_all_salesperson(prev_qs, user_id, f"{prev_month}-01")
+        _apply_vykupy_to_salesperson_base(prev_base, user_id, typ_month_prefix=prev_month)
         prev_product_points = calculate_points_for_data(prev_base)
         prev_servis_points, _ = _servis_points_for_user_id(user_id, typ_month_prefix=prev_month)
         prev_points = prev_product_points + prev_servis_points
@@ -6157,6 +6161,7 @@ def _aggregate_web_prodeje_all_salesperson(queryset, user_id, iso_date):
             'knz': 0,
             'aligator': 0,
             'sunshine': 0,
+            'vykupy': 0,
         }
 
     # Základní info
@@ -6227,6 +6232,15 @@ def _aggregate_web_prodeje_all_salesperson(queryset, user_id, iso_date):
         'aligator': 0,
         'sunshine': sunshine,
     }
+
+
+def _apply_vykupy_to_salesperson_base(base, user_id, *, typ_exact=None, typ_month_prefix=None):
+    from .vykupy_config import vykupy_pocet_for_prodejce
+
+    base['vykupy'] = vykupy_pocet_for_prodejce(
+        user_id, typ_exact=typ_exact, typ_month_prefix=typ_month_prefix
+    )
+    return base
 
 
 def _build_points_payload(base_data, total_points, source, servis_data=None, servis_points=0):
@@ -6365,7 +6379,20 @@ def _leaderboard_item_points_data(item):
         'knz': item.get('knz') or 0,
         'aligator': 0,
         'sunshine': item.get('sunshine') or 0,
+        'vykupy': item.get('vykupy') or 0,
     }
+
+
+def _leaderboard_vykupy_count(vykupy_map, prodejce_id):
+    return int(vykupy_map.get(prodejce_id, 0) or 0)
+
+
+def _leaderboard_product_points(item, vykupy_map, prodejce_id):
+    """Body z prodejních metrik + výkupy (50 b./kus, mimo provizi položek)."""
+    vykupy = _leaderboard_vykupy_count(vykupy_map, prodejce_id)
+    pts_data = _leaderboard_item_points_data(item)
+    pts_data['vykupy'] = vykupy
+    return calculate_points_for_data(pts_data), vykupy
 
 
 def _leaderboard_prumer_polozek(item):
@@ -6581,26 +6608,32 @@ def _leaderboard_best_from_points_map(points_map, excluded_ids):
 
 def _compute_day_total_points_map(day):
     """Celkové body za jeden den – produkty + servis."""
+    from .vykupy_config import vykupy_counts_map
+
     day_queryset = _leaderboard_day_queryset(day)
     aggregation = list(_leaderboard_seller_aggregation(day_queryset))
     servis_map = _servis_points_map_for_day(day)
+    vykupy_map = vykupy_counts_map(typ_exact=day.strftime('%Y-%m-%d'))
     points_map = {}
     for item in aggregation:
         prodejce_id = int(item['id_prodejce'])
-        product_points = calculate_points_for_data(_leaderboard_item_points_data(item))
+        product_points, _ = _leaderboard_product_points(item, vykupy_map, prodejce_id)
         points_map[prodejce_id] = product_points + servis_map.get(prodejce_id, 0)
     return points_map
 
 
 def _compute_month_total_points_map(month_ym):
     """Celkové body za uzavřený měsíc – jen při cache miss / 1. v měsíci (bez N+1)."""
+    from .vykupy_config import vykupy_counts_map
+
     month_queryset = _leaderboard_month_queryset(month_ym)
     aggregation = list(_leaderboard_seller_aggregation(month_queryset))
     servis_map = _servis_points_map_for_month(month_ym)
+    vykupy_map = vykupy_counts_map(typ_month_prefix=month_ym)
     points_map = {}
     for item in aggregation:
         prodejce_id = int(item['id_prodejce'])
-        product_points = calculate_points_for_data(_leaderboard_item_points_data(item))
+        product_points, _ = _leaderboard_product_points(item, vykupy_map, prodejce_id)
         points_map[prodejce_id] = product_points + servis_map.get(prodejce_id, 0)
     return points_map
 
@@ -6634,18 +6667,21 @@ def _leaderboard_staff_roster():
     ]
 
 
-def _leaderboard_zero_month_row(user, prodejna_nazev, last_month_points):
+def _leaderboard_zero_month_row(user, prodejna_nazev, last_month_points, vykupy_map=None):
     """Řádek bez prodeje v aktuálním měsíci – pro filtrování podle minulého měsíce."""
+    vykupy_map = vykupy_map or {}
+    product_points, vykupy = _leaderboard_product_points({}, vykupy_map, user.id)
     return {
         'id': user.id,
         'prodejce': f"{user.jmeno} {user.prijmeni}".strip(),
         'prodejna': str(prodejna_nazev),
-        'total_points': 0,
+        'total_points': product_points,
         'last_month_points': last_month_points,
         'polozky_nad_100': 0,
         'viceprace_obrat': 0.0,
         'sluzby_celkem': 0,
         'servis_provize': 0,
+        'vykupy': vykupy,
         'prumer_polozek_uctu': 0.0,
         'prumer_hodnota_uctenky': 0.0,
     }
@@ -6712,6 +6748,8 @@ def web_prodeje_leaderboard_points(request):
 
         current_aggregation = list(_leaderboard_seller_aggregation(month_queryset))
         servis_map = _servis_points_map_for_month(ym)
+        from .vykupy_config import vykupy_counts_map
+        vykupy_map = vykupy_counts_map(typ_month_prefix=ym)
 
         from users.exclusions import get_leaderboard_excluded_prodejce_ids
         excluded_ids = get_leaderboard_excluded_prodejce_ids()
@@ -6746,7 +6784,7 @@ def web_prodeje_leaderboard_points(request):
                 prodejna_nazev = item.get('prodejna_nazev') or 'Neznámá'
                 row_id = prodejce_id
 
-            product_points = calculate_points_for_data(_leaderboard_item_points_data(item))
+            product_points, vykupy = _leaderboard_product_points(item, vykupy_map, prodejce_id)
             servis_points = servis_map.get(prodejce_id, 0) or servis_map.get(row_id, 0)
             last_month_pts = _leaderboard_prev_month_points_for_user(user, prev_month_points_map) if user else (
                 int(prev_month_points_map.get(prodejce_id, 0) or 0)
@@ -6762,6 +6800,7 @@ def web_prodeje_leaderboard_points(request):
                 'viceprace_obrat': round(float(item.get('viceprace_obrat') or 0), 2),
                 'sluzby_celkem': _leaderboard_sluzby_celkem(item),
                 'servis_provize': servis_points,
+                'vykupy': vykupy,
                 'prumer_polozek_uctu': _leaderboard_prumer_polozek(item),
                 'prumer_hodnota_uctenky': _leaderboard_prumer_hodnota_uctenky(item),
             })
@@ -6774,6 +6813,7 @@ def web_prodeje_leaderboard_points(request):
                 staff_user,
                 home_store_map.get(staff_user.id, 'Neznámá'),
                 _leaderboard_prev_month_points_for_user(staff_user, prev_month_points_map),
+                vykupy_map=vykupy_map,
             ))
             seen_ids.add(staff_user.id)
 
@@ -6815,6 +6855,8 @@ def web_prodeje_leaderboard_points_today(request):
 
         current_aggregation = list(_leaderboard_seller_aggregation(day_queryset))
         servis_map = _servis_points_map_for_day(today)
+        from .vykupy_config import vykupy_counts_map
+        vykupy_map = vykupy_counts_map(typ_exact=today.strftime('%Y-%m-%d'))
 
         from users.exclusions import get_leaderboard_excluded_prodejce_ids
         excluded_ids = get_leaderboard_excluded_prodejce_ids()
@@ -6846,7 +6888,7 @@ def web_prodeje_leaderboard_points_today(request):
                 prodejce_jmeno = f"Prodejce {prodejce_id}"
                 prodejna_nazev = workplace_map.get(prodejce_id) or item.get('prodejna_nazev') or 'Neznámá'
 
-            product_points = calculate_points_for_data(_leaderboard_item_points_data(item))
+            product_points, vykupy = _leaderboard_product_points(item, vykupy_map, prodejce_id)
             servis_points = servis_map.get(prodejce_id, 0)
 
             leaderboard.append({
@@ -6859,6 +6901,7 @@ def web_prodeje_leaderboard_points_today(request):
                 'viceprace_obrat': round(float(item.get('viceprace_obrat') or 0), 2),
                 'sluzby_celkem': _leaderboard_sluzby_celkem(item),
                 'servis_provize': servis_points,
+                'vykupy': vykupy,
                 'prumer_polozek_uctu': _leaderboard_prumer_polozek(item),
                 'prumer_hodnota_uctenky': _leaderboard_prumer_hodnota_uctenky(item),
             })

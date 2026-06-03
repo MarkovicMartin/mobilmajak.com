@@ -67,9 +67,116 @@
 }
 
 /* KONTEJNER KALENDÁŘE */
+.staffing-summary-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 12px;
+    padding: 10px 14px;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 8px;
+    font-size: 13px;
+    color: #991b1b;
+    line-height: 1.45;
+}
+
+.staffing-summary-banner--ok {
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+    color: #166534;
+}
+
+.staffing-summary-icon {
+    flex-shrink: 0;
+    font-size: 18px;
+}
+
+.staffing-summary-detail {
+    font-weight: 500;
+}
+
+.legend-item--alert {
+    margin-left: 4px;
+}
+
+.legend-swatch--empty {
+    background: #fecaca !important;
+    box-shadow: inset 0 0 0 1px #ef4444;
+}
+
+.legend-swatch--partial {
+    background: #fde68a !important;
+    box-shadow: inset 0 0 0 1px #f59e0b;
+}
+
+.shifts-store-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 14px;
+    margin-bottom: 12px;
+    padding: 10px 12px;
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+}
+
+.legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #475569;
+}
+
+.legend-swatch {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    flex-shrink: 0;
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+}
+
+.unified-calendar.full .uc-cell.staffing-empty:not(.selected) {
+    background: #fef2f2;
+    box-shadow: inset 0 0 0 2px #ef4444;
+}
+
+.unified-calendar.full .uc-cell.staffing-partial:not(.selected) {
+    background: #fffbeb;
+    box-shadow: inset 0 0 0 2px #f59e0b;
+}
+
+.staffing-alert {
+    position: absolute;
+    top: 14px;
+    right: 2px;
+    left: 2px;
+    z-index: 4;
+    font-size: 9px;
+    font-weight: 700;
+    text-align: center;
+    padding: 2px 3px;
+    border-radius: 3px;
+    line-height: 1.2;
+    pointer-events: none;
+}
+
+.staffing-alert--all-empty {
+    background: #ef4444;
+    color: #fff;
+}
+
+.staffing-alert--partial {
+    background: #f59e0b;
+    color: #fff;
+}
+
 .calendar-container {
     width: 100%;
-    max-width: 100%;
+    max-width: min(100%, 720px);
+    margin: 0 auto;
     background: #fff;
     border: 1px solid #e5e7eb;
     border-radius: 12px;
@@ -190,32 +297,70 @@
 
 /* KONTEJNER PRO SMĚNY */
 .shifts-container {
-    margin-top: 18px;
+    margin-top: 16px;
     padding: 0;
     display: flex;
     flex-direction: column;
     gap: 2px;
-    overflow: hidden;
-    height: calc(100% - 26px);
+    overflow: visible;
     width: 100%;
+    min-height: 0;
 }
 
 /* SMĚNA - SKUTEČNĚ CELÁ ŠÍŘKA OKÝNKA */
 .shift-item {
-    background: #1a73e8; /* default */
+    background: #1a73e8;
     color: #fff;
-    padding: 4px 6px;
+    padding: 3px 5px;
     border-radius: 3px;
-    font-size: 12px;
+    font-size: 10px;
     font-weight: 500;
     cursor: pointer;
-    min-height: 22px;
+    min-height: 20px;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     position: relative;
     margin: 0;
     width: 100% !important;
     box-sizing: border-box;
+    line-height: 1.2;
+}
+
+.shift-item.shift-item--store-colored.mine,
+.shift-item.shift-item--store-colored.other {
+    background: var(--shift-store-bg, #1a73e8);
+}
+
+.shift-store {
+    font-size: 9px;
+    font-weight: 700;
+    opacity: 0.95;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    letter-spacing: 0.02em;
+}
+
+.shift-content {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.shift-name {
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.shift-time {
+    font-size: 9px;
+    opacity: 0.92;
+    white-space: nowrap;
 }
 
 /* Moje směna (přihlášený uživatel) */
@@ -244,32 +389,6 @@
 
 .shift-item.sick {
     background: #ea4335;
-}
-
-/* TEXT VE SMĚNĚ */
-.shift-content {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    line-height: 1.2;
-}
-
-.shift-name {
-    font-weight: 600;
-    font-size: 11px;
-    margin-bottom: 1px;
-    text-overflow: ellipsis;
-    overflow: hidden;
-    white-space: nowrap;
-}
-
-.shift-time {
-    font-size: 10px;
-    opacity: 0.9;
-    font-weight: 400;
-    text-overflow: ellipsis;
-    overflow: hidden;
-    white-space: nowrap;
 }
 
 /* INDIKÁTORY */

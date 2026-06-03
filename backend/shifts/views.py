@@ -10,6 +10,7 @@ from datetime import datetime, timedelta, date
 import calendar
 import csv
 from .models import Smena, SmenaDochazka, SmenaStatistiky
+from .attendance_service import ensure_auto_close_open_shifts
 from users.models import WebUser
 from stores.models import Prodejna
 
@@ -107,6 +108,10 @@ def smeny_list(request):
     """Seznam směn s filtrováním"""
     
     if request.method == 'GET':
+        ensure_auto_close_open_shifts(
+            user=None if request.user.role in ['ADMIN', 'VEDOUCI'] else request.user,
+            max_days_back=2,
+        )
         # Parametry pro filtrování
         mesic = request.GET.get('mesic')  # YYYY-MM
         prodejna = request.GET.get('prodejna')
@@ -392,6 +397,31 @@ def smena_detail(request, smena_id):
         return Response({'message': f'Směna byla úspěšně smazána z databáze: {smena_info}'})
 
 
+def _shift_calendar_payload(smena):
+    """Jeden řádek směny pro kalendář včetně barvy a názvu prodejny."""
+    p = smena.prodejna
+    return {
+        'id': smena.id,
+        'user_id': smena.user.id,
+        'user_jmeno': smena.user.prijmeni,
+        'cas_od': smena.cas_od.strftime('%H:%M'),
+        'cas_do': smena.cas_do.strftime('%H:%M'),
+        'typ_smeny': smena.typ_smeny,
+        'je_domaci_prodejna': smena.je_domaci_prodejna,
+        'prodejna_id': p.id,
+        'prodejna_nazev': (p.nazev_kratkiy or p.nazev or '').strip(),
+        'prodejna_barva': p.barva or '#0066cc',
+    }
+
+
+def _format_smena_info(smena, include_store=False):
+    cas = f"{smena.cas_od.strftime('%H:%M')}-{smena.cas_do.strftime('%H:%M')}"
+    if include_store:
+        store = (smena.prodejna.nazev_kratkiy or smena.prodejna.nazev or '').strip()
+        return f"{store}: {smena.user.prijmeni} ({cas})"
+    return f"{smena.user.prijmeni} ({cas})"
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def kalendar_data(request):
@@ -400,59 +430,46 @@ def kalendar_data(request):
     mesic = request.GET.get('mesic')  # YYYY-MM
     prodejna_id = request.GET.get('prodejna')
     
-    print(f"Kalendář požadavek - mesic: '{mesic}', prodejna_id: '{prodejna_id}'")
-    print(f"Všechny GET parametry: {request.GET}")
-    
-    if not mesic or not prodejna_id:
-        error_msg = f"Chybí parametry: mesic='{mesic}', prodejna_id='{prodejna_id}'"
-        print(f"Chyba 400: {error_msg}")
-        return Response({'error': error_msg}, 
+    if not mesic:
+        return Response({'error': "Chybí parametr mesic (YYYY-MM)."},
                       status=status.HTTP_400_BAD_REQUEST)
     
     try:
         rok, mesic_cislo = map(int, mesic.split('-'))
-        print(f"Parsované datum - rok: {rok}, měsíc: {mesic_cislo}")
-        
-        # Najdeme prodejnu podle ID
-        try:
-            from stores.models import Prodejna
-            prodejna = Prodejna.objects.get(id=prodejna_id, aktivni=True)
-            print(f"Našel jsem prodejnu: {prodejna.nazev} (ID: {prodejna.id})")
-        except Prodejna.DoesNotExist:
-            error_msg = f"Prodejna s ID '{prodejna_id}' nebyla nalezena nebo není aktivní"
-            print(f"Chyba: {error_msg}")
-            return Response({'error': error_msg}, status=status.HTTP_400_BAD_REQUEST)
-        except ValueError:
-            error_msg = f"Neplatné ID prodejny: '{prodejna_id}' - očekává se číslo"
-            print(f"Chyba: {error_msg}")
-            return Response({'error': error_msg}, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Získání směn pro daný měsíc a prodejnu
+        from stores.models import Prodejna
+
+        all_stores = str(prodejna_id or '').lower() in ('vse', 'all', '0')
+        see_all_employees = request.user.role == 'ADMIN'
+        prodejna = None
+        if not all_stores:
+            if not prodejna_id:
+                return Response({'error': 'Chybí parametr prodejna.'},
+                              status=status.HTTP_400_BAD_REQUEST)
+            try:
+                prodejna = Prodejna.objects.get(id=int(prodejna_id), aktivni=True)
+            except (Prodejna.DoesNotExist, ValueError, TypeError):
+                return Response(
+                    {'error': f"Prodejna '{prodejna_id}' nebyla nalezena nebo není aktivní."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
         smeny = Smena.objects.filter(
             datum__year=rok,
             datum__month=mesic_cislo,
-            prodejna=prodejna,  # Použijeme objekt prodejny
-            aktivni=True
-        ).select_related('user').order_by('datum', 'cas_od')
+            aktivni=True,
+        ).select_related('user', 'prodejna')
+        if prodejna is not None:
+            smeny = smeny.filter(prodejna=prodejna)
+        if not see_all_employees:
+            smeny = smeny.filter(user=request.user)
+        smeny = smeny.order_by('datum', 'prodejna__poradi', 'prodejna__nazev', 'cas_od')
         
-        print(f"Načteno {smeny.count()} směn pro prodejnu '{prodejna.nazev}' v měsíci {mesic}")
-        
-        # Seskupení podle datumu
         kalendar_data = {}
         for smena in smeny:
             datum_str = smena.datum.strftime('%Y-%m-%d')
             if datum_str not in kalendar_data:
                 kalendar_data[datum_str] = []
-            
-            kalendar_data[datum_str].append({
-                'id': smena.id,
-                'user_id': smena.user.id,
-                'user_jmeno': smena.user.prijmeni,
-                'cas_od': smena.cas_od.strftime('%H:%M'),
-                'cas_do': smena.cas_do.strftime('%H:%M'),
-                'typ_smeny': smena.typ_smeny,
-                'je_domaci_prodejna': smena.je_domaci_prodejna
-            })
+            kalendar_data[datum_str].append(_shift_calendar_payload(smena))
         
         # Dnešní a zítřejší směny pro info boxy
         dnes = date.today()
@@ -475,17 +492,13 @@ def kalendar_data(request):
         response_data = {
             'kalendar_data': kalendar_data,
             'svatky': svatky_mesic,
-            'dnes_smeny': [
-                f"{s.user.prijmeni} ({s.cas_od.strftime('%H:%M')}-{s.cas_do.strftime('%H:%M')})" 
-                for s in dnes_smeny
-            ],
-            'zitra_smeny': [
-                f"{s.user.prijmeni} ({s.cas_od.strftime('%H:%M')}-{s.cas_do.strftime('%H:%M')})" 
-                for s in zitra_smeny
-            ]
+            'dnes_smeny': [_format_smena_info(s, include_store=all_stores) for s in dnes_smeny],
+            'zitra_smeny': [_format_smena_info(s, include_store=all_stores) for s in zitra_smeny],
+            'vsechny_prodejny': all_stores,
+            'see_all_employees': see_all_employees,
+            'mine_only': all_stores and not see_all_employees,
         }
         
-        print(f"Úspěšně vrácena data pro kalendář - {len(kalendar_data)} dní se směnami")
         return Response(response_data)
         
     except ValueError as e:
@@ -513,6 +526,7 @@ def dochazka_akce(request):
                       status=status.HTTP_400_BAD_REQUEST)
     
     smena = get_object_or_404(Smena, id=smena_id, aktivni=True)
+    ensure_auto_close_open_shifts(user=smena.user, max_days_back=2)
     
     # Kontrola oprávnění
     if request.user.role not in ['ADMIN', 'VEDOUCI'] and smena.user != request.user:

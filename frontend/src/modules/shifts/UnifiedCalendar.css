@@ -32,7 +32,7 @@
 .uc-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  grid-auto-rows: 1fr;
+  grid-auto-rows: minmax(48px, auto);
 }
 
 .uc-cell {
@@ -43,8 +43,22 @@
   outline: none;
   display: grid;
   grid-template-rows: auto 1fr;
-  padding: 4px;
-  aspect-ratio: 1 / 1; /* pixel přesná čtvercová mřížka */
+  padding: 3px;
+  min-height: 48px;
+  align-content: start;
+}
+
+.unified-calendar.full .uc-grid {
+  grid-auto-rows: minmax(40px, auto);
+}
+
+.unified-calendar.full .uc-cell {
+  min-height: 40px;
+  aspect-ratio: unset;
+}
+
+.unified-calendar.full .uc-cell-content {
+  overflow: visible;
 }
 .uc-cell:nth-child(7n) { border-right: none; }
 
@@ -56,6 +70,10 @@
 .uc-cell.today:not(.selected) { box-shadow: inset 0 0 0 2px var(--uc-accent); border-radius: 8px; }
 .uc-cell.holiday:not(.selected) { background: #fff7ed; }
 .uc-cell.holiday .uc-day-number { color: #c2410c; }
+.uc-cell.staffing-empty.holiday:not(.selected),
+.uc-cell.staffing-partial.holiday:not(.selected) {
+  box-shadow: inset 0 0 0 2px #f59e0b;
+}
 
 .uc-day-number {
   font-size: 12px;

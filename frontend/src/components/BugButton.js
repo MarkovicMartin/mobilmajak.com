@@ -42,29 +42,33 @@ const BugButton = ({ user, onOpen }) => {
     }, [location.pathname]);
 
     const fetchUnread = useCallback(async () => {
-        if (!user || isTicketManager) {
+        if (!user) {
             setUnreadCount(0);
             return;
         }
         try {
             const res = await ticketAPI.getUnreadSummary();
-            if (res.success && typeof res.unread_count === 'number' && res.role !== 'manager') {
-                const next = res.unread_count;
-                if (!initialUnreadRef.current && next > prevUnreadRef.current) {
-                    const delta = next - prevUnreadRef.current;
-                    const msg = delta === 1
-                        ? '🔔 Aktualizace u vašeho ticketu'
-                        : `🔔 ${delta} aktualizací u vašich ticketů`;
-                    showAppToast(msg);
-                }
-                initialUnreadRef.current = false;
-                prevUnreadRef.current = next;
-                setUnreadCount(next);
+            if (!res.success || typeof res.unread_count !== 'number') {
+                setUnreadCount(0);
+                return;
             }
+            const next = res.unread_count;
+            if (!initialUnreadRef.current && next > prevUnreadRef.current) {
+                const delta = next - prevUnreadRef.current;
+                const msg = res.role === 'manager'
+                    ? (delta === 1 ? '🔔 Máte nový ticket' : `🔔 ${delta} nových ticketů`)
+                    : (delta === 1
+                        ? '🔔 Aktualizace u vašeho ticketu'
+                        : `🔔 ${delta} aktualizací u vašich ticketů`);
+                showAppToast(msg);
+            }
+            initialUnreadRef.current = false;
+            prevUnreadRef.current = next;
+            setUnreadCount(next);
         } catch {
             setUnreadCount(0);
         }
-    }, [user, isTicketManager]);
+    }, [user]);
 
     useEffect(() => {
         fetchUnread();
@@ -128,8 +132,13 @@ const BugButton = ({ user, onOpen }) => {
         setTimeout(() => setSuccessMsg(null), 3500);
     };
 
-    const showExpandedLabel = location.pathname === '/my-tickets';
-    const expandedLabel = 'Tikety';
+    const onTicketsPage = location.pathname === '/my-tickets';
+    const showExpandedLabel = onTicketsPage;
+    const expandedLabel = isTicketManager ? 'Správa tiketů' : 'Moje tikety';
+    const ticketsMenuLabel = isTicketManager ? 'Správa tiketů' : 'Moje tikety';
+    const ticketsMenuDesc = isTicketManager
+        ? 'Přehled a řešení všech tiketů'
+        : 'Zobrazit stav mých hlášení';
 
     const menuContent = (
         <>
@@ -148,8 +157,8 @@ const BugButton = ({ user, onOpen }) => {
                 <button className="bug-option" onClick={handleMyTickets} type="button">
                     <span className="bug-option-icon">📋</span>
                     <div className="bug-option-content">
-                        <span className="bug-option-name">Moje tikety</span>
-                        <span className="bug-option-desc">Zobrazit stav mých hlášení</span>
+                        <span className="bug-option-name">{ticketsMenuLabel}</span>
+                        <span className="bug-option-desc">{ticketsMenuDesc}</span>
                     </div>
                 </button>
             </div>
@@ -170,12 +179,12 @@ const BugButton = ({ user, onOpen }) => {
             </li>
             <li>
                 <button
-                    className={`mobile-nav-link ${location.pathname === '/my-tickets' ? 'active' : ''}`}
+                    className={`mobile-nav-link ${onTicketsPage ? 'active' : ''}`}
                     onClick={handleMyTickets}
                     type="button"
                 >
                     <span>📋</span>
-                    Moje tikety
+                    {ticketsMenuLabel}
                 </button>
             </li>
         </ul>
@@ -192,7 +201,7 @@ const BugButton = ({ user, onOpen }) => {
                     <motion.button
                         type="button"
                         layout
-                        className={`dock-icon-btn bug-toggle-dock ${isOpen ? 'bug-toggle-dock--open' : ''} ${showExpandedLabel ? 'dock-icon-btn--active dock-icon-btn--with-label' : ''} ${unreadCount > 0 && !showExpandedLabel ? 'bug-toggle-has-unread' : ''}`}
+                        className={`dock-icon-btn bug-toggle-dock ${isOpen ? 'bug-toggle-dock--open' : ''} ${showExpandedLabel ? 'dock-icon-btn--active dock-icon-btn--with-label' : ''} ${unreadCount > 0 && !onTicketsPage ? 'bug-toggle-has-unread' : ''}`}
                         onClick={handleToggle}
                         data-tooltip={showExpandedLabel ? undefined : 'Tikety'}
                         title="Tikety / nahlásit problém"

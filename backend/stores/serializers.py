@@ -111,4 +111,4 @@ class ProdejnaChoiceSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Prodejna
-        fields = ['id', 'nazev', 'nazev_kratkiy']
+        fields = ['id', 'nazev', 'nazev_kratkiy', 'barva']

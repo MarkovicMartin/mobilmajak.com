@@ -14,6 +14,7 @@ export const PRODUCT_COMMISSIONS = [
     { key: 'kop500', label: 'KOP500', rate: 35 },
     { key: 'pz1', label: 'PZ1', rate: 85 },
     { key: 'knz', label: 'KNZ', rate: 15 },
+    { key: 'vykupy', label: 'Výkupy', rate: 50 },
     { key: 'sunshine', label: 'Sunshine', rate: 15 },
 ];
 
@@ -27,4 +28,5 @@ export const BREAKDOWN_LINE_LABELS = {
     ...Object.fromEntries(PRODUCT_COMMISSIONS.map((p) => [p.key, p.label])),
     [CT300_INFO_KEY]: CT300_INFO_LABEL,
     [SERVIS_BREAKDOWN_KEY]: 'Servis (marže)',
+    vykupy: 'Výkupy',
 };

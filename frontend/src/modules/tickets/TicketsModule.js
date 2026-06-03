@@ -3,12 +3,30 @@ import { useAuth } from '../../context/AuthContext';
 import { ticketAPI } from '../../services/api';
 import TicketCommentRow from './TicketCommentRow';
 import './TicketsModule.css';
+import './MyTickets.css';
 
 const STAVY = [
     { value: 'novy', label: 'Nový', color: '#e74c3c' },
     { value: 'makam', label: 'Makám na tom', color: '#f39c12' },
     { value: 'opraveno', label: 'Opraveno', color: '#27ae60' },
 ];
+
+const FILTER_ROZPRACOVANE = 'rozpracovane';
+const OPEN_STAVY = ['novy', 'makam'];
+
+const FILTER_OPTIONS = [
+    { value: FILTER_ROZPRACOVANE, label: 'Rozpracované' },
+    { value: 'novy', label: 'Nový' },
+    { value: 'makam', label: 'Makám na tom' },
+    { value: 'opraveno', label: 'Hotové' },
+    { value: 'vse', label: 'Všechny' },
+];
+
+const matchesFilter = (ticket, filterStav) => {
+    if (filterStav === 'vse') return true;
+    if (filterStav === FILTER_ROZPRACOVANE) return OPEN_STAVY.includes(ticket.stav);
+    return ticket.stav === filterStav;
+};
 
 const formatDuration = (ms) => {
     const totalMinutes = Math.floor(ms / 60000);
@@ -44,7 +62,7 @@ const TicketsModule = () => {
     const [commentTexts, setCommentTexts] = useState({});
     const [submittingComment, setSubmittingComment] = useState(null);
     const [statusChanging, setStatusChanging] = useState(null);
-    const [filterStav, setFilterStav] = useState('vse');
+    const [filterStav, setFilterStav] = useState(FILTER_ROZPRACOVANE);
     const [editingCommentId, setEditingCommentId] = useState(null);
     const [editCommentText, setEditCommentText] = useState('');
     const [savingCommentId, setSavingCommentId] = useState(null);
@@ -53,6 +71,14 @@ const TicketsModule = () => {
     useEffect(() => {
         loadTickets();
     }, []);
+
+    useEffect(() => {
+        if (!isTicketManager) return undefined;
+        ticketAPI.markAllRead()
+            .then(() => window.dispatchEvent(new CustomEvent('tickets-unread-refresh')))
+            .catch(() => {});
+        return undefined;
+    }, [isTicketManager]);
 
     const loadTickets = async () => {
         try {
@@ -190,7 +216,8 @@ const TicketsModule = () => {
         }
     };
 
-    const filtered = filterStav === 'vse' ? tickets : tickets.filter(t => t.stav === filterStav);
+    const filtered = tickets.filter((t) => matchesFilter(t, filterStav));
+    const countForFilter = (value) => tickets.filter((t) => matchesFilter(t, value)).length;
 
     const resolvedMs = tickets
         .map(t => getResolutionMs(t))
@@ -202,11 +229,13 @@ const TicketsModule = () => {
     if (loading) return <div className="tickets-loading">Načítám tickety...</div>;
     if (error) return <div className="tickets-error">{error}</div>;
 
+    const filterEmptyLabel = FILTER_OPTIONS.find((o) => o.value === filterStav)?.label?.toLowerCase() || '';
+
     return (
-        <div className="tickets-module">
+        <div className={`tickets-module${isTicketManager ? '' : ' my-tickets'}`}>
             <div className="tickets-header">
-                <h2>🎫 Správa ticketů</h2>
-                {avgMs !== null && (
+                <h2>{isTicketManager ? '🎫 Správa ticketů' : '🐛 Moje tickety'}</h2>
+                {isTicketManager && avgMs !== null && (
                     <div className="tickets-avg">
                         ⏱ Průměrná doba vyřešení: <strong>{formatDuration(avgMs)}</strong>
                         <span className="tickets-avg-count">({resolvedMs.length} {resolvedMs.length === 1 ? 'ticket' : resolvedMs.length < 5 ? 'tickety' : 'ticketů'})</span>
@@ -215,10 +244,9 @@ const TicketsModule = () => {
             <div className="tickets-filter">
                     <label>Filtr:</label>
                     <select value={filterStav} onChange={e => setFilterStav(e.target.value)}>
-                        <option value="vse">Všechny ({tickets.length})</option>
-                        {STAVY.map(s => (
-                            <option key={s.value} value={s.value}>
-                                {s.label} ({tickets.filter(t => t.stav === s.value).length})
+                        {FILTER_OPTIONS.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                                {opt.label} ({countForFilter(opt.value)})
                             </option>
                         ))}
                     </select>
@@ -227,7 +255,13 @@ const TicketsModule = () => {
             </div>
 
             {filtered.length === 0 && (
-                <div className="tickets-empty">Žádné tickety{filterStav !== 'vse' ? ' v tomto stavu' : ''}.</div>
+                <div className="tickets-empty">
+                    {tickets.length === 0
+                        ? (isTicketManager
+                            ? 'Žádné tickety.'
+                            : 'Zatím žádné tickety. Klikni na „Nový bug“ v menu Tikety a nahlaste problém nebo nápad.')
+                        : `Žádné tickety${filterEmptyLabel ? ` (${filterEmptyLabel})` : ''}.`}
+                </div>
             )}
 
             <div className="tickets-list">
@@ -239,14 +273,17 @@ const TicketsModule = () => {
                                 <div className="ticket-card-info">
                                     <span className="ticket-nazev">{ticket.nazev}</span>
                                     <span className="ticket-meta">
-                                        {ticket.autor_jmeno} · {new Date(ticket.vytvoreno).toLocaleDateString('cs-CZ')}
+                                        {isTicketManager && ticket.autor_jmeno && (
+                                            <>{ticket.autor_jmeno} · </>
+                                        )}
+                                        {new Date(ticket.vytvoreno).toLocaleDateString('cs-CZ')}
                                         {ticket.images && ticket.images.length > 0 && (
                                             <span className="ticket-img-count"> · 📎 {ticket.images.length}</span>
                                         )}
-                                        {getResolutionMs(ticket) !== null && (
+                                        {isTicketManager && getResolutionMs(ticket) !== null && (
                                             <span className="ticket-resolved-time"> · ✅ {formatDuration(getResolutionMs(ticket))}</span>
                                         )}
-                                        {ticket.stav !== 'opraveno' && (
+                                        {isTicketManager && ticket.stav !== 'opraveno' && (
                                             <span className="ticket-open-time"> · 🕐 {formatDuration(Date.now() - new Date(ticket.vytvoreno))}</span>
                                         )}
                                     </span>
@@ -278,28 +315,30 @@ const TicketsModule = () => {
                                     </div>
                                 )}
 
-                                <div className="ticket-actions">
-                                    <label>Změnit stav:</label>
-                                    <div className="stav-buttons">
-                                        {STAVY.map(s => (
-                                            <button
-                                                key={s.value}
-                                                className={`btn-stav ${ticket.stav === s.value ? 'active' : ''}`}
-                                                style={{ '--stav-color': s.color }}
-                                                onClick={() => handleStatusChange(ticket.id, s.value)}
-                                                disabled={statusChanging === ticket.id || ticket.stav === s.value}
-                                            >
-                                                {s.label}
-                                            </button>
-                                        ))}
+                                {isTicketManager && (
+                                    <div className="ticket-actions">
+                                        <label>Změnit stav:</label>
+                                        <div className="stav-buttons">
+                                            {STAVY.map(s => (
+                                                <button
+                                                    key={s.value}
+                                                    className={`btn-stav ${ticket.stav === s.value ? 'active' : ''}`}
+                                                    style={{ '--stav-color': s.color }}
+                                                    onClick={() => handleStatusChange(ticket.id, s.value)}
+                                                    disabled={statusChanging === ticket.id || ticket.stav === s.value}
+                                                >
+                                                    {s.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                        <button
+                                            className="btn-delete"
+                                            onClick={() => handleDelete(ticket.id)}
+                                        >
+                                            🗑 Smazat
+                                        </button>
                                     </div>
-                                    <button
-                                        className="btn-delete"
-                                        onClick={() => handleDelete(ticket.id)}
-                                    >
-                                        🗑 Smazat
-                                    </button>
-                                </div>
+                                )}
 
                                 <div className="ticket-comments">
                                     <h4>Komentáře ({(ticket.comments || []).length})</h4>
@@ -326,7 +365,7 @@ const TicketsModule = () => {
                                     ))}
                                     <div className="comment-form">
                                         <textarea
-                                            placeholder="Napište komentář..."
+                                            placeholder={isTicketManager ? 'Napište komentář...' : 'Doplňující informace nebo dotaz...'}
                                             value={commentTexts[ticket.id] || ''}
                                             onChange={e => setCommentTexts(prev => ({ ...prev, [ticket.id]: e.target.value }))}
                                             rows={2}

@@ -34,4 +34,5 @@ urlpatterns = [
     path('attendance/log/', payroll_views.attendance_log, name='attendance_log'),
     path('attendance/open/', payroll_views.attendance_open, name='attendance_open'),
     path('attendance/my-status/', payroll_views.attendance_my_status, name='attendance_my_status'),
+    path('attendance/absent-stores/', payroll_views.attendance_absent_stores, name='attendance_absent_stores'),
 ] 
