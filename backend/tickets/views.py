@@ -34,14 +34,15 @@ def _unread_ticket_count_for_author(user_id):
 
 
 def _unread_ticket_count_for_manager(user_id):
-    """Počet tiketů s novou aktivitou pro správce (nový ticket, změna, komentář)."""
+    """Počet otevřených ticketů s aktivitou od posledního přečtení (opravené nepočítáme)."""
     read_sq = TicketUserReadState.objects.filter(
         ticket_id=OuterRef('pk'),
         user_id=user_id,
     ).values('last_seen_at')[:1]
 
-    qs = Ticket.objects.all().annotate(
-        baseline=Coalesce(Subquery(read_sq), F('vytvoreno')),
+    qs = (
+        Ticket.objects.exclude(stav='opraveno')
+        .annotate(baseline=Coalesce(Subquery(read_sq), F('vytvoreno')))
     )
 
     unread_comment = Exists(
@@ -51,11 +52,7 @@ def _unread_ticket_count_for_manager(user_id):
         )
     )
 
-    return qs.filter(
-        Q(vytvoreno__gt=F('baseline'))
-        | Q(upraveno__gt=F('baseline'))
-        | unread_comment
-    ).count()
+    return qs.filter(Q(upraveno__gt=F('baseline')) | unread_comment).count()
 
 
 @api_view(['GET', 'POST'])
@@ -133,6 +130,11 @@ def ticket_detail(request, ticket_id):
         elif stav != 'opraveno':
             ticket.opraveno_at = None
         ticket.save(update_fields=['stav', 'opraveno_at', 'upraveno'])
+        TicketUserReadState.objects.update_or_create(
+            user_id=request.user.id,
+            ticket=ticket,
+            defaults={'last_seen_at': timezone.now()},
+        )
         serializer = TicketSerializer(ticket, context={'request': request})
         return Response({'success': True, 'ticket': serializer.data})
 
@@ -234,6 +236,27 @@ def tickets_unread_summary(request):
         'success': True,
         'unread_count': count,
         'role': role,
+    })
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def tickets_mark_all_read(request):
+    """Správce: označí všechny tickety jako přečtené (např. po otevření přehledu)."""
+    if not can_manage_tickets(request.user):
+        return Response({'success': False, 'error': 'Nemáte oprávnění.'}, status=status.HTTP_403_FORBIDDEN)
+
+    now = timezone.now()
+    for ticket in Ticket.objects.all().only('id'):
+        TicketUserReadState.objects.update_or_create(
+            user_id=request.user.id,
+            ticket_id=ticket.id,
+            defaults={'last_seen_at': now},
+        )
+
+    return Response({
+        'success': True,
+        'unread_count': _unread_ticket_count_for_manager(request.user.id),
     })
 
 

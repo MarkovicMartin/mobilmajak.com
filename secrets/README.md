@@ -13,3 +13,19 @@ SSH z PC:
 ssh -i ".ssh\webmajak_vps\mobilmajak_vps_ed25519" root@194.182.87.138
 ```
 Po `icacls` musí mít soubor jen váš účet `(F)` – jinak OpenSSH hlásí „bad permissions“.
+
+**Staging deploy (Mac/Linux):**
+```bash
+chmod +x scripts/deploy-staging.sh scripts/grant-staging-tickets-admin.sh
+./scripts/deploy-staging.sh
+```
+
+**Správa ticketů pro uživatele (např. markovic) – spusťte až PO připojení SSH (ne v jednom řádku s `ssh`):**
+```bash
+./scripts/grant-staging-tickets-admin.sh markovic
+```
+Nebo na serveru:
+```bash
+sudo -u webmajak bash -lc 'cd /home/webmajak/staging && source venv/bin/activate && export DJANGO_SETTINGS_MODULE=webapp.settings_production && python manage.py grant_tickets_admin markovic'
+```
+Po změně modulů: **odhlásit a znovu přihlásit** v prohlížeči.

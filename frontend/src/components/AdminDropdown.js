@@ -40,15 +40,25 @@ const AdminDropdown = ({ onOpen }) => {
         onNotify: notifyTickets,
     });
 
+    const onTicketsPage = location.pathname === '/tickets';
+    const activeSection = getAdminSectionFromPath(location.pathname);
+    // Tikety jen v menu ⚙️ – v docku nerozšiřovat štítek na „Tikety“
+    const showExpandedLabel = !!activeSection && activeSection.id !== 'tickets';
+    const expandedLabel = activeSection?.name ?? 'Nastavení';
+    const showGearBadge = ticketUnread > 0 && !onTicketsPage;
+
     useEffect(() => {
         const onRefresh = () => refreshTicketUnread();
         window.addEventListener('tickets-unread-refresh', onRefresh);
         return () => window.removeEventListener('tickets-unread-refresh', onRefresh);
     }, [refreshTicketUnread]);
 
-    const activeSection = getAdminSectionFromPath(location.pathname);
-    const showExpandedLabel = !!activeSection;
-    const expandedLabel = activeSection?.name ?? 'Nastavení';
+    useEffect(() => {
+        if (!onTicketsPage || !canManageTickets()) return;
+        ticketAPI.markAllRead()
+            .then(() => window.dispatchEvent(new CustomEvent('tickets-unread-refresh')))
+            .catch(() => {});
+    }, [onTicketsPage, canManageTickets]);
 
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -106,7 +116,12 @@ const AdminDropdown = ({ onOpen }) => {
                     >
                         <span className="option-icon">{option.icon}</span>
                         <div className="option-content">
-                            <span className="option-name">{option.name}</span>
+                            <span className="option-name">
+                                {option.name}
+                                {option.id === 'tickets' && ticketUnread > 0 && (
+                                    <span className="admin-option-unread-badge">{ticketUnread}</span>
+                                )}
+                            </span>
                             <span className="option-description">{option.description}</span>
                         </div>
                     </button>
@@ -142,7 +157,7 @@ const AdminDropdown = ({ onOpen }) => {
                 <motion.button
                     type="button"
                     layout
-                    className={`dock-icon-btn admin-toggle-dock ${isOpen ? 'admin-toggle-dock--open' : ''} ${showExpandedLabel ? 'dock-icon-btn--active dock-icon-btn--with-label' : ''} ${ticketUnread > 0 && !showExpandedLabel ? 'admin-toggle-has-unread' : ''}`}
+                    className={`dock-icon-btn admin-toggle-dock ${isOpen ? 'admin-toggle-dock--open' : ''} ${showExpandedLabel ? 'dock-icon-btn--active dock-icon-btn--with-label' : ''} ${onTicketsPage ? 'dock-icon-btn--active' : ''} ${showGearBadge ? 'admin-toggle-has-unread' : ''}`}
                     onClick={handleToggle}
                     data-tooltip={showExpandedLabel ? undefined : 'Nastavení'}
                     title={expandedLabel}
@@ -167,7 +182,7 @@ const AdminDropdown = ({ onOpen }) => {
                             transition={springHover}
                         />
                     )}
-                    {ticketUnread > 0 && (
+                    {showGearBadge && (
                         <span className="admin-unread-badge" aria-hidden="true" />
                     )}
                 </motion.button>

@@ -12,11 +12,6 @@ import './AnalyticsModule.css';
 const AnalyticsModule = ({ currentUser }) => {
     return (
         <div className="analytics-module">
-            <div className="analytics-header">
-                <h2>📊 Analytika</h2>
-                <p>Přehled statistik a analýz prodeje</p>
-            </div>
-
             <div className="analytics-content">
                 <Routes>
                     <Route index element={<AnalyticsDashboard currentUser={currentUser} />} />

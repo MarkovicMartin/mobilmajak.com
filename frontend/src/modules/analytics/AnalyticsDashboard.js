@@ -106,53 +106,47 @@ const AnalyticsDashboard = ({ currentUser }) => {
         }
     ];
 
-    const renderOverview = () => {
-        return (
-            <div className="analytics-overview">
-                <h3>Přehled analytických sekcí</h3>
-                <p>Vyberte sekci, kterou chcete analyzovat:</p>
-
-                <div className="sections-grid">
-                    {sections.map((section) => (
-                        <div
-                            key={section.id}
-                            className="section-card"
-                            onClick={() => navigate(`/analytics/${section.id}`)}
-                        >
-                            <div className="section-icon">{section.icon}</div>
-                            <h4>{section.name}</h4>
-                            <p>{section.description}</p>
-                            <button className="section-btn">Otevřít</button>
-                        </div>
-                    ))}
-                </div>
-            </div>
-        );
-    };
-
     return (
-        <div className="analytics-dashboard">
-            <div className="dashboard-header">
-                <h2>Dashboard analytiky</h2>
+        <div className="analytics-dashboard analytics-dashboard--hub">
+            <div className="dashboard-header dashboard-header--compact">
+                <div className="dashboard-header-title">
+                    <h2>Analytika</h2>
+                    <p className="dashboard-header-sub">Vyberte sekci k analýze</p>
+                </div>
                 <div className="dashboard-controls">
-                    <div className={`actor-status actor-${actorStatus.level}`} title={actorStatus.title || "Stav automatického importu"}>
+                    <div
+                        className={`actor-status actor-${actorStatus.level}`}
+                        title={actorStatus.title || 'Stav automatického importu'}
+                    >
                         <span className="actor-dot" />
                         <span className="actor-text">{actorStatus.text}</span>
                     </div>
-                    <select className="time-range-select">
-                        <option value="today">Dnes</option>
-                        <option value="week">Tento týden</option>
-                        <option value="month">Tento měsíc</option>
-                        <option value="quarter">Toto čtvrtletí</option>
-                        <option value="year">Tento rok</option>
-                        <option value="custom">Vlastní období</option>
-                    </select>
-                    <button className="refresh-btn" onClick={fetchActorStatus}>🔄 Obnovit</button>
+                    <button
+                        type="button"
+                        className="refresh-btn refresh-btn--compact"
+                        onClick={fetchActorStatus}
+                        title="Obnovit stav importu"
+                    >
+                        🔄
+                    </button>
                 </div>
             </div>
 
-            <div className="dashboard-content">
-                {renderOverview()}
+            <div className="sections-grid sections-grid--hub">
+                {sections.map((section) => (
+                    <button
+                        key={section.id}
+                        type="button"
+                        className="section-card section-card--hub"
+                        onClick={() => navigate(`/analytics/${section.id}`)}
+                    >
+                        <span className="section-icon" aria-hidden="true">{section.icon}</span>
+                        <span className="section-card-body">
+                            <span className="section-card-name">{section.name}</span>
+                            <span className="section-card-desc">{section.description}</span>
+                        </span>
+                    </button>
+                ))}
             </div>
         </div>
     );

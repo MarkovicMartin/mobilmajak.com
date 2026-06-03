@@ -3,6 +3,7 @@ from . import views
 
 urlpatterns = [
     path('unread-summary/', views.tickets_unread_summary, name='tickets_unread_summary'),
+    path('mark-all-read/', views.tickets_mark_all_read, name='tickets_mark_all_read'),
     path('', views.tickets_list_create, name='tickets_list_create'),
     path('<int:ticket_id>/mark-read/', views.ticket_mark_read, name='ticket_mark_read'),
     path(

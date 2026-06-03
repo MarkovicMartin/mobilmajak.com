@@ -35,7 +35,7 @@ const StatusBadge = ({ stav }) => {
 };
 
 const TicketsModule = () => {
-    const { canManageTickets } = useAuth();
+    const { user, canManageTickets } = useAuth();
     const isTicketManager = canManageTickets();
     const [tickets, setTickets] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -76,6 +76,9 @@ const TicketsModule = () => {
             const response = await ticketAPI.updateStatus(ticketId, stav);
             if (response.success) {
                 setTickets(prev => prev.map(t => t.id === ticketId ? { ...t, stav, stav_display: response.ticket.stav_display } : t));
+                if (stav === 'opraveno') {
+                    window.dispatchEvent(new CustomEvent('tickets-unread-refresh'));
+                }
                 if (expanded === ticketId) {
                     setExpanded(null);
                     setTimeout(() => setExpanded(ticketId), 50);

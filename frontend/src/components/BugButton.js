@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import TicketForm from '../modules/tickets/TicketForm';
+import { useAuth } from '../context/AuthContext';
 import { ticketAPI } from '../services/api';
 import { showAppToast } from './AppToast';
 import './BugButton.css';
@@ -12,6 +13,8 @@ const springHover = { type: 'spring', stiffness: 300, damping: 22 };
 const POLL_MS = 90000;
 
 const BugButton = ({ user, onOpen }) => {
+    const { canManageTickets } = useAuth();
+    const isTicketManager = canManageTickets();
     const [isOpen, setIsOpen] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
     const [showForm, setShowForm] = useState(false);
@@ -39,15 +42,15 @@ const BugButton = ({ user, onOpen }) => {
     }, [location.pathname]);
 
     const fetchUnread = useCallback(async () => {
-        if (!user) {
+        if (!user || isTicketManager) {
             setUnreadCount(0);
             return;
         }
         try {
             const res = await ticketAPI.getUnreadSummary();
-            if (res.success && typeof res.unread_count === 'number') {
+            if (res.success && typeof res.unread_count === 'number' && res.role !== 'manager') {
                 const next = res.unread_count;
-                if (!initialUnreadRef.current && res.role !== 'manager' && next > prevUnreadRef.current) {
+                if (!initialUnreadRef.current && next > prevUnreadRef.current) {
                     const delta = next - prevUnreadRef.current;
                     const msg = delta === 1
                         ? '🔔 Aktualizace u vašeho ticketu'
@@ -61,7 +64,7 @@ const BugButton = ({ user, onOpen }) => {
         } catch {
             setUnreadCount(0);
         }
-    }, [user]);
+    }, [user, isTicketManager]);
 
     useEffect(() => {
         fetchUnread();

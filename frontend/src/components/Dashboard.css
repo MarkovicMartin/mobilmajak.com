@@ -18,6 +18,11 @@
     .dashboard-main:has(.leaderboard-module) {
         padding-top: 1.35rem;
     }
+
+    .dashboard-main:has(.analytics-module) {
+        padding: 0.35rem 1.25rem 0.75rem;
+        max-width: 1280px;
+    }
 }
 
 /* Seller dashboard minimal overrides */

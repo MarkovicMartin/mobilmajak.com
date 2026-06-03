@@ -226,6 +226,11 @@ export const ticketAPI = {
         const response = await api.post(`/tickets/${id}/mark-read/`);
         return response.data;
     },
+
+    markAllRead: async () => {
+        const response = await api.post('/tickets/mark-all-read/');
+        return response.data;
+    },
 };
 
 export const taskAPI = {

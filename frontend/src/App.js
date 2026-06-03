@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import LoginForm from './components/LoginForm';
 import Dashboard from './components/Dashboard';
+import ScrollToTop from './components/ScrollToTop';
 import './App.css';
 import './styles/theme.css';
 
@@ -25,6 +26,7 @@ const AppContent = () => {
 function App() {
   return (
     <Router>
+      <ScrollToTop />
       <ThemeProvider>
         <AuthProvider>
           <div className="App">
