@@ -7,9 +7,11 @@ import {
 import {
     METRIC_KEYS,
     METRICS,
+    STAT_CARD_META,
     formatMetricValue,
     formatPrumerHodnotaUctenky,
     getOppositeMetric,
+    getTopByMetric,
     isExpandableMetric,
     sortByMetric,
 } from './leaderboardMetrics';
@@ -133,6 +135,69 @@ const PointsLeaderboard = ({
         ? (vicepraceLeader.prodejce || '—')
         : (vicepraceTopObrat > 0 ? topVicepraceFromData?.prodejce : '—');
 
+    const statCardKeys = hideLastPeriodColumn
+        ? [
+            METRIC_KEYS.TOTAL_POINTS,
+            METRIC_KEYS.SERVIS,
+            METRIC_KEYS.VICEPRACE,
+            METRIC_KEYS.PRUMER_POLOZEK,
+            METRIC_KEYS.PRUMER_HODNOTA,
+        ]
+        : [
+            METRIC_KEYS.TOTAL_POINTS,
+            METRIC_KEYS.SERVIS,
+            METRIC_KEYS.VICEPRACE,
+            METRIC_KEYS.PRUMER_POLOZEK,
+            METRIC_KEYS.PRUMER_HODNOTA,
+            METRIC_KEYS.LAST_PERIOD,
+        ];
+
+    const renderStatCardValue = (metricKey) => {
+        if (metricKey === METRIC_KEYS.TOTAL_POINTS) {
+            return data.reduce((sum, row) => sum + row.total_points, 0).toLocaleString('cs-CZ');
+        }
+        if (metricKey === METRIC_KEYS.VICEPRACE) {
+            return formatVicepraceObrat(vicepraceTopObrat);
+        }
+        if (metricKey === METRIC_KEYS.LAST_PERIOD) {
+            return statTopPoints.toLocaleString('cs-CZ');
+        }
+        const top = getTopByMetric(data, metricKey, isDay);
+        if (!top.row || top.value <= 0) {
+            return metricKey === METRIC_KEYS.PRUMER_HODNOTA ? '—' : '0';
+        }
+        return formatMetricValue(top.row, metricKey, isDay);
+    };
+
+    const renderStatCardFoot = (metricKey) => {
+        if (metricKey === METRIC_KEYS.TOTAL_POINTS || STAT_CARD_META[metricKey]?.showSum) {
+            return null;
+        }
+        if (metricKey === METRIC_KEYS.VICEPRACE) {
+            return vicepraceTopObrat > 0 ? vicepraceTopName : null;
+        }
+        if (metricKey === METRIC_KEYS.LAST_PERIOD) {
+            return statTopPoints > 0 ? statTopName : null;
+        }
+        const top = getTopByMetric(data, metricKey, isDay);
+        return top.value > 0 ? top.name : null;
+    };
+
+    const getStatCardTitle = (metricKey) => {
+        const meta = STAT_CARD_META[metricKey];
+        if (metricKey === METRIC_KEYS.VICEPRACE) {
+            return `${meta?.icon || '🎁'} ${VICEPRACE_TOP_CARD_TITLE}`;
+        }
+        if (metricKey === METRIC_KEYS.LAST_PERIOD) {
+            return `${meta?.icon || '🎯'} ${statCardLabel}`;
+        }
+        return `${meta?.icon || ''} ${meta?.title || METRICS[metricKey]?.label || ''}`.trim();
+    };
+
+    const statsGridClass = hideLastPeriodColumn
+        ? 'leaderboard-stats leaderboard-stats--stores'
+        : 'leaderboard-stats leaderboard-stats--full';
+
     const showBreakdown = expandedMetric === rankMetric && isExpandableMetric(rankMetric);
     const oppositeMetric = getOppositeMetric(rankMetric);
 
@@ -192,43 +257,30 @@ const PointsLeaderboard = ({
 
     return (
         <div className="points-leaderboard">
-            <div className={`leaderboard-stats ${hideLastPeriodColumn ? 'leaderboard-stats--two-cols' : ''}`}>
-                <button
-                    type="button"
-                    className={statCardClass(METRIC_KEYS.TOTAL_POINTS)}
-                    onClick={() => handleMetricSelect(METRIC_KEYS.TOTAL_POINTS)}
-                >
-                    <h4 className="stat-card-title">🏆 Celkové body</h4>
-                    <div className="stat-value">
-                        {data.reduce((sum, seller) => sum + seller.total_points, 0).toLocaleString('cs-CZ')}
-                    </div>
-                </button>
-                <button
-                    type="button"
-                    className={statCardClass(METRIC_KEYS.VICEPRACE)}
-                    onClick={() => handleMetricSelect(METRIC_KEYS.VICEPRACE)}
-                    title="Součet obratu víceprací P63615 (s DPH), nepočítá se do bodů"
-                >
-                    <h4 className="stat-card-title">🎁 {VICEPRACE_TOP_CARD_TITLE}</h4>
-                    <div className="stat-value">{formatVicepraceObrat(vicepraceTopObrat)}</div>
-                    <p className="stat-card-foot" title={vicepraceTopName}>{vicepraceTopName}</p>
-                </button>
-                {!hideLastPeriodColumn && (
-                    <button
-                        type="button"
-                        className={statCardClass(METRIC_KEYS.LAST_PERIOD)}
-                        onClick={() => handleMetricSelect(METRIC_KEYS.LAST_PERIOD)}
-                    >
-                        <h4 className="stat-card-title">🎯 {statCardLabel}</h4>
-                        <div className="stat-value">{statTopPoints.toLocaleString('cs-CZ')}</div>
-                        <p className="stat-card-foot" title={statTopName}>{statTopName}</p>
-                        {statTopPoints > 0 && (
-                            <p className="stat-card-foot stat-card-foot-hint">
-                                {isDay ? 'Nejlepší včera' : 'Nejlepší minulý měsíc'}
-                            </p>
-                        )}
-                    </button>
-                )}
+            <div className={statsGridClass}>
+                {statCardKeys.map((metricKey) => {
+                    const foot = renderStatCardFoot(metricKey);
+                    return (
+                        <button
+                            key={metricKey}
+                            type="button"
+                            className={statCardClass(metricKey)}
+                            onClick={() => handleMetricSelect(metricKey)}
+                            title={metricKey === METRIC_KEYS.VICEPRACE
+                                ? 'Součet obratu víceprací P63615 (s DPH), nepočítá se do bodů'
+                                : undefined}
+                        >
+                            <h4 className="stat-card-title">{getStatCardTitle(metricKey)}</h4>
+                            <div className="stat-value">{renderStatCardValue(metricKey)}</div>
+                            {foot && <p className="stat-card-foot" title={foot}>{foot}</p>}
+                            {metricKey === METRIC_KEYS.LAST_PERIOD && statTopPoints > 0 && (
+                                <p className="stat-card-foot stat-card-foot-hint">
+                                    {isDay ? 'Nejlepší včera' : 'Nejlepší minulý měsíc'}
+                                </p>
+                            )}
+                        </button>
+                    );
+                })}
             </div>
 
             {topThree.length > 0 && (
@@ -241,7 +293,6 @@ const PointsLeaderboard = ({
                             >
                                 <div className="medal-position">
                                     <span className="medal">{getMedalIcon(seller.position)}</span>
-                                    <span className="position-number">{seller.position}</span>
                                 </div>
 
                                 <div className="seller-info">
@@ -293,9 +344,7 @@ const PointsLeaderboard = ({
                                         className={currentUser?.id === seller.id ? 'current-user-row' : ''}
                                     >
                                         <td className="col-position">
-                                            <span className="position-badge">
-                                                {seller.position}.
-                                            </span>
+                                            <span className="position-rank">{seller.position}.</span>
                                         </td>
                                         <td className="col-seller">
                                             <div className="seller-cell" title={seller.prodejce}>

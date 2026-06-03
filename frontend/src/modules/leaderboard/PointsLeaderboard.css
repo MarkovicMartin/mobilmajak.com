@@ -13,9 +13,36 @@
     margin-right: auto;
 }
 
-.leaderboard-stats--two-cols {
+.leaderboard-stats--full {
+    max-width: 100%;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    max-width: 360px;
+}
+
+.leaderboard-stats--stores {
+    max-width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (min-width: 640px) {
+    .leaderboard-stats--stores {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 900px) {
+    .leaderboard-stats--full {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .leaderboard-stats--stores {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 1100px) {
+    .leaderboard-stats--full {
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
 }
 
 .stat-card {
@@ -147,20 +174,6 @@
 .medal {
     font-size: 2rem;
     line-height: 1;
-}
-
-.position-number {
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    color: white;
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    font-size: 0.95rem;
-    flex-shrink: 0;
 }
 
 .seller-info {
@@ -361,14 +374,10 @@
     width: 7.5%;
 }
 
-.position-badge {
-    background: linear-gradient(135deg, #e2e8f0, #cbd5e0);
+.position-rank {
     color: #4a5568;
-    padding: 2px 6px;
-    border-radius: 10px;
-    font-weight: 600;
-    font-size: 0.75rem;
-    display: inline-block;
+    font-weight: 700;
+    font-size: 0.85rem;
 }
 
 .seller-cell {

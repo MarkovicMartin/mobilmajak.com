@@ -111,3 +111,27 @@ export const isExpandableMetric = (metricKey) =>
     metricKey === METRIC_KEYS.TOTAL_POINTS
     || metricKey === METRIC_KEYS.PRUMER_POLOZEK
     || metricKey === METRIC_KEYS.PRUMER_HODNOTA;
+
+/** Nejlepší řádek podle metriky (pro stat karty). */
+export const getTopByMetric = (data, metricKey, isDay = false) => {
+    if (!data?.length) {
+        return { value: 0, name: '—', row: null };
+    }
+    const best = data.reduce((a, b) => (
+        getMetricNumericValue(b, metricKey, isDay) > getMetricNumericValue(a, metricKey, isDay) ? b : a
+    ));
+    return {
+        value: getMetricNumericValue(best, metricKey, isDay),
+        name: best.prodejce || '—',
+        row: best,
+    };
+};
+
+export const STAT_CARD_META = {
+    [METRIC_KEYS.TOTAL_POINTS]: { icon: '🏆', title: 'Celkové body', showSum: true },
+    [METRIC_KEYS.SERVIS]: { icon: '🔧', title: 'Top servis' },
+    [METRIC_KEYS.VICEPRACE]: { icon: '🎁', title: null },
+    [METRIC_KEYS.PRUMER_POLOZEK]: { icon: '📊', title: 'Top pol./účt.' },
+    [METRIC_KEYS.PRUMER_HODNOTA]: { icon: '💰', title: 'Top hodn. účt.' },
+    [METRIC_KEYS.LAST_PERIOD]: { icon: '🎯', title: null },
+};
