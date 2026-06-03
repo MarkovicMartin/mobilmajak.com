@@ -275,6 +275,13 @@
     font-weight: 700;
 }
 
+.breakdown-card-hint {
+    font-size: 0.9em;
+    opacity: 0.7;
+    margin-top: 8px;
+    line-height: 1.3;
+}
+
 /* Top seznamy + graf Prodeje v čase */
 .celkova-cisla-top {
     position: relative;
@@ -624,37 +631,132 @@
     }
 } /* ... existing styles ... */
 
-/* Comparison Mode / Split View */
-.celkova-cisla-view.is-comparison {
-    font-size: 0.9em; /* Slightly smaller scale */
+/* Comparison Mode / Split View – kompaktní dlaždice, stejné v obou sloupcích */
+.celkova-cisla-view.is-comparison .celkova-cisla-filters {
+    padding: 8px 10px;
+    margin-bottom: 8px;
+}
+
+.celkova-cisla-view.is-comparison .celkova-metrics-shell,
+.celkova-cisla-view.is-comparison .celkova-breakdown-shell {
+    margin-bottom: 8px;
 }
 
 .celkova-cisla-view.is-comparison .celkova-cisla-metrics {
-    grid-template-columns: repeat(2, 1fr); /* Force 2 cols in split view */
-    gap: 10px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-rows: min-content;
+    align-items: start;
+    gap: 6px;
+    margin-bottom: 0;
+}
+
+.celkova-cisla-view.is-comparison .metric-card {
+    align-items: flex-start;
+    height: auto;
+    padding: 8px 10px;
+    gap: 8px;
+}
+
+.celkova-cisla-view.is-comparison .metric-card:hover {
+    transform: none;
+}
+
+.celkova-cisla-view.is-comparison .metric-icon {
+    font-size: 1.15rem;
+    flex-shrink: 0;
+    margin-top: 0;
+    line-height: 1;
+}
+
+.celkova-cisla-view.is-comparison .metric-content {
+    min-width: 0;
+    flex: 1;
+}
+
+.celkova-cisla-view.is-comparison .metric-content h3 {
+    font-size: 0.8rem;
+    line-height: 1.2;
+    margin-bottom: 2px;
+}
+
+.celkova-cisla-view.is-comparison .metric-value {
+    font-size: 1rem;
+    line-height: 1.2;
+    margin-bottom: 2px;
+}
+
+.celkova-cisla-view.is-comparison .metric-subtitle {
+    font-size: 0.7rem;
+    line-height: 1.25;
+}
+
+.celkova-cisla-view.is-comparison .celkova-cisla-breakdown {
+    padding: 8px 10px;
+    margin-bottom: 0;
+}
+
+.celkova-cisla-view.is-comparison .celkova-cisla-breakdown h3 {
+    font-size: 0.9rem;
+    margin-bottom: 6px;
+}
+
+.celkova-cisla-view.is-comparison .breakdown-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-rows: min-content;
+    align-items: start;
+    gap: 6px;
+}
+
+.celkova-cisla-view.is-comparison .breakdown-card {
+    padding: 8px 10px;
+    height: auto;
+}
+
+.celkova-cisla-view.is-comparison .breakdown-card:hover {
+    transform: none;
+}
+
+.celkova-cisla-view.is-comparison .breakdown-card h4 {
+    font-size: 0.84rem;
+    margin-bottom: 4px;
+    line-height: 1.2;
+}
+
+.celkova-cisla-view.is-comparison .breakdown-metrics div {
+    font-size: 0.74rem;
+    margin-bottom: 3px;
+    line-height: 1.25;
+}
+
+.celkova-cisla-view.is-comparison .breakdown-metrics div:last-child {
+    margin-bottom: 0;
+}
+
+.celkova-cisla-view.is-comparison .breakdown-card-hint {
+    display: none;
+}
+
+.celkova-cisla-view.is-comparison .celkova-pane-title {
+    margin-bottom: 6px;
 }
 
 .celkova-cisla-view.is-comparison .filter-row {
     flex-direction: column;
     align-items: stretch;
-    gap: 10px;
+    gap: 8px;
 }
 
 .celkova-cisla-view.is-comparison .filter-group {
     width: 100%;
 }
 
+.celkova-cisla-view.is-comparison .filter-group label {
+    font-size: 0.8rem;
+    margin-bottom: 3px;
+}
+
 .celkova-cisla-view.is-comparison .quick-filters {
-    display: none; /* Hide quick filters to save space in split view */
-}
-
-/* Make graphs responsive in split view */
-.celkova-cisla-view.is-comparison svg {
-    /* SVG handles its own responsiveness usually, but ensure container is ok */
-}
-
-.celkova-cisla-view.is-comparison .breakdown-cards {
-    grid-template-columns: repeat(2, 1fr);
+    display: none;
 }
 
 .celkova-cisla-view.is-comparison .inline-detail-body {

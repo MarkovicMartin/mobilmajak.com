@@ -1,5 +1,5 @@
 import { analyticsGet } from '../../../utils/analyticsRequest';
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import AnalyticsSectionWrapper from '../AnalyticsSectionWrapper';
 import CustomDropdown from '../../../components/CustomDropdown';
 import AnalyticsDateRange from '../../../components/AnalyticsDateRange';
@@ -275,7 +275,6 @@ const CelkovaCislaView = ({ isComparison = false, paneRole = 'single', filtersFr
     // Filtry
     const [filters, setFilters] = useState(() => filtersFromParent || buildInitialCelkovaFilters());
     const periodLabel = formatFiltersPeriodLabel(filters);
-    const isYoYReferencePane = paneRole === 'right' && !!filtersFromParent;
     const [dateError, setDateError] = useState('');
     const [quickKey, setQuickKey] = useState('custom'); // today|yesterday|thisWeek|thisMonth|prevMonth|custom
 
@@ -286,7 +285,7 @@ const CelkovaCislaView = ({ isComparison = false, paneRole = 'single', filtersFr
     }, [filtersFromParent]);
 
     useEffect(() => {
-        if (paneRole === 'left' && onFiltersChange) {
+        if ((paneRole === 'left' || paneRole === 'right') && onFiltersChange) {
             onFiltersChange(filters);
         }
     }, [filters, paneRole, onFiltersChange]);
@@ -973,19 +972,14 @@ const CelkovaCislaView = ({ isComparison = false, paneRole = 'single', filtersFr
         <div className={`celkova-cisla-view ${isComparison ? 'is-comparison' : ''} celkova-cisla-view--${paneRole}`}>
             {isComparison && (
                 <div className="celkova-pane-title">
-                    {paneRole === 'right' ? 'Stejné období loni' : 'Vybrané období'}
+                    {paneRole === 'right' ? 'Srovnávací období' : 'Vybrané období'}
                     <span className="celkova-pane-title__range">{periodLabel}</span>
                 </div>
             )}
 
             {/* Filtry */}
             <div className="celkova-cisla-filters">
-                {isYoYReferencePane && (
-                    <p className="celkova-yoy-note">
-                        Období se řídí levým sloupcem – automaticky stejný úsek před rokem.
-                    </p>
-                )}
-                <div className={`filter-row${isYoYReferencePane ? ' filter-row--readonly' : ''}`}>
+                <div className="filter-row">
                     {/* Období – custom dropdown s měsíci */}
                     <div className="filter-group">
                         <label>Období:</label>
@@ -1201,7 +1195,7 @@ const CelkovaCislaView = ({ isComparison = false, paneRole = 'single', filtersFr
                                     <div>Položky: <strong>{formatNumber(data.breakdown.kanaly.allegro.polozky)}</strong></div>
                                     <div>Objednávky: <strong>{formatNumber(data.breakdown.kanaly.allegro.objednavky)}</strong></div>
                                 </div>
-                                <div style={{ fontSize: '0.9em', opacity: 0.7, marginTop: '8px' }}>
+                                <div className="breakdown-card-hint">
                                     Klikněte pro detailní analýzu kategorií a produktů
                                 </div>
                             </div>
@@ -1213,7 +1207,7 @@ const CelkovaCislaView = ({ isComparison = false, paneRole = 'single', filtersFr
                                     <div>Marže bez DPH: <strong>{formatCurrency(data.breakdown.kanaly.servis.marze)}</strong></div>
                                     <div>Položky: <strong>{formatNumber(data.breakdown.kanaly.servis.polozky)}</strong></div>
                                 </div>
-                                <div style={{ fontSize: '0.9em', opacity: 0.7, marginTop: '8px' }}>
+                                <div className="breakdown-card-hint">
                                     Klikněte pro detailní rozpad podle prodejen
                                 </div>
                             </div>
@@ -1238,7 +1232,7 @@ const CelkovaCislaView = ({ isComparison = false, paneRole = 'single', filtersFr
                                         </div>
                                     )}
                                 </div>
-                                <div style={{ fontSize: '0.9em', opacity: 0.7, marginTop: '8px' }}>
+                                <div className="breakdown-card-hint">
                                     Klikněte pro detailní rozpad podle prodejen
                                 </div>
                             </div>
@@ -1406,10 +1400,26 @@ const CelkovaCislaView = ({ isComparison = false, paneRole = 'single', filtersFr
 };
 
 const CelkovaCisla = () => {
+    const leftFiltersRef = useRef(buildInitialCelkovaFilters());
     const [isComparison, setIsComparison] = useState(false);
-    const [leftFilters, setLeftFilters] = useState(() => buildInitialCelkovaFilters());
-    const yoyFilters = useMemo(() => shiftFiltersOneYearBack(leftFilters), [leftFilters]);
-    const handleLeftFiltersChange = useCallback((next) => setLeftFilters(next), []);
+    const [rightFilters, setRightFilters] = useState(() => shiftFiltersOneYearBack(buildInitialCelkovaFilters()));
+    const [rightFiltersTouched, setRightFiltersTouched] = useState(false);
+    const handleLeftFiltersChange = useCallback((next) => {
+        leftFiltersRef.current = next;
+    }, []);
+    const handleRightFiltersChange = useCallback((next) => {
+        setRightFiltersTouched(true);
+        setRightFilters(next);
+    }, []);
+
+    const toggleComparison = () => {
+        setIsComparison((v) => {
+            if (!v && !rightFiltersTouched) {
+                setRightFilters(shiftFiltersOneYearBack(leftFiltersRef.current));
+            }
+            return !v;
+        });
+    };
 
     return (
         <AnalyticsSectionWrapper title="Celková čísla" icon="💰">
@@ -1417,13 +1427,13 @@ const CelkovaCisla = () => {
                 <div className="celkova-cisla-controls">
                     <p className="celkova-comparison-hint">
                         {isComparison
-                            ? 'Vlevo zvolte období – vpravo se automaticky ukáže stejné období před rokem (1.–3. 6. → 1.–3. 6. loni, květen 25 → květen 24).'
-                            : 'Srovnání zobrazí vybrané období vedle stejného úseku před rokem.'}
+                            ? 'Vlevo a vpravo zvolte libovolné období. Pravý sloupec startuje stejným úsekem před rokem – můžete ho kdykoli změnit.'
+                            : 'Srovnání zobrazí dvě období vedle sebe. Výchozí srovnání je stejné období loni, rozsah lze upravit.'}
                     </p>
                     <button
                         type="button"
                         className={`comparison-toggle ${isComparison ? 'active' : ''}`}
-                        onClick={() => setIsComparison((v) => !v)}
+                        onClick={toggleComparison}
                     >
                         {isComparison ? '🛑 Zrušit srovnání' : '🆚 Srovnání'}
                     </button>
@@ -1443,7 +1453,8 @@ const CelkovaCisla = () => {
                             <CelkovaCislaView
                                 isComparison={isComparison}
                                 paneRole="right"
-                                filtersFromParent={yoyFilters}
+                                filtersFromParent={rightFilters}
+                                onFiltersChange={handleRightFiltersChange}
                             />
                         </div>
                     )}
