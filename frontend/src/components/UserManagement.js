@@ -16,6 +16,7 @@ import {
     roleLabel,
     isBrigadnikRole,
 } from '../constants/userRoles';
+import { defaultMzdaZakladForRole, PRODEJCE_ZAKLAD_BODY } from '../constants/mzdaDefaults';
 import './UserManagement.css';
 
 const UserManagement = () => {
@@ -44,7 +45,7 @@ const UserManagement = () => {
         email: '',
         adresa: '',
         poznamka: '',
-        mzda_zaklad: '',
+        mzda_zaklad: String(PRODEJCE_ZAKLAD_BODY),
         mzda_doplnky: [],
         vedouci_prodejna_id: '',
     });
@@ -100,8 +101,13 @@ const UserManagement = () => {
         if (name === 'role') {
             setFormData((prev) => {
                 const next = { ...prev, role: value };
-                if (value === 'BRIGADNIK' && (prev.mzda_zaklad === '' || prev.mzda_zaklad == null)) {
-                    next.mzda_zaklad = String(BRIGADNIK_DEFAULT_BODY_ZA_HODINU);
+                if (prev.mzda_zaklad === '' || prev.mzda_zaklad == null) {
+                    const def = defaultMzdaZakladForRole(value, prev.prijmeni);
+                    if (def != null) {
+                        next.mzda_zaklad = String(def);
+                    } else if (value === 'BRIGADNIK') {
+                        next.mzda_zaklad = String(BRIGADNIK_DEFAULT_BODY_ZA_HODINU);
+                    }
                 }
                 return next;
             });
@@ -137,7 +143,7 @@ const UserManagement = () => {
             email: '',
             adresa: '',
             poznamka: '',
-            mzda_zaklad: '',
+            mzda_zaklad: String(PRODEJCE_ZAKLAD_BODY),
             mzda_doplnky: [],
             vedouci_prodejna_id: '',
         });
@@ -545,11 +551,11 @@ const UserManagement = () => {
                                         value={formData.mzda_zaklad}
                                         onChange={handleInputChange}
                                         onWheel={preventNumberInputWheel}
-                                        placeholder={isBrigadnik ? String(BRIGADNIK_DEFAULT_BODY_ZA_HODINU) : 'např. 15000'}
+                                        placeholder={isBrigadnik ? String(BRIGADNIK_DEFAULT_BODY_ZA_HODINU) : String(PRODEJCE_ZAKLAD_BODY)}
                                     />
                                     {isBrigadnik && (
                                         <small className="field-hint">
-                                            Ve výplatě: odpracované hodiny × tato sazba (výchozí {BRIGADNIK_DEFAULT_BODY_ZA_HODINU} bodů/h) + doplňky + provize.
+                                            Ve výplatě: hodiny × tato sazba (výchozí {BRIGADNIK_DEFAULT_BODY_ZA_HODINU} bodů/h) + provize z prodeje (+ doplňky).
                                         </small>
                                     )}
                                 </div>

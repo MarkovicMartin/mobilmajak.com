@@ -1,7 +1,31 @@
 """Pomocné funkce pro mzdové údaje uživatele (vše v bodech)."""
 from decimal import Decimal
 
-BRIGADNIK_DEFAULT_BODY_ZA_HODINU = Decimal('80')
+BRIGADNIK_DEFAULT_BODY_ZA_HODINU = Decimal('100')
+PRODEJCE_ZAKLAD_BODY = Decimal('14000')
+VYCHODIL_ZAKLAD_BODY = Decimal('17000')
+VYCHODIL_TECHNIK_ID = 121
+
+
+def is_vychodil_user(user=None, *, jmeno=None, prijmeni=None, technik_id=None):
+    """František Vychodil – vyšší měsíční základ."""
+    if user is not None:
+        prijmeni = getattr(user, 'prijmeni', None)
+        technik_id = getattr(user, 'technik_id', None)
+    if technik_id == VYCHODIL_TECHNIK_ID:
+        return True
+    return (prijmeni or '').strip().lower() == 'vychodil'
+
+
+def default_mzda_zaklad_body(role, user=None, *, jmeno=None, prijmeni=None, technik_id=None):
+    """Výchozí fixní měsíční body podle role (bez doplňků vedoucího)."""
+    if role == 'BRIGADNIK':
+        return BRIGADNIK_DEFAULT_BODY_ZA_HODINU
+    if role in ('PRODEJCE', 'VEDOUCI'):
+        if is_vychodil_user(user, jmeno=jmeno, prijmeni=prijmeni, technik_id=technik_id):
+            return VYCHODIL_ZAKLAD_BODY
+        return PRODEJCE_ZAKLAD_BODY
+    return None
 
 
 def normalize_mzda_doplnky(raw):
@@ -52,7 +76,7 @@ def mzda_zaklad_raw(user):
 
 
 def mzda_body_za_hodinu(user):
-    """Sazba bodů/h pro brigádníka (výchozí 80)."""
+    """Sazba bodů/h pro brigádníka (výchozí 100)."""
     if not is_brigadnik(user):
         return None
     rate = mzda_zaklad_raw(user)

@@ -5,7 +5,7 @@ export const USER_ROLE_OPTIONS = [
     { value: 'ADMIN', label: 'Administrátor' },
 ];
 
-export const BRIGADNIK_DEFAULT_BODY_ZA_HODINU = 80;
+export const BRIGADNIK_DEFAULT_BODY_ZA_HODINU = 100;
 
 export function roleLabel(role) {
     if (role === 'ADMIN') return 'Administrátor';

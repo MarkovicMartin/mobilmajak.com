@@ -1,7 +1,11 @@
 from rest_framework import serializers
 from .models import WebUser, ProfilovyObrazek
 from .utils import create_web_user_with_auto_id
-from .mzda_utils import BRIGADNIK_DEFAULT_BODY_ZA_HODINU, normalize_mzda_doplnky
+from .mzda_utils import (
+    BRIGADNIK_DEFAULT_BODY_ZA_HODINU,
+    default_mzda_zaklad_body,
+    normalize_mzda_doplnky,
+)
 from stores.models import Prodejna
 
 class WebUserSerializer(serializers.ModelSerializer):
@@ -87,10 +91,16 @@ class WebUserCreateSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         role = attrs.get('role', 'PRODEJCE')
-        if role == 'BRIGADNIK':
-            z = attrs.get('mzda_zaklad')
-            if z is None or z == '':
-                attrs['mzda_zaklad'] = BRIGADNIK_DEFAULT_BODY_ZA_HODINU
+        z = attrs.get('mzda_zaklad')
+        if z is None or z == '':
+            default = default_mzda_zaklad_body(
+                role,
+                jmeno=attrs.get('jmeno'),
+                prijmeni=attrs.get('prijmeni'),
+                technik_id=attrs.get('technik_id'),
+            )
+            if default is not None:
+                attrs['mzda_zaklad'] = default
         return attrs
     
     def create(self, validated_data):

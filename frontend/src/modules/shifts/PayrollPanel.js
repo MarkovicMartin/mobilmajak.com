@@ -170,6 +170,44 @@ function PayrollPanel({ month, onMonthChange, onExport }) {
         ) : null;
     };
 
+    const renderBrigadnikSouhrn = (row) => {
+        if (!row.is_brigadnik) return null;
+        const h = Number(row.odpracovano_h) || 0;
+        const sazba = row.body_za_hodinu ?? 0;
+        const zaklad = Number(row.zaklad_body) || 0;
+        const provize = Number(row.provize_body) || 0;
+        const celkem = Number(row.celkem_body) || 0;
+        return (
+            <div className="payroll-detail-section">
+                <h4>Výpočet brigádníka</h4>
+                <div className="payroll-breakdown payroll-breakdown-grid">
+                    <div className="breakdown-line">
+                        <span className="breakdown-label">Hodiny × sazba</span>
+                        <span className="breakdown-value">
+                            {formatNumber(h)} h × {sazba} = {formatPoints(zaklad)}
+                        </span>
+                    </div>
+                    <div className="breakdown-line">
+                        <span className="breakdown-label">+ Provize (body z prodeje)</span>
+                        <span className="breakdown-value">{formatPoints(provize)}</span>
+                    </div>
+                    {(row.doplnky_body > 0 || row.odmena_mesic_body > 0) && (
+                        <div className="breakdown-line">
+                            <span className="breakdown-label">+ Doplňky / měsíční bonus</span>
+                            <span className="breakdown-value">
+                                {formatPoints((row.doplnky_body || 0) + (row.odmena_mesic_body || 0))}
+                            </span>
+                        </div>
+                    )}
+                    <div className="breakdown-line breakdown-line-total">
+                        <span className="breakdown-label">Celkem</span>
+                        <span className="breakdown-value"><strong>{formatPoints(celkem)}</strong></span>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     const renderBonusy = (row) => {
         const items = [];
         (row.doplnky || []).forEach((d, i) => {
@@ -312,8 +350,9 @@ function PayrollPanel({ month, onMonthChange, onExport }) {
             {loading && <p className="payroll-loading-inline">Aktualizuji data…</p>}
 
             <p className="payroll-hint">
-                Fixní body / sazba za hodinu a doplňky v modulu <strong>Uživatelé</strong> (brigádník: hodiny × sazba).
-                Měsíční bonus přidáte tlačítkem výše.
+                Prodejce/vedoucí: fixní body + provize.{' '}
+                <strong>Brigádník:</strong> celkem = odpracované hodiny × sazba (bodů/h) + provize z prodeje
+                (+ doplňky a měsíční bonus). Sazbu nastavíte v modulu <strong>Uživatelé</strong>.
             </p>
 
             {error && <div className="error-message">{error}</div>}
@@ -371,6 +410,7 @@ function PayrollPanel({ month, onMonthChange, onExport }) {
                                         <tr className="detail-row">
                                             <td colSpan={8}>
                                                 <div className="payroll-detail-full">
+                                                    {renderBrigadnikSouhrn(row)}
                                                     {renderProvizeBreakdown(row.provize_breakdown)}
                                                     {renderBonusy(row)}
                                                 </div>

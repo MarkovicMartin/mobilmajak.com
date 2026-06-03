@@ -1,3 +1,5 @@
+import { BRIGADNIK_DEFAULT_BODY_ZA_HODINU, defaultMzdaZakladForRole } from '../constants/mzdaDefaults';
+
 /**
  * Připraví data z formuláře pro API (create / update).
  */
@@ -31,10 +33,20 @@ export function prepareUserSubmitData(formData, editingUser) {
     submitData.technik_id = technikId;
 
     if (submitData.mzda_zaklad === '' || submitData.mzda_zaklad == null) {
-        submitData.mzda_zaklad = submitData.role === 'BRIGADNIK' ? 80 : null;
+        const defaultZaklad = defaultMzdaZakladForRole(submitData.role, submitData.prijmeni);
+        submitData.mzda_zaklad = defaultZaklad != null
+            ? defaultZaklad
+            : (submitData.role === 'BRIGADNIK' ? BRIGADNIK_DEFAULT_BODY_ZA_HODINU : null);
     } else {
         const z = parseFloat(submitData.mzda_zaklad);
-        submitData.mzda_zaklad = Number.isNaN(z) ? (submitData.role === 'BRIGADNIK' ? 80 : null) : z;
+        if (Number.isNaN(z)) {
+            const defaultZaklad = defaultMzdaZakladForRole(submitData.role, submitData.prijmeni);
+            submitData.mzda_zaklad = defaultZaklad != null
+                ? defaultZaklad
+                : (submitData.role === 'BRIGADNIK' ? BRIGADNIK_DEFAULT_BODY_ZA_HODINU : null);
+        } else {
+            submitData.mzda_zaklad = z;
+        }
     }
     if (!Array.isArray(submitData.mzda_doplnky)) {
         submitData.mzda_doplnky = [];
