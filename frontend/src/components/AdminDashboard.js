@@ -88,9 +88,9 @@ export default function AdminDashboard() {
 
         const fetchUsers = async () => {
             try {
-                const payload = await userAPI.getUsers();
+                const payload = await userAPI.getUsers({ aktivni: true });
                 const arr = Array.isArray(payload) ? payload : payload.users || [];
-                setUsers(arr);
+                setUsers(arr.filter((u) => u.aktivni !== false));
             } catch (_e) {
                 setUsers([]);
             }

@@ -19,16 +19,19 @@ import MyTickets from '../modules/tickets/MyTickets';
 import './Dashboard.css';
 import AdminDashboard from './AdminDashboard';
 import SellerDashboard from './SellerDashboard';
+import AppToast from './AppToast';
 
 const Dashboard = () => {
-    const { user, logout, isAdmin } = useAuth();
+    const { user, logout, isAdmin, canManageTickets } = useAuth();
     const { isDarkMode, toggleTheme } = useTheme();
 
     return (
         <div className="dashboard">
+            <AppToast />
             <DockNavbar
                 user={user}
                 isAdmin={isAdmin}
+                canManageTickets={canManageTickets}
                 logout={logout}
                 isDarkMode={isDarkMode}
                 toggleTheme={toggleTheme}
@@ -53,15 +56,17 @@ const Dashboard = () => {
                     
                     <Route path="/my-tickets" element={<MyTickets />} />
 
-                    {/* Admin routes */}
+                    {/* Admin / správce ticketů */}
                         {isAdmin() && (
                         <>
                             <Route path="/users" element={<UserManagement />} />
                             <Route path="/categories" element={<CategoryManager />} />
                             <Route path="/stores" element={<StoreManagement />} />
-                            <Route path="/tickets" element={<TicketsModule />} />
-                    </>
-                )}
+                        </>
+                    )}
+                    {canManageTickets() && (
+                        <Route path="/tickets" element={<TicketsModule />} />
+                    )}
                 </Routes>
             </main>
         </div>

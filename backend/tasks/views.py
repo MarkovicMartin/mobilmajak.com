@@ -69,3 +69,13 @@ def task_detail(request, task_id: int):
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def tasks_unread_summary(request):
+    """Nepřečtené úkoly přiřazené aktuálnímu uživateli (stav „novy“)."""
+    count = Ukol.objects.filter(
+        id_prodejce_ukol=request.user.id,
+        stav="novy",
+    ).count()
+    return Response({"success": True, "unread_count": count})
+

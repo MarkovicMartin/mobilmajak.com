@@ -7,17 +7,19 @@ from .mzda_utils import (
     normalize_mzda_doplnky,
 )
 from stores.models import Prodejna
+from tickets.permissions import can_manage_tickets
 
 class WebUserSerializer(serializers.ModelSerializer):
     """Serializer pro zobrazení uživatelů (bez hesla)"""
     prodejna = serializers.SerializerMethodField()
     vedouci_prodejna_id = serializers.SerializerMethodField()
+    can_manage_tickets = serializers.SerializerMethodField()
     
     class Meta:
         model = WebUser
         fields = ['id', 'uzivatelske_jmeno', 'jmeno', 'prijmeni', 'role', 'aktivni', 'moduly', 'datum_vytvoreni',
                  'telefon', 'email', 'adresa', 'poznamka', 'prodejna_id', 'prodejna', 'technik_id',
-                 'mzda_zaklad', 'mzda_doplnky', 'vedouci_prodejna_id']
+                 'mzda_zaklad', 'mzda_doplnky', 'vedouci_prodejna_id', 'can_manage_tickets']
         read_only_fields = ['datum_vytvoreni']
     
     def to_representation(self, instance):
@@ -42,6 +44,9 @@ class WebUserSerializer(serializers.ModelSerializer):
     def get_vedouci_prodejna_id(self, obj):
         row = Prodejna.objects.filter(vedouci_user_id=obj.id).first()
         return row.id if row else None
+
+    def get_can_manage_tickets(self, obj):
+        return can_manage_tickets(obj)
 
 
 class WebUserProfileSerializer(serializers.ModelSerializer):

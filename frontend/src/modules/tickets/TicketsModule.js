@@ -35,7 +35,8 @@ const StatusBadge = ({ stav }) => {
 };
 
 const TicketsModule = () => {
-    const { user, isAdmin } = useAuth();
+    const { canManageTickets } = useAuth();
+    const isTicketManager = canManageTickets();
     const [tickets, setTickets] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -176,6 +177,14 @@ const TicketsModule = () => {
             }
         } catch (e) {}
         setExpanded(ticketId);
+        try {
+            const mr = await ticketAPI.markRead(ticketId);
+            if (mr.success) {
+                window.dispatchEvent(new CustomEvent('tickets-unread-refresh'));
+            }
+        } catch {
+            /* ignore */
+        }
     };
 
     const filtered = filterStav === 'vse' ? tickets : tickets.filter(t => t.stav === filterStav);
@@ -297,7 +306,7 @@ const TicketsModule = () => {
                                             comment={c}
                                             ticketId={ticket.id}
                                             currentUserId={user?.id}
-                                            isAdmin={isAdmin()}
+                                            isAdmin={isTicketManager}
                                             editingCommentId={editingCommentId}
                                             editCommentText={editCommentText}
                                             onStartEdit={handleStartEditComment}

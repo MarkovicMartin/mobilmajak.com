@@ -1,7 +1,10 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getApiEndpoints } from '../config/apiConfig';
 import { AnalyticsDateInput } from './AnalyticsDateRange';
+import { taskAPI } from '../services/api';
+import { useUnreadPoll } from '../hooks/useUnreadPoll';
+import { showAppToast } from './AppToast';
 import './SellerDashboard.css';
 import AttendancePanel from '../modules/shifts/AttendancePanel';
 
@@ -47,6 +50,22 @@ export default function SellerDashboard({ user }) {
   const [mujPlanView, setMujPlanView] = useState('denni'); // 'denni' | 'mesicni' – výchozí denní
   const [tasks, setTasks] = useState([]);
   const [newTask, setNewTask] = useState({ ukol: '', priorita: 'stredni', deadline: '' });
+
+  const fetchTaskUnread = useCallback(async () => {
+    const res = await taskAPI.getUnreadSummary();
+    return res.success ? (res.unread_count || 0) : 0;
+  }, []);
+
+  const notifyTasks = useCallback((delta) => {
+    const word = delta === 1 ? 'nový úkol' : `${delta} nových úkolů`;
+    showAppToast(`📋 Máte ${word} od vedoucího`);
+  }, []);
+
+  const { count: taskUnreadCount, refresh: refreshTaskUnread } = useUnreadPoll({
+    enabled: !!user,
+    fetchCount: fetchTaskUnread,
+    onNotify: notifyTasks,
+  });
   const [news, setNews] = useState([]);
   const [upcoming, setUpcoming] = useState([]);
 
@@ -91,7 +110,10 @@ export default function SellerDashboard({ user }) {
 
   const loadTasks = async (stav = 'vse') => {
     const res = await fetch(`/api/tasks/?stav=${stav}`, { credentials: 'include' });
-    if (res.ok) setTasks(await res.json());
+    if (res.ok) {
+      setTasks(await res.json());
+      refreshTaskUnread();
+    }
   };
 
   const createTask = async () => {
@@ -311,7 +333,14 @@ export default function SellerDashboard({ user }) {
           {/* Novinky + Úkoly přímo pod grafem v levém sloupci */}
           <div className="below-cards">
             <div className="card">
-              <h3>Úkoly od vedoucího</h3>
+              <h3>
+                Úkoly od vedoucího
+                {taskUnreadCount > 0 && (
+                  <span className="tasks-unread-pill" title="Nové úkoly">
+                    {taskUnreadCount}
+                  </span>
+                )}
+              </h3>
               <div className="tasks-header">
                 <div style={{display:'flex', gap:8}}>
                   <button onClick={() => loadTasks('vse')}>Aktuální</button>

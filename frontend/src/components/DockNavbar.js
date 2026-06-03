@@ -25,6 +25,7 @@ const springHover = { type: 'spring', stiffness: 300, damping: 22 };
 const DockNavbar = ({
     user,
     isAdmin,
+    canManageTickets,
     logout,
     isDarkMode,
     toggleTheme,
@@ -97,7 +98,9 @@ const DockNavbar = ({
                                 >
                                     <i className={`fas ${isDarkMode ? 'fa-sun' : 'fa-moon'}`} />
                                 </button>
-                                {isAdmin() && <AdminDropdown onOpen={() => setMobileNavOpen(false)} />}
+                                {(isAdmin() || canManageTickets()) && (
+                                    <AdminDropdown onOpen={() => setMobileNavOpen(false)} />
+                                )}
                                 <BugButton user={user} onOpen={() => setMobileNavOpen(false)} />
                             </div>
                         </div>
@@ -172,7 +175,7 @@ const DockNavbar = ({
                                 </button>
                             </motion.div>
 
-                            {isAdmin() && (
+                            {(isAdmin() || canManageTickets()) && (
                                 <motion.div whileHover={{ scale: 1.08 }} transition={springHover} className="dock-slot">
                                     <AdminDropdown onOpen={() => setMobileNavOpen(false)} />
                                 </motion.div>

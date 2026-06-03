@@ -62,7 +62,7 @@ const UserManagement = () => {
         return { activeUsers: active, inactiveUsers: inactive };
     }, [users]);
 
-    const availableModules = ['analytics', 'shifts', 'news', 'access'];
+    const availableModules = ['analytics', 'shifts', 'news', 'access', 'tickets_admin'];
 
     useEffect(() => {
         loadUsers();
@@ -83,7 +83,7 @@ const UserManagement = () => {
     const loadUsers = async () => {
         try {
             setLoading(true);
-            const response = await userAPI.getUsers();
+            const response = await userAPI.getUsers({ aktivni: 'all' });
             if (response.success) {
                 setUsers(response.users);
             } else {
@@ -297,6 +297,7 @@ const UserManagement = () => {
                                 {module === 'shifts' && 'Směny'}
                                 {module === 'news' && 'Novinky'}
                                 {module === 'access' && 'Přístupy'}
+                                {module === 'tickets_admin' && 'Tikety'}
                             </span>
                         ))
                     ) : (
@@ -626,6 +627,7 @@ const UserManagement = () => {
                                             {module === 'shifts' && 'Směny'}
                                             {module === 'news' && 'Novinky'}
                                             {module === 'access' && 'Přístupy'}
+                                            {module === 'tickets_admin' && 'Správa ticketů'}
                                         </label>
                                     ))}
                                 </div>

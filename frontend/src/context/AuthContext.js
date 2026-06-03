@@ -83,6 +83,13 @@ export const AuthProvider = ({ children }) => {
         return user && user.role === 'ADMIN';
     };
 
+    const canManageTickets = () => {
+        if (!user) return false;
+        if (user.role === 'ADMIN') return true;
+        if (user.can_manage_tickets === true) return true;
+        return Array.isArray(user.moduly) && user.moduly.includes('tickets_admin');
+    };
+
     const value = {
         user,
         loading,
@@ -91,6 +98,7 @@ export const AuthProvider = ({ children }) => {
         logout,
         hasModuleAccess,
         isAdmin,
+        canManageTickets,
     };
 
     return (

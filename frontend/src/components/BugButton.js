@@ -4,6 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import TicketForm from '../modules/tickets/TicketForm';
 import { ticketAPI } from '../services/api';
+import { showAppToast } from './AppToast';
 import './BugButton.css';
 
 const springHover = { type: 'spring', stiffness: 300, damping: 22 };
@@ -17,6 +18,8 @@ const BugButton = ({ user, onOpen }) => {
     const [successMsg, setSuccessMsg] = useState(null);
     const dropdownRef = useRef(null);
     const mobileDrawerRef = useRef(null);
+    const prevUnreadRef = useRef(0);
+    const initialUnreadRef = useRef(true);
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -43,7 +46,17 @@ const BugButton = ({ user, onOpen }) => {
         try {
             const res = await ticketAPI.getUnreadSummary();
             if (res.success && typeof res.unread_count === 'number') {
-                setUnreadCount(res.unread_count);
+                const next = res.unread_count;
+                if (!initialUnreadRef.current && res.role !== 'manager' && next > prevUnreadRef.current) {
+                    const delta = next - prevUnreadRef.current;
+                    const msg = delta === 1
+                        ? '🔔 Aktualizace u vašeho ticketu'
+                        : `🔔 ${delta} aktualizací u vašich ticketů`;
+                    showAppToast(msg);
+                }
+                initialUnreadRef.current = false;
+                prevUnreadRef.current = next;
+                setUnreadCount(next);
             }
         } catch {
             setUnreadCount(0);

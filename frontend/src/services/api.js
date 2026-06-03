@@ -60,9 +60,13 @@ export const userAPI = {
         return response.data;
     },
 
-    // Seznam uživatelů (ADMIN + VEDOUCI)
-    getUsers: async () => {
-        const response = await api.get('/users/list/');
+    // Seznam uživatelů (ADMIN + VEDOUCI); výchozí jen aktivní
+    getUsers: async ({ aktivni = true } = {}) => {
+        const params = {};
+        if (aktivni === true) params.aktivni = 'true';
+        else if (aktivni === false) params.aktivni = 'false';
+        else if (aktivni === 'all') params.aktivni = 'all';
+        const response = await api.get('/users/list/', { params });
         return response.data;
     },
 
@@ -220,6 +224,13 @@ export const ticketAPI = {
 
     markRead: async (id) => {
         const response = await api.post(`/tickets/${id}/mark-read/`);
+        return response.data;
+    },
+};
+
+export const taskAPI = {
+    getUnreadSummary: async () => {
+        const response = await api.get('/tasks/unread-summary/');
         return response.data;
     },
 };

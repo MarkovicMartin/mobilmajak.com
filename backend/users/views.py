@@ -222,7 +222,13 @@ def users_list_view(request):
     if request.user.role not in ['ADMIN', 'VEDOUCI']:
         return Response({'error': 'Nedostatečná oprávnění'}, status=status.HTTP_403_FORBIDDEN)
     
+    aktivni_param = request.GET.get('aktivni', 'true').lower()
     users = WebUser.objects.all()
+    if aktivni_param in ('true', '1', 'yes'):
+        users = users.filter(aktivni=True)
+    elif aktivni_param in ('false', '0', 'no'):
+        users = users.filter(aktivni=False)
+    # aktivni=all → bez filtru (správa uživatelů)
     serializer = WebUserSerializer(users, many=True)
     return Response({
         'success': True,
