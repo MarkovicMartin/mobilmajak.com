@@ -1,0 +1,160 @@
+.plans-nav {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.65rem 1rem;
+    padding: 0.65rem 0.85rem;
+    margin-bottom: 1rem;
+    background: #fff;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+}
+
+.plans-nav-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+    flex: 1;
+    min-width: 0;
+}
+
+.plans-nav-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.45rem 0.75rem;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    background: #f8f9fa;
+    color: #495057;
+    font-size: 0.85rem;
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.plans-nav-tab:hover {
+    background: #edf2f7;
+    color: #2d3748;
+}
+
+.plans-nav-tab--active {
+    background: #e8f2ff;
+    border-color: #90cdf4;
+    color: #2b6cb0;
+    font-weight: 600;
+}
+
+.plans-nav-tab-icon {
+    font-size: 1rem;
+    line-height: 1;
+}
+
+.plans-nav-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+    flex-shrink: 0;
+}
+
+.plans-nav-month {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.85rem;
+    color: #495057;
+}
+
+.plans-nav-month-label {
+    font-weight: 600;
+    color: #64748b;
+    white-space: nowrap;
+}
+
+.plans-nav-month-select {
+    padding: 0.35rem 0.5rem;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    background: #fff;
+    font-size: 0.85rem;
+    font-family: inherit;
+    color: #2d3748;
+    min-width: 9rem;
+}
+
+.plans-nav-rezim {
+    display: inline-flex;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+    overflow: hidden;
+}
+
+.plans-nav-rezim-btn {
+    padding: 0.35rem 0.6rem;
+    border: none;
+    background: #fff;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #64748b;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.plans-nav-rezim-btn + .plans-nav-rezim-btn {
+    border-left: 1px solid #dee2e6;
+}
+
+.plans-nav-rezim-btn--active {
+    background: #e8f2ff;
+    color: #2b6cb0;
+    font-weight: 600;
+}
+
+@media (max-width: 900px) {
+    .plans-nav {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .plans-nav-meta {
+        justify-content: flex-end;
+    }
+}
+
+@media (max-width: 768px) {
+    .plans-nav-tab {
+        font-size: 0.8rem;
+        padding: 0.4rem 0.6rem;
+    }
+}
+
+.dark-mode .plans-nav {
+    background: var(--card-bg, #1e293b);
+    border-color: #334155;
+}
+
+.dark-mode .plans-nav-tab {
+    background: #0f172a;
+    color: #cbd5e1;
+}
+
+.dark-mode .plans-nav-tab--active {
+    background: #1e3a5f;
+    border-color: #3b82f6;
+    color: #93c5fd;
+}
+
+.dark-mode .plans-nav-month-select {
+    background: #0f172a;
+    border-color: #475569;
+    color: #e2e8f0;
+}

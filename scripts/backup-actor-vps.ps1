@@ -1,4 +1,4 @@
-# Kompletní záloha actoru na VPS (bez změny produkčního main.js)
+# Rychlá záloha jednoho actoru (prodeje). Kompletní server: backup-full-server.sh
 $ErrorActionPreference = "Stop"
 $RepoRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $key = Join-Path $RepoRoot ".ssh\webmajak_vps\mobilmajak_vps_ed25519"

@@ -76,9 +76,6 @@ const AnalyticsNav = () => {
     return (
         <header className="analytics-nav" aria-label="Navigace analytiky">
             <div className="analytics-nav-tabs" role="tablist">
-                <span className="analytics-nav-brand" aria-hidden="true">
-                    📊 Analytika
-                </span>
                 {ANALYTICS_SECTIONS.map((section) => (
                     <NavLink
                         key={section.id}

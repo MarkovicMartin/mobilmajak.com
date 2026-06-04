@@ -14,6 +14,31 @@
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
+.analytics-date-range {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.5rem 0.75rem;
+}
+
+.analytics-date-range--inline .date-inputs {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem 0.5rem;
+}
+
+.analytics-date-range-sep {
+    font-size: 0.85rem;
+    color: #64748b;
+}
+
+.analytics-date-range--inline .analytics-date-picker-input,
+.analytics-date-range--bare .analytics-date-picker-input {
+    max-width: 10.5rem;
+    min-width: 8.5rem;
+}
+
 .react-datepicker__day.analytics-day-has-data:not(.react-datepicker__day--selected):not(.react-datepicker__day--keyboard-selected) {
     background-color: #d4edda;
     color: #155724;

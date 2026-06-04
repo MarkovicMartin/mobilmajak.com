@@ -4679,7 +4679,16 @@ def phones_accessories_by_salesperson_view(request):
         }
 
         # Mapování prodejce -> jméno
-        users = {u.id: u for u in WebUser.objects.filter(id__in=list({r['id_prodejce'] for r in phone_rows if r['id_prodejce'] is not None}))}
+        prodejce_ids = list({r['id_prodejce'] for r in phone_rows if r['id_prodejce'] is not None})
+        users = {u.id: u for u in WebUser.objects.filter(id__in=prodejce_ids)}
+
+        los_skla_agg = {}
+        if prodejce_ids:
+            for r in qs.filter(id_prodejce__in=prodejce_ids).values('id_prodejce').annotate(
+                los_kusy=Count('id', filter=Q(kod='LOS')),
+                skla_folie_kusy=Count('id', filter=Q(kategorie_1='Skla a fólie')),
+            ):
+                los_skla_agg[r['id_prodejce']] = r
 
         # Agregace po prodejcích
         result_rows = {}
@@ -4709,6 +4718,14 @@ def phones_accessories_by_salesperson_view(request):
                         'stredisko': meta.get('stredisko'),
                         'phones_kusy': phones_kusy
                     })
+
+        for pid, row in result_rows.items():
+            extra = los_skla_agg.get(pid) or {}
+            los = int(extra.get('los_kusy') or 0)
+            skla = int(extra.get('skla_folie_kusy') or 0)
+            row['los_kusy'] = los
+            row['skla_folie_kusy'] = skla
+            row['los_pct_vs_skla'] = round(100.0 * los / skla, 1) if skla > 0 else None
 
         return JsonResponse({
             'success': True,

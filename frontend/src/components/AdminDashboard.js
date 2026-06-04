@@ -192,8 +192,6 @@ export default function AdminDashboard() {
         };
     }, [planDashboardBundle, todayStats, today, planProdejciList]);
 
-    const goPlansDefault = () =>
-        navigate({ pathname: '/plans', hash: '' }, { state: { fromDashboardPlans: true } });
     const goPlansProdejny = () => navigate({ pathname: '/plans', hash: 'plneni-prodejny' });
     const goPlansProdejci = () => navigate({ pathname: '/plans', hash: 'plneni-prodejci' });
     const goAnalyticsCelkova = () => navigate('/analytics/celkova-cisla');
@@ -228,8 +226,8 @@ export default function AdminDashboard() {
                             className="tile tile--plan tile--clickable"
                             role="button"
                             tabIndex={0}
-                            onClick={goPlansDefault}
-                            onKeyDown={tileKeyActivate(goPlansDefault)}
+                            onClick={goPlansProdejny}
+                            onKeyDown={tileKeyActivate(goPlansProdejny)}
                         >
                             <div className="tile-title">Plnění dnes (vs cíl dne, bez DPH)</div>
                             <div
@@ -261,8 +259,8 @@ export default function AdminDashboard() {
                             className="tile tile--plan tile--clickable"
                             role="button"
                             tabIndex={0}
-                            onClick={goPlansDefault}
-                            onKeyDown={tileKeyActivate(goPlansDefault)}
+                            onClick={goPlansProdejny}
+                            onKeyDown={tileKeyActivate(goPlansProdejny)}
                         >
                             <div className="tile-title">Plnění měsíce (obrat bez DPH)</div>
                             <div

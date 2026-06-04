@@ -2169,6 +2169,18 @@
     font-weight: 600;
 }
 
+.service-item-los {
+    grid-column: span 2;
+}
+
+.service-item-los .service-pct {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #2b6cb0;
+    margin-top: 2px;
+}
+
 .seller-performance {
     display: flex;
     flex-direction: column;

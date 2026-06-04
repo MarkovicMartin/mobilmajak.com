@@ -105,6 +105,7 @@
     flex-wrap: wrap;
 }
 
+.date-inputs .analytics-date-picker-input,
 .date-inputs input[type="date"] {
     background: #ffffff;
     border: 2px solid #e2e8f0;
@@ -115,6 +116,7 @@
     transition: border-color 0.2s ease;
 }
 
+.date-inputs .analytics-date-picker-input:focus,
 .date-inputs input[type="date"]:focus {
     outline: none;
     border-color: #3182ce;

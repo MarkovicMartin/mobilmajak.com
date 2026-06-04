@@ -558,46 +558,95 @@ def _souhrn_plneni_roku(mesice):
     }
 
 
-def _souhrn_roku_kompletni(mesice, reference=None):
-    """Roční souhrn: celý rok + za ukončené/probíhající období."""
+def _souhrn_ytd(mesice, reference=None):
+    """
+    YTD: ukončené měsíce celé; u probíhajícího měsíce skutečnost za proběhlé dny
+    a predikce / LY / plán přepočtené na stejný počet dní (aby % nebyla zkreslená).
+    """
     ref = reference or date.today()
-    obdobi = [m for m in mesice if m.get('stav') in ('ukonceny', 'probiha')]
-    s_plneni = [m for m in obdobi if m.get('plneni')]
+    sk_sum = pred_sum = ly_sum = plan_sum = 0.0
+    plan_any = False
+    mesicu_ukonceno = 0
+    popis_probiha = None
+    prorated = False
+
+    for m in mesice:
+        if m.get('stav') == 'budouci' or not m.get('plneni'):
+            continue
+        pl = m['plneni']
+        sk = float(pl['obrat'])
+        pred = float(m.get('obrat_pred') or 0)
+        ly = float(m.get('obrat_ly') or 0)
+        plan_v = pl.get('plan_obrat')
+        has_plan = plan_v is not None
+        plan_f = float(plan_v) if has_plan else 0.0
+
+        if m.get('stav') == 'probiha':
+            den = int(pl.get('den_v_mesici') or ref.day)
+            dni = int(pl.get('dni_v_mesici') or calendar.monthrange(m['rok'], m['mesic'])[1])
+            ratio = (den / dni) if dni > 0 else 1.0
+            pred *= ratio
+            ly *= ratio
+            if has_plan:
+                plan_f *= ratio
+            prorated = True
+            popis_probiha = f'do {den}. {m["mesic"]}.'
+        else:
+            mesicu_ukonceno += 1
+
+        sk_sum += sk
+        pred_sum += pred
+        ly_sum += ly
+        if has_plan:
+            plan_sum += plan_f
+            plan_any = True
+
+    if sk_sum <= 0 and mesicu_ukonceno == 0 and not popis_probiha:
+        return None
+
+    if popis_probiha and mesicu_ukonceno:
+        popis_obdobi = f'{mesicu_ukonceno} m. + {popis_probiha}'
+    elif popis_probiha:
+        popis_obdobi = popis_probiha
+    else:
+        popis_obdobi = f'{mesicu_ukonceno} m.'
+
+    pct_pred, delta_pred = _pct_delta(sk_sum, pred_sum)
+    pct_ly, delta_ly = _pct_delta(sk_sum, ly_sum)
+    pct_plan, delta_plan = _pct_delta(sk_sum, plan_sum) if plan_any else (None, None)
+
+    return {
+        'mesicu': mesicu_ukonceno + (1 if popis_probiha else 0),
+        'mesicu_ukonceno': mesicu_ukonceno,
+        'popis_obdobi': popis_obdobi,
+        'prorated': prorated,
+        'obrat_skutecny': _round_kc(sk_sum),
+        'obrat_predikce': _round_kc(pred_sum),
+        'obrat_ly': _round_kc(ly_sum),
+        'obrat_plan': _round_kc(plan_sum) if plan_any else None,
+        'pct_vs_predikce': pct_pred,
+        'odchylka_pred_pct': delta_pred,
+        'odchylka_pred_kc': _round_kc(sk_sum - pred_sum),
+        'pct_vs_ly': pct_ly,
+        'odchylka_ly_pct': delta_ly,
+        'odchylka_ly_kc': _round_kc(sk_sum - ly_sum) if ly_sum else None,
+        'pct_vs_plan': pct_plan,
+        'odchylka_plan_pct': delta_plan,
+        'odchylka_plan_kc': _round_kc(sk_sum - plan_sum) if plan_any else None,
+    }
+
+
+def _souhrn_roku_kompletni(mesice, reference=None):
+    """Roční souhrn: celý rok + YTD (ukončené + poměrně probíhající měsíc)."""
+    ref = reference or date.today()
 
     celkem_pred_rok = _round_kc(sum(m['obrat_pred'] for m in mesice))
     celkem_ly_rok = _round_kc(sum(m.get('obrat_ly') or 0 for m in mesice))
 
-    za_obdobi = None
-    if s_plneni:
-        sk = sum(m['plneni']['obrat'] for m in s_plneni)
-        pred = sum(m['obrat_pred'] for m in s_plneni)
-        ly = sum(m.get('obrat_ly') or 0 for m in s_plneni)
-        s_planem = [m for m in s_plneni if m['plneni'].get('plan_obrat')]
-        plan = sum(m['plneni']['plan_obrat'] for m in s_planem)
-        pct_pred, delta_pred = _pct_delta(sk, pred)
-        pct_ly, delta_ly = _pct_delta(sk, ly)
-        pct_plan, delta_plan = _pct_delta(sk, plan) if s_planem else (None, None)
-        za_obdobi = {
-            'mesicu': len(s_plneni),
-            'obrat_skutecny': _round_kc(sk),
-            'obrat_predikce': _round_kc(pred),
-            'obrat_ly': _round_kc(ly),
-            'obrat_plan': _round_kc(plan) if s_planem else None,
-            'pct_vs_predikce': pct_pred,
-            'odchylka_pred_pct': delta_pred,
-            'odchylka_pred_kc': _round_kc(sk - pred),
-            'pct_vs_ly': pct_ly,
-            'odchylka_ly_pct': delta_ly,
-            'odchylka_ly_kc': _round_kc(sk - ly) if ly else None,
-            'pct_vs_plan': pct_plan,
-            'odchylka_plan_pct': delta_plan,
-            'odchylka_plan_kc': _round_kc(sk - plan) if s_planem else None,
-        }
-
     return {
         'celkem_predikce_rok': celkem_pred_rok,
         'celkem_obrat_ly_rok': celkem_ly_rok,
-        'za_ukoncene_obdobi': za_obdobi,
+        'za_ukoncene_obdobi': _souhrn_ytd(mesice, reference=ref),
         'reference_date': ref.isoformat(),
     }
 

@@ -1,0 +1,66 @@
+# Skripty MOBILMAJAK
+
+Přehled – co je provozní, co plánované rozšíření. Nepřidávejte jednorázové kopie deploy/cron; rozšiřte existující skript.
+
+## Deploy a staging
+
+| Skript | Účel |
+|--------|------|
+| `deploy-staging.sh` | Hlavní deploy na staging (backend + FE build na VPS) |
+| `deploy-staging.ps1` | Totéž pro Windows |
+| `staging-post-deploy.sh` | Migrace, collectstatic, restart (volá deploy) |
+| `deploy-production.sh` / `.ps1` | Produkce |
+| `production-post-deploy.sh` | Post-deploy produkce |
+| `merge-to-production.sh` | Merge větev → produkce |
+| `grant-staging-tickets-admin.sh` | Oprávnění ticketů na staging |
+
+## Plány (cron na VPS)
+
+| Skript | Účel |
+|--------|------|
+| `install-staging-plans-cron.sh` | Jednorázově nastaví cron `ensure_monthly_plans` + `prepocet_plan_prodejci` pro uživatele `webmajak` |
+
+Detaily a ruční řádky crontab: [`secrets/README.md`](../secrets/README.md).
+
+## Záloha (off-site, mimo git projektu)
+
+| Skript | Účel |
+|--------|------|
+| `backup-full-server.sh` / `.ps1` | Kompletní záloha VPS → `../mobilmajak-backups/` |
+| `backup-init-offsite-git.sh` | Privátní git jen pro manifesty záloh |
+| `backup-sync-manifests-to-git.sh` | Sync manifestů po záloze |
+| `backup-actor-vps.ps1` | Záloha actor složky na VPS |
+
+Návod: [`docs/zaloha-disaster-recovery.md`](../docs/zaloha-disaster-recovery.md).
+
+## Kamery – pilot pohybu (bez obrazu na serveru)
+
+| Soubor | Účel |
+|--------|------|
+| `camera_motion_gateway.py` | Brána v LAN: NVR alertStream → API `motion: true/false` |
+| `camera_motion_gateway.example.json` | Příklad konfigurace |
+
+Tajemství: `secrets/camera_motion_secrets.json` – viz `secrets/README.md`.
+
+## Lokální vývoj
+
+| Skript | Účel |
+|--------|------|
+| `run-local.cmd` / `run-local.ps1` | Plná lokální relace (skill mobilmajak-local-test) |
+
+## Symplio / integrace (samostatná oblast)
+
+| Složka | Účel |
+|--------|------|
+| `symplio-backfill-pre2024/` | Doplňování starších měsíců Symplio |
+
+## Ostatní
+
+| Skript | Účel |
+|--------|------|
+| `git-switch-branch.sh` | Přepnutí větve na VPS |
+| `setup-git-repo.sh` | Počáteční git na serveru |
+| `check-technik-map.js` | Kontrola mapy techniků |
+| `compare-symplio-month.ps1` | Porovnání měsíce Symplio |
+
+Backend-only pomocné skripty: `backend/scripts/` (cron dedupe, migrace).

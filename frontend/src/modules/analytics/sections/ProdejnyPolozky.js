@@ -23,6 +23,14 @@ const formatCurrency = (value) => {
     }).format(Math.round(n));
 };
 
+/** LOS vs tvrzená skla a fólie (stejná logika jako sklicka/lepeni v API). */
+const losPctVsSkla = (los, skla) => {
+    const l = Number(los) || 0;
+    const s = Number(skla) || 0;
+    if (s <= 0) return null;
+    return Math.round((100 * l) / s);
+};
+
 const ProdejnyPolozky = () => {
     const [salesData, setSalesData] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -410,13 +418,22 @@ const ProdejnyPolozky = () => {
                                                     <span className="service-name">KNZ</span>
                                                     <span className="service-count">{item.knz || 0}</span>
                                                 </div>
-                                                <div className="service-item">
-                                                    <span className="service-name">Sklíčka</span>
+                                                <div className="service-item" title="Tvrzená skla a fólie (kategorie Skla a fólie)">
+                                                    <span className="service-name">Skla / fólie</span>
                                                     <span className="service-count">{item.sklicka || 0}</span>
                                                 </div>
-                                                <div className="service-item">
-                                                    <span className="service-name">Lepení</span>
+                                                <div
+                                                    className="service-item service-item-los"
+                                                    title="LOS – lepení; poměr vůči prodaným sklům/fóliím"
+                                                >
+                                                    <span className="service-name">LOS</span>
                                                     <span className="service-count">{item.lepeni || 0}</span>
+                                                    <span className="service-pct">
+                                                        {(() => {
+                                                            const pct = losPctVsSkla(item.lepeni, item.sklicka);
+                                                            return pct != null ? `${pct} % ke sklům` : '—';
+                                                        })()}
+                                                    </span>
                                                 </div>
                                                 <div className="service-item highlight">
                                                     <span className="service-name font-bold">Výkup</span>

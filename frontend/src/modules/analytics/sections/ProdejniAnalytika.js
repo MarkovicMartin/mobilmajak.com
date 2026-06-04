@@ -28,6 +28,8 @@ const SalespersonBreakdown = ({ filters }) => {
 
     const formatNumber = (n)=> new Intl.NumberFormat('cs-CZ').format(n||0);
 
+    const formatLosPct = (pct) => (pct != null ? `${pct} %` : '—');
+
     useEffect(()=>{
         const load = async ()=>{
             setLoading(true); setError(null);
@@ -69,6 +71,8 @@ const SalespersonBreakdown = ({ filters }) => {
                             <th style={{textAlign:'right', padding:'8px'}}>Telefony (ks)</th>
                             <th style={{textAlign:'right', padding:'8px'}}>Příslušenství ≥ 100 (ks)</th>
                             <th style={{textAlign:'right', padding:'8px'}}>Přísl./telefon</th>
+                            <th style={{textAlign:'right', padding:'8px'}} title="Kód LOS">LOS (ks)</th>
+                            <th style={{textAlign:'right', padding:'8px'}} title="LOS vs tvrzená skla a fólie (kategorie Skla a fólie)">LOS / skla %</th>
                             <th style={{textAlign:'right', padding:'8px'}}>Doklady pouze telefon</th>
                             <th style={{textAlign:'center', padding:'8px'}}>Detail</th>
                         </tr>
@@ -83,6 +87,8 @@ const SalespersonBreakdown = ({ filters }) => {
                                     <td style={{padding:'8px', textAlign:'right'}}>{formatNumber(r.phones_kusy)}</td>
                                     <td style={{padding:'8px', textAlign:'right'}}>{formatNumber(r.accessories_kusy)}</td>
                                     <td style={{padding:'8px', textAlign:'right'}}>{ratio.toFixed(2)}</td>
+                                    <td style={{padding:'8px', textAlign:'right'}}>{formatNumber(r.los_kusy)}</td>
+                                    <td style={{padding:'8px', textAlign:'right'}}>{formatLosPct(r.los_pct_vs_skla)}</td>
                                     <td style={{padding:'8px', textAlign:'right'}}>{formatNumber(r.phones_only_docs)}</td>
                                     <td style={{padding:'8px', textAlign:'center'}}>
                                         <button className="refresh-btn" onClick={()=> openReceipts(r.id_prodejce, 'without')}>Jen telefon</button>
@@ -271,8 +277,8 @@ const ProdejniAnalytika = ({ currentUser }) => {
     }
 
     return (
-        <AnalyticsSectionWrapper title="Prodejní analytika" icon="🎯">
-            <div className="analytics-section">
+        <AnalyticsSectionWrapper>
+            <div className="analytics-section prodejni-analytika">
             <div className="section-filters">
                 <div className="filter-group">
                     <label>Typ analýzy:</label>
@@ -323,11 +329,11 @@ const ProdejniAnalytika = ({ currentUser }) => {
                             onErrorChange={setDateError}
                             showError={false}
                         />
-                        <div className="filter-group" style={{minWidth:240}}>
-                            <label>Rychlé volby:</label>
-                            <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+                        <div className="filter-group filter-group--quick">
+                            <label>Rychlé volby</label>
+                            <div className="analytics-quick-btns">
                                 {['today','yesterday','thisWeek','thisMonth','prevMonth'].map(key=> (
-                                    <button key={key} className="refresh-btn" onClick={()=>{
+                                    <button key={key} type="button" className="analytics-quick-btn" onClick={()=>{
                                         const now=new Date();
                                         const iso=(d)=> `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
                                         let from,to; if(key==='today'){from=to=new Date(now.getFullYear(),now.getMonth(),now.getDate());}
@@ -395,38 +401,32 @@ const ProdejniAnalytika = ({ currentUser }) => {
 
                         {/* Speciální metriky pro telefony a příslušenství */}
                         {selectedAnalysis === 'phones_accessories' && data.aggregations && (
-                            <>
-                                <div className="analysis-section" style={{marginBottom: '20px'}}>
-                                    <h3>📱 Finanční údaje pouze za prodané telefony</h3>
-                                    <p style={{color: '#666', marginBottom: '15px'}}>Následující data zobrazují obrat a marži <strong>pouze za prodané telefony</strong> (bez příslušenství).</p>
-                                </div>
-                                <div className="metrics-overview">
-                                    <div className="metric-card">
-                                        <h4>Celkový obrat</h4>
-                                        <div className="metric-value">
-                                            {formatCurrency(data.aggregations.celkovy_obrat)}
-                                        </div>
-                                    </div>
-                                    <div className="metric-card">
-                                        <h4>Celková marže</h4>
-                                        <div className="metric-value">
-                                            {formatCurrency(data.aggregations.celkovy_zisk)}
-                                        </div>
-                                    </div>
-                                    <div className="metric-card">
-                                        <h4>Marže</h4>
-                                        <div className="metric-value">
-                                            {data.aggregations.marze_procenta}%
-                                        </div>
-                                    </div>
-                                    <div className="metric-card">
-                                        <h4>Počet položek</h4>
-                                        <div className="metric-value">
-                                            {formatNumber(data.aggregations.celkem_polozek)}
-                                        </div>
+                            <div className="metrics-overview metrics-overview--phones">
+                                <div className="metric-card">
+                                    <h4>Obrat (telefony)</h4>
+                                    <div className="metric-value">
+                                        {formatCurrency(data.aggregations.celkovy_obrat)}
                                     </div>
                                 </div>
-                            </>
+                                <div className="metric-card">
+                                    <h4>Marže (telefony)</h4>
+                                    <div className="metric-value">
+                                        {formatCurrency(data.aggregations.celkovy_zisk)}
+                                    </div>
+                                </div>
+                                <div className="metric-card">
+                                    <h4>Marže %</h4>
+                                    <div className="metric-value">
+                                        {data.aggregations.marze_procenta}%
+                                    </div>
+                                </div>
+                                <div className="metric-card">
+                                    <h4>Položek</h4>
+                                    <div className="metric-value">
+                                        {formatNumber(data.aggregations.celkem_polozek)}
+                                    </div>
+                                </div>
+                            </div>
                         )}
 
                         {/* Grafy / výstupy podle typu analýzy */}
@@ -680,30 +680,39 @@ const ProdejniAnalytika = ({ currentUser }) => {
                             </div>
                         )}
                         {selectedAnalysis === 'phones_accessories' && data && data.totals && (
-                            <div className="analysis-section">
-                                <h3>📱+🔌 Telefony a příslušenství ≥ 100 Kč</h3>
-                                <div className="metrics-overview">
+                            <div className="prodejni-block">
+                                <div className="metrics-overview metrics-overview--dense">
                                     <div className="metric-card">
-                                        <h4>Prodáno telefonů (kusy)</h4>
+                                        <h4>Telefony (ks)</h4>
                                         <div className="metric-value">{formatNumber(data.totals.phones||0)}</div>
-                                        <div className="metric-subtitle" style={{fontSize: '0.8em', color: '#666', marginTop: '4px'}}>(minus storna)</div>
+                                        <div className="metric-subtitle">bez storn</div>
                                     </div>
-                                    <div className="metric-card"><h4>Položky příslušenství/služeb ≥ 100 Kč</h4><div className="metric-value">{formatNumber(data.totals.accessories_items_over_threshold||0)}</div></div>
-                                    <div className="metric-card"><h4>Příslušenství na 1 telefon</h4><div className="metric-value">{(data.totals.accessories_per_phone||0).toFixed(2)}</div></div>
-                                </div>
-                                <div className="metrics-overview">
-                                    <div className="metric-card"><h4>Doklady s příslušenstvím ≥ 100</h4><div className="metric-value">{formatNumber(data.receipts?.with_accessory||0)}</div></div>
-                                    <div className="metric-card"><h4>Doklady pouze s telefonem</h4><div className="metric-value">{formatNumber(data.receipts?.without_accessory||0)}</div></div>
+                                    <div className="metric-card">
+                                        <h4>Příslušenství ≥ 100 Kč</h4>
+                                        <div className="metric-value">{formatNumber(data.totals.accessories_items_over_threshold||0)}</div>
+                                    </div>
+                                    <div className="metric-card">
+                                        <h4>Přísl. / telefon</h4>
+                                        <div className="metric-value">{(data.totals.accessories_per_phone||0).toFixed(2)}</div>
+                                    </div>
+                                    <div className="metric-card">
+                                        <h4>Doklady s přísl.</h4>
+                                        <div className="metric-value">{formatNumber(data.receipts?.with_accessory||0)}</div>
+                                    </div>
+                                    <div className="metric-card">
+                                        <h4>Jen telefon</h4>
+                                        <div className="metric-value">{formatNumber(data.receipts?.without_accessory||0)}</div>
+                                    </div>
                                 </div>
 
-                                {Array.isArray(data.receipts?.without_accessory_list) && (
-                                    <div className="chart-container">
-                                        <h4>🧾 Doklady pouze s telefonem (bez položky ≥ 100 Kč)</h4>
-                                        <div className="items-list">
-                                            <ul>
+                                {Array.isArray(data.receipts?.without_accessory_list) && data.receipts.without_accessory_list.length > 0 && (
+                                    <div className="chart-container chart-container--compact">
+                                        <h4>Doklady jen s telefonem</h4>
+                                        <div className="items-list items-list--compact">
+                                            <ul className="prodejni-receipt-list">
                                                 {data.receipts.without_accessory_list.map((r, idx)=> (
                                                     <li key={idx}>
-                                                        <button className="refresh-btn" onClick={async()=>{
+                                                        <button type="button" className="analytics-quick-btn" onClick={async()=>{
                                                             setReceiptLoading(true); setReceiptError(null); setReceiptItems(null);
                                                             try{
                                                                 const p = new URLSearchParams({ doklad: r.doklad, threshold: '100' });
@@ -712,15 +721,20 @@ const ProdejniAnalytika = ({ currentUser }) => {
                                                                 setReceiptItems({ doklad: r.doklad, items: json.items });
                                                             }catch(e){ setReceiptError(e.message);} finally{ setReceiptLoading(false);} 
                                                         }}>Detail</button>
-                                                        <code style={{marginLeft:8}}>{r.doklad}</code> — {r.date} — {r.stredisko||'Prodejna'} — telefony: {formatNumber(r.phones_kusy||0)}
+                                                        <span className="prodejni-receipt-meta">
+                                                            <code>{r.doklad}</code>
+                                                            <span>{r.date}</span>
+                                                            <span>{r.stredisko||'Prodejna'}</span>
+                                                            <span>{formatNumber(r.phones_kusy||0)} ks</span>
+                                                        </span>
                                                     </li>
                                                 ))}
                                             </ul>
-                                            {receiptLoading && <div style={{marginTop:8}}>Načítám položky…</div>}
-                                            {receiptError && <div className="error-container" style={{marginTop:8}}>{receiptError}</div>}
+                                            {receiptLoading && <p className="prodejni-inline-hint">Načítám položky…</p>}
+                                            {receiptError && <div className="error-container">{receiptError}</div>}
                                             {receiptItems && (
-                                                <div style={{marginTop:10}}>
-                                                    <h4>Položky dokladu <code>{receiptItems.doklad}</code></h4>
+                                                <div className="prodejni-receipt-detail">
+                                                    <p className="prodejni-inline-hint">Doklad <code>{receiptItems.doklad}</code></p>
                                                     <ul>
                                                         {receiptItems.items.map((it,i)=> (
                                                             <li key={i}>{it.nazev} {it.kod? `(${it.kod})`:''} — {formatNumber(it.pocet_kusu||0)} ks — {new Intl.NumberFormat('cs-CZ', { style:'currency', currency:'CZK'}).format(it.cena_ks_vcl_dph||0)} {it.over_threshold? '🔸':''}</li>
@@ -732,9 +746,8 @@ const ProdejniAnalytika = ({ currentUser }) => {
                                     </div>
                                 )}
 
-                                {/* Rozpad po prodejcích */}
-                                <div className="chart-container">
-                                    <h4>👤 Rozpad po prodejcích</h4>
+                                <div className="chart-container chart-container--compact">
+                                    <h4>Rozpad po prodejcích</h4>
                                     <SalespersonBreakdown filters={filters} />
                                 </div>
                             </div>

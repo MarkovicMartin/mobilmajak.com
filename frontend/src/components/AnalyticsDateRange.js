@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import DatePicker, { registerLocale } from 'react-datepicker';
 import { cs } from 'date-fns/locale';
 import { format, parseISO, isValid } from 'date-fns';
@@ -12,8 +12,42 @@ import './AnalyticsDatePicker.css';
 
 registerLocale('cs', cs);
 
+const DEFAULT_INPUT_CLASS = 'analytics-date-picker-input';
+
+const isoFromDate = (d) => format(d, 'yyyy-MM-dd');
+
+const dateFromIso = (iso) => {
+    if (!iso || !isValidISODate(iso)) return null;
+    const parsed = parseISO(iso);
+    return isValid(parsed) ? parsed : null;
+};
+
+const AnalyticsDatePickerField = ({
+    id,
+    selectedIso,
+    onChange,
+    minDate,
+    maxDate,
+    inputClassName,
+    placeholderText = 'dd.mm.rrrr',
+}) => (
+    <DatePicker
+        id={id}
+        selected={dateFromIso(selectedIso)}
+        onChange={(picked) => onChange(picked ? isoFromDate(picked) : '')}
+        minDate={minDate ? dateFromIso(minDate) : undefined}
+        maxDate={maxDate ? dateFromIso(maxDate) : undefined}
+        dateFormat="dd.MM.yyyy"
+        locale="cs"
+        placeholderText={placeholderText}
+        className={`${DEFAULT_INPUT_CLASS} ${inputClassName || ''}`.trim()}
+        isClearable
+        showPopperArrow={false}
+    />
+);
+
 /**
- * Rozsah Od/Do s draft stavem – API / rodič se aktualizuje až po blur nebo Enter.
+ * Rozsah Od/Do – kalendář jako u profilu / úkolů (react-datepicker).
  */
 const AnalyticsDateRange = ({
     startDate = '',
@@ -46,50 +80,52 @@ const AnalyticsDateRange = ({
         [onErrorChange]
     );
 
-    const applyDates = useCallback(() => {
-        const normalized = normalizeDateRange(dateDraft.start_date, dateDraft.end_date);
-        if (!normalized) {
-            reportError(INVALID_DATE_MESSAGE);
-            return;
-        }
-        reportError('');
-        setDateDraft(normalized);
-        if (onApply) onApply(normalized);
-    }, [dateDraft, onApply, reportError]);
+    const applyDates = useCallback(
+        (nextDraft) => {
+            const draft = nextDraft || dateDraft;
+            const normalized = normalizeDateRange(draft.start_date, draft.end_date);
+            if (!normalized) {
+                reportError(INVALID_DATE_MESSAGE);
+                return;
+            }
+            reportError('');
+            setDateDraft(normalized);
+            if (onApply) onApply(normalized);
+        },
+        [dateDraft, onApply, reportError]
+    );
 
-    const onDraftChange = (field, value) => {
-        setDateDraft((prev) => ({ ...prev, [field]: value }));
+    const onFieldChange = (field, value) => {
+        const next = { ...dateDraft, [field]: value };
+        setDateDraft(next);
         reportError('');
+        if (next.start_date && next.end_date) {
+            const normalized = normalizeDateRange(next.start_date, next.end_date);
+            if (normalized) applyDates(normalized);
+        }
     };
 
-    const onKeyDown = (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            applyDates();
-        }
-    };
+    const pickerClass = inputClassName || '';
 
-    const startInput = (
-        <input
-            type="date"
-            className={inputClassName || undefined}
-            value={dateDraft.start_date}
-            max={dateDraft.end_date || undefined}
-            onChange={(e) => onDraftChange('start_date', e.target.value)}
-            onBlur={applyDates}
-            onKeyDown={onKeyDown}
+    const startPicker = (
+        <AnalyticsDatePickerField
+            id="analytics-range-start"
+            selectedIso={dateDraft.start_date}
+            onChange={(v) => onFieldChange('start_date', v)}
+            maxDate={dateDraft.end_date || undefined}
+            inputClassName={pickerClass}
+            placeholderText="Od"
         />
     );
 
-    const endInput = (
-        <input
-            type="date"
-            className={inputClassName || undefined}
-            value={dateDraft.end_date}
-            min={dateDraft.start_date || undefined}
-            onChange={(e) => onDraftChange('end_date', e.target.value)}
-            onBlur={applyDates}
-            onKeyDown={onKeyDown}
+    const endPicker = (
+        <AnalyticsDatePickerField
+            id="analytics-range-end"
+            selectedIso={dateDraft.end_date}
+            onChange={(v) => onFieldChange('end_date', v)}
+            minDate={dateDraft.start_date || undefined}
+            inputClassName={pickerClass}
+            placeholderText="Do"
         />
     );
 
@@ -99,45 +135,45 @@ const AnalyticsDateRange = ({
 
     if (variant === 'inline') {
         return (
-            <>
+            <div className="analytics-date-range analytics-date-range--inline">
                 <div className="date-inputs">
-                    {startInput}
-                    <span>až</span>
-                    {endInput}
+                    {startPicker}
+                    <span className="analytics-date-range-sep">až</span>
+                    {endPicker}
                 </div>
                 {errorEl}
-            </>
+            </div>
         );
     }
 
     if (variant === 'bare') {
         return (
-            <>
-                {startInput}
-                {endInput}
+            <div className="analytics-date-range analytics-date-range--bare">
+                {startPicker}
+                {endPicker}
                 {errorEl}
-            </>
+            </div>
         );
     }
 
     return (
-        <>
+        <div className="analytics-date-range">
             <div className="filter-group">
-                <label>{startLabel}</label>
-                {startInput}
+                <label htmlFor="analytics-range-start">{startLabel}</label>
+                {startPicker}
             </div>
             <div className="filter-group">
-                <label>{endLabel}</label>
-                {endInput}
+                <label htmlFor="analytics-range-end">{endLabel}</label>
+                {endPicker}
             </div>
             {errorEl}
-        </>
+        </div>
     );
 };
 
 export default AnalyticsDateRange;
 
-/** Jedno datum – draft; s highlightDates použije react-datepicker. */
+/** Jedno datum – kalendář (react-datepicker). */
 export const AnalyticsDateInput = ({
     value = '',
     onApply,
@@ -156,8 +192,7 @@ export const AnalyticsDateInput = ({
     const [draft, setDraft] = useState(value);
     const [dateError, setDateError] = useState('');
 
-    const highlightSet = useMemo(() => new Set(highlightDates), [highlightDates]);
-    const useCalendarPicker = onMonthChange != null || highlightDates.length > 0;
+    const highlightSet = React.useMemo(() => new Set(highlightDates), [highlightDates]);
 
     useEffect(() => {
         setDraft(value);
@@ -171,27 +206,6 @@ export const AnalyticsDateInput = ({
         [onErrorChange]
     );
 
-    const applyDate = useCallback(() => {
-        if (!draft) {
-            reportError('');
-            if (onApply && draft !== value) onApply('');
-            return;
-        }
-        if (!isValidISODate(draft)) {
-            reportError(INVALID_DATE_MESSAGE);
-            return;
-        }
-        reportError('');
-        if (onApply && draft !== value) onApply(draft);
-    }, [draft, value, onApply, reportError]);
-
-    const onKeyDown = (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            applyDate();
-        }
-    };
-
     const handlePickerChange = (picked) => {
         const iso = picked ? format(picked, 'yyyy-MM-dd') : '';
         setDraft(iso);
@@ -204,10 +218,9 @@ export const AnalyticsDateInput = ({
         return highlightSet.has(iso) ? 'analytics-day-has-data' : undefined;
     };
 
-    const selectedDate = draft && isValidISODate(draft) ? parseISO(draft) : null;
-    const pickerSelected = selectedDate && isValid(selectedDate) ? selectedDate : null;
+    const pickerSelected = dateFromIso(draft);
 
-    const input = useCalendarPicker ? (
+    const input = (
         <DatePicker
             id={id}
             selected={pickerSelected}
@@ -222,28 +235,14 @@ export const AnalyticsDateInput = ({
                     onMonthChange(format(new Date(), 'yyyy-MM'));
                 }
             }}
-            dayClassName={dayClassName}
+            dayClassName={highlightDates.length ? dayClassName : undefined}
             dateFormat="dd.MM.yyyy"
             locale="cs"
             placeholderText="dd.mm.rrrr"
-            className={`analytics-date-picker-input ${inputClassName || ''}`.trim()}
+            className={`${DEFAULT_INPUT_CLASS} ${inputClassName || ''}`.trim()}
             isClearable={isClearable}
             required={required}
             showPopperArrow={false}
-        />
-    ) : (
-        <input
-            type="date"
-            id={id}
-            className={inputClassName || undefined}
-            value={draft}
-            required={required}
-            onChange={(e) => {
-                setDraft(e.target.value);
-                reportError('');
-            }}
-            onBlur={applyDate}
-            onKeyDown={onKeyDown}
         />
     );
 

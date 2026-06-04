@@ -24,14 +24,6 @@
     min-width: 0;
 }
 
-.analytics-nav-brand {
-    font-size: 0.95rem;
-    font-weight: 700;
-    color: #2d3748;
-    margin-right: 0.35rem;
-    white-space: nowrap;
-}
-
 .analytics-nav-tab {
     display: inline-flex;
     align-items: center;
@@ -158,11 +150,6 @@
 }
 
 @media (max-width: 768px) {
-    .analytics-nav-brand {
-        width: 100%;
-        margin-bottom: 0.15rem;
-    }
-
     .analytics-nav-tab {
         font-size: 0.8rem;
         padding: 0.4rem 0.6rem;

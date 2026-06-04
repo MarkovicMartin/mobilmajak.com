@@ -7,6 +7,7 @@ import ProdejnaKarta from './ProdejnaKarta';
 import DraftNumberInput from './DraftNumberInput';
 import PlneniStrom, { PlneniHistorieMini } from './PlneniStrom';
 import VyhledFilterMenu from './VyhledFilterMenu';
+import PlansNav from './PlansNav';
 
 const NAZVY_MESICU = [
   'Leden','Únor','Březen','Duben','Květen','Červen',
@@ -47,6 +48,21 @@ const dnesniMesic = () => {
 const jeMesicAktualniNeboBudouci = (rok, mesic) => {
   const d = dnesniMesic();
   return rok > d.rok || (rok === d.rok && mesic >= d.mesic);
+};
+
+const viewModeFromHash = (hash) => {
+  const h = hash || '';
+  if (h === '#plneni-prodejny') return 'prodejny';
+  if (h === '#plneni-prodejci') return 'prodejci';
+  if (h === '#plan') return 'plan';
+  return 'vyhled';
+};
+
+const hashForViewMode = (mode) => {
+  if (mode === 'prodejny') return 'plneni-prodejny';
+  if (mode === 'prodejci') return 'plneni-prodejci';
+  if (mode === 'plan') return 'plan';
+  return '';
 };
 
 const GRAF_ROKY_BARVY = ['#1d4ed8', '#16a34a', '#d97706', '#7c3aed', '#db2777', '#475569'];
@@ -205,8 +221,6 @@ export default function PlansModule() {
   const navigate = useNavigate();
   const [vybraneMesic, setVybraneMesic] = useState(dnesniMesic());
   const [planData, setPlanData] = useState(null); // eslint-disable-line no-unused-vars
-  const [verze, setVerze] = useState([]);
-  const [vybrana_verze_id, setVybranaVezeId] = useState(null);
   const [aktivniPlan, setAktivniPlan] = useState(null);
 
   const [loading, setLoading] = useState(false);
@@ -220,7 +234,6 @@ export default function PlansModule() {
   const [planovaciRezim, setPlanovaciRezim] = useState('top_down'); // 'top_down' | 'bottom_up'
   const [rustProcent, setRustProcent] = useState('10');
   const [prodejny, setProdejny] = useState([]);
-  const [novaVerze, setNovaVerze] = useState(false);
   const [prepocet, setPrepocet] = useState(null);
   const [onboardingDismissed, setOnboardingDismissed] = useState(() => {
     if (typeof window === 'undefined') return false;
@@ -228,11 +241,8 @@ export default function PlansModule() {
   });
 
   const [viewMode, setViewMode] = useState(() => {
-    if (typeof window === 'undefined') return 'plan';
-    const h = window.location.hash;
-    if (h === '#plneni-prodejny') return 'prodejny';
-    if (h === '#plneni-prodejci') return 'prodejci';
-    return 'plan';
+    if (typeof window === 'undefined') return 'vyhled';
+    return viewModeFromHash(window.location.hash);
   });
   const [plneniData, setPlneniData] = useState(null);
   const [plneniProdejciData, setPlneniProdejciData] = useState(null);
@@ -304,17 +314,17 @@ export default function PlansModule() {
   }, [viewMode, aktivniPlan, vybraneMesic, loadPlneniProdejci]);
 
   useEffect(() => {
-    const h = location.hash || '';
-    if (h === '#plneni-prodejny') setViewMode('prodejny');
-    else if (h === '#plneni-prodejci') setViewMode('prodejci');
+    setViewMode(viewModeFromHash(location.hash));
   }, [location.hash]);
 
-  useEffect(() => {
-    if (location.state?.fromDashboardPlans) {
-      setViewMode('plan');
-      navigate(`${location.pathname}${location.search}`, { replace: true, state: null });
-    }
-  }, [location.state, location.pathname, location.search, navigate]);
+  const switchViewMode = useCallback((mode) => {
+    setViewMode(mode);
+    const hash = hashForViewMode(mode);
+    navigate(
+      { pathname: location.pathname, search: location.search, hash },
+      { replace: true },
+    );
+  }, [location.pathname, location.search, navigate]);
 
   useEffect(() => {
     if (location.hash !== '#plneni-prodejny' || viewMode !== 'prodejny' || !plneniData) return;
@@ -371,9 +381,7 @@ export default function PlansModule() {
       const aw = res.auto_prodejci_warnings || [];
       if (aw.length) setWarnings(aw);
       setUspech('Plán byl automaticky vytvořen z historie (YoY + 6m prodejny + 3m kategorie).');
-      const reload = await plansAPI.getPlan(rok, mesic);
-      setVerze(reload.verze || []);
-      if (reload.aktualni) setVybranaVezeId(reload.aktualni.id);
+      await plansAPI.getPlan(rok, mesic);
     } catch (e) {
       setChyba(e.response?.data?.error || 'Automatické vytvoření plánu se nezdařilo.');
     } finally {
@@ -387,17 +395,14 @@ export default function PlansModule() {
     setWarnings([]);
     try {
       const res = await plansAPI.getPlan(rok, mesic);
-      setVerze(res.verze || []);
       const aktualni = res.aktualni;
       if (aktualni) {
         setAktivniPlan(aktualni);
         nactiVerziDoPlaneru(aktualni);
-        setVybranaVezeId(aktualni.id);
       } else {
         setAktivniPlan(null);
         setProdejny([]);
         setCastkaFirma('');
-        setVybranaVezeId(null);
         const key = `${rok}-${mesic}`;
         if (
           jeMesicAktualniNeboBudouci(rok, mesic)
@@ -623,19 +628,6 @@ export default function PlansModule() {
     }
   };
 
-  const loadVerzi = async (verzeId) => {
-    setLoading(true);
-    try {
-      const res = await plansAPI.getVerze(verzeId);
-      nactiVerziDoPlaneru(res);
-      setVybranaVezeId(verzeId);
-    } catch {
-      setChyba('Nepodařilo se načíst verzi.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const vytvorNovyPlan = async (copyFromPrevious = false) => {
     const castka = Number(String(castkaFirma).replace(/\s/g, ''));
     if (!castka || castka < 500000) {
@@ -848,7 +840,7 @@ export default function PlansModule() {
       const payload = {
         castka_celkem: castka,
         total_lock: totalLock,
-        nova_verze: novaVerze,
+        nova_verze: false,
         prodejny: buildPayloadProdejny(),
       };
       const res = await plansAPI.ulozit(vybraneMesic.rok, vybraneMesic.mesic, payload);
@@ -857,21 +849,10 @@ export default function PlansModule() {
       await loadPlan(vybraneMesic.rok, vybraneMesic.mesic);
       setUspech('Plán byl uložen.');
       setWarnings(res?.warnings || []);
-      setNovaVerze(false);
     } catch (e) {
       setChyba(e.response?.data?.error || 'Nepodařilo se uložit plán.');
     } finally {
       setSaving(false);
-    }
-  };
-
-  const setAktualniVerzi = async (verzeId) => {
-    try {
-      await plansAPI.setAktualniVerze(verzeId);
-      await loadPlan(vybraneMesic.rok, vybraneMesic.mesic);
-      setUspech('Verze nastavena jako aktuální.');
-    } catch {
-      setChyba('Nepodařilo se nastavit verzi.');
     }
   };
 
@@ -933,116 +914,27 @@ export default function PlansModule() {
     ? String(Math.round(soucetCastek))
     : castkaFirma;
 
+  const onMonthSelect = useCallback((value) => {
+    const [r, m] = value.split('-').map(Number);
+    setVybraneMesic({ rok: r, mesic: m });
+  }, []);
+
   return (
     <div className="plans-module">
-      <div className="plans-header">
-        <h2 className="plans-title">Firemní plány</h2>
+      <PlansNav
+        viewMode={viewMode}
+        onSwitch={switchViewMode}
+        showMonth={viewMode !== 'vyhled'}
+        monthValue={`${vybraneMesic.rok}-${vybraneMesic.mesic}`}
+        monthOptions={mesiceOptions}
+        monthLabels={NAZVY_MESICU}
+        onMonthChange={onMonthSelect}
+        showPlanRezim={viewMode === 'plan' && Boolean(aktivniPlan)}
+        planovaciRezim={planovaciRezim}
+        onPlanovaciRezimChange={setPlanovaciRezim}
+      />
 
-        <div className="plans-controls">
-          {aktivniPlan && viewMode === 'plan' && (
-            <div className="plans-control-group">
-              <label>Režim plánování</label>
-              <div className="plans-toggle-row">
-                <button
-                  type="button"
-                  className={`plans-toggle-btn ${planovaciRezim === 'top_down' ? 'plans-toggle-btn-active' : ''}`}
-                  onClick={() => setPlanovaciRezim('top_down')}
-                  title="Zadáte celkovou částku a rozpočtete ji na prodejny"
-                >
-                  Top-down
-                </button>
-                <button
-                  type="button"
-                  className={`plans-toggle-btn ${planovaciRezim === 'bottom_up' ? 'plans-toggle-btn-active' : ''}`}
-                  onClick={() => setPlanovaciRezim('bottom_up')}
-                  title="Zadáte Kč cíle prodejen a celkem se sčítá"
-                >
-                  Bottom-up
-                </button>
-              </div>
-            </div>
-          )}
-
-          <div className="plans-control-group">
-            <label>Zobrazení</label>
-            <div className="plans-toggle-row">
-              <button
-                type="button"
-                className={`plans-toggle-btn ${viewMode === 'plan' ? 'plans-toggle-btn-active' : ''}`}
-                onClick={() => setViewMode('plan')}
-              >
-                Plán
-              </button>
-              {aktivniPlan && (
-                <>
-                  <button
-                    type="button"
-                    className={`plans-toggle-btn ${viewMode === 'prodejny' ? 'plans-toggle-btn-active' : ''}`}
-                    onClick={() => setViewMode('prodejny')}
-                  >
-                    Plnění Prodejny
-                  </button>
-                  <button
-                    type="button"
-                    className={`plans-toggle-btn ${viewMode === 'prodejci' ? 'plans-toggle-btn-active' : ''}`}
-                    onClick={() => setViewMode('prodejci')}
-                  >
-                    Plnění Prodejci
-                  </button>
-                </>
-              )}
-              <button
-                type="button"
-                className={`plans-toggle-btn ${viewMode === 'vyhled' ? 'plans-toggle-btn-active' : ''}`}
-                onClick={() => setViewMode('vyhled')}
-              >
-                Výhled
-              </button>
-            </div>
-          </div>
-          <div className="plans-control-group">
-            <label>Měsíc</label>
-            <select
-              value={`${vybraneMesic.rok}-${vybraneMesic.mesic}`}
-              onChange={e => {
-                const [r, m] = e.target.value.split('-').map(Number);
-                setVybraneMesic({ rok: r, mesic: m });
-              }}
-              className="plans-select"
-            >
-              {mesiceOptions.map(o => (
-                <option key={`${o.rok}-${o.mesic}`} value={`${o.rok}-${o.mesic}`}>
-                  {NAZVY_MESICU[o.mesic - 1]} {o.rok}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {verze.length > 1 && (
-            <div className="plans-control-group">
-              <label>Verze</label>
-              <select
-                value={vybrana_verze_id || ''}
-                onChange={e => loadVerzi(Number(e.target.value))}
-                className="plans-select"
-              >
-                {verze.map(v => (
-                  <option key={v.id} value={v.id}>
-                    v{v.cislo_verze} – {formatCastka(v.castka_celkem)}
-                    {v.je_aktualni ? ' ★' : ''}
-                  </option>
-                ))}
-              </select>
-              {vybrana_verze_id && !verze.find(v => v.id === vybrana_verze_id)?.je_aktualni && (
-                <button className="plans-btn plans-btn-sm" onClick={() => setAktualniVerzi(vybrana_verze_id)}>
-                  Nastavit jako aktuální
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
+      <div className="plans-content">
       {/* Onboarding info-box */}
       {!onboardingDismissed && viewMode === 'plan' && aktivniPlan && (
         <div className="plans-onboarding">
@@ -1072,7 +964,7 @@ export default function PlansModule() {
         </div>
       )}
 
-      {(loading || autoGenerating) && (
+      {(loading || autoGenerating) && viewMode !== 'vyhled' && (
         <div className="plans-loading">
           {autoGenerating ? 'Generuji plán z historie…' : 'Načítám...'}
         </div>
@@ -1260,29 +1152,10 @@ export default function PlansModule() {
                 </div>
                 <div className="plans-vyhled-toolbar-summary">
                   <span className="plans-vyhled-summary-pred">
-                    <strong>{forecastRok}</strong>
+                    Predikce <strong>{forecastRok}</strong>
                     {vyhledMeta?.prodejna_nazev ? ` · ${vyhledMeta.prodejna_nazev}` : ''}
                     {' '}{formatKcShort(forecastPred.celkem_obrat_pred)}
                   </span>
-                  {forecastPred.souhrn_roku?.za_ukoncene_obdobi && (
-                    <span className="plans-vyhled-summary-obdobi">
-                      YTD vs pred:{' '}
-                      <strong>
-                        {formatPorovnani(
-                          forecastPred.souhrn_roku.za_ukoncene_obdobi.pct_vs_predikce,
-                          forecastPred.souhrn_roku.za_ukoncene_obdobi.odchylka_pred_kc,
-                        )}
-                      </strong>
-                      {' · '}
-                      vs LY:{' '}
-                      <strong>
-                        {formatPorovnani(
-                          forecastPred.souhrn_roku.za_ukoncene_obdobi.pct_vs_ly,
-                          forecastPred.souhrn_roku.za_ukoncene_obdobi.odchylka_ly_kc,
-                        )}
-                      </strong>
-                    </span>
-                  )}
                   <span className={`plans-confidence plans-confidence-${forecastPred.meta?.confidence || 'medium'}`}>
                     {forecastPred.meta?.confidence || '—'}
                   </span>
@@ -1476,8 +1349,17 @@ export default function PlansModule() {
                     </tr>
                     {forecastPred.souhrn_roku?.za_ukoncene_obdobi && (
                       <tr className="plans-vyhled-foot plans-vyhled-foot-obdobi">
-                        <td>
-                          <strong>YTD ({forecastPred.souhrn_roku.za_ukoncene_obdobi.mesicu} m.)</strong>
+                        <td
+                          title={
+                            forecastPred.souhrn_roku.za_ukoncene_obdobi.prorated
+                              ? 'YTD: ukončené měsíce celé; u běžícího měsíce LY/pred/plán jen za stejný počet dní jako skutečnost.'
+                              : undefined
+                          }
+                        >
+                          <strong>
+                            YTD ({forecastPred.souhrn_roku.za_ukoncene_obdobi.popis_obdobi
+                              || `${forecastPred.souhrn_roku.za_ukoncene_obdobi.mesicu} m.`})
+                          </strong>
                         </td>
                         <td className="plans-vyhled-num">{formatNum(forecastPred.souhrn_roku.za_ukoncene_obdobi.obrat_ly)}</td>
                         <td className="plans-vyhled-num">{formatNum(forecastPred.souhrn_roku.za_ukoncene_obdobi.obrat_predikce)}</td>
@@ -1546,7 +1428,7 @@ export default function PlansModule() {
       )}
 
       {/* ==== Plnění Prodejny ==== */}
-      {!loading && aktivniPlan && viewMode === 'prodejny' && (
+      {!loading && viewMode === 'prodejny' && aktivniPlan && (
         <div className="plans-plneni">
           {plneniLoading && <div className="plneni-loading">Načítám plnění...</div>}
           {!plneniLoading && plneniData && (
@@ -1686,7 +1568,7 @@ export default function PlansModule() {
       )}
 
       {/* ==== Plnění Prodejci ==== */}
-      {!loading && aktivniPlan && viewMode === 'prodejci' && (
+      {!loading && viewMode === 'prodejci' && aktivniPlan && (
         <div className="plans-plneni">
           {plneniLoading && <div className="plneni-loading">Načítám plnění prodejců...</div>}
           {!plneniLoading && plneniProdejciData && (
@@ -1835,14 +1717,6 @@ export default function PlansModule() {
 
           {/* Akce */}
           <div className="plans-actions">
-            <label className="plans-checkbox-label">
-              <input
-                type="checkbox"
-                checked={novaVerze}
-                onChange={e => setNovaVerze(e.target.checked)}
-              />
-              Uložit jako novou verzi
-            </label>
             <button
               className="plans-btn plans-btn-primary plans-btn-lg"
               onClick={ulozitPlan}
@@ -1888,6 +1762,7 @@ export default function PlansModule() {
           </div>
         </>
       )}
+      </div>
     </div>
   );
 }

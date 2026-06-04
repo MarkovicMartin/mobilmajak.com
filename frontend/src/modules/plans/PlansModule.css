@@ -1,25 +1,14 @@
 /* ===================== PLANS MODULE ===================== */
 
 .plans-module {
-  padding: 24px;
   max-width: 1200px;
   margin: 0 auto;
+  padding: 16px 12px 24px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
-.plans-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 16px;
-  margin-bottom: 24px;
-}
-
-.plans-title {
-  font-size: 1.6rem;
-  font-weight: 700;
-  color: var(--text-primary, #1a1a2e);
-  margin: 0;
+.plans-content {
+  min-width: 0;
 }
 
 .plans-controls {
@@ -2007,58 +1996,7 @@
   min-width: 0;
   color: #334155;
 }
-.plans-vyhled-toolbar-label {
-  font-weight: 600;
-  color: #64748b;
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-.plans-vyhled-toolbar-sep {
-  width: 1px;
-  height: 20px;
-  background: #cbd5e1;
-  margin: 0 4px;
-}
 .plans-vyhled-summary-pred strong { color: #1d4ed8; }
-.plans-vyhled-summary-obdobi { color: #475569; }
-.plans-vyhled-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.85rem;
-  padding: 4px 10px;
-  background: #f1f5f9;
-  border-radius: 6px;
-  cursor: pointer;
-  user-select: none;
-}
-.plans-vyhled-chip-tight {
-  font-size: 0.78rem;
-  padding: 2px 6px;
-  gap: 4px;
-}
-.plans-vyhled-chip.is-hlavni {
-  background: #dbeafe;
-  border: 1px solid #93c5fd;
-}
-.plans-vyhled-chip input { margin: 0; }
-.plans-vyhled-chip-text {
-  max-width: 88px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.plans-vyhled-rok-btn {
-  border: none;
-  background: transparent;
-  padding: 0;
-  margin: 0;
-  font: inherit;
-  color: inherit;
-  cursor: pointer;
-}
-.plans-vyhled-rok-btn:hover { text-decoration: underline; }
 .plans-vyhled-chip-dot {
   width: 8px;
   height: 8px;
@@ -2068,10 +2006,6 @@
 }
 .plans-vyhled-chart-multi .plans-vyhled-bars-multi {
   max-width: 72px;
-}
-.plans-vyhled-legend-note {
-  font-size: 0.75rem;
-  color: #94a3b8;
 }
 .plans-vyhled-table-wrap {
   overflow: auto;
@@ -2277,42 +2211,6 @@
   color: #64748b;
   margin-top: 4px;
 }
-.plans-vyhled-legend {
-  font-size: 0.8rem;
-  color: #64748b;
-  margin: -12px 0 16px;
-  display: flex;
-  gap: 20px;
-  align-items: center;
-}
-.plans-vyhled-legend-pred,
-.plans-vyhled-legend-pln {
-  display: inline-block;
-  width: 12px;
-  height: 12px;
-  border-radius: 2px;
-  margin-right: 6px;
-  vertical-align: middle;
-}
-.plans-vyhled-legend-pred { background: #3b82f6; }
-.plans-vyhled-legend-pln { background: #16a34a; }
-.plans-vyhled-hint {
-  font-size: 0.8rem;
-  color: #64748b;
-  max-width: 960px;
-  margin: -8px 0 16px;
-}
-.plans-vyhled-stav {
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 4px;
-}
-.plans-vyhled-stav-ukonceny { background: #e2e8f0; color: #334155; }
-.plans-vyhled-stav-probiha { background: #dbeafe; color: #1d4ed8; }
-.plans-vyhled-stav-budouci { background: #f1f5f9; color: #94a3b8; }
-.plans-vyhled-den { font-size: 0.75rem; color: #64748b; font-weight: 400; }
-.plans-vyhled-trend { font-size: 0.8rem; color: #0369a1; }
 .plans-pct-ok { color: #166534; font-weight: 600; }
 .plans-pct-under { color: #b45309; font-weight: 600; }
 .plans-vyhled-row-probiha { background: #f8fafc; }

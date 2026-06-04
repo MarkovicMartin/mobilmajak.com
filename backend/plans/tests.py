@@ -242,6 +242,30 @@ class ForecastTests(TestCase):
         self.assertEqual(stav_mesice(2026, 6, ref), 'probiha')
         self.assertEqual(stav_mesice(2026, 7, ref), 'budouci')
 
+    def test_souhrn_ytd_prorated_probiha(self):
+        from plans.forecast import _souhrn_ytd
+        ref = date(2026, 6, 4)
+        mesice = [
+            {
+                'rok': 2026, 'mesic': 1, 'stav': 'ukonceny', 'obrat_pred': 100, 'obrat_ly': 90,
+                'plneni': {'obrat': 100, 'plan_obrat': 95},
+            },
+            {
+                'rok': 2026, 'mesic': 6, 'stav': 'probiha', 'obrat_pred': 3000, 'obrat_ly': 3000,
+                'plneni': {
+                    'obrat': 300, 'plan_obrat': 2900,
+                    'den_v_mesici': 4, 'dni_v_mesici': 30,
+                },
+            },
+        ]
+        ytd = _souhrn_ytd(mesice, reference=ref)
+        self.assertTrue(ytd['prorated'])
+        self.assertIn('do 4. 6.', ytd['popis_obdobi'])
+        # pred: 100 + 3000*(4/30) = 100 + 400 = 500; sk: 100+300=400 → 80 %
+        self.assertEqual(ytd['pct_vs_predikce'], 80)
+        # ly: 90 + 3000*(4/30) = 490; sk 400 → ~82 %
+        self.assertEqual(ytd['pct_vs_ly'], 82)
+
     @patch('plans.forecast.plneni_celkem_firma')
     @patch('plans.forecast.PlanMonth')
     def test_dopln_plneni_ukonceny(self, mock_plan, mock_plneni):
