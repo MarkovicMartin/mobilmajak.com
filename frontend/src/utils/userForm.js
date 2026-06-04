@@ -57,6 +57,13 @@ export function prepareUserSubmitData(formData, editingUser) {
         castka: Number(d.castka) || 0,
     }));
 
+    if (submitData.mzda_cestovne === '' || submitData.mzda_cestovne == null) {
+        submitData.mzda_cestovne = null;
+    } else {
+        const c = parseFloat(submitData.mzda_cestovne);
+        submitData.mzda_cestovne = Number.isNaN(c) ? null : c;
+    }
+
     if (editingUser) {
         if (submitData.heslo && submitData.heslo.trim()) {
             submitData.nove_heslo = submitData.heslo.trim();

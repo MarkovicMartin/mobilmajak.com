@@ -1,0 +1,46 @@
+.coaching-nav-meta {
+    gap: 0.65rem;
+}
+
+.coaching-nav-filter {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin: 0;
+}
+
+.coaching-nav-filter-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-secondary, #64748b);
+    white-space: nowrap;
+}
+
+.coaching-nav-select {
+    min-width: 132px;
+    padding: 0.4rem 0.55rem;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    background: var(--bg-card, #fff);
+    color: inherit;
+    font-size: 0.82rem;
+    line-height: 1.2;
+}
+
+.coaching-module .coaching-nav {
+    margin-bottom: 0.75rem;
+    padding: 0.55rem 0.75rem;
+}
+
+.coaching-module .analytics-nav-tab {
+    padding: 0.4rem 0.7rem;
+    font-size: 0.82rem;
+}
+
+@media (max-width: 900px) {
+    .coaching-nav-meta {
+        width: 100%;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+    }
+}

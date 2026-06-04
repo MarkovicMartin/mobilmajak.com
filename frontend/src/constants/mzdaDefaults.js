@@ -2,6 +2,7 @@
 export const PRODEJCE_ZAKLAD_BODY = 14000;
 export const VYCHODIL_ZAKLAD_BODY = 17000;
 export const BRIGADNIK_DEFAULT_BODY_ZA_HODINU = 100;
+export const BRIGADNIK_VYPOMOC_BODY_ZA_HODINU = 150;
 
 export function isVychodilPrijmeni(prijmeni) {
     return (prijmeni || '').trim().toLowerCase() === 'vychodil';

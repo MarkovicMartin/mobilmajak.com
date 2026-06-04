@@ -65,8 +65,17 @@
 .uc-cell.current { color: var(--uc-fg); }
 .uc-cell.other { color: var(--uc-muted); background: var(--bg-secondary); }
 .uc-cell.disabled { color: var(--text-muted); background: var(--bg-inset); pointer-events: none; }
-.uc-cell:hover:not(.selected) { background: var(--bg-tertiary); }
+.uc-cell.selectable { cursor: cell; user-select: none; }
+.unified-calendar--selectable .uc-cell.selectable:hover:not(.selected) { background: var(--bg-tertiary); }
 .uc-cell.selected { background: var(--uc-accent); color: #fff; }
+.unified-calendar.full .uc-cell.selected {
+  background: rgba(37, 99, 235, 0.12);
+  color: inherit;
+  box-shadow: inset 0 0 0 2px var(--uc-accent);
+}
+.unified-calendar.full .uc-cell.selected .shift-item {
+  opacity: 0.92;
+}
 .uc-cell.today:not(.selected) { box-shadow: inset 0 0 0 2px var(--uc-accent); border-radius: 8px; }
 .uc-cell.holiday:not(.selected) { background: #fff7ed; }
 .uc-cell.holiday .uc-day-number { color: #c2410c; }

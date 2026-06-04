@@ -49,9 +49,30 @@ Po „Založit plány na rok“ z UI se prodejci přepočítají hned; denní cr
 |--------|------|
 | `secrets/camera_motion_secrets.json` | `{"ID_PRODEJNY":"hex_secret"}` – jeden secret na pilotní prodejnu |
 
-Na VPS v `backend/.env` (nebo systemd): `CAMERA_MOTION_SECRETS_FILE=/home/webmajak/secrets/camera_motion_secrets.json`
+Na produkčním VPS v `/home/webmajak/webapp/.env`:
 
-Brána na PC v LAN: `scripts/camera_motion_gateway.py` (čte ISAPI alertStream z NVR, posílá jen `motion: true/false`).
+```
+CAMERA_MOTION_SECRETS_FILE=/home/webmajak/secrets/camera_motion_secrets.json
+```
+
+Restart: `systemctl restart webmajak`
+
+V `config.json` na PC / v `secrets/camera_motion_*.json`: **`mobilmajak_api": "https://mobilmajak.com"`**
+
+Návod k instalaci: `scripts/camera-gateway/INSTALL.md`
+
+**Bez PC na prodejně (volitelné):** NVR pošle HTTP alarm na produkci.
+
+```bash
+python3 scripts/camera_motion_setup_nvr_http.py --config secrets/camera_motion_senimo.json --show-url
+python3 scripts/camera_motion_setup_nvr_http.py --config secrets/camera_motion_senimo.json
+```
+
+Ručně v NVR: **Configuration → Network → Advanced → HTTP(S) alarm** (nebo Event → HTTP notifikace) – vložte webhook URL ze skriptu, typ události **VMD**.
+
+**S bránou na PC:** `scripts/camera_motion_gateway.py` (záloha, pokud HTTP z NVR nejde).
+
+**Windows instalátor (Senimo):** složka `scripts/senimo-gateway/` – zkopírovat na USB, `config.json` z `camera_motion_senimo.json`, spustit `install-senimo-camera-gateway.ps1` jako správce.
 
 **Kompletní záloha serveru + actoři (lokálně, mimo git projektu):**
 

@@ -8,6 +8,7 @@ from datetime import date, datetime, timedelta
 from typing import Callable, Iterable, Optional
 
 from dateutil.parser import parse as parse_dateutil
+from django.utils import timezone as dj_tz
 from django.db.models import (
     Case,
     CharField,
@@ -80,6 +81,22 @@ PLAN_CATEGORY_METRICS = (
 )
 
 ALL_METRIC_KEYS = frozenset(DEFAULT_METRICS) | frozenset(POINTS_METRIC_KEYS) | frozenset(PLAN_CATEGORY_METRICS)
+
+
+def _aware_datetime(dt: datetime) -> datetime:
+    if dj_tz.is_naive(dt):
+        return dj_tz.make_aware(dt)
+    return dt
+
+
+def _task_deadline_datetime(task) -> datetime | None:
+    if not task.deadline:
+        return None
+    if task.deadline_cas is None:
+        dt = datetime.combine(task.deadline, datetime.max.time().replace(microsecond=0))
+    else:
+        dt = datetime.combine(task.deadline, task.deadline_cas)
+    return _aware_datetime(dt)
 
 
 @dataclass
@@ -182,26 +199,9 @@ def _apply_kanal_filter(queryset, kanal: str):
 
 
 def _plan_category_case():
-    return Case(
-        When(
-            Q(objednavku_zalozil__icontains='servis eda')
-            & Q(k_servisu='ANO')
-            & Q(kategorie__icontains='!Servis')
-            & (Q(kategorie_1__isnull=True) | Q(kategorie_1='') | ~Q(kategorie_1__startswith='Služby')),
-            then=Value('SERVIS'),
-        ),
-        When(kategorie__iexact='NOVÉ TELEFONY', then=Value('NOVE_TELEFONY')),
-        When(
-            Q(kategorie__iexact='POUŽITÉ TELEFONY') | Q(kategorie__icontains='!Výkup bazaru'),
-            then=Value('BAZAROVE_TELEFONY'),
-        ),
-        When(kategorie__iexact='PŘÍSLUŠENSTVÍ', kategorie_1='Skla a fólie', then=Value('PRISLUSENSTVI_SKLA')),
-        When(kategorie__iexact='PŘÍSLUŠENSTVÍ', kategorie_1='Pouzdra a kryty', then=Value('PRISLUSENSTVI_OBALY')),
-        When(kategorie__iexact='PŘÍSLUŠENSTVÍ', then=Value('PRISLUSENSTVI_OSTATNI')),
-        When(Q(kategorie_1='Služby') | Q(kategorie='Služby'), then=Value('SLUZBY')),
-        default=Value('OSTATNI'),
-        output_field=CharField(),
-    )
+    from plans.category_mapping import plan_category_case_orm
+
+    return plan_category_case_orm()
 
 
 def _segment_row_filter(segment: str) -> Q:
@@ -664,8 +664,8 @@ def aggregate_tasks_workload(params: PolozkyParams) -> dict:
     SLA úkolů + index vytížení (unikátní doklady během úkolu vs průměr na prodejně).
     """
     sd, ed = params.period_start, params.period_end
-    start_dt = datetime.combine(sd, datetime.min.time())
-    end_dt = datetime.combine(ed, datetime.max.time())
+    start_dt = _aware_datetime(datetime.combine(sd, datetime.min.time()))
+    end_dt = _aware_datetime(datetime.combine(ed, datetime.max.time()))
 
     tasks_qs = Ukol.objects.filter(
         vytvoreno__gte=start_dt,
@@ -692,12 +692,9 @@ def aggregate_tasks_workload(params: PolozkyParams) -> dict:
         delta = (done_at - task.vytvoreno).total_seconds()
         sla_seconds.append(delta)
         sla_total += 1
-        if task.deadline:
-            deadline_dt = datetime.combine(task.deadline, task.deadline_cas or datetime.min.time())
-            if task.deadline_cas is None:
-                deadline_dt = datetime.combine(task.deadline, datetime.max.time().replace(microsecond=0))
-            if done_at <= deadline_dt:
-                on_time += 1
+        deadline_dt = _task_deadline_datetime(task)
+        if deadline_dt and done_at <= deadline_dt:
+            on_time += 1
 
         uid = task.id_prodejce_ukol
         if uid not in sellers:

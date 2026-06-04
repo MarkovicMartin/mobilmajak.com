@@ -240,7 +240,18 @@ export const ticketAPI = {
     },
 };
 
+export const shiftsAttendanceAPI = {
+    getTodayWorkBoard: async () => {
+        const response = await api.get('/shifts/attendance/today-board/');
+        return response.data;
+    },
+};
+
 export const taskAPI = {
+    getDashboardSnapshot: async () => {
+        const response = await api.get('/tasks/dashboard-snapshot/');
+        return response.data;
+    },
     getUnreadSummary: async () => {
         const response = await api.get('/tasks/unread-summary/');
         return response.data;
@@ -307,6 +318,10 @@ export const shiftsAPI = {
         const response = await api.get('/shifts/', { params: { mesic } });
         return response.data;
     },
+    getTodayWorkBoard: async () => {
+        const response = await api.get('/shifts/attendance/today-board/');
+        return response.data;
+    },
 };
 
 export const leaderboardAPI = {
@@ -319,6 +334,7 @@ export const leaderboardAPI = {
 };
 
 export const plansAPI = {
+    getAuditZbytek: async (rok, mesic) => (await api.get(`/plans/${rok}/${mesic}/audit-zbytek/`)).data,
     getPlneni: async (rok, mesic) => (await api.get(`/plans/${rok}/${mesic}/plneni/`)).data,
     getPlneniProdejci: async (rok, mesic) => (await api.get(`/plans/${rok}/${mesic}/plneni-prodejci/`)).data,
     getPlneniPolozky: async (rok, mesic, params) => (
@@ -388,4 +404,27 @@ export const analyticsAPI = {
         const response = await api.get(`/analytics/${clean}`, { params: queryParams });
         return response.data;
     },
+};
+
+export const coachingAPI = {
+    getFilters: async () => (await api.get('/coaching/filters/options/')).data,
+    getRoster: async (params = {}) => (await api.get('/coaching/roster/', { params })).data,
+    getSellerProfile: async (userId, params = {}) => (
+        await api.get(`/coaching/sellers/${userId}/profile/`, { params })
+    ).data,
+    getSellerTimeline: async (userId, params = {}) => (
+        await api.get(`/coaching/sellers/${userId}/timeline/`, { params })
+    ).data,
+    getSellerTasks: async (userId, params = {}) => (
+        await api.get(`/coaching/sellers/${userId}/tasks/`, { params })
+    ).data,
+    compareSellers: async (params = {}) => (await api.get('/coaching/sellers/compare/', { params })).data,
+    listNotes: async (params = {}) => (await api.get('/coaching/notes/', { params })).data,
+    createNote: async (payload) => (await api.post('/coaching/notes/', payload)).data,
+    updateNote: async (id, payload) => (await api.patch(`/coaching/notes/${id}/`, payload)).data,
+    deleteNote: async (id) => (await api.delete(`/coaching/notes/${id}/`)).data,
+    listGoals: async (params = {}) => (await api.get('/coaching/goals/', { params })).data,
+    createGoal: async (payload) => (await api.post('/coaching/goals/', payload)).data,
+    updateGoal: async (id, payload) => (await api.patch(`/coaching/goals/${id}/`, payload)).data,
+    deleteGoal: async (id) => (await api.delete(`/coaching/goals/${id}/`)).data,
 };

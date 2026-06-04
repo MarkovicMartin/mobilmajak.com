@@ -56,8 +56,9 @@ Implementační kroky (pilot pohybu – hotovo v kódu)
 - [x] Webhook `POST /api/shifts/camera-events/` (HMAC, bez obrazu).
 - [x] Tabulka `ProdejnaPohybUdalost`, vyhodnocení pohyb/klid v okně N minut.
 - [x] Admin UI „Není v práci“: štítek pohybu u prodejny.
-- [ ] Brána na prodejně: `scripts/camera_motion_gateway.py` + ISAPI k NVR.
-- [ ] `CAMERA_MOTION_SECRETS` na VPS (viz `secrets/README.md`).
+- [x] Brána na prodejně: `scripts/camera_motion_gateway.py` + ISAPI k NVR (balíček `scripts/camera-gateway/`).
+- [x] `CAMERA_MOTION_SECRETS` na produkčním VPS (viz `scripts/camera-gateway/INSTALL.md`).
+- Výchozí API pro nové instalace: **https://mobilmajak.com** (ne staging).
 """
 
 
@@ -107,6 +108,7 @@ def camera_module_status():
     """Stav integrace kamer pro API."""
     from .camera_motion import (
         MOTION_WINDOW_MINUTES,
+        hikvision_webhook_url,
         load_motion_secrets,
         motion_pilot_prodejna_ids,
     )
@@ -114,6 +116,10 @@ def camera_module_status():
     secrets = load_motion_secrets()
     pilot_ids = motion_pilot_prodejna_ids()
     enabled = bool(secrets)
+    webhook_urls = {
+        str(pid): hikvision_webhook_url(pid)
+        for pid in pilot_ids
+    }
     return {
         'enabled': enabled,
         'phase': 'pilot' if enabled else 'planned',
@@ -123,14 +129,16 @@ def camera_module_status():
             else 'Kontrola kamer (Hikvision) – připravuje se'
         ),
         'hint': (
-            'Brána v LAN posílá jen „pohyb“ / „klid“. Obraz zůstává na NVR. '
-            f'Pilot prodejny: {", ".join(str(i) for i in pilot_ids) or "— (nastavte CAMERA_MOTION_SECRETS)"}.'
+            'NVR může posílat HTTP alarm přímo na server (bez PC na prodejně), nebo brána v LAN. '
+            f'Pilot prodejny: {", ".join(str(i) for i in pilot_ids) or "—"}.'
             if enabled
             else (
-                'Ověření přes lokální bránu v síti prodejny (ISAPI události). '
+                'Ověření přes HTTP alarm z NVR nebo bránu v LAN. '
                 'Bez veřejného RTSP do aplikace.'
             )
         ),
         'motion_window_minutes': MOTION_WINDOW_MINUTES,
+        'webhook_urls': webhook_urls,
+        'setup_script': 'scripts/camera_motion_setup_nvr_http.py',
         'nvr_access': NVR_ACCESS_GUIDE,
     }

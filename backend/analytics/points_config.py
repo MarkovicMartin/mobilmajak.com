@@ -26,11 +26,11 @@ SERVICE_FULL_POINTS = {
     'kop500': 50,
     'nap': 50,
     'pz1': 100,
-    'knz': 30,
     'aligator': 0,
 }
 
-DISPLAY_ONLY_METRICS = ('ct300',)
+# KNZ: jen základ 15 bodů/kus přes položky nad 100 Kč (bez speciálního příplatku)
+DISPLAY_ONLY_METRICS = ('ct300', 'lepeni', 'knz')
 
 _BASE = POLOZKY_NAD_100_POINTS_PER_UNIT
 

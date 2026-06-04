@@ -17,9 +17,9 @@ const formatBezDphParenBadge = (castkaVal) => {
 const KATEGORIE_NAZVY = {
   NOVE_TELEFONY: 'Telefony nové',
   BAZAROVE_TELEFONY: 'Telefony bazarové',
-  PRISLUSENSTVI_SKLA: 'Příslušenství – Skla',
-  PRISLUSENSTVI_OBALY: 'Příslušenství – Obaly',
-  PRISLUSENSTVI_OSTATNI: 'Příslušenství – Ostatní',
+  PRISLUSENSTVI_SKLA: 'Skla',
+  PRISLUSENSTVI_OBALY: 'Obaly',
+  PRISLUSENSTVI_OSTATNI: 'Zbytek',
   SLUZBY: 'Služby',
   SERVIS: 'Servis',
   OSTATNI: 'Ostatní',

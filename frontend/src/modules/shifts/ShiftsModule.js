@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { storeAPI } from '../../services/api';
 import ShiftCalendar from './ShiftCalendar';
@@ -26,6 +27,7 @@ function defaultCalendarProdejna(user) {
 }
 
 function ShiftsModule() {
+    const location = useLocation();
     const { user } = useAuth();
     const isShiftCalendarAdmin = user?.role === 'ADMIN';
     const [activeView, setActiveView] = useState('calendar');
@@ -37,6 +39,8 @@ function ShiftsModule() {
     });
     const [showForm, setShowForm] = useState(false);
     const [showBulkForm, setShowBulkForm] = useState(false);
+    const [bulkInitialDates, setBulkInitialDates] = useState([]);
+    const [formInitialDatum, setFormInitialDatum] = useState('');
     const [refreshTrigger, setRefreshTrigger] = useState(0);
     const adminDefaultStoresSet = useRef(false);
 
@@ -58,6 +62,20 @@ function ShiftsModule() {
         setSelectedProdejna(defaultCalendarProdejna(user));
         adminDefaultStoresSet.current = true;
     }, [user]);
+
+    useEffect(() => {
+        const st = location.state;
+        if (!st) return;
+        if (st.view) setActiveView(st.view);
+        if (st.month) setCurrentMonth(st.month);
+        if (st.datum) {
+            setActiveView('calendar');
+            if (st.openForm) {
+                setFormInitialDatum(st.datum);
+                setShowForm(true);
+            }
+        }
+    }, [location.key]);
 
     const handleMonthChange = (direction) => {
         const [year, month] = currentMonth.split('-').map(Number);
@@ -222,14 +240,20 @@ function ShiftsModule() {
                             <button
                                 type="button"
                                 className="btn-primary"
-                                onClick={() => setShowForm(true)}
+                                onClick={() => {
+                                    setFormInitialDatum('');
+                                    setShowForm(true);
+                                }}
                             >
                                 ➕ Přidat směnu
                             </button>
                             <button
                                 type="button"
                                 className="btn-secondary"
-                                onClick={() => setShowBulkForm(true)}
+                                onClick={() => {
+                                    setBulkInitialDates([]);
+                                    setShowBulkForm(true);
+                                }}
                             >
                                 📝 Hromadně
                             </button>
@@ -258,6 +282,14 @@ function ShiftsModule() {
                         showAllEmployees={isShiftCalendarAdmin}
                         refreshTrigger={refreshTrigger}
                         onRefresh={() => setRefreshTrigger((prev) => prev + 1)}
+                        onRequestBulkAdd={(dates) => {
+                            setBulkInitialDates(dates);
+                            setShowBulkForm(true);
+                        }}
+                        onRequestSingleAdd={(dateStr) => {
+                            setFormInitialDatum(dateStr);
+                            setShowForm(true);
+                        }}
                     />
                 )}
 
@@ -293,9 +325,14 @@ function ShiftsModule() {
             {showForm && (
                 <ShiftForm
                     user={user}
-                    onClose={() => setShowForm(false)}
+                    initialDatum={formInitialDatum}
+                    onClose={() => {
+                        setShowForm(false);
+                        setFormInitialDatum('');
+                    }}
                     onSuccess={() => {
                         setShowForm(false);
+                        setFormInitialDatum('');
                         setRefreshTrigger((prev) => prev + 1);
                     }}
                 />
@@ -304,9 +341,15 @@ function ShiftsModule() {
             {showBulkForm && (
                 <BulkShiftForm
                     user={user}
-                    onClose={() => setShowBulkForm(false)}
+                    initialDates={bulkInitialDates}
+                    initialMonth={currentMonth}
+                    onClose={() => {
+                        setShowBulkForm(false);
+                        setBulkInitialDates([]);
+                    }}
                     onSuccess={() => {
                         setShowBulkForm(false);
+                        setBulkInitialDates([]);
                         setRefreshTrigger((prev) => prev + 1);
                     }}
                 />

@@ -4,6 +4,16 @@ import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 
+/** Po deployi starý JS může odkazovat na smazaný chunk – jednou obnovit stránku. */
+const CHUNK_RELOAD_KEY = 'mm-chunk-reload';
+window.addEventListener('error', (event) => {
+    const msg = event.message || '';
+    if (!/loading (css )?chunk/i.test(msg)) return;
+    if (sessionStorage.getItem(CHUNK_RELOAD_KEY)) return;
+    sessionStorage.setItem(CHUNK_RELOAD_KEY, '1');
+    window.location.reload();
+});
+
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>

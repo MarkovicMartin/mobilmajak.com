@@ -13,10 +13,12 @@ from rest_framework.response import Response
 
 from stores.models import Prodejna
 
+from .camera_hikvision import parse_hikvision_alarm
 from .camera_motion import (
     load_motion_secrets,
     record_motion_event,
     verify_motion_signature,
+    verify_motion_token,
 )
 
 
@@ -81,5 +83,55 @@ def camera_motion_event(request):
         'id': event.id,
         'prodejna_id': prodejna_id,
         'motion': motion,
+        'recorded_at': event.cas.isoformat(),
+    })
+
+
+@csrf_exempt
+@api_view(['POST', 'GET'])
+@permission_classes([AllowAny])
+def camera_hikvision_webhook(request, prodejna_id, token):
+    """
+    Přímý HTTP alarm z NVR (bez brány na prodejně).
+    URL: /api/shifts/camera-events/hikvision/<prodejna_id>/<token>/
+    Token = stejný secret jako v CAMERA_MOTION_SECRETS.
+    """
+    if not load_motion_secrets():
+        return Response(
+            {'error': 'Pilot kamer není nakonfigurován'},
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+
+    ok, err = verify_motion_token(prodejna_id, token)
+    if not ok:
+        return Response({'error': err}, status=status.HTTP_403_FORBIDDEN)
+
+    if not Prodejna.objects.filter(pk=prodejna_id, aktivni=True).exists():
+        return Response({'error': 'Neznámá prodejna'}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == 'GET':
+        return Response({'ok': True, 'message': 'Hikvision webhook endpoint ready'})
+
+    parsed = parse_hikvision_alarm(request.body or b'')
+    if parsed.get('ignored') or parsed.get('motion') is None:
+        return Response({
+            'ok': True,
+            'ignored': True,
+            'reason': parsed.get('reason') or parsed.get('event_type'),
+        })
+
+    event = record_motion_event(
+        prodejna_id=prodejna_id,
+        pohyb=parsed['motion'],
+        cas=parsed.get('cas'),
+        zdroj='nvr-http',
+    )
+
+    return Response({
+        'ok': True,
+        'id': event.id,
+        'prodejna_id': prodejna_id,
+        'motion': parsed['motion'],
+        'event_type': parsed.get('event_type'),
         'recorded_at': event.cas.isoformat(),
     })

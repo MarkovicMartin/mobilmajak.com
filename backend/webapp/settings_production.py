@@ -29,6 +29,7 @@ ALLOWED_HOSTS = [
     'mobilmajak.com',
     'www.mobilmajak.com',
     'staging.mobilmajak.com',
+    'api.vallora.cz',
 ]
 
 # Application definition
@@ -50,7 +51,9 @@ INSTALLED_APPS = [
     'orders',
     'tasks',
     'plans',
+    'coaching',
     'tickets',
+    'vallora',
 ]
 
 MIDDLEWARE = [
@@ -145,6 +148,10 @@ CORS_ALLOWED_ORIGINS = [
     "https://staging.mobilmajak.com",
     "http://staging.mobilmajak.com",
     "http://80.211.198.189",  # VPS IP
+    "https://vallora.cz",
+    "https://www.vallora.cz",
+    "http://127.0.0.1:8080",
+    "http://localhost:8080",
 ]
 CORS_ALLOW_CREDENTIALS = True
 
@@ -173,6 +180,9 @@ CSRF_TRUSTED_ORIGINS = [
     'https://staging.mobilmajak.com',
     'http://staging.mobilmajak.com',
     'http://80.211.198.189',
+    'https://vallora.cz',
+    'https://www.vallora.cz',
+    'https://api.vallora.cz',
 ]
 
 # REST Framework settings

@@ -15,6 +15,7 @@ export const NAV_ITEMS = [
     { sectionKey: 'news', label: 'Novinky', path: '/news', adminOnly: false, icon: 'fa-newspaper' },
     { sectionKey: 'analytics', label: 'Analytika', path: '/analytics', adminOnly: true, icon: 'fa-chart-bar' },
     { sectionKey: 'plans', label: 'Plány', path: '/plans', adminOnly: true, icon: 'fa-tasks' },
+    { sectionKey: 'coaching', label: 'Výkony', path: '/coaching', managerOnly: true, icon: 'fa-user-check' },
     { sectionKey: 'shifts', label: 'Směny', path: '/shifts', adminOnly: false, icon: 'fa-calendar-alt' },
     { sectionKey: 'leaderboard', label: 'Žebříček', path: '/leaderboard', adminOnly: false, icon: 'fa-trophy' },
     { sectionKey: 'access', label: 'Přístupy', path: '/access', adminOnly: false, icon: 'fa-key' },
@@ -28,6 +29,7 @@ export const isNavActive = (path, locationPath) => {
 const DockNavbar = ({
     user,
     isAdmin,
+    canManageTasks,
     logout,
     isDarkMode,
     toggleTheme,
@@ -140,7 +142,11 @@ const DockNavbar = ({
         document.body.style.overflow = '';
     }, [mobileNavOpen]);
 
-    const visibleNavItems = NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin());
+    const visibleNavItems = NAV_ITEMS.filter((item) => {
+        if (item.adminOnly && !isAdmin()) return false;
+        if (item.managerOnly && !(canManageTasks?.() ?? false)) return false;
+        return true;
+    });
 
     const handleLogout = () => {
         logout();

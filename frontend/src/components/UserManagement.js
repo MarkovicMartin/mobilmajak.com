@@ -47,6 +47,7 @@ const UserManagement = () => {
         poznamka: '',
         mzda_zaklad: String(PRODEJCE_ZAKLAD_BODY),
         mzda_doplnky: [],
+        mzda_cestovne: '',
         vedouci_prodejna_id: '',
     });
 
@@ -145,6 +146,7 @@ const UserManagement = () => {
             poznamka: '',
             mzda_zaklad: String(PRODEJCE_ZAKLAD_BODY),
             mzda_doplnky: [],
+            mzda_cestovne: '',
             vedouci_prodejna_id: '',
         });
         setEditingUser(null);
@@ -209,6 +211,7 @@ const UserManagement = () => {
             poznamka: user.poznamka || '',
             mzda_zaklad: user.mzda_zaklad != null ? String(user.mzda_zaklad) : '',
             mzda_doplnky: Array.isArray(user.mzda_doplnky) ? [...user.mzda_doplnky] : [],
+            mzda_cestovne: user.mzda_cestovne != null ? String(user.mzda_cestovne) : '',
             vedouci_prodejna_id: user.vedouci_prodejna_id != null ? String(user.vedouci_prodejna_id) : '',
         });
         setShowAddForm(true);
@@ -553,7 +556,7 @@ const UserManagement = () => {
                                     />
                                     {isBrigadnik && (
                                         <small className="field-hint">
-                                            Ve výplatě: hodiny × tato sazba (výchozí {BRIGADNIK_DEFAULT_BODY_ZA_HODINU} bodů/h) + provize z prodeje (+ doplňky).
+                                            Sazba pro směny „jako prodejce“ (výchozí {BRIGADNIK_DEFAULT_BODY_ZA_HODINU} bodů/h + provize). Výpomoc: 150 bodů/h bez provize – nastaví se u směny.
                                         </small>
                                     )}
                                 </div>
@@ -596,6 +599,25 @@ const UserManagement = () => {
                                         ))}
                                     </div>
                                 </div>
+                                {!isBrigadnik && (
+                                    <div className="form-group">
+                                        <label>Cestovné (pravidelná odměna, body/měsíc)</label>
+                                        <input
+                                            type="number"
+                                            name="mzda_cestovne"
+                                            className={manualNumberInputClass()}
+                                            min="0"
+                                            step="1"
+                                            value={formData.mzda_cestovne}
+                                            onChange={handleInputChange}
+                                            onWheel={preventNumberInputWheel}
+                                            placeholder="0"
+                                        />
+                                        <small className="field-hint">
+                                            Není součástí základu ani hodinové sazby pro přesčas/dovolenou.
+                                        </small>
+                                    </div>
+                                )}
                                 <p className="mzda-preview">
                                     {isBrigadnik ? (
                                         <>

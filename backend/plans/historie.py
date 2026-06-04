@@ -11,7 +11,7 @@ from .plneni import plneni_celkem_firma, plneni_firma, plneni_prodejny
 KATEGORIE_PLANU = [
     'NOVE_TELEFONY', 'BAZAROVE_TELEFONY',
     'PRISLUSENSTVI_SKLA', 'PRISLUSENSTVI_OBALY', 'PRISLUSENSTVI_OSTATNI',
-    'SLUZBY', 'SERVIS', 'OSTATNI',
+    'SLUZBY', 'SERVIS',
 ]
 
 

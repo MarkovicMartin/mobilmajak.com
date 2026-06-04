@@ -34,7 +34,15 @@ SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-dev-key-change-me')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0', 'staging.mobilmajak.com', 'mobilmajak.com', 'www.mobilmajak.com']
+ALLOWED_HOSTS = [
+    'localhost',
+    '127.0.0.1',
+    '0.0.0.0',
+    'staging.mobilmajak.com',
+    'mobilmajak.com',
+    'www.mobilmajak.com',
+    'api.vallora.cz',
+]
 
 
 # Application definition
@@ -57,7 +65,9 @@ INSTALLED_APPS = [
     'orders',
     'tasks',
     'plans',
+    'coaching',
     'tickets',
+    'vallora',
 ]
 
 MIDDLEWARE = [
@@ -204,6 +214,12 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # CORS settings
 CORS_ALLOW_ALL_ORIGINS = True  # Pro vývoj - v produkci nastavit konkrétní domény
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOWED_ORIGINS = [
+    'https://vallora.cz',
+    'https://www.vallora.cz',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+]
 
 # Session settings
 SESSION_COOKIE_SECURE = False  # Pro development

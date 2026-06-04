@@ -2,7 +2,7 @@
 from calendar import monthrange
 from datetime import date
 
-from .views import get_ceske_svatky
+from .czech_holidays import get_ceske_svatky
 
 HODINY_NA_PRACOVNI_DEN = 8
 

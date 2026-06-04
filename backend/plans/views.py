@@ -18,6 +18,14 @@ from .plan_service import ensure_plan_mesic
 from .forecast import predikce_rok, vypocitej_plan_z_projekce, vyhled_forecast
 from .plan_service import ensure_plans_bulk, mesice_bez_aktualniho_planu
 from .prodejci_auto import prirad_prodejce_automaticky
+from .audit_zbytek import audit_zbytek_mesic
+from .category_mapping import (
+    SELLER_HIDDEN_PLAN_KATEGORIE,
+    SERVIS_NAZEV_HINT,
+    normalize_plan_kategorie_kod,
+    plan_skryt_ostatni,
+    seller_kategorie_nazev,
+)
 from .plneni import plneni_polozky
 from .plneni_kontext import historie_plneni_prodejce
 from .rozpocet import rozpoctij
@@ -38,11 +46,55 @@ KATEGORIE_NAZVY = dict(KATEGORIE_CHOICES)
 VYCHOZI_KATEGORIE = [
     'NOVE_TELEFONY', 'BAZAROVE_TELEFONY',
     'PRISLUSENSTVI_SKLA', 'PRISLUSENSTVI_OBALY', 'PRISLUSENSTVI_OSTATNI',
-    'SLUZBY', 'SERVIS', 'OSTATNI',
+    'SLUZBY', 'SERVIS',
 ]
 
 
+def _plan_kategorie_nazev(kod, rok, mesic):
+    if plan_skryt_ostatni(rok, mesic):
+        return seller_kategorie_nazev(kod, KATEGORIE_NAZVY.get(kod, kod))
+    return KATEGORIE_NAZVY.get(kod, kod)
+
+
+def _serialize_plan_kategorie(ps, rok, mesic):
+    """Kategorie prodejny – sloučí OSTATNI→Zbytek od června 2026."""
+    merged = {}
+    for pk in ps.kategorie.all():
+        kod = normalize_plan_kategorie_kod(pk.kategorie_kod, rok, mesic)
+        if kod not in merged:
+            merged[kod] = {
+                'id': pk.id,
+                'kategorie_kod': kod,
+                'podil_procenta': Decimal('0'),
+                'castka_kategorie': Decimal('0'),
+                'lock_mode': pk.lock_mode,
+                'prumerna_cena_za_kus': pk.prumerna_cena_za_kus,
+            }
+        row = merged[kod]
+        row['podil_procenta'] += pk.podil_procenta or Decimal('0')
+        row['castka_kategorie'] += pk.castka_kategorie or Decimal('0')
+        if row['prumerna_cena_za_kus'] is None and pk.prumerna_cena_za_kus:
+            row['prumerna_cena_za_kus'] = pk.prumerna_cena_za_kus
+
+    out = []
+    for kod, row in merged.items():
+        pc = row['prumerna_cena_za_kus']
+        out.append({
+            'id': row['id'],
+            'kategorie_kod': kod,
+            'kategorie_nazev': _plan_kategorie_nazev(kod, rok, mesic),
+            'podil_procenta': str(row['podil_procenta']),
+            'castka_kategorie': str(row['castka_kategorie']),
+            'lock_mode': row['lock_mode'],
+            'prumerna_cena_za_kus': str(pc) if pc else None,
+            'pocet_kusu': math.ceil(float(row['castka_kategorie']) / float(pc))
+                if pc and pc > 0 else None,
+        })
+    return out
+
+
 def serialize_plan(plan_mesic):
+    rok, mesic = plan_mesic.rok, plan_mesic.mesic
     prodejny = plan_mesic.prodejny.select_related('prodejna').prefetch_related('kategorie')
     return {
         'id': plan_mesic.id,
@@ -69,20 +121,7 @@ def serialize_plan(plan_mesic):
                 'servis_lock_mode': ps.servis_lock_mode,
                 'castka_prodej': str(ps.castka_prodej),
                 'castka_servis': str(ps.castka_servis),
-                'kategorie': [
-                    {
-                        'id': pk.id,
-                        'kategorie_kod': pk.kategorie_kod,
-                        'kategorie_nazev': KATEGORIE_NAZVY.get(pk.kategorie_kod, pk.kategorie_kod),
-                        'podil_procenta': str(pk.podil_procenta),
-                        'castka_kategorie': str(pk.castka_kategorie),
-                        'lock_mode': pk.lock_mode,
-                        'prumerna_cena_za_kus': str(pk.prumerna_cena_za_kus) if pk.prumerna_cena_za_kus else None,
-                        'pocet_kusu': math.ceil(float(pk.castka_kategorie) / float(pk.prumerna_cena_za_kus))
-                            if pk.prumerna_cena_za_kus and pk.prumerna_cena_za_kus > 0 else None,
-                    }
-                    for pk in ps.kategorie.all()
-                ],
+                'kategorie': _serialize_plan_kategorie(ps, rok, mesic),
             }
             for ps in prodejny
         ],
@@ -925,20 +964,26 @@ def muj_plan(request):
 
     kategorie = []
     celkem_skutecne = 0
+    celkem_polozek = 0
+    celkem_castka = Decimal('0')
     for kod, data in sorted(agregace.items()):
+        if kod in SELLER_HIDDEN_PLAN_KATEGORIE:
+            continue
         plan_k = data['pocet_kusu']
         skut_k = plneni_data.get(kod, 0)
         skut_dnes = plneni_dnes.get(kod, 0)
         celkem_skutecne += skut_k
+        celkem_polozek += plan_k
+        celkem_castka += data['castka']
         pct = (skut_k / plan_k * 100) if plan_k > 0 else 0
         td = trend_kategorie.get(kod, {})
         trend_k = td.get('trend_kusy')
         trend_pct = (trend_k / plan_k * 100) if plan_k and trend_k is not None else None
         if trend_pct is not None:
             trend_pct = round(trend_pct, 1)
-        kategorie.append({
+        row = {
             'kategorie_kod': kod,
-            'kategorie_nazev': KATEGORIE_NAZVY.get(kod, kod),
+            'kategorie_nazev': seller_kategorie_nazev(kod, KATEGORIE_NAZVY.get(kod, kod)),
             'pocet_kusu': data['pocet_kusu'],
             'castka': str(data['castka']),
             'skutecne_kusy': skut_k,
@@ -946,14 +991,19 @@ def muj_plan(request):
             'plneni_procent': round(pct, 1),
             'trend_kusy': trend_k,
             'trend_procent': trend_pct,
-        })
+        }
+        if kod == 'SERVIS':
+            row['napoveda'] = SERVIS_NAZEV_HINT
+        kategorie.append(row)
 
-    celkem_polozek = sum(d['pocet_kusu'] for d in agregace.values())
-    celkem_castka = sum(d['castka'] for d in agregace.values())
     plneni_celkem_pct = (celkem_skutecne / celkem_polozek * 100) if celkem_polozek > 0 else 0
-    trend_celkem = sum(trend_kategorie.get(kod, {}).get('trend_kusy', 0) for kod in agregace) if trend_kategorie else 0
+    visible_kody = [k for k in agregace if k not in SELLER_HIDDEN_PLAN_KATEGORIE]
+    trend_celkem = (
+        sum(trend_kategorie.get(kod, {}).get('trend_kusy', 0) for kod in visible_kody)
+        if trend_kategorie else 0
+    )
     trend_celkem_pct = round((trend_celkem / celkem_polozek * 100), 1) if celkem_polozek and trend_kategorie else None
-    celkem_dnes = sum(plneni_dnes.get(kod, 0) for kod in agregace)
+    celkem_dnes = sum(plneni_dnes.get(kod, 0) for kod in visible_kody)
 
     return Response({
         'rok': rok,
@@ -972,6 +1022,15 @@ def muj_plan(request):
             'trend_procent': trend_celkem_pct,
         },
     })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def audit_zbytek(request, rok, mesic):
+    """Admin: rozpad Zbytku z pracovních Symplio kategorií."""
+    if request.user.role != 'ADMIN':
+        return Response({'error': 'Přístup pouze pro administrátory.'}, status=status.HTTP_403_FORBIDDEN)
+    return Response(audit_zbytek_mesic(int(rok), int(mesic)))
 
 
 @api_view(['GET'])
@@ -1046,18 +1105,15 @@ def plan_prodejci(request, plan_prodejna_id):
     # Existující plány prodejců
     plany_pp = PlanProdejce.objects.filter(plan_prodejna=ps).prefetch_related('kategorie').select_related('uzivatel')
 
-    # Kategorie plánu prodejny (pro referenci)
-    kategorie_prodejny = [
-        {
-            'kategorie_kod': k.kategorie_kod,
-            'kategorie_nazev': KATEGORIE_NAZVY.get(k.kategorie_kod, k.kategorie_kod),
-            'castka_kategorie': str(k.castka_kategorie),
-            'prumerna_cena_za_kus': str(k.prumerna_cena_za_kus) if k.prumerna_cena_za_kus else None,
-            'pocet_kusu_plan': math.ceil(float(k.castka_kategorie) / float(k.prumerna_cena_za_kus))
-                if k.prumerna_cena_za_kus and k.prumerna_cena_za_kus > 0 else None,
-        }
-        for k in ps.kategorie.all()
-    ]
+    rok, mesic = ps.plan_mesic.rok, ps.plan_mesic.mesic
+    kategorie_prodejny = _serialize_plan_kategorie(ps, rok, mesic)
+    for row in kategorie_prodejny:
+        pc = row.get('prumerna_cena_za_kus')
+        row['pocet_kusu_plan'] = row.pop('pocet_kusu', None)
+        if row['pocet_kusu_plan'] is None and pc:
+            row['pocet_kusu_plan'] = math.ceil(
+                float(row['castka_kategorie']) / float(pc)
+            ) if float(pc) > 0 else None
 
     # Součty přiděleného plánu per kategorie
     prideleno = {}
@@ -1209,7 +1265,7 @@ def plan_plneni(request, rok, mesic):
                     'kategorie': {},
                 }
                 for pk in plan_ps.kategorie.all():
-                    kod = pk.kategorie_kod
+                    kod = normalize_plan_kategorie_kod(pk.kategorie_kod, rok, mesic)
                     plan_k = math.ceil(float(pk.castka_kategorie) / float(pk.prumerna_cena_za_kus or 1)) if pk.prumerna_cena_za_kus else 0
                     skut_k = pd['kategorie'].get(kod, {'kusy': 0})
                     kusy_k = skut_k['kusy']
@@ -1237,7 +1293,7 @@ def plan_plneni(request, rok, mesic):
     # Kategorie na úrovni firmy – plán sčítáme z prodejen, skutečnost bereme 1× z kategorie_firma
     for ps in plan.prodejny.select_related('prodejna').prefetch_related('kategorie'):
         for pk in ps.kategorie.all():
-            kod = pk.kategorie_kod
+            kod = normalize_plan_kategorie_kod(pk.kategorie_kod, rok, mesic)
             plan_obrat = float(pk.castka_kategorie)
             plan_kusy = math.ceil(float(pk.castka_kategorie) / float(pk.prumerna_cena_za_kus or 1)) if pk.prumerna_cena_za_kus else 0
             if kod not in plneni['kategorie']:
@@ -1284,10 +1340,21 @@ def plan_plneni(request, rok, mesic):
             'trend_procent': td.get('trend_procent'),
             'kategorie': {},
         }
+        plan_kat_agg = {}
         for pk in ps.kategorie.all():
-            kod = pk.kategorie_kod
+            kod = normalize_plan_kategorie_kod(pk.kategorie_kod, rok, mesic)
             plan_obrat_k = float(pk.castka_kategorie)
-            plan_kusy_k = math.ceil(float(pk.castka_kategorie) / float(pk.prumerna_cena_za_kus or 1)) if pk.prumerna_cena_za_kus else 0
+            plan_kusy_k = (
+                math.ceil(float(pk.castka_kategorie) / float(pk.prumerna_cena_za_kus or 1))
+                if pk.prumerna_cena_za_kus else 0
+            )
+            if kod not in plan_kat_agg:
+                plan_kat_agg[kod] = {'plan_obrat': 0.0, 'plan_kusy': 0}
+            plan_kat_agg[kod]['plan_obrat'] += plan_obrat_k
+            plan_kat_agg[kod]['plan_kusy'] += plan_kusy_k
+        for kod, agg in plan_kat_agg.items():
+            plan_obrat_k = agg['plan_obrat']
+            plan_kusy_k = agg['plan_kusy']
             skut_k = pd['kategorie'].get(kod, {'obrat': Decimal('0'), 'kusy': 0})
             skut_obrat_k = float(skut_k['obrat'])
             skut_kusy_k = skut_k['kusy']
@@ -1349,7 +1416,7 @@ def plan_plneni_prodejci(request, rok, mesic):
                 }
             prodejci_plan[uid]['prodejny'].append(ps.prodejna.nazev)
             for k in pp.kategorie.all():
-                kod = k.kategorie_kod
+                kod = normalize_plan_kategorie_kod(k.kategorie_kod, rok, mesic)
                 if kod not in prodejci_plan[uid]['kategorie']:
                     prodejci_plan[uid]['kategorie'][kod] = {'pocet_kusu': 0, 'castka': Decimal('0')}
                 prodejci_plan[uid]['kategorie'][kod]['pocet_kusu'] += k.pocet_kusu
@@ -1397,7 +1464,7 @@ def plan_plneni_prodejci(request, rok, mesic):
             trend_pct_k = round((trend_k / plan_k * 100), 1) if plan_k and trend_k is not None else None
             kategorie_list.append({
                 'kategorie_kod': kod,
-                'kategorie_nazev': KATEGORIE_NAZVY.get(kod, kod),
+                'kategorie_nazev': _plan_kategorie_nazev(kod, rok, mesic),
                 'plan_kusy': plan_k,
                 'plan_castka': round(plan_c, 2),
                 'skutecne_kusy': skut_k,

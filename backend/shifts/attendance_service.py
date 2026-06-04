@@ -7,6 +7,8 @@ from datetime import datetime, time, timedelta
 
 from django.utils import timezone
 
+from stores.models import Prodejna
+
 from .camera_motion import attach_motion_to_stores
 from .models import Smena, SmenaDochazka
 
@@ -47,6 +49,28 @@ def attendance_state_from_history(history):
 
 def has_prichod(history):
     return any(d.typ_akce == 'prichod' for d in history)
+
+
+def work_hours_from_history(history, now=None):
+    """Odpracované hodiny z historie příchodů/odchodů (pauzy se odečítají)."""
+    if not history:
+        return 0
+    now = now or timezone.now()
+    total_min = 0
+    start = None
+    sorted_h = sorted(history, key=lambda x: x.cas)
+    for action in sorted_h:
+        t = action.cas
+        if action.typ_akce in ('prichod', 'pauza_konec'):
+            start = t
+        elif action.typ_akce in ('pauza_start', 'odchod') and start:
+            total_min += (t - start).total_seconds() / 60
+            start = None
+    if start:
+        stav, _, _ = attendance_state_from_history(history)
+        if stav == 'otevreno':
+            total_min += (now - start).total_seconds() / 60
+    return round(total_min / 60, 2)
 
 
 def shift_window(smena):
@@ -162,7 +186,7 @@ def build_absent_stores_report(now=None):
             'prichod': prichod.cas.strftime('%H:%M') if prichod else None,
         }
         stores[pid]['active_shifts'].append(entry)
-        if stav == 'otevreno':
+        if stav in ('otevreno', 'pauza'):
             stores[pid]['present_shifts'].append(entry)
         elif not has_prichod(history):
             stores[pid]['missing_shifts'].append(entry)
@@ -171,7 +195,10 @@ def build_absent_stores_report(now=None):
     ok_stores = []
     for data in sorted(stores.values(), key=lambda x: x['prodejna_nazev']):
         if data['missing_shifts']:
-            data['status'] = 'absent'
+            if data['present_shifts']:
+                data['status'] = 'partial'
+            else:
+                data['status'] = 'absent'
             absent.append(data)
         elif data['active_shifts']:
             data['status'] = 'ok'
@@ -184,5 +211,116 @@ def build_absent_stores_report(now=None):
         'checked_at': now.isoformat(),
         'absent_stores': absent,
         'ok_stores': ok_stores,
+        'auto_close_time': AUTO_CLOSE_TIME.strftime('%H:%M'),
+    }
+
+
+def person_attendance_status(smena, history, now=None):
+    """
+    Stav osoby na dnešní směně pro dashboard.
+    present | upcoming | missing | left
+    """
+    now = now or local_now()
+    stav, prichod, odchod = attendance_state_from_history(history)
+    plan_start, _plan_end = shift_window(smena)
+
+    if stav in ('otevreno', 'pauza'):
+        return 'present', prichod.cas.strftime('%H:%M') if prichod else None
+    if stav == 'uzavreno':
+        left_at = odchod.cas.strftime('%H:%M') if odchod else None
+        return 'left', left_at
+    if now < plan_start:
+        return 'upcoming', None
+    return 'missing', None
+
+
+def _store_board_status(people):
+    if not people:
+        return 'no_shift'
+    missing = sum(1 for p in people if p['status'] == 'missing')
+    present = sum(1 for p in people if p['status'] == 'present')
+    if missing > 0 and present > 0:
+        return 'partial'
+    if missing > 0:
+        return 'absent'
+    return 'ok'
+
+
+def build_today_work_board(now=None):
+    """Přehled dnešních směn po prodejnách se stavy příchodů (admin dashboard)."""
+    now = now or local_now()
+    today = now.date()
+    ensure_auto_close_open_shifts(max_days_back=1)
+
+    smeny = (
+        Smena.objects.filter(
+            datum=today,
+            typ_smeny='prace',
+            aktivni=True,
+        )
+        .select_related('user', 'prodejna')
+        .prefetch_related('dochazka')
+        .order_by('prodejna__nazev_kratkiy', 'cas_od', 'user__prijmeni')
+    )
+
+    stores = {}
+    for prodejna in Prodejna.get_aktivni_prodejny():
+        stores[prodejna.id] = {
+            'prodejna_id': prodejna.id,
+            'prodejna_nazev': prodejna.nazev_kratkiy or prodejna.nazev,
+            'prodejna_barva': prodejna.barva or '#0066cc',
+            'people': [],
+        }
+
+    for smena in smeny:
+        history = list(smena.dochazka.all())
+        status, time_label = person_attendance_status(smena, history, now=now)
+        _plan_start, plan_end = shift_window(smena)
+
+        if status == 'left' and now > plan_end:
+            continue
+
+        pid = smena.prodejna_id
+        if pid not in stores:
+            prodejna = smena.prodejna
+            stores[pid] = {
+                'prodejna_id': pid,
+                'prodejna_nazev': prodejna.nazev_kratkiy or prodejna.nazev,
+                'prodejna_barva': prodejna.barva or '#0066cc',
+                'people': [],
+            }
+
+        person = {
+            'smena_id': smena.id,
+            'user_id': smena.user_id,
+            'jmeno': f'{smena.user.jmeno} {smena.user.prijmeni}'.strip(),
+            'plan_od': smena.cas_od.strftime('%H:%M'),
+            'plan_do': smena.cas_do.strftime('%H:%M'),
+            'status': status,
+            'cas': time_label,
+            'dochazka_stav': attendance_state_from_history(history)[0],
+        }
+        stores[pid]['people'].append(person)
+
+    store_list = []
+    for data in sorted(stores.values(), key=lambda x: x['prodejna_nazev']):
+        data['status'] = _store_board_status(data['people'])
+        if not data['people']:
+            data['message'] = 'Není směna · není příchod'
+        store_list.append(data)
+
+    attach_motion_to_stores(store_list, now=now)
+    for row in store_list:
+        motion = row.get('motion') or {}
+        row['camera'] = {
+            'in_pilot': bool(motion.get('in_pilot')),
+            'active': motion.get('status') == 'active',
+        }
+        row.pop('recent_events', None)
+
+    return {
+        'checked_at': now.isoformat(),
+        'datum': today.isoformat(),
+        'stores': store_list,
         'auto_close_time': AUTO_CLOSE_TIME.strftime('%H:%M'),
     }

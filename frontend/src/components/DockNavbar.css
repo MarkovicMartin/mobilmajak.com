@@ -275,7 +275,7 @@
         font-weight: 500;
         white-space: nowrap;
         color: var(--text-inverse);
-        background: var(--text-primary);
+        background: var(--brand-navy);
         border-radius: 6px;
         z-index: 1200;
         pointer-events: none;

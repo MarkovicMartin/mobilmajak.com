@@ -29,6 +29,26 @@ function AbsentStoresPanel() {
         return () => clearInterval(id);
     }, [load]);
 
+    const formatCheckedAt = (iso) => {
+        if (!iso) return '';
+        return new Date(iso).toLocaleString('cs-CZ', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+        });
+    };
+
+    const formatEventAt = (iso) => {
+        if (!iso) return '';
+        return new Date(iso).toLocaleString('cs-CZ', {
+            day: '2-digit',
+            month: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+        });
+    };
+
     const motionBadge = (motion) => {
         if (!motion?.in_pilot) return null;
         const cls =
@@ -45,13 +65,22 @@ function AbsentStoresPanel() {
         );
     };
 
-    const formatCheckedAt = (iso) => {
-        if (!iso) return '';
-        return new Date(iso).toLocaleString('cs-CZ', {
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-        });
+    const renderCameraEvents = (store) => {
+        if (!store.motion?.in_pilot) return null;
+        const events = store.recent_events || [];
+        if (events.length === 0) {
+            return <p className="store-camera-empty">Zatím žádné signály z brány.</p>;
+        }
+        return (
+            <ul className="store-camera-events">
+                {events.map((ev) => (
+                    <li key={ev.id}>
+                        {formatEventAt(ev.cas)} — {ev.pohyb ? '🟢 pohyb' : '⚪ klid'}
+                        {ev.zdroj ? ` (${ev.zdroj})` : ''}
+                    </li>
+                ))}
+            </ul>
+        );
     };
 
     if (loading && !data) {
@@ -60,7 +89,65 @@ function AbsentStoresPanel() {
 
     const absent = data?.absent_stores || [];
     const okStores = data?.ok_stores || [];
+    const pilotStores = data?.pilot_stores || [];
     const camera = data?.camera;
+
+    const activeIds = new Set([
+        ...absent.map((s) => s.prodejna_id),
+        ...okStores.map((s) => s.prodejna_id),
+    ]);
+    const pilotOnly = pilotStores.filter((s) => !activeIds.has(s.prodejna_id));
+
+    const resolveStoreStatus = (store) => {
+        if (store.status === 'ok' || store.status === 'partial' || store.status === 'absent') {
+            return store.status;
+        }
+        const present = (store.present_shifts || []).length;
+        const missing = (store.missing_shifts || []).length;
+        if (present > 0 && missing === 0) return 'ok';
+        if (present > 0 && missing > 0) return 'partial';
+        return 'absent';
+    };
+
+    const allActive = [
+        ...absent,
+        ...okStores,
+    ]
+        .map((store) => ({ ...store, attendanceStatus: resolveStoreStatus(store) }))
+        .sort((a, b) => a.prodejna_nazev.localeCompare(b.prodejna_nazev, 'cs'));
+
+    const statusPill = (status) => {
+        if (status === 'ok') return { className: 'pill-ok', label: '✓ V pořádku' };
+        if (status === 'partial') return { className: 'pill-partial', label: '⚠ Chybí část týmu' };
+        return { className: 'pill-absent', label: '⚠ Chybí příchod' };
+    };
+
+    const renderShiftRoster = (store) => {
+        const presentIds = new Set((store.present_shifts || []).map((s) => s.smena_id));
+        const shifts = [...(store.active_shifts || [])].sort((a, b) => (
+            (a.plan_od || '').localeCompare(b.plan_od || '')
+        ));
+
+        return (
+            <ul className="store-shift-roster">
+                {shifts.map((shift) => {
+                    const isPresent = presentIds.has(shift.smena_id);
+                    return (
+                        <li
+                            key={shift.smena_id}
+                            className={isPresent ? 'shift-present' : 'shift-missing'}
+                        >
+                            <span className="shift-roster-name">{shift.jmeno}</span>
+                            <span className="shift-roster-meta">
+                                {shift.plan_od}–{shift.plan_do}
+                                {isPresent && shift.prichod ? ` · příchod ${shift.prichod}` : ''}
+                            </span>
+                        </li>
+                    );
+                })}
+            </ul>
+        );
+    };
 
     return (
         <div className="absent-stores">
@@ -68,7 +155,7 @@ function AbsentStoresPanel() {
                 <div>
                     <h3>🚨 Není v práci</h3>
                     <p className="absent-stores-sub">
-                        Prodejny s právě běžící směnou, kde chybí zakliknutý <strong>příchod</strong>.
+                        Prodejny s právě běžící směnou. U každé dlaždice vidíte všechny lidi na směně – zelené jméno = v práci, červené = chybí příchod.
                         {data?.auto_close_time && (
                             <> Stav „v práci“ se po <strong>{data.auto_close_time}</strong> automaticky ukončí.</>
                         )}
@@ -108,81 +195,73 @@ function AbsentStoresPanel() {
                                     </ol>
                                 </div>
                             ))}
-                            {camera.nvr_access.where_to_get_credentials?.length > 0 && (
-                                <ul className="camera-nvr-creds">
-                                    {camera.nvr_access.where_to_get_credentials.map((line, i) => (
-                                        <li key={i}>{line}</li>
-                                    ))}
-                                </ul>
-                            )}
                         </details>
                     )}
                 </div>
             )}
 
-            {absent.length === 0 ? (
+            {allActive.length === 0 ? (
                 <div className="absent-all-ok" role="status">
-                    ✓ Na všech prodejnách s aktuální směnou je někdo v práci (nebo nikdo nemá právě směnu).
-                    {okStores.length > 0 && (
-                        <span className="absent-ok-count"> Obsazeno: {okStores.length} prodejen.</span>
-                    )}
+                    ✓ Žádná prodejna nemá právě aktivní směnu.
                 </div>
             ) : (
                 <div className="absent-stores-grid">
-                    {absent.map((store) => (
-                        <div
-                            key={store.prodejna_id}
-                            className="absent-store-card"
-                            style={{ borderLeftColor: store.prodejna_barva || '#ef4444' }}
-                        >
-                            <h4>
-                                {store.prodejna_nazev}
+                    {allActive.map((store) => {
+                        const status = store.attendanceStatus;
+                        const cardClass = status === 'ok'
+                            ? 'store-attendance-ok'
+                            : status === 'partial'
+                                ? 'store-attendance-partial'
+                                : 'store-attendance-absent';
+                        const pill = statusPill(status);
+                        const borderColor = store.prodejna_barva || (
+                            status === 'ok' ? '#22c55e' : status === 'partial' ? '#f59e0b' : '#ef4444'
+                        );
+
+                        return (
+                            <div
+                                key={store.prodejna_id}
+                                className={`store-attendance-card ${cardClass}`}
+                                style={{ borderLeftColor: borderColor }}
+                            >
+                                <div className="store-attendance-head">
+                                    <h4>{store.prodejna_nazev}</h4>
+                                    <span className={`store-status-pill ${pill.className}`}>
+                                        {pill.label}
+                                    </span>
+                                </div>
+
                                 {motionBadge(store.motion)}
-                            </h4>
-                            <p className="absent-store-meta">
-                                {store.missing_shifts.length}{' '}
-                                {store.missing_shifts.length === 1
-                                    ? 'směna bez příchodu'
-                                    : store.missing_shifts.length < 5
-                                        ? 'směny bez příchodu'
-                                        : 'směn bez příchodu'}
-                            </p>
-                            <ul className="absent-shift-list">
-                                {store.missing_shifts.map((s) => (
-                                    <li key={s.smena_id}>
-                                        <span className="absent-name">{s.jmeno}</span>
-                                        <span className="absent-plan">
-                                            {s.plan_od}–{s.plan_do}
-                                        </span>
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-                    ))}
+
+                                {renderShiftRoster(store)}
+
+                                {store.motion?.in_pilot && (
+                                    <div className="store-camera-block">
+                                        <strong className="store-camera-label">📷 Kamera</strong>
+                                        {renderCameraEvents(store)}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
                 </div>
             )}
 
-            {okStores.length > 0 && (
-                <details className="absent-ok-details">
-                    <summary>V pořádku ({okStores.length} prodejen)</summary>
-                    <ul className="absent-ok-list">
-                        {okStores.map((store) => {
-                            const badge = motionBadge(store.motion);
-                            return (
-                            <li key={store.prodejna_id}>
-                                <span
-                                    className="absent-ok-dot"
-                                    style={{ backgroundColor: store.prodejna_barva || '#22c55e' }}
-                                />
-                                {store.prodejna_nazev}
-                                {badge && <span className="absent-ok-motion"> {badge}</span>}
-                                {' — '}
-                                {store.present_shifts.map((s) => s.jmeno).join(', ')}
+            {pilotOnly.length > 0 && (
+                <div className="camera-pilot-stores">
+                    <h4>📷 Pilot kamer – bez aktivní směny</h4>
+                    <ul className="camera-pilot-list">
+                        {pilotOnly.map((store) => (
+                            <li key={store.prodejna_id} className="camera-pilot-item">
+                                <div className="camera-pilot-head">
+                                    <strong>{store.prodejna_nazev}</strong>
+                                    {motionBadge(store.motion)}
+                                </div>
+                                {renderCameraEvents(store)}
                             </li>
-                            );
-                        })}
+                        ))}
                     </ul>
-                </details>
+                </div>
             )}
         </div>
     );

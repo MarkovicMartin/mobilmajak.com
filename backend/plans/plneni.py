@@ -7,39 +7,23 @@ Filtry:
 - KATEGORIE vyplněná (ne prázdná, ne NULL, ne Nezařazeno)
 - Storna odečítáme (záporná cena)
 
-Mapování kategorií (pořadí důležité):
-1. SERVIS, 2. NOVE_TELEFONY, 3. BAZAROVE_TELEFONY,
-4. PRISLUSENSTVI_SKLA, 5. PRISLUSENSTVI_OBALY, 6. PRISLUSENSTVI_OSTATNI,
-7. SLUZBY, 8. OSTATNI
+Mapování kategorií – viz category_mapping.py.
+Plnění SERVIS u prodejce podle Technik – viz servis_plneni.py.
 """
 import calendar
 from datetime import date, timedelta
 from decimal import Decimal
 from django.db import connection
 
-
-def kategorie_case_params():
-    """Parametry pro _kategorie_case_sql (SERVIS podmínky)."""
-    return ['%servis eda%', '%!Servis%']
+from .category_mapping import kategorie_case_params, kategorie_case_sql
+from .servis_plneni import (
+    apply_servis_to_plneni_detail,
+    apply_servis_to_plneni_dict,
+)
 
 
 def _kategorie_case_sql():
-    """CASE výraz pro mapování řádku na plánovací kategorii."""
-    return """
-        CASE
-            WHEN Objednavku_zalozil LIKE %s AND COALESCE(k_servisu,'') = 'ANO'
-                 AND KATEGORIE LIKE %s
-                 AND (KATEGORIE_1 IS NULL OR KATEGORIE_1 = '' OR KATEGORIE_1 NOT LIKE 'Služby%%')
-            THEN 'SERVIS'
-            WHEN KATEGORIE = 'NOVÉ TELEFONY' THEN 'NOVE_TELEFONY'
-            WHEN KATEGORIE IN ('POUŽITÉ TELEFONY', '!Výkup bazaru') THEN 'BAZAROVE_TELEFONY'
-            WHEN KATEGORIE = 'PŘÍSLUŠENSTVÍ' AND KATEGORIE_1 = 'Skla a fólie' THEN 'PRISLUSENSTVI_SKLA'
-            WHEN KATEGORIE = 'PŘÍSLUŠENSTVÍ' AND KATEGORIE_1 = 'Pouzdra a kryty' THEN 'PRISLUSENSTVI_OBALY'
-            WHEN KATEGORIE = 'PŘÍSLUŠENSTVÍ' THEN 'PRISLUSENSTVI_OSTATNI'
-            WHEN KATEGORIE_1 = 'Služby' OR KATEGORIE = 'Služby' THEN 'SLUZBY'
-            ELSE 'OSTATNI'
-        END
-    """
+    return kategorie_case_sql()
 
 
 def _base_where_params(rok, mesic):
@@ -83,7 +67,7 @@ def plneni_firma_do_data(rok, mesic, end_date):
         GROUP BY kategorie_kod
     """
 
-    params = ['%servis eda%', '%!Servis%', start_d, end_d]
+    params = [start_d, end_d]
 
     with connection.cursor() as cursor:
         cursor.execute(sql, params)
@@ -107,7 +91,7 @@ def plneni_firma(rok, mesic):
     """
     start_d, end_d = _base_where_params(rok, mesic)
     case_sql = _kategorie_case_sql()
-    params = ['%servis eda%', '%!Servis%', start_d, end_d]
+    params = [start_d, end_d]
     sql = f"""
         SELECT {case_sql} AS kategorie_kod,
             SUM(COALESCE(NULLIF(Pocet_kusu, 0), 1) * COALESCE(Cena_ks_vcl_DPH, 0)) AS obrat,
@@ -143,7 +127,7 @@ def plneni_prodejny_do_data(rok, mesic, end_date):
     start_d = date(rok, mesic, 1).isoformat()
     end_d = (end_date + timedelta(days=1)).isoformat()
     case_sql = _kategorie_case_sql()
-    params = ['%servis eda%', '%!Servis%', start_d, end_d]
+    params = [start_d, end_d]
     sql = f"""
         SELECT COALESCE(ID_PRODEJNY, 0) AS prodejna_id,
             {case_sql} AS kategorie_kod,
@@ -207,7 +191,7 @@ def plneni_prodejny(rok, mesic):
         AND COALESCE(KATEGORIE,'') != 'Nezařazeno'
         GROUP BY prodejna_id, kategorie_kod
     """
-    params = ['%servis eda%', '%!Servis%', start_d, end_d]
+    params = [start_d, end_d]
 
     with connection.cursor() as cursor:
         cursor.execute(sql, params)
@@ -236,7 +220,7 @@ def plneni_prodejce(rok, mesic, prodejce_id):
     """
     start_d, end_d = _base_where_params(rok, mesic)
     case_sql = _kategorie_case_sql()
-    params = ['%servis eda%', '%!Servis%', start_d, end_d, prodejce_id]
+    params = [start_d, end_d, prodejce_id]
     sql = f"""
         SELECT {case_sql} AS kategorie_kod,
             SUM(CASE WHEN COALESCE(Cena_ks_vcl_DPH, 0) >= 0
@@ -253,7 +237,8 @@ def plneni_prodejce(rok, mesic, prodejce_id):
     with connection.cursor() as cursor:
         cursor.execute(sql, params)
         rows = cursor.fetchall()
-    return {row[0]: int(row[1]) if row[1] is not None else 0 for row in rows if row[0]}
+    result = {row[0]: int(row[1]) if row[1] is not None else 0 for row in rows if row[0]}
+    return apply_servis_to_plneni_dict(result, prodejce_id, start_d, end_d)
 
 
 def plneni_prodejce_s_detailem(rok, mesic, prodejce_id):
@@ -263,7 +248,7 @@ def plneni_prodejce_s_detailem(rok, mesic, prodejce_id):
     """
     start_d, end_d = _base_where_params(rok, mesic)
     case_sql = _kategorie_case_sql()
-    params = ['%servis eda%', '%!Servis%', start_d, end_d, prodejce_id]
+    params = [start_d, end_d, prodejce_id]
     sql = f"""
         SELECT {case_sql} AS kategorie_kod,
             SUM(COALESCE(NULLIF(Pocet_kusu, 0), 1) * COALESCE(Cena_ks_vcl_DPH, 0)) AS obrat,
@@ -289,7 +274,7 @@ def plneni_prodejce_s_detailem(rok, mesic, prodejce_id):
             kusy_val = int(kusy) if kusy is not None else 0
             result['obrat'] += obrat_val
             result['kategorie'][kod] = {'obrat': obrat_val, 'kusy': kusy_val}
-    return result
+    return apply_servis_to_plneni_detail(result, prodejce_id, start_d, end_d)
 
 
 def plneni_prodejce_den(datum, prodejce_id):
@@ -300,7 +285,7 @@ def plneni_prodejce_den(datum, prodejce_id):
     start_d = datum.isoformat()
     end_d = (datum + timedelta(days=1)).isoformat()
     case_sql = _kategorie_case_sql()
-    params = ['%servis eda%', '%!Servis%', start_d, end_d, prodejce_id]
+    params = [start_d, end_d, prodejce_id]
     sql = f"""
         SELECT {case_sql} AS kategorie_kod,
             SUM(CASE WHEN COALESCE(Cena_ks_vcl_DPH, 0) >= 0
@@ -317,7 +302,8 @@ def plneni_prodejce_den(datum, prodejce_id):
     with connection.cursor() as cursor:
         cursor.execute(sql, params)
         rows = cursor.fetchall()
-    return {row[0]: int(row[1]) if row[1] else 0 for row in rows if row[0]}
+    result = {row[0]: int(row[1]) if row[1] else 0 for row in rows if row[0]}
+    return apply_servis_to_plneni_dict(result, prodejce_id, start_d, end_d)
 
 
 def plneni_prodejce_do_data(rok, mesic, end_date, prodejce_id):
@@ -325,7 +311,7 @@ def plneni_prodejce_do_data(rok, mesic, end_date, prodejce_id):
     start_d = date(rok, mesic, 1).isoformat()
     end_d = (end_date + timedelta(days=1)).isoformat()
     case_sql = _kategorie_case_sql()
-    params = ['%servis eda%', '%!Servis%', start_d, end_d, prodejce_id]
+    params = [start_d, end_d, prodejce_id]
     sql = f"""
         SELECT {case_sql} AS kategorie_kod,
             SUM(CASE WHEN COALESCE(Cena_ks_vcl_DPH, 0) >= 0
@@ -342,7 +328,8 @@ def plneni_prodejce_do_data(rok, mesic, end_date, prodejce_id):
     with connection.cursor() as cursor:
         cursor.execute(sql, params)
         rows = cursor.fetchall()
-    return {row[0]: int(row[1]) if row[1] else 0 for row in rows if row[0]}
+    result = {row[0]: int(row[1]) if row[1] else 0 for row in rows if row[0]}
+    return apply_servis_to_plneni_dict(result, prodejce_id, start_d, end_d)
 
 
 def plneni_prodejce_obrat_do_data(rok, mesic, end_date, prodejce_id):
@@ -696,7 +683,7 @@ def _filter_prodejce_detail_prodejna(det, rok, mesic, prodejce_id, prodejna_id):
             kusy_val = int(kusy) if kusy is not None else 0
             result['obrat'] += obrat_val
             result['kategorie'][kod] = {'obrat': obrat_val, 'kusy': kusy_val}
-    return result
+    return apply_servis_to_plneni_detail(result, prodejce_id, start_d, end_d, prodejna_id=prodejna_id)
 
 
 def plneni_polozky(rok, mesic, kategorie_kod, prodejna_id=None, prodejce_id=None, limit=50):

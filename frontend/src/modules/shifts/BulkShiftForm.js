@@ -4,25 +4,30 @@ import './BulkShiftForm.css';
 import UnifiedCalendar from './UnifiedCalendar';
 import { parse, isBefore } from 'date-fns';
 
-function BulkShiftForm({ user, onClose, onSuccess }) {
+function BulkShiftForm({ user, onClose, onSuccess, initialDates = [], initialMonth = null }) {
     const [formData, setFormData] = useState({
         prodejna: user?.prodejna_id || null,
         cas_od: '08:00',
         cas_do: '20:00',
         typ_smeny: 'prace',
+        brigadnik_rezim: 'prodejce',
         poznamka: '',
         user_id: (user && ['ADMIN', 'VEDOUCI'].includes(user.role)) ? user.id : undefined,
     });
     const [users, setUsers] = useState([]);
     const [stores, setStores] = useState([]);
-    const [selectedDates, setSelectedDates] = useState(new Set());
+    const [selectedDates, setSelectedDates] = useState(
+        () => new Set(Array.isArray(initialDates) ? initialDates : []),
+    );
     const [currentMonth, setCurrentMonth] = useState(() => {
+        if (initialMonth) return initialMonth;
         const now = new Date();
         return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [result, setResult] = useState(null);
+    const [vacationBalance, setVacationBalance] = useState(null);
 
     // Automatické nastavení času pro Senimo
     useEffect(() => {
@@ -68,6 +73,34 @@ function BulkShiftForm({ user, onClose, onSuccess }) {
         })();
     }, [user]);
 
+    useEffect(() => {
+        if (formData.typ_smeny === 'dovolena') {
+            setFormData((prev) => ({ ...prev, cas_od: '08:00', cas_do: '16:00' }));
+        }
+    }, [formData.typ_smeny]);
+
+    useEffect(() => {
+        const targetUserId = formData.user_id || user?.id;
+        if (!targetUserId) return;
+        const rok = currentMonth.split('-')[0];
+        (async () => {
+            try {
+                const params = new URLSearchParams({ rok });
+                if (formData.user_id && ['ADMIN', 'VEDOUCI'].includes(user?.role)) {
+                    params.set('user_id', String(formData.user_id));
+                }
+                const res = await fetch(`/api/shifts/vacation-balance/?${params}`, { credentials: 'include' });
+                if (res.ok) {
+                    setVacationBalance(await res.json());
+                } else {
+                    setVacationBalance(null);
+                }
+            } catch {
+                setVacationBalance(null);
+            }
+        })();
+    }, [formData.user_id, currentMonth, user]);
+
     const handleDateToggle = (dateStr) => {
         if (!dateStr) return;
         
@@ -100,6 +133,9 @@ function BulkShiftForm({ user, onClose, onSuccess }) {
         return date.toLocaleDateString('cs-CZ', { month: 'long', year: 'numeric' });
     };
 
+    const selectedUser = users.find((u) => u.id === formData.user_id) || user;
+    const isBrigadnikShift = selectedUser?.role === 'BRIGADNIK' && formData.typ_smeny === 'prace';
+
     const handleSubmit = async () => {
         if (selectedDates.size === 0) {
             setError('Vyberte alespoň jeden den');
@@ -115,6 +151,9 @@ function BulkShiftForm({ user, onClose, onSuccess }) {
                 ...formData,
                 datumy: Array.from(selectedDates)  // Oprava: backend očekává 'datumy'
             };
+            if (!isBrigadnikShift) {
+                delete requestData.brigadnik_rezim;
+            }
             if (!(user && ['ADMIN', 'VEDOUCI'].includes(user.role))) {
                 delete requestData.user_id;
             }
@@ -160,6 +199,17 @@ function BulkShiftForm({ user, onClose, onSuccess }) {
                         ✕
                     </button>
                 </div>
+
+                {vacationBalance?.eligible && (
+                    <div className="vacation-balance-banner" style={{ margin: '0 1rem' }}>
+                        🏖️ Dovolená {vacationBalance.rok}: zbývá{' '}
+                        <strong>{vacationBalance.zbyva_h} h</strong>
+                        {' '}(čerpáno {vacationBalance.cerpano_h} / fond {vacationBalance.fond_h} h
+                        {vacationBalance.odeceno_deficit_h > 0
+                            ? `, vč. ${vacationBalance.odeceno_deficit_h} h deficit fondu`
+                            : ''})
+                    </div>
+                )}
 
                 {/* OBSAH */}
                 <div className="bulk-shift-content">
@@ -221,6 +271,20 @@ function BulkShiftForm({ user, onClose, onSuccess }) {
                                     </select>
                                 </div>
 
+                                {isBrigadnikShift && (
+                                    <div className="form-group">
+                                        <label className="form-label">Režim brigádníka:</label>
+                                        <select
+                                            className="form-select"
+                                            value={formData.brigadnik_rezim}
+                                            onChange={(e) => setFormData(prev => ({...prev, brigadnik_rezim: e.target.value}))}
+                                        >
+                                            <option value="prodejce">Jako prodejce (100 bodů/h + provize)</option>
+                                            <option value="vypomoc">Výpomoc (150 bodů/h, bez provize)</option>
+                                        </select>
+                                    </div>
+                                )}
+
                                 <div className="form-group">
                                     <label className="form-label">Od:</label>
                                     <input 
@@ -274,12 +338,14 @@ function BulkShiftForm({ user, onClose, onSuccess }) {
                                     month={currentMonth}
                                     variant="compact"
                                     selectedDates={selectedDates}
+                                    enableDragSelect
                                     isDateEnabled={(date) => {
                                         if (user && ['ADMIN', 'VEDOUCI'].includes(user.role)) return true;
                                         const firstOfMonth = parse(`${currentMonth}-01`, 'yyyy-MM-dd', new Date());
                                         return !isBefore(date, firstOfMonth);
                                     }}
                                     onDateClick={(dateStr) => handleDateToggle(dateStr)}
+                                    onDateDragSelect={(dateStr) => handleDateToggle(dateStr)}
                                 />
                             </div>
                         </div>

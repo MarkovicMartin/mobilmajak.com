@@ -238,8 +238,9 @@
 }
 
 .uc-shift-chip {
-    background: rgba(0, 102, 204, 0.15);
-    color: #004499;
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    color: #fff;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
 }
 
 .uc-task-chip {

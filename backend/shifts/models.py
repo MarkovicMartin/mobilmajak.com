@@ -9,6 +9,11 @@ class Smena(models.Model):
         ('dovolena', 'Dovolená'),
         ('nemoc', 'Nemocenská'),
     ]
+
+    BRIGADNIK_REZIM = [
+        ('prodejce', 'Jako prodejce'),
+        ('vypomoc', 'Výpomoc'),
+    ]
     
     user = models.ForeignKey(WebUser, on_delete=models.CASCADE, related_name='smeny')
     prodejna = models.ForeignKey('stores.Prodejna', on_delete=models.CASCADE, verbose_name="Prodejna", related_name='smeny')
@@ -16,6 +21,14 @@ class Smena(models.Model):
     cas_od = models.TimeField()
     cas_do = models.TimeField()
     typ_smeny = models.CharField(max_length=20, choices=TYP_SMENY, default='prace')
+    brigadnik_rezim = models.CharField(
+        max_length=20,
+        choices=BRIGADNIK_REZIM,
+        default='prodejce',
+        blank=True,
+        verbose_name='Režim brigádníka',
+        help_text='Výpomoc: 150 bodů/h bez provize. Jako prodejce: sazba z profilu + provize.',
+    )
     poznamka = models.TextField(blank=True, null=True)
     aktivni = models.BooleanField(default=True)
     vytvoreno = models.DateTimeField(auto_now_add=True)
@@ -122,6 +135,24 @@ class MzdovaOdmenaMesic(models.Model):
 
     def __str__(self):
         return f"{self.user_id} – {self.mesic.strftime('%m/%Y')}: {self.castka} bodů"
+
+
+class MzdovaPenalizaceMesic(models.Model):
+    """Srážka −10 % z provize za měsíc (každý záznam = jedna instance)."""
+
+    user = models.ForeignKey(WebUser, on_delete=models.CASCADE, related_name='mzda_penalizace_mesic')
+    mesic = models.DateField(verbose_name="Měsíc (první den)")
+    duvod = models.TextField(verbose_name="Důvod srážky")
+    vytvoreno = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'WEB_MZDOVA_PENALIZACE_MESIC'
+        verbose_name = 'Měsíční penalizace'
+        verbose_name_plural = 'Měsíční penalizace'
+        ordering = ['mesic', 'vytvoreno']
+
+    def __str__(self):
+        return f"{self.user_id} – {self.mesic.strftime('%m/%Y')}: −10 % ({self.duvod[:40]})"
 
 
 class ProdejnaPohybUdalost(models.Model):

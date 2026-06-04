@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from django.db.models import Q
 from django.utils import timezone
@@ -6,6 +6,8 @@ from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+
+from users.models import WebUser
 
 from .models import Ukol, UkolKomentar
 from .permissions import (
@@ -19,6 +21,8 @@ from .permissions import (
 )
 from .serializers import UkolKomentarSerializer, UkolSerializer, serialize_tasks_list
 from .urgency import notifications_counts_for_user, urgency_for_task
+
+OPEN_TASK_STATUSES = ('novy', 'v_procesu')
 
 
 def _parse_month(mesic: str):
@@ -241,6 +245,51 @@ def tasks_unread_summary(request):
     """Zpětná kompatibilita – počítá nepřečtené přiřazené úkoly (precteno_v)."""
     counts = notifications_counts_for_user(request.user)
     return Response({"success": True, "unread_count": counts["tasks_unread"]})
+
+
+def _serialize_dashboard_task(task, assignees_map):
+    return {
+        'id': task.id,
+        'ukol': task.ukol,
+        'stav': task.stav,
+        'priorita': task.priorita,
+        'deadline': task.deadline.isoformat() if task.deadline else None,
+        'deadline_cas': task.deadline_cas.strftime('%H:%M') if task.deadline_cas else None,
+        'urgency': urgency_for_task(task),
+        'assignee': assignees_map.get(task.id_prodejce_ukol, ''),
+        'prodejna_id': task.id_prodejny,
+    }
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def tasks_dashboard_snapshot(request):
+    """Admin: úkoly s termínem dnes + náhled příštích 7 dní."""
+    if getattr(request.user, 'role', None) != 'ADMIN':
+        return Response({'error': 'Nemáte oprávnění'}, status=status.HTTP_403_FORBIDDEN)
+
+    today = timezone.localdate()
+    week_end = today + timedelta(days=7)
+    qs = tasks_queryset_for_user(request.user).filter(stav__in=OPEN_TASK_STATUSES)
+
+    today_qs = qs.filter(deadline=today).order_by('deadline_cas', 'priorita')
+    week_qs = qs.filter(
+        deadline__gt=today,
+        deadline__lte=week_end,
+    ).order_by('deadline', 'deadline_cas')[:25]
+
+    all_tasks = list(today_qs) + list(week_qs)
+    user_ids = {t.id_prodejce_ukol for t in all_tasks}
+    assignees_map = {
+        u.id: f'{u.jmeno} {u.prijmeni}'.strip()
+        for u in WebUser.objects.filter(id__in=user_ids)
+    }
+
+    return Response({
+        'datum': today.isoformat(),
+        'today': [_serialize_dashboard_task(t, assignees_map) for t in today_qs],
+        'week_preview': [_serialize_dashboard_task(t, assignees_map) for t in week_qs],
+    })
 
 
 @api_view(["GET"])

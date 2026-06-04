@@ -36,6 +36,8 @@ function lte(a, b) {
 
 const start = process.argv[2] ? parseYm(process.argv[2]) : START;
 const end = process.argv[3] ? parseYm(process.argv[3]) : END;
+const CONTINUE_ON_ERROR = process.argv.includes('--continue') || process.env.BACKFILL_CONTINUE === '1';
+const SLEEP_SEC = parseInt(process.env.BACKFILL_SLEEP_SEC || '60', 10);
 
 fs.mkdirSync(path.dirname(LOG), { recursive: true });
 
@@ -57,13 +59,18 @@ while (lte(cur, end)) {
   });
   if (r.status !== 0) {
     log(`FAILED ${from} ${to} exit=${r.status}`);
-    process.exit(r.status || 1);
+    if (!CONTINUE_ON_ERROR) process.exit(r.status || 1);
+  } else {
+    log(`OK ${from} ${to}`);
   }
-  log(`OK ${from} ${to}`);
   cur = nextYm(cur);
   if (lte(cur, end)) {
-    log('Sleep 45s...');
-    spawnSync('sleep', ['45']);
+    log(`Sleep ${SLEEP_SEC}s...`);
+    spawnSync('sleep', [String(SLEEP_SEC)]);
   }
 }
 log('All months done.');
+if (CONTINUE_ON_ERROR) {
+  const failed = fs.readFileSync(LOG, 'utf8').split('\n').filter((l) => l.includes('FAILED')).length;
+  if (failed > 0) process.exit(1);
+}

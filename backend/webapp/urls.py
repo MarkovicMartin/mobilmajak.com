@@ -19,6 +19,8 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 
+from vallora.views import quote_view, search_view
+
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.http import JsonResponse
 from django.db import connection
@@ -62,6 +64,8 @@ def health_check(request):
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('search', search_view, name='vallora-search'),
+    path('quote', quote_view, name='vallora-quote'),
     path('health/', health_check, name='health'),
     path('api/csrf/', csrf_view, name='csrf'),
     path('api/users/', include('users.urls')),
@@ -72,6 +76,7 @@ urlpatterns = [
     path('api/orders/', include('orders.urls')),
     path('api/tasks/', include('tasks.urls')),
     path('api/plans/', include('plans.urls')),
+    path('api/coaching/', include('coaching.urls')),
     path('api/tickets/', include('tickets.urls')),
     path('', include('web_pristupy.urls')),
 ]

@@ -1,5 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { formatLocalDate } from '../analytics/sections/celkovaPeriodUtils';
 import './AttendancePanel.css';
+
+function shiftDateIso(datum) {
+    if (!datum) return '';
+    return String(datum).slice(0, 10);
+}
 
 function AttendancePanel({ user }) {
     const [todayShift, setTodayShift] = useState(null);
@@ -9,16 +15,6 @@ function AttendancePanel({ user }) {
     const [actionLoading, setActionLoading] = useState(false);
     const [error, setError] = useState('');
     const [warnings, setWarnings] = useState([]);
-
-    useEffect(() => {
-        fetchTodayData();
-        fetchWarnings();
-        const interval = setInterval(() => {
-            fetchTodayData();
-            fetchWarnings();
-        }, 60000);
-        return () => clearInterval(interval);
-    }, []);
 
     const fetchWarnings = async () => {
         try {
@@ -32,23 +28,35 @@ function AttendancePanel({ user }) {
         }
     };
 
-    const fetchTodayData = async () => {
+    const fetchTodayData = useCallback(async () => {
+        if (!user?.id) {
+            setTodayShift(null);
+            setAttendanceHistory([]);
+            setCurrentStatus('no_shift');
+            setLoading(false);
+            return;
+        }
+
         try {
             setLoading(true);
-            const today = new Date().toISOString().split('T')[0];
-            
-            // Načtení dnešních směn
+            const today = formatLocalDate(new Date());
+            const mesic = today.substring(0, 7);
+
             const shiftsResponse = await fetch(
-                `/api/shifts/?mesic=${today.substring(0, 7)}`,
-                {
-                    credentials: 'include'
-                }
+                `/api/shifts/?mesic=${mesic}&user_id=${user.id}`,
+                { credentials: 'include' }
             );
 
             if (shiftsResponse.ok) {
                 const shifts = await shiftsResponse.json();
-                const todayShifts = shifts.filter(shift => shift.datum === today);
-                
+                const todayShifts = shifts
+                    .filter((shift) => (
+                        shiftDateIso(shift.datum) === today
+                        && Number(shift.user_id) === Number(user.id)
+                        && shift.typ_smeny === 'prace'
+                    ))
+                    .sort((a, b) => (a.cas_od || '').localeCompare(b.cas_od || ''));
+
                 if (todayShifts.length > 0) {
                     const shift = todayShifts[0];
                     setTodayShift(shift);
@@ -66,7 +74,17 @@ function AttendancePanel({ user }) {
         } finally {
             setLoading(false);
         }
-    };
+    }, [user?.id]);
+
+    useEffect(() => {
+        fetchTodayData();
+        fetchWarnings();
+        const interval = setInterval(() => {
+            fetchTodayData();
+            fetchWarnings();
+        }, 60000);
+        return () => clearInterval(interval);
+    }, [fetchTodayData]);
 
     const calculateCurrentStatus = (history) => {
         if (history.length === 0) {

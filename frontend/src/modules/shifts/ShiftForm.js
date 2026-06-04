@@ -4,13 +4,14 @@ import { userAPI, storeAPI } from '../../services/api';
 import { useModalKeyboard } from '../../utils/useModalKeyboard';
 import './ShiftForm.css';
 
-function ShiftForm({ user, onClose, onSuccess }) {
+function ShiftForm({ user, onClose, onSuccess, initialDatum = '' }) {
     const [formData, setFormData] = useState({
-        datum: '',
+        datum: initialDatum || '',
         prodejna: user?.prodejna_id || null,
         cas_od: '08:00',
         cas_do: '20:00',
         typ_smeny: 'prace',
+        brigadnik_rezim: 'prodejce',
         poznamka: '',
         // user_id pouze pro ADMIN/VEDOUCI (jinak necháváme nevyplněné)
         user_id: (user && ['ADMIN', 'VEDOUCI'].includes(user.role)) ? user.id : undefined,
@@ -20,6 +21,7 @@ function ShiftForm({ user, onClose, onSuccess }) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [existingShiftInfo, setExistingShiftInfo] = useState(null);
+    const [vacationBalance, setVacationBalance] = useState(null);
     const shiftFormRef = useRef(null);
 
     useModalKeyboard(true, { onClose, formRef: shiftFormRef });
@@ -110,11 +112,44 @@ function ShiftForm({ user, onClose, onSuccess }) {
         }
     }, [formData.user_id, users, user]);
 
+    useEffect(() => {
+        const targetUserId = formData.user_id || user?.id;
+        if (!targetUserId) return;
+        const rok = formData.datum
+            ? new Date(formData.datum).getFullYear()
+            : new Date().getFullYear();
+        (async () => {
+            try {
+                const params = new URLSearchParams({ rok: String(rok) });
+                if (formData.user_id && ['ADMIN', 'VEDOUCI'].includes(user?.role)) {
+                    params.set('user_id', String(formData.user_id));
+                }
+                const res = await fetch(`/api/shifts/vacation-balance/?${params}`, { credentials: 'include' });
+                if (res.ok) {
+                    setVacationBalance(await res.json());
+                } else {
+                    setVacationBalance(null);
+                }
+            } catch {
+                setVacationBalance(null);
+            }
+        })();
+    }, [formData.user_id, formData.datum, user]);
+
+    useEffect(() => {
+        if (formData.typ_smeny === 'dovolena') {
+            setFormData((prev) => ({ ...prev, cas_od: '08:00', cas_do: '16:00' }));
+        }
+    }, [formData.typ_smeny]);
+
     const handleClose = () => {
         setError('');
         setExistingShiftInfo(null);
         onClose();
     };
+
+    const selectedUser = users.find((u) => u.id === formData.user_id) || user;
+    const isBrigadnikShift = selectedUser?.role === 'BRIGADNIK' && formData.typ_smeny === 'prace';
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -124,6 +159,9 @@ function ShiftForm({ user, onClose, onSuccess }) {
 
         try {
             const payload = { ...formData };
+            if (!isBrigadnikShift) {
+                delete payload.brigadnik_rezim;
+            }
             // Pokud není ADMIN/VEDOUCI, neposíláme user_id
             if (!(user && ['ADMIN', 'VEDOUCI'].includes(user.role))) {
                 delete payload.user_id;
@@ -163,7 +201,19 @@ function ShiftForm({ user, onClose, onSuccess }) {
         <div className="modal-overlay" onClick={handleClose}>
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                 <h3>➕ Přidat novou směnu</h3>
-                
+
+                {vacationBalance?.eligible && (
+                    <div className="vacation-balance-banner">
+                        🏖️ Dovolená {vacationBalance.rok}: zbývá{' '}
+                        <strong>{vacationBalance.zbyva_h} h</strong>
+                        {' '}(čerpáno {vacationBalance.cerpano_h} / fond {vacationBalance.fond_h} h
+                        {vacationBalance.odeceno_deficit_h > 0
+                            ? `, vč. ${vacationBalance.odeceno_deficit_h} h deficit fondu`
+                            : ''}
+                        {vacationBalance.prevod_h > 0 ? `, převod ${vacationBalance.prevod_h} h` : ''})
+                    </div>
+                )}
+
                 <form ref={shiftFormRef} onSubmit={handleSubmit}>
                     {(user && ['ADMIN', 'VEDOUCI'].includes(user.role)) && (
                         <div className="form-group">
@@ -251,6 +301,19 @@ function ShiftForm({ user, onClose, onSuccess }) {
                             <option value="nemoc">🏥 Nemocenská</option>
                         </select>
                     </div>
+
+                    {isBrigadnikShift && (
+                        <div className="form-group">
+                            <label>Režim brigádníka:</label>
+                            <select
+                                value={formData.brigadnik_rezim}
+                                onChange={(e) => setFormData({...formData, brigadnik_rezim: e.target.value})}
+                            >
+                                <option value="prodejce">Jako prodejce (100 bodů/h + provize)</option>
+                                <option value="vypomoc">Výpomoc (150 bodů/h, bez provize)</option>
+                            </select>
+                        </div>
+                    )}
 
                     <div className="form-group">
                         <label>Poznámka:</label>

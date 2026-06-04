@@ -20,7 +20,8 @@ export function formatBodyLabel(value) {
     return formatBodyCount(value);
 }
 
-/** Číslo bodů bez slova „bod/body/bodů“ (tabulky výplaty). */
+/** Číslo bodů bez slova „bod/body/bodů“ (tabulky výplaty) – celá čísla. */
 export function formatPoints(value) {
-    return formatNumber(value);
+    const n = Math.round(Number(value) || 0);
+    return n.toLocaleString('cs-CZ', { maximumFractionDigits: 0 });
 }

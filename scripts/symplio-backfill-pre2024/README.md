@@ -9,12 +9,24 @@
 - Cron řádek se po startu **sám odstraní** (neběží zítra znovu).
 - Běh pokračuje na pozadí (`nohup`); actor pro dnešek (cron každé 2 min) se **nevypíná** – historie se netýká dneška.
 
-## Nasazení
+## Před spuštěním (preflight)
+
+```bash
+ssh -i .ssh/webmajak_vps/mobilmajak_vps_ed25519 root@194.182.87.138 \
+  bash /opt/actor/ACTOR_FINALL_WEB_PRODEJE_ALL/test-backfill-pre2024-preflight.sh
+```
+
+Kontroluje: soubory, MySQL (`connectToMySQL` + `.env.db`), lock, že před 2024 ještě nejsou data.
+
+## Nasazení + cron na večer
 
 ```bash
 chmod +x scripts/symplio-backfill-pre2024/deploy-and-schedule.sh
-./scripts/symplio-backfill-pre2024/deploy-and-schedule.sh
+./scripts/symplio-backfill-pre2024/deploy-and-schedule.sh          # dnes 20:30
+./scripts/symplio-backfill-pre2024/deploy-and-schedule.sh today 21:00
 ```
+
+Nahraje skripty, `backend/.env` → VPS `.env.db` (chmod 600), spustí preflight, nastaví jednorázový cron.
 
 ## Sledování
 

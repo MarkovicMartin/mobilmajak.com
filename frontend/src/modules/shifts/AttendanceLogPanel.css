@@ -1,9 +1,40 @@
+.attendance-log-periods {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 0.75rem;
+}
+
+.attendance-log-periods button {
+    border: 1px solid #c55a11;
+    background: #fff;
+    color: #c55a11;
+    border-radius: 6px;
+    padding: 0.35rem 0.65rem;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.attendance-log-periods button:hover {
+    background: #fff5eb;
+}
+
+.attendance-log-periods button.active {
+    background: #c55a11;
+    color: #fff;
+}
+
 .attendance-log-toolbar {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 1rem;
     margin-bottom: 1rem;
+}
+
+.attendance-log-summary {
+    font-size: 0.9rem;
+    color: #444;
 }
 
 .problemy-badge {

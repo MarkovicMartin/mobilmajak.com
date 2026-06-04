@@ -427,6 +427,15 @@
     border: 1px solid var(--border-secondary);
     color: var(--text-primary);
 }
+.news-item-link {
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.news-item-link:hover {
+    background: var(--bg-hover, rgba(0, 0, 0, 0.04));
+    border-color: var(--border-primary, #d0d5dd);
+}
 
 .seller-dashboard .attendance-panel {
     padding: 0;
@@ -436,6 +445,21 @@
 
 .seller-dashboard .attendance-header {
     border-bottom-color: var(--border-subtle);
+}
+
+.seller-dashboard .card .shift-info-card {
+    background: var(--bg-inset);
+    border: 1px solid var(--border-subtle);
+    border-left: 4px solid var(--brand-navy);
+    color: var(--text-primary);
+}
+
+.seller-dashboard .card .shift-details div {
+    color: var(--text-secondary);
+}
+
+.seller-dashboard .card .shift-details strong {
+    color: var(--text-heading);
 }
 
 .seller-dashboard .card h3 {

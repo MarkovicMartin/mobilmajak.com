@@ -1,35 +1,132 @@
 """Výpočet payroll dat – hodiny, provize, mzda (body)."""
 from datetime import date, datetime, timedelta
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 
 from stores.models import Prodejna
 from users.exclusions import real_sales_staff_queryset
 from users.mzda_utils import (
+    BRIGADNIK_VYPOMOC_BODY_ZA_HODINU,
     is_brigadnik,
     mzda_body_za_hodinu,
+    mzda_cestovne_body,
+    mzda_fixni_bez_cestovneho,
     mzda_fixni_body,
     mzda_fixni_mesicni_body,
-    mzda_z_hodin_body,
+    mzda_z_hodin_body_brigadnik,
+    mzda_zaklad_pro_vicepraci,
+    mzda_zaklad_raw,
     sum_mzda_doplnky,
 )
 
 from .labor_hours import fondu_hodin_mesic, prescas_hodin
-from .models import MzdovaOdmenaMesic, Smena
+
+
+def _body_whole(val):
+    return Decimal(str(val or 0)).quantize(Decimal('1'), rounding=ROUND_HALF_UP)
+
+
+def _body_float(val):
+    return float(_body_whole(val))
+
+
+def provize_po_penalizaci(provize_brutto, pocet_penalizaci):
+    """Každá penalizace = −10 % z hrubé provize (sčítá se)."""
+    brutto = _body_whole(provize_brutto)
+    if pocet_penalizaci <= 0:
+        return brutto, Decimal('0'), 0
+    procent = min(100, int(pocet_penalizaci) * 10)
+    factor = (Decimal('100') - Decimal(str(procent))) / Decimal('100')
+    netto = _body_whole(brutto * factor)
+    return netto, brutto - netto, procent
+from .models import MzdovaOdmenaMesic, MzdovaPenalizaceMesic, Smena
 from .payroll_points_batch import (
     _empty_metrics,
+    batch_dyska_for_month,
     batch_sales_metrics_for_month,
     batch_servis_points_for_month,
     build_points_payload_for_user,
 )
-from .views import get_ceske_svatky
+from .vacation_service import (
+    deficit_mesic_hodin,
+    dovolena_hodin_ze_smeny,
+    is_dovolena_eligible,
+)
+from .czech_holidays import get_ceske_svatky
 
 
 def _shift_hours(smena):
+    if smena.typ_smeny == 'dovolena':
+        return float(dovolena_hodin_ze_smeny(smena))
     cas_od_dt = datetime.combine(smena.datum, smena.cas_od)
     cas_do_dt = datetime.combine(smena.datum, smena.cas_do)
     if cas_do_dt < cas_od_dt:
         cas_do_dt += timedelta(days=1)
     return round((cas_do_dt - cas_od_dt).total_seconds() / 3600, 2)
+
+
+def _subtract_months(rok, mesic, count):
+    m = mesic - count
+    y = rok
+    while m <= 0:
+        m += 12
+        y -= 1
+    return y, m
+
+
+def _odpracovano_h_mesic(user_id, rok, mesic_cislo, prodejna_id=None):
+    hours_map = aggregate_hours_by_user(rok, mesic_cislo, prodejna_id)
+    return Decimal(str(hours_map.get(user_id, {}).get('odpracovano_h', 0)))
+
+
+def prumer_fixni_hodinove_body(user, rok, mesic_cislo):
+    """
+    Průměr fixní části (základ + doplňky) / odpracované hodiny za 3 předchozí měsíce.
+    """
+    if is_brigadnik(user) or not is_dovolena_eligible(user):
+        return Decimal('0')
+
+    total_fixni = Decimal('0')
+    total_h = Decimal('0')
+    for i in range(1, 4):
+        y, m = _subtract_months(rok, mesic_cislo, i)
+        h = _odpracovano_h_mesic(user.id, y, m)
+        fixni = mzda_fixni_bez_cestovneho(user, float(h))
+        total_fixni += fixni
+        total_h += h
+
+    if total_h > 0:
+        return _body_whole(total_fixni / total_h)
+
+    fond = Decimal(str(fondu_hodin_mesic(rok, mesic_cislo) or 0))
+    zaklad = mzda_zaklad_raw(user)
+    if fond > 0 and zaklad > 0:
+        return _body_whole(zaklad / fond)
+    return Decimal('0')
+
+
+def prescas_body_vypocet(user, prescas_h, fondu_h):
+    """Přesčas: (základ + variabilní doplňky z profilu) / fond × hodiny nad fondem. Bez cestovného."""
+    if is_brigadnik(user) or not is_dovolena_eligible(user):
+        return Decimal('0'), Decimal('0'), Decimal('0')
+    h = Decimal(str(prescas_h or 0))
+    if h <= 0:
+        return Decimal('0'), Decimal('0'), Decimal('0')
+    fond = Decimal(str(fondu_h or 0))
+    if fond <= 0:
+        return Decimal('0'), Decimal('0'), Decimal('0')
+    zaklad_vp = mzda_zaklad_pro_vicepraci(user)
+    sazba = _body_whole(zaklad_vp / fond)
+    body = _body_whole(zaklad_vp * h / fond)
+    return body, sazba, zaklad_vp
+
+
+def dovolena_body_vypocet(user, dovolena_h, prumer_h):
+    if is_brigadnik(user) or not is_dovolena_eligible(user):
+        return Decimal('0')
+    h = Decimal(str(dovolena_h or 0))
+    if h <= 0 or prumer_h <= 0:
+        return Decimal('0')
+    return _body_whole(prumer_h * h)
 
 
 def aggregate_hours_by_user(rok, mesic_cislo, prodejna_id=None):
@@ -58,6 +155,8 @@ def aggregate_hours_by_user(rok, mesic_cislo, prodejna_id=None):
         if uid not in result:
             result[uid] = {
                 'odpracovano_h': 0,
+                'vypomoc_h': 0,
+                'prodejce_h': 0,
                 'dovolena_h': 0,
                 'nemoc_h': 0,
                 'svatek_h': 0,
@@ -69,6 +168,12 @@ def aggregate_hours_by_user(rok, mesic_cislo, prodejna_id=None):
             result[uid]['nemoc_h'] += hodiny
         elif smena.typ_smeny == 'prace':
             result[uid]['odpracovano_h'] += hodiny
+            if is_brigadnik(smena.user):
+                rezim = (smena.brigadnik_rezim or 'prodejce').strip()
+                if rezim == 'vypomoc':
+                    result[uid]['vypomoc_h'] += hodiny
+                else:
+                    result[uid]['prodejce_h'] += hodiny
             if smena.datum in svatky_v_mesici:
                 result[uid]['svatek_h'] += hodiny
     for uid in result:
@@ -78,23 +183,33 @@ def aggregate_hours_by_user(rok, mesic_cislo, prodejna_id=None):
 
 
 def build_payroll_row(user, rok, mesic_cislo, hours_map, mesic_date, prodejny_cache,
-                      fondu_h, metrics_map, servis_map, odmeny_map):
+                      fondu_h, metrics_map, servis_map, odmeny_map, dyska_map=None,
+                      penalizace_map=None):
     uid = user.id
     hours = hours_map.get(uid, {
         'odpracovano_h': 0,
+        'vypomoc_h': 0,
+        'prodejce_h': 0,
         'dovolena_h': 0,
         'nemoc_h': 0,
         'svatek_h': 0,
     })
     odpracovano = hours.get('odpracovano_h', 0)
+    vypomoc_h = hours.get('vypomoc_h', 0)
+    prodejce_h = hours.get('prodejce_h', 0)
+    dovolena_h = hours.get('dovolena_h', 0)
     doplnky_sum, doplnky = sum_mzda_doplnky(user)
+    cestovne = mzda_cestovne_body(user)
     if is_brigadnik(user):
-        zaklad = mzda_z_hodin_body(user, odpracovano)
+        if vypomoc_h == 0 and prodejce_h == 0 and odpracovano > 0:
+            prodejce_h = odpracovano
+        zaklad = mzda_z_hodin_body_brigadnik(user, vypomoc_h, prodejce_h)
         sazba_h = float(mzda_body_za_hodinu(user))
+        mzda_fixni = zaklad + doplnky_sum
     else:
         zaklad = mzda_fixni_mesicni_body(user)
         sazba_h = None
-    mzda_fixni = mzda_fixni_body(user, odpracovano)
+        mzda_fixni = mzda_fixni_body(user, odpracovano)
 
     odmena_row = odmeny_map.get(uid)
     if odmena_row:
@@ -110,14 +225,34 @@ def build_payroll_row(user, rok, mesic_cislo, hours_map, mesic_date, prodejny_ca
     points_payload = build_points_payload_for_user(
         uid, metrics, servis_points, servis_data, f'{ym}-01',
     )
-    provize_body = Decimal(str(points_payload.get('total_points') or 0))
-    celkem_body = mzda_fixni + provize_body + odmena_mesic
+    provize_raw = Decimal(str(points_payload.get('total_points') or 0))
+    if is_brigadnik(user) and prodejce_h <= 0:
+        provize_brutto = Decimal('0')
+    else:
+        provize_brutto = _body_whole(provize_raw)
+
+    penalizace_rows = list((penalizace_map or {}).get(uid) or [])
+    provize_body, penalizace_srazka, penalizace_procent = provize_po_penalizaci(
+        provize_brutto, len(penalizace_rows),
+    )
+
+    prescas_h = prescas_hodin(odpracovano, fondu_h)
+    deficit_h = deficit_mesic_hodin(uid, rok, mesic_cislo) if is_dovolena_eligible(user) else 0.0
+    prumer_fixni_h = prumer_fixni_hodinove_body(user, rok, mesic_cislo)
+    dovolena_body = dovolena_body_vypocet(user, dovolena_h, prumer_fixni_h)
+    prescas_body, prescas_sazba_h, zaklad_pro_vicepraci = prescas_body_vypocet(user, prescas_h, fondu_h)
+
+    dyska_info = (dyska_map or {}).get(uid) or {'obrat': 0, 'kusy': 0}
+    dyska_body = _body_whole(dyska_info.get('obrat') or 0)
+
+    celkem_body = _body_whole(
+        mzda_fixni + provize_body + odmena_mesic
+        + dovolena_body + prescas_body + cestovne + dyska_body
+    )
 
     breakdown = points_payload.get('breakdown') or {}
     ct300_item = breakdown.get('ct300') or {}
     ct300_count = int(ct300_item.get('count') or 0)
-
-    prescas_h = prescas_hodin(odpracovano, fondu_h)
 
     stredisko = ''
     if user.prodejna_id:
@@ -128,20 +263,43 @@ def build_payroll_row(user, rok, mesic_cislo, hours_map, mesic_date, prodejny_ca
         'jmeno': f'{user.jmeno} {user.prijmeni}'.strip(),
         'stredisko': stredisko,
         **hours,
+        'fondu_h': fondu_h,
+        'deficit_h': deficit_h,
         'prescas_h': prescas_h,
         'ct300_count': ct300_count,
         'role': user.role,
         'is_brigadnik': is_brigadnik(user),
+        'vypomoc_h': vypomoc_h if is_brigadnik(user) else 0,
+        'prodejce_h': prodejce_h if is_brigadnik(user) else 0,
         'body_za_hodinu': sazba_h,
-        'zaklad_body': float(zaklad),
+        'body_vypomoc_za_hodinu': float(BRIGADNIK_VYPOMOC_BODY_ZA_HODINU) if is_brigadnik(user) else None,
+        'zaklad_body': _body_float(zaklad),
         'doplnky': doplnky,
-        'doplnky_body': float(doplnky_sum),
-        'mzda_fixni_body': float(mzda_fixni),
-        'provize_body': float(provize_body),
+        'doplnky_body': _body_float(doplnky_sum),
+        'cestovne_body': _body_float(cestovne),
+        'mzda_fixni_body': _body_float(mzda_fixni),
+        'prumer_fixni_h': _body_float(prumer_fixni_h),
+        'dovolena_body': _body_float(dovolena_body),
+        'prescas_body': _body_float(prescas_body),
+        'prescas_sazba_h': _body_float(prescas_sazba_h),
+        'zaklad_pro_vicepraci_body': _body_float(zaklad_pro_vicepraci),
+        'dyska_body': _body_float(dyska_body),
+        'dyska_kusy': int(dyska_info.get('kusy') or 0),
+        'dyska_obrat': float(dyska_info.get('obrat') or 0),
+        'provize_body_brutto': _body_float(provize_brutto),
+        'provize_body': _body_float(provize_body),
+        'penalizace_pocet': len(penalizace_rows),
+        'penalizace_procent': penalizace_procent,
+        'penalizace_srazka_body': _body_float(penalizace_srazka),
+        'penalizace_popis': '; '.join((p.duvod or '').strip() for p in penalizace_rows if (p.duvod or '').strip()),
+        'penalizace': [
+            {'id': p.id, 'duvod': p.duvod or '', 'vytvoreno': p.vytvoreno.isoformat() if p.vytvoreno else None}
+            for p in penalizace_rows
+        ],
         'provize_breakdown': breakdown,
-        'odmena_mesic_body': float(odmena_mesic),
+        'odmena_mesic_body': _body_float(odmena_mesic),
         'odmena_mesic_poznamka': odmena_poznamka,
-        'celkem_body': float(celkem_body),
+        'celkem_body': _body_float(celkem_body),
     }
 
 
@@ -169,19 +327,23 @@ def build_payroll_preview(mesic_str, prodejna_id=None):
     user_ids = [u.id for u in users_list]
     metrics_map = batch_sales_metrics_for_month(rok, mesic_cislo, user_ids)
     servis_map = batch_servis_points_for_month(users_list, ym)
+    dyska_map = batch_dyska_for_month(rok, mesic_cislo, user_ids)
     odmeny_map = {
         o.user_id: o
         for o in MzdovaOdmenaMesic.objects.filter(mesic=mesic_date, user_id__in=user_ids)
     }
+    penalizace_map = {}
+    for p in MzdovaPenalizaceMesic.objects.filter(mesic=mesic_date, user_id__in=user_ids).order_by('vytvoreno'):
+        penalizace_map.setdefault(p.user_id, []).append(p)
 
     rows = []
     for user in users_list:
         rows.append(build_payroll_row(
             user, rok, mesic_cislo, hours_map, mesic_date, prodejny_cache,
-            fondu_h, metrics_map, servis_map, odmeny_map,
+            fondu_h, metrics_map, servis_map, odmeny_map, dyska_map, penalizace_map,
         ))
 
-    celkem_bodu = round(sum(r.get('celkem_body', 0) for r in rows), 2)
+    celkem_bodu = int(round(sum(r.get('celkem_body', 0) for r in rows)))
     return {
         'mesic': mesic_str,
         'fondu_h': fondu_h,

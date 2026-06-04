@@ -1,0 +1,51 @@
+---
+description: Pilot pohybu kamer – brána na PC prodejny, instalátory, config.json
+globs:
+  - scripts/camera-gateway/**
+  - scripts/senimo-gateway/**
+  - scripts/camera_motion_gateway.py
+  - scripts/camera_motion_setup_nvr_http.py
+  - secrets/camera_motion*.json
+  - backend/shifts/camera_*.py
+---
+
+# Brána kamer – konvence (produkce)
+
+## API cíl
+
+- **Výchozí a produkční:** `https://mobilmajak.com`
+- **Staging** (`https://staging.mobilmajak.com`) jen pro test před deployem – v šablonách `config.example.json`, README a nových instalačních souborech **nepoužívat** staging jako default.
+
+## config.json na PC prodejny
+
+```json
+{
+  "mobilmajak_api": "https://mobilmajak.com",
+  "prodejna_id": <ID z admin Prodejny>,
+  "motion_secret": "<hex z VPS camera_motion_secrets.json>",
+  "autodiscover_nvr": true,
+  "nvr_host": "",
+  "nvr_user": "admin",
+  "nvr_pass": "<na místě>"
+}
+```
+
+## VPS (produkce)
+
+- Secrets: `/home/webmajak/secrets/camera_motion_secrets.json`
+- Env: `CAMERA_MOTION_SECRETS_FILE=...` v `/home/webmajak/webapp/.env`
+- Po deployi **nesmazat** CAMERA_MOTION řádky (staging má fix v `staging-post-deploy.sh`; produkce `.env` nemění post-deploy)
+
+## Windows instalátory
+
+- Balíček: `scripts/camera-gateway/` (všechny prodejny), `scripts/senimo-gateway/` (alias Senimo)
+- PowerShell: **ASCII only** (Windows 5.1 encoding)
+- Vždy `.cmd` wrapper: `powershell -ExecutionPolicy Bypass -File ...`
+- Úlohy: `register-gateway-tasks.ps1` – hlavní + `-WakeKick`, delay `PT30S`
+- Aktualizace: `update-installed-gateway.cmd` (nepřepisuje `config.json`)
+
+## Dokumentace
+
+Kanónický návod: `scripts/camera-gateway/INSTALL.md`
+
+Při vytváření nových instalačních souborů kopírovat z `camera-gateway/`, ne psát staging URL.

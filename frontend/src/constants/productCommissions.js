@@ -13,20 +13,31 @@ export const PRODUCT_COMMISSIONS = [
     { key: 'kop250', label: 'KOP250', rate: 15 },
     { key: 'kop500', label: 'KOP500', rate: 35 },
     { key: 'pz1', label: 'PZ1', rate: 85 },
-    { key: 'knz', label: 'KNZ', rate: 15 },
     { key: 'vykupy', label: 'Výkupy', rate: 50 },
     { key: 'sunshine', label: 'Sunshine', rate: 15 },
 ];
 
-/** CT300 – pouze počet kusů, nezapočítává se do bodů */
+/** CT300 / KNZ / LOS – pouze počet kusů (KNZ má body jen přes položky nad 100 Kč) */
 export const CT300_INFO_KEY = 'ct300';
 export const CT300_INFO_LABEL = 'CT300';
+export const KNZ_INFO_KEY = 'knz';
+export const KNZ_INFO_LABEL = 'KNZ';
+export const LOS_INFO_KEY = 'lepeni';
+export const LOS_INFO_LABEL = 'LOS';
+
+export const INFO_ONLY_COMMISSIONS = [
+    { key: CT300_INFO_KEY, label: CT300_INFO_LABEL },
+    { key: KNZ_INFO_KEY, label: KNZ_INFO_LABEL },
+    { key: LOS_INFO_KEY, label: LOS_INFO_LABEL },
+];
 
 export const SERVIS_BREAKDOWN_KEY = 'servis_marze';
 
 export const BREAKDOWN_LINE_LABELS = {
     ...Object.fromEntries(PRODUCT_COMMISSIONS.map((p) => [p.key, p.label])),
     [CT300_INFO_KEY]: CT300_INFO_LABEL,
+    [KNZ_INFO_KEY]: KNZ_INFO_LABEL,
+    [LOS_INFO_KEY]: LOS_INFO_LABEL,
     [SERVIS_BREAKDOWN_KEY]: 'Servis (marže)',
     vykupy: 'Výkupy',
 };

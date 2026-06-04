@@ -104,7 +104,9 @@ const ProfileModule = () => {
 
             <div className="profile-content">
                 {activeTab === 'calendar' && <ProfileCalendar />}
-                {activeTab === 'tasks' && <ProfileTasks />}
+                {activeTab === 'tasks' && (
+                    <ProfileTasks initialTaskId={location.state?.taskId} />
+                )}
                 {activeTab === 'analytics' && (
                     <ProfileAnalytics userId={authUser.id} />
                 )}

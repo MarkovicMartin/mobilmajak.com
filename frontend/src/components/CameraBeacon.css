@@ -1,0 +1,14 @@
+.camera-beacon-icon {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+    flex-shrink: 0;
+    opacity: 0.88;
+    filter: saturate(0.85);
+    transition: filter 0.2s ease, opacity 0.2s ease;
+}
+
+.camera-beacon-icon--on {
+    opacity: 1;
+    filter: saturate(1.15) drop-shadow(0 0 4px rgba(239, 68, 68, 0.45));
+}

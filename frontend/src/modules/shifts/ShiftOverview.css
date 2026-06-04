@@ -182,7 +182,7 @@
 
 .table-header {
     display: grid;
-    grid-template-columns: 120px 120px 140px 80px 120px;
+    grid-template-columns: 110px 110px 120px 140px 90px 100px;
     gap: 15px;
     padding: 15px 20px;
     background: linear-gradient(135deg, #007bff, #0056b3);
@@ -194,7 +194,7 @@
 
 .table-row {
     display: grid;
-    grid-template-columns: 120px 120px 140px 80px 120px;
+    grid-template-columns: 110px 110px 120px 140px 90px 100px;
     gap: 15px;
     padding: 15px 20px;
     background: var(--bg-card);
@@ -214,6 +214,21 @@
 
 .foreign-badge {
     margin-left: 5px;
+    font-size: 12px;
+}
+
+.attendance-cell.missing {
+    color: #dc3545;
+    font-style: italic;
+}
+
+.attendance-cell.open {
+    color: #fd7e14;
+    font-weight: 600;
+}
+
+.actual-hours {
+    color: #6c757d;
     font-size: 12px;
 }
 

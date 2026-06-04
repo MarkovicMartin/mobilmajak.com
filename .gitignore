@@ -69,6 +69,9 @@ secrets/*.pem
 secrets/id_*
 !secrets/actor-cesta-na-vps.USER_INPUT_REQ
 !secrets/README.md
+secrets/camera_motion*.json
+scripts/senimo-gateway/config.json
+scripts/camera-gateway/config.json
 
 # Environment variables
 .env

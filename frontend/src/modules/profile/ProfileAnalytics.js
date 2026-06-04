@@ -6,6 +6,8 @@ import {
     PRODUCT_COMMISSIONS,
     CT300_INFO_KEY,
     CT300_INFO_LABEL,
+    LOS_INFO_KEY,
+    LOS_INFO_LABEL,
 } from '../../constants/productCommissions';
 import { VICEPRACE_LABEL } from '../../constants/viceprace';
 import './ProfileAnalytics.css';
@@ -17,6 +19,8 @@ const buildBreakdownFromData = (data) => {
     const breakdown = {};
     const ct300Count = data[CT300_INFO_KEY] || 0;
     breakdown[CT300_INFO_KEY] = { count: ct300Count, points: 0, informational: true };
+    const losCount = data[LOS_INFO_KEY] ?? data.lepeni ?? 0;
+    breakdown[LOS_INFO_KEY] = { count: losCount, points: 0, informational: true };
     PRODUCT_COMMISSIONS.forEach(({ key, rate }) => {
         const count = data[key] || 0;
         breakdown[key] = { count, points: count * rate };
@@ -137,6 +141,7 @@ const ProfileAnalytics = ({ userId }) => {
         const { breakdown, totalPoints } = resolvePointsContext(data, pointsPayload);
 
         const ct300Count = breakdown?.[CT300_INFO_KEY]?.count ?? data[CT300_INFO_KEY] ?? 0;
+        const losCount = breakdown?.[LOS_INFO_KEY]?.count ?? data[LOS_INFO_KEY] ?? data.lepeni ?? 0;
 
         const renderCommissionLine = ({ key, label, rate }) => {
             const item = breakdown?.[key];
@@ -222,6 +227,12 @@ const ProfileAnalytics = ({ userId }) => {
                                     {formatCalculation(ct300Count, 0, 0)}
                                 </span>
                             </div>
+                            <div className={`product-item product-item-info${losCount ? '' : ' product-item--zero'}`}>
+                                <span>{LOS_INFO_LABEL}</span>
+                                <span className="product-calc">
+                                    {formatCalculation(losCount, 0, 0)}
+                                </span>
+                            </div>
                             {gridCommissions.map((c) => renderCommissionLine(c)).filter(Boolean)}
                             {vykupyRow}
                         </div>
@@ -233,18 +244,6 @@ const ProfileAnalytics = ({ userId }) => {
                             >
                                 <span>Skla / fólie</span>
                                 <span className="product-calc">{data.sklicka ?? 0} ks</span>
-                            </div>
-                            <div
-                                className={`product-item product-item-info product-item-los-profile${(data.lepeni || 0) ? '' : ' product-item--zero'}`}
-                                title="LOS vůči sklům/fóliím + SUNSHINE"
-                            >
-                                <span>LOS</span>
-                                <span className="product-calc">
-                                    {data.lepeni ?? 0} ks
-                                    {data.prolepenost_pct != null
-                                        ? ` · ${data.prolepenost_pct} %`
-                                        : ''}
-                                </span>
                             </div>
                         </div>
                         <div className="product-item product-item-servis">

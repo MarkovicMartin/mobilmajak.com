@@ -1,7 +1,8 @@
 """Pomocné funkce pro mzdové údaje uživatele (vše v bodech)."""
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 
 BRIGADNIK_DEFAULT_BODY_ZA_HODINU = Decimal('100')
+BRIGADNIK_VYPOMOC_BODY_ZA_HODINU = Decimal('150')
 PRODEJCE_ZAKLAD_BODY = Decimal('14000')
 VYCHODIL_ZAKLAD_BODY = Decimal('17000')
 VYCHODIL_TECHNIK_ID = 121
@@ -93,19 +94,51 @@ def mzda_fixni_mesicni_body(user):
 
 
 def mzda_z_hodin_body(user, odpracovano_h):
-    """Brigádník: odpracované hodiny × sazba bodů/h."""
+    """Brigádník: odpracované hodiny × sazba bodů/h (zpětná kompatibilita – vše jako prodejce)."""
     if not is_brigadnik(user):
         return Decimal('0')
     h = Decimal(str(odpracovano_h or 0))
-    return (h * mzda_body_za_hodinu(user)).quantize(Decimal('0.01'))
+    return mzda_z_hodin_body_brigadnik(user, Decimal('0'), h)
 
 
-def mzda_fixni_body(user, odpracovano_h=0):
-    """Fixní část výplaty: měsíční fixní body nebo hodiny × sazba + doplňky."""
+def mzda_z_hodin_body_brigadnik(user, vypomoc_h, prodejce_h):
+    """Brigádník: výpomoc × 150 + prodejce × sazba z profilu (výchozí 100)."""
+    if not is_brigadnik(user):
+        return Decimal('0')
+    vh = Decimal(str(vypomoc_h or 0))
+    ph = Decimal(str(prodejce_h or 0))
+    sazba_prodejce = mzda_body_za_hodinu(user)
+    return (
+        vh * BRIGADNIK_VYPOMOC_BODY_ZA_HODINU + ph * sazba_prodejce
+    ).quantize(Decimal('1'), rounding=ROUND_HALF_UP)
+
+
+def mzda_fixni_bez_cestovneho(user, odpracovano_h=0):
+    """Fixní část bez cestovného – základ + doplňky (nebo hodiny × sazba)."""
     doplnky_sum, _ = sum_mzda_doplnky(user)
     if is_brigadnik(user):
         return mzda_z_hodin_body(user, odpracovano_h) + doplnky_sum
     return mzda_fixni_mesicni_body(user) + doplnky_sum
+
+
+def mzda_cestovne_body(user):
+    val = getattr(user, 'mzda_cestovne', None)
+    if val is None:
+        return Decimal('0')
+    return Decimal(str(val))
+
+
+def mzda_zaklad_pro_vicepraci(user):
+    """Základ pro vícepráci: měsíční fix + doplňky z profilu (vedoucí…), bez cestovného."""
+    if is_brigadnik(user):
+        return Decimal('0')
+    doplnky_sum, _ = sum_mzda_doplnky(user)
+    return mzda_fixni_mesicni_body(user) + doplnky_sum
+
+
+def mzda_fixni_body(user, odpracovano_h=0):
+    """Fixní část výplaty: měsíční fixní body nebo hodiny × sazba + doplňky."""
+    return mzda_fixni_bez_cestovneho(user, odpracovano_h)
 
 
 # zpětná kompatibilita

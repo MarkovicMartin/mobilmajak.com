@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { formatNewsAge } from '../utils/formatNewsAge';
 import { format, getDaysInMonth } from 'date-fns';
-import { cs } from 'date-fns/locale';
 import { useAuth } from '../context/AuthContext';
 import api, { analyticsAPI, newsAPI, shiftsAPI, plansAPI } from '../services/api';
 import { castkaBezDphZCelkem } from '../utils/dph';
+import TodayWorkBoard from './TodayWorkBoard';
+import DashboardTasksSnapshot from './DashboardTasksSnapshot';
 import './AdminDashboard.css';
 
 const currency = (num) =>
@@ -38,7 +40,7 @@ const planPctClass = (pct) => {
 export default function AdminDashboard() {
     const { isAdmin } = useAuth();
     const navigate = useNavigate();
-    const shiftsDetailsRef = useRef(null);
+    const workBoardRef = useRef(null);
 
     const [todayStats, setTodayStats] = useState(null);
     const [monthStats, setMonthStats] = useState(null);
@@ -110,17 +112,6 @@ export default function AdminDashboard() {
         fetchPlanDashboard();
         fetchPlanProdejci();
     }, [isAdmin, currentMonth, todayStr, today]);
-
-    const groupedShifts = useMemo(() => {
-        const groups = {};
-        todayShifts.forEach((s) => {
-            const key = s.prodejna || 'Neznámá prodejna';
-            if (!groups[key]) groups[key] = [];
-            const full = [s.user?.jmeno, s.user?.prijmeni].filter(Boolean).join(' ').trim();
-            groups[key].push(full || s.user_name || '');
-        });
-        return groups;
-    }, [todayShifts]);
 
     const planMetrics = useMemo(() => {
         const plneni = planDashboardBundle?.plneni;
@@ -197,11 +188,7 @@ export default function AdminDashboard() {
     const goAnalyticsCelkova = () => navigate('/analytics/celkova-cisla');
 
     const openShiftsSection = () => {
-        const el = shiftsDetailsRef.current;
-        if (el) {
-            el.open = true;
-            el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }
+        workBoardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     };
 
     const tileKeyActivate = (fn) => (e) => {
@@ -215,7 +202,9 @@ export default function AdminDashboard() {
 
     if (!isAdmin()) return null;
 
-    const shiftStoreCount = Object.keys(groupedShifts).length;
+    const shiftStoreCount = new Set(
+        todayShifts.map((s) => s.prodejna || s.prodejna_nazev).filter(Boolean)
+    ).size;
 
     return (
         <div className="admin-dashboard">
@@ -365,7 +354,7 @@ export default function AdminDashboard() {
                 >
                     <div className="tile-title">Počet lidí dnes na směně</div>
                     <div className="tile-value">{todayShifts.length} lidí</div>
-                    <div className="tile-sub">Prodejny: {Object.keys(groupedShifts).length}</div>
+                    <div className="tile-sub">Prodejny: {shiftStoreCount}</div>
                 </div>
                 <div
                     className="tile tile--clickable"
@@ -383,36 +372,11 @@ export default function AdminDashboard() {
                 </div>
 
                 <div className="content-stack">
-                    <section className="shifts-section" aria-labelledby="shifts-heading">
-                        <details className="shifts-details" ref={shiftsDetailsRef}>
-                            <summary className="shifts-summary">
-                                <span id="shifts-heading" className="shifts-section-title">
-                                    Kdo je dnes v práci
-                                </span>
-                                <span className="shifts-summary-meta">
-                                    <span className="badge badge--minimal">{format(today, 'd. MMM', { locale: cs })}</span>
-                                    {shiftStoreCount > 0 && (
-                                        <span className="shifts-count-pill">
-                                            {shiftStoreCount} {prodejenWord(shiftStoreCount)}
-                                        </span>
-                                    )}
-                                </span>
-                            </summary>
-                            <div className="shifts-tiles-wrap">
-                                <div className="shifts-tiles">
-                                    {Object.keys(groupedShifts).length === 0 && (
-                                        <div className="muted shifts-empty">Žádné směny dnes</div>
-                                    )}
-                                    {Object.entries(groupedShifts).map(([store, people]) => (
-                                        <div className="shift-tile" key={store}>
-                                            <div className="shift-tile-store">{store}</div>
-                                            <div className="shift-tile-people">{people.join(', ')}</div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </details>
-                    </section>
+                    <div ref={workBoardRef}>
+                        <TodayWorkBoard today={today} />
+                    </div>
+
+                    <DashboardTasksSnapshot />
 
                     <div className="card">
                         <div className="card-header">
@@ -420,12 +384,10 @@ export default function AdminDashboard() {
                         </div>
                         <div className="news-list">
                             {latestNews.map((n) => (
-                                <div className="news-item" key={n.id}>
+                                <Link to={`/news#post-${n.id}`} className="news-item news-item-link" key={n.id}>
                                     <div className="news-content">{n.obsah?.slice(0, 140) || ''}</div>
-                                    <button type="button" className="btn-link">
-                                        Otevřít
-                                    </button>
-                                </div>
+                                    <div className="news-item-meta">{formatNewsAge(n.datum_vytvoreni)}</div>
+                                </Link>
                             ))}
                             {latestNews.length === 0 && <div className="muted">Žádné novinky</div>}
                         </div>

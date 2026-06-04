@@ -1,0 +1,92 @@
+import os
+from urllib.parse import urlencode
+
+import requests
+
+
+class LodgifyError(Exception):
+    pass
+
+
+class LodgifyClient:
+    BASE_URL = "https://api.lodgify.com/v2"
+    CHECKOUT_BASE = "https://checkout.lodgify.com/cs/vallora"
+
+    def __init__(self, api_key=None):
+        self.api_key = api_key or os.getenv("LODGIFY_API_KEY")
+
+        if not self.api_key:
+            raise LodgifyError("LODGIFY_API_KEY is not configured")
+
+    def _headers(self):
+        return {
+            "X-ApiKey": self.api_key,
+            "Accept": "application/json",
+        }
+
+    def _get(self, path, params=None):
+        response = requests.get(
+            f"{self.BASE_URL}{path}",
+            headers=self._headers(),
+            params=params or {},
+            timeout=15,
+        )
+
+        if not response.ok:
+            raise LodgifyError(f"Lodgify API {response.status_code}: {response.text[:300]}")
+
+        return response.json()
+
+    def get_property(self, property_id):
+        return self._get(f"/properties/{property_id}")
+
+    def get_room_type_id(self, property_id):
+        property_data = self.get_property(property_id)
+        rooms = (
+            property_data.get("rooms")
+            or property_data.get("roomTypes")
+            or property_data.get("room_types")
+            or []
+        )
+
+        if not rooms:
+            return None
+
+        room = rooms[0]
+        room_type_id = room.get("id") or room.get("room_type_id") or room.get("roomTypeId")
+        return str(room_type_id) if room_type_id is not None else None
+
+    def get_quote(self, property_id, arrival, departure, guests, room_type_id=None):
+        params = {
+            "arrival": arrival,
+            "departure": departure,
+            "roomTypes[0].people": guests,
+            "guest_breakdown[adults]": guests,
+        }
+
+        if room_type_id:
+            params["roomTypes[0].id"] = room_type_id
+
+        return self._get(f"/quote/{property_id}", params)
+
+    def get_availability(self, property_id, start, end):
+        return self._get(f"/availability/{property_id}", {"start": start, "end": end})
+
+    @classmethod
+    def build_checkout_url(
+        cls, property_id, arrival, departure, guests, room_type_id=None, currency="CZK"
+    ):
+        params = {
+            "currency": currency or "CZK",
+            "arrival": arrival,
+            "departure": departure,
+            "guests": guests,
+            "adults": guests,
+            "numberOfGuests": guests,
+        }
+
+        if room_type_id:
+            params["roomTypeId"] = room_type_id
+
+        query = urlencode(params)
+        return f"{cls.CHECKOUT_BASE}/{property_id}/reservation?{query}"

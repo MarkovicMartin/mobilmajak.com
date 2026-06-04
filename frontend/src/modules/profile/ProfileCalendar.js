@@ -1,19 +1,26 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { format, addMonths, subMonths } from 'date-fns';
 import { cs } from 'date-fns/locale';
-import { Link } from 'react-router-dom';
 import api from '../../services/api';
 import { taskAPI } from '../../services/api';
 import UnifiedCalendar from '../shifts/UnifiedCalendar';
+import ProfileDayPanel from './ProfileDayPanel';
 import { urgencyClassName, urgencyForTask } from '../../utils/taskUrgency';
+import '../shifts/ShiftCalendar.css';
 import '../tasks/TasksModule.css';
 import './ProfileModule.css';
+
+const formatShiftTime = (t) => (t || '').substring(0, 5);
 
 const ProfileCalendar = () => {
     const [month, setMonth] = useState(() => format(new Date(), 'yyyy-MM'));
     const [shiftData, setShiftData] = useState({});
     const [taskData, setTaskData] = useState({});
     const [loading, setLoading] = useState(false);
+    const [vacationBalance, setVacationBalance] = useState(null);
+    const [selectedDate, setSelectedDate] = useState(null);
+    const [focusShiftId, setFocusShiftId] = useState(null);
+    const [focusTaskId, setFocusTaskId] = useState(null);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -36,6 +43,30 @@ const ProfileCalendar = () => {
         load();
     }, [load]);
 
+    useEffect(() => {
+        const rok = month.split('-')[0];
+        (async () => {
+            try {
+                const res = await api.get('/shifts/vacation-balance/', { params: { rok } });
+                setVacationBalance(res.data);
+            } catch {
+                setVacationBalance(null);
+            }
+        })();
+    }, [month]);
+
+    const openDay = (dateStr, { shiftId, taskId } = {}) => {
+        setSelectedDate(dateStr);
+        setFocusShiftId(shiftId ?? null);
+        setFocusTaskId(taskId ?? null);
+    };
+
+    const closeDay = () => {
+        setSelectedDate(null);
+        setFocusShiftId(null);
+        setFocusTaskId(null);
+    };
+
     const renderCell = (_date, { isCurrentMonth }) => {
         if (!isCurrentMonth) return null;
         const dateStr = format(_date, 'yyyy-MM-dd');
@@ -43,20 +74,41 @@ const ProfileCalendar = () => {
         const tasks = taskData[dateStr] || [];
         return (
             <>
-                {shifts.slice(0, 2).map((s) => (
-                    <div
-                        key={`s-${s.id}`}
-                        className="uc-shift-chip"
-                        title={`${s.prodejna_nazev}: ${s.cas_od}–${s.cas_do}`}
-                    >
-                        {s.cas_od} {s.prodejna_nazev?.slice(0, 8)}
+                {shifts.length > 0 && (
+                    <div className="shifts-container">
+                        {shifts.slice(0, 2).map((s) => (
+                            <div
+                                key={`s-${s.id}`}
+                                className="shift-item mine profile-calendar-chip"
+                                title={`${s.prodejna_nazev}: ${s.cas_od}–${s.cas_do}`}
+                                onMouseDown={(e) => e.stopPropagation()}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    openDay(dateStr, { shiftId: s.id });
+                                }}
+                            >
+                                <div className="shift-content">
+                                    <div className="shift-time">
+                                        {formatShiftTime(s.cas_od)}–{formatShiftTime(s.cas_do)}
+                                    </div>
+                                    {s.prodejna_nazev && (
+                                        <div className="shift-store">{s.prodejna_nazev}</div>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
                     </div>
-                ))}
+                )}
                 {tasks.slice(0, 2).map((t) => (
                     <div
                         key={`t-${t.id}`}
-                        className={`uc-task-chip ${urgencyClassName(urgencyForTask(t))}`}
+                        className={`uc-task-chip profile-calendar-chip ${urgencyClassName(urgencyForTask(t))}`}
                         title={t.ukol}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            openDay(dateStr, { taskId: t.id });
+                        }}
                     >
                         {t.ukol?.slice(0, 12)}
                     </div>
@@ -67,9 +119,20 @@ const ProfileCalendar = () => {
 
     return (
         <div className="profile-calendar">
+            {vacationBalance?.eligible && (
+                <div className="profile-vacation-banner">
+                    🏖️ Dovolená {vacationBalance.rok}: zbývá{' '}
+                    <strong>{vacationBalance.zbyva_h} h</strong>
+                    {' '}(čerpáno {vacationBalance.cerpano_h} / {vacationBalance.fond_h} h
+                    {vacationBalance.odeceno_deficit_h > 0
+                        ? `, vč. ${vacationBalance.odeceno_deficit_h} h deficit fondu`
+                        : ''})
+                </div>
+            )}
             <div className="profile-calendar-legend">
                 <span><span className="legend-dot legend-dot--shift" /> Směna</span>
                 <span><span className="legend-dot legend-dot--task" /> Úkol</span>
+                <span className="profile-calendar-hint muted">Klik na den = detail · klik na položku = rychlý náhled</span>
             </div>
             <div className="calendar-header" style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.75rem' }}>
                 <button
@@ -89,12 +152,23 @@ const ProfileCalendar = () => {
                 </button>
                 {loading && <span className="muted">Načítám…</span>}
             </div>
-            <UnifiedCalendar month={month} variant="full" renderCellContent={renderCell} />
-            <div className="profile-calendar-footer">
-                <Link to="/shifts" className="profile-btn profile-btn-primary">
-                    Upravit směny v modulu Směny
-                </Link>
-            </div>
+            <UnifiedCalendar
+                month={month}
+                variant="full"
+                renderCellContent={renderCell}
+                onDateClick={(dateStr) => openDay(dateStr)}
+            />
+            {selectedDate && (
+                <ProfileDayPanel
+                    dateStr={selectedDate}
+                    shifts={shiftData[selectedDate] || []}
+                    tasks={taskData[selectedDate] || []}
+                    focusShiftId={focusShiftId}
+                    focusTaskId={focusTaskId}
+                    onClose={closeDay}
+                    onRefresh={load}
+                />
+            )}
         </div>
     );
 };

@@ -47,10 +47,147 @@
     min-height: 0;
 }
 
-.profile-calendar-footer {
-    margin-top: 1rem;
+.profile-calendar .unified-calendar.full .shifts-container {
+    margin-top: 2px;
+}
+
+.profile-calendar-hint {
+    font-size: 0.82rem;
+    font-weight: 400;
+}
+
+.profile-calendar-chip {
+    cursor: pointer;
+}
+
+.profile-calendar-chip:hover {
+    filter: brightness(0.95);
+}
+
+.profile-day-overlay > .profile-day-panel {
     display: flex;
-    justify-content: center;
+    flex-direction: column;
+    background: var(--bg-card);
+    color: var(--text-primary);
+    width: min(520px, 92vw);
+    max-height: min(90vh, calc(100dvh - 24px));
+    margin: 0 auto;
+    flex-shrink: 0;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    overflow: hidden;
+}
+
+.profile-day-body {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.profile-day-section h3 {
+    margin: 0 0 0.5rem;
+    font-size: 0.95rem;
+    color: var(--text-label);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.profile-day-shift-list,
+.profile-day-task-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.profile-day-shift-card {
+    padding: 0.65rem 0.75rem;
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    background: var(--bg-inset);
+}
+
+.profile-day-shift-card--focus {
+    border-color: var(--brand-navy);
+    box-shadow: 0 0 0 1px var(--brand-navy);
+}
+
+.profile-day-shift-main {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 0.75rem;
+    align-items: baseline;
+}
+
+.profile-day-shift-time {
+    font-weight: 700;
+}
+
+.profile-day-shift-store {
+    color: var(--text-primary);
+}
+
+.profile-day-shift-type {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.profile-day-shift-note {
+    margin: 0.35rem 0 0;
+    font-size: 0.88rem;
+    color: var(--text-muted);
+}
+
+.profile-day-shift-edit,
+.profile-day-add-shift {
+    margin-top: 0.35rem;
+}
+
+.profile-day-task-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.55rem 0.65rem;
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    background: var(--bg-card);
+    cursor: pointer;
+    text-align: left;
+}
+
+.profile-day-task-btn.selected,
+.profile-day-task-btn.focus {
+    border-color: var(--brand-navy);
+}
+
+.profile-day-task-title {
+    flex: 1;
+    min-width: 0;
+}
+
+.profile-day-task-detail {
+    margin-top: 0.75rem;
+}
+
+.profile-day-quick-add {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+@media (min-width: 480px) {
+    .profile-day-quick-add {
+        flex-direction: row;
+        align-items: stretch;
+    }
+
+    .profile-day-quick-add .input {
+        flex: 1;
+    }
 }
 
 .profile-btn {

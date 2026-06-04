@@ -6,6 +6,7 @@ import './PlansModule.css';
 import ProdejnaKarta from './ProdejnaKarta';
 import DraftNumberInput from './DraftNumberInput';
 import PlneniStrom, { PlneniHistorieMini } from './PlneniStrom';
+import AuditZbytekPanel from './AuditZbytekPanel';
 import VyhledFilterMenu from './VyhledFilterMenu';
 import PlansNav from './PlansNav';
 
@@ -1456,6 +1457,8 @@ export default function PlansModule() {
                   </div>
                 )}
               </div>
+
+              <AuditZbytekPanel rok={vybraneMesic.rok} mesic={vybraneMesic.mesic} />
 
               <div className="plneni-sekce">
                 <h3 className="plneni-nadpis">Plnění plánu firmy</h3>

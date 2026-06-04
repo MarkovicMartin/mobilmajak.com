@@ -1,12 +1,15 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { format } from 'date-fns';
+import { useLocation } from 'react-router-dom';
 import { useTasks } from '../../hooks/useTasks';
 import TaskDetailPanel from '../tasks/TaskDetailPanel';
 import TaskUrgencyBadge from '../tasks/TaskUrgencyBadge';
 import { urgencyForTask, URGENCY_OVERDUE } from '../../utils/taskUrgency';
 import '../tasks/TasksModule.css';
 
-const ProfileTasks = () => {
+const ProfileTasks = ({ initialTaskId }) => {
+    const location = useLocation();
+    const taskIdFromNav = initialTaskId ?? location.state?.taskId;
     const [filter, setFilter] = useState('aktivni');
     const [selected, setSelected] = useState(null);
     const [newUkol, setNewUkol] = useState('');
@@ -19,6 +22,12 @@ const ProfileTasks = () => {
     }, [filter]);
 
     const { tasks, loading, load, update, create } = useTasks({ listParams });
+
+    useEffect(() => {
+        if (!taskIdFromNav || loading) return;
+        const match = tasks.find((t) => t.id === taskIdFromNav);
+        if (match) setSelected(match);
+    }, [taskIdFromNav, tasks, loading]);
 
     const addPersonalTask = async (e) => {
         e.preventDefault();

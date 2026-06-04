@@ -23,6 +23,7 @@ urlpatterns = [
     
     # Přehled hodin pro uživatele
     path('overview/', views.smeny_prehled, name='smeny_prehled'),
+    path('vacation-balance/', views.vacation_balance, name='vacation_balance'),
     
     # Export pro účetní
     path('export/', views.export_smeny, name='export_smeny'),
@@ -30,11 +31,18 @@ urlpatterns = [
     # Payroll (ADMIN)
     path('payroll/', payroll_views.payroll_preview, name='payroll_preview'),
     path('payroll/odmena/', payroll_views.payroll_odmena, name='payroll_odmena'),
+    path('payroll/penalizace/', payroll_views.payroll_penalizace, name='payroll_penalizace'),
 
     # Docházka log (ADMIN) + stav pro zaměstnance
     path('attendance/log/', payroll_views.attendance_log, name='attendance_log'),
     path('attendance/open/', payroll_views.attendance_open, name='attendance_open'),
     path('attendance/my-status/', payroll_views.attendance_my_status, name='attendance_my_status'),
     path('attendance/absent-stores/', payroll_views.attendance_absent_stores, name='attendance_absent_stores'),
+    path('attendance/today-board/', payroll_views.attendance_today_board, name='attendance_today_board'),
     path('camera-events/', camera_views.camera_motion_event, name='camera_motion_event'),
+    path(
+        'camera-events/hikvision/<int:prodejna_id>/<str:token>/',
+        camera_views.camera_hikvision_webhook,
+        name='camera_hikvision_webhook',
+    ),
 ] 

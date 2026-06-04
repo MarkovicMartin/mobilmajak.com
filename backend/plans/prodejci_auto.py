@@ -6,7 +6,8 @@ Pravidla:
 - Kusy v každé kategorii plánu prodejny se rozdělí podle těchto podílů (součet = plán kategorie).
 - Zapojeni jsou všichni se směnou typu prace (prodejce, vedoucí, brigádník).
 - František Vychodil (id 121): nedostane kategorie kromě SERVIS; jeho „prodejní“ podíl
-  jde ostatním (přepočtené podíly bez něj). SERVIS se dělí podle hodin včetně Vychodila.
+  jde ostatním (přepočtené podíly bez něj).
+- SERVIS: cíl jen uživatelům s technik_id, podíl dle hodin na směně mezi techniky.
 """
 import math
 from collections import defaultdict
@@ -109,7 +110,14 @@ def _prirad_prodejce_prodejna(ps, rok, mesic):
         warnings.append(f'{ps.prodejna.nazev}: žádné odpracované hodiny na směnách.')
         return prirazeno, warnings
 
-    podily_servis = _podily_z_hodin(hodiny)
+    technik_ids = set(
+        WebUser.objects.filter(
+            id__in=hodiny.keys(),
+            aktivni=True,
+        ).exclude(technik_id__isnull=True).exclude(technik_id=0).values_list('id', flat=True)
+    )
+    hodiny_technici = {uid: h for uid, h in hodiny.items() if uid in technik_ids}
+    podily_servis = _podily_z_hodin(hodiny_technici)
     podily_prodej = _podily_z_hodin(hodiny, exclude_user_ids=[VYCHODIL_USER_ID])
 
     if not podily_prodej:

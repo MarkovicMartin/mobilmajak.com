@@ -1,9 +1,9 @@
 from django.contrib import admin
-from .models import Smena, SmenaDochazka, SmenaStatistiky, MzdovaOdmenaMesic
+from .models import Smena, SmenaDochazka, SmenaStatistiky, MzdovaOdmenaMesic, MzdovaPenalizaceMesic
 
 @admin.register(Smena)
 class SmenaAdmin(admin.ModelAdmin):
-    list_display = ['user', 'prodejna', 'datum', 'cas_od', 'cas_do', 'typ_smeny', 'delka_smeny_hodin', 'je_domaci_prodejna', 'aktivni']
+    list_display = ['user', 'prodejna', 'datum', 'cas_od', 'cas_do', 'typ_smeny', 'brigadnik_rezim', 'delka_smeny_hodin', 'je_domaci_prodejna', 'aktivni']
     list_filter = ['prodejna', 'typ_smeny', 'datum', 'aktivni', 'vytvoreno']
     search_fields = ['user__jmeno', 'user__id', 'prodejna', 'poznamka']
     date_hierarchy = 'datum'
@@ -62,3 +62,11 @@ class MzdovaOdmenaMesicAdmin(admin.ModelAdmin):
     list_filter = ['mesic']
     search_fields = ['user__jmeno', 'user__prijmeni']
     ordering = ['-mesic']
+
+
+@admin.register(MzdovaPenalizaceMesic)
+class MzdovaPenalizaceMesicAdmin(admin.ModelAdmin):
+    list_display = ['user', 'mesic', 'duvod', 'vytvoreno']
+    list_filter = ['mesic']
+    search_fields = ['user__jmeno', 'user__prijmeni', 'duvod']
+    ordering = ['-mesic', '-vytvoreno']

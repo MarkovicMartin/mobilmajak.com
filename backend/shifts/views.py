@@ -9,62 +9,32 @@ from django.http import HttpResponse
 from datetime import datetime, timedelta, date
 import calendar
 import csv
+from django.utils import timezone as dj_timezone
 from .models import Smena, SmenaDochazka, SmenaStatistiky
-from .attendance_service import ensure_auto_close_open_shifts
+from .attendance_service import (
+    attendance_state_from_history,
+    ensure_auto_close_open_shifts,
+    work_hours_from_history,
+)
+from .vacation_service import (
+    deficit_mesic_hodin,
+    dovolena_hodin_ze_smeny,
+    dovolena_stav,
+    is_dovolena_eligible,
+    normalize_dovolena_casy,
+    validate_dovolena_kapacita,
+)
 from users.models import WebUser
 from stores.models import Prodejna
+from .czech_holidays import get_ceske_svatky, get_nazev_svatku
 
-def get_ceske_svatky(rok):
-    """Vrací seznam českých státních svátků pro daný rok"""
-    svatky = [
-        (rok, 1, 1),    # Nový rok
-        (rok, 5, 1),    # Svátek práce  
-        (rok, 5, 8),    # Den vítězství
-        (rok, 7, 5),    # Cyril a Metoděj
-        (rok, 7, 6),    # Jan Hus
-        (rok, 9, 28),   # Den české státnosti
-        (rok, 10, 28),  # Vznik samostatného československého státu
-        (rok, 11, 17),  # Den boje za svobodu a demokracii
-        (rok, 12, 24),  # Štědrý den
-        (rok, 12, 25),  # 1. svátek vánoční
-        (rok, 12, 26),  # 2. svátek vánoční
-    ]
-    
-    # Velikonoční svátky (závislé na datu Velikonoc)
-    if rok == 2025:
-        svatky.extend([
-            (2025, 4, 18),  # Velký pátek
-            (2025, 4, 21),  # Velikonoční pondělí
-        ])
-    elif rok == 2026:
-        svatky.extend([
-            (2026, 4, 3),   # Velký pátek
-            (2026, 4, 6),   # Velikonoční pondělí
-        ])
-    # Pro další roky by bylo třeba dopočítat datum Velikonoc
-    
-    return svatky
 
-def get_nazev_svatku(mesic, den):
-    """Vrací název českého státního svátku podle data"""
-    svatky_nazvy = {
-        (1, 1): "Nový rok",
-        (5, 1): "Svátek práce", 
-        (5, 8): "Den vítězství",
-        (7, 5): "Cyril a Metoděj",
-        (7, 6): "Jan Hus", 
-        (9, 28): "Den české státnosti",
-        (10, 28): "Vznik samostatného československého státu",
-        (11, 17): "Den boje za svobodu a demokracii",
-        (12, 24): "Štědrý den",
-        (12, 25): "1. svátek vánoční",
-        (12, 26): "2. svátek vánoční",
-        (4, 18): "Velký pátek",  # 2025
-        (4, 21): "Velikonoční pondělí",  # 2025
-        (4, 3): "Velký pátek",   # 2026  
-        (4, 6): "Velikonoční pondělí",   # 2026
-    }
-    return svatky_nazvy.get((mesic, den), "Státní svátek")
+def _normalize_brigadnik_rezim(user, typ_smeny, raw_rezim):
+    """Režim výplaty brigádníka – jen u typu práce a role BRIGADNIK."""
+    if typ_smeny != 'prace' or getattr(user, 'role', None) != 'BRIGADNIK':
+        return 'prodejce'
+    rezim = (raw_rezim or 'prodejce').strip()
+    return rezim if rezim in ('prodejce', 'vypomoc') else 'prodejce'
 
 
 @api_view(['GET'])
@@ -163,6 +133,7 @@ def smeny_list(request):
                 'cas_od': smena.cas_od,
                 'cas_do': smena.cas_do,
                 'typ_smeny': smena.typ_smeny,
+                'brigadnik_rezim': smena.brigadnik_rezim,
                 'poznamka': smena.poznamka,
                 'je_domaci_prodejna': smena.je_domaci_prodejna,
                 'delka_smeny_hodin': smena.delka_smeny_hodin,
@@ -238,14 +209,27 @@ def smeny_list(request):
                         'typ_smeny': existing_smena.typ_smeny
                     }
                 }, status=status.HTTP_409_CONFLICT)
-            
+
+            typ_smeny = data.get('typ_smeny', 'prace')
+            shift_datum = datetime.strptime(data['datum'], '%Y-%m-%d').date() if isinstance(data['datum'], str) else data['datum']
+            cas_od = data['cas_od']
+            cas_do = data['cas_do']
+            if typ_smeny == 'dovolena':
+                err = validate_dovolena_kapacita(user, shift_datum, typ_smeny)
+                if err:
+                    return Response({'error': err}, status=status.HTTP_400_BAD_REQUEST)
+                cas_od, cas_do = normalize_dovolena_casy(shift_datum, cas_od, cas_do)
+
             smena = Smena.objects.create(
                 user=user,
                 prodejna=prodejna_obj,
                 datum=data['datum'],
-                cas_od=data['cas_od'],
-                cas_do=data['cas_do'],
-                typ_smeny=data.get('typ_smeny', 'prace'),
+                cas_od=cas_od,
+                cas_do=cas_do,
+                typ_smeny=typ_smeny,
+                brigadnik_rezim=_normalize_brigadnik_rezim(
+                    user, typ_smeny, data.get('brigadnik_rezim'),
+                ),
                 poznamka=data.get('poznamka', '')
             )
             
@@ -318,14 +302,25 @@ def smeny_bulk_create(request):
                 if Smena.objects.filter(user=user, datum=datum, prodejna=prodejna_obj, aktivni=True).exists():
                     chyby.append(f'{datum_str}: Směna již existuje')
                     continue
-                
+
+                bulk_cas_od, bulk_cas_do = cas_od, cas_do
+                if typ_smeny == 'dovolena':
+                    err = validate_dovolena_kapacita(user, datum, typ_smeny)
+                    if err:
+                        chyby.append(f'{datum_str}: {err}')
+                        continue
+                    bulk_cas_od, bulk_cas_do = normalize_dovolena_casy(datum, cas_od, cas_do)
+
                 Smena.objects.create(
                     user=user,
                     prodejna=prodejna_obj,
                     datum=datum,
-                    cas_od=cas_od,
-                    cas_do=cas_do,
+                    cas_od=bulk_cas_od,
+                    cas_do=bulk_cas_do,
                     typ_smeny=typ_smeny,
+                    brigadnik_rezim=_normalize_brigadnik_rezim(
+                        user, typ_smeny, data.get('brigadnik_rezim'),
+                    ),
                     poznamka=poznamka
                 )
                 uspesne += 1
@@ -369,20 +364,46 @@ def smena_detail(request, smena_id):
         try:
             data = request.data
             
-            # Aktualizace dat
+            new_typ = data.get('typ_smeny', smena.typ_smeny)
+            new_datum = data.get('datum', smena.datum)
+            if isinstance(new_datum, str):
+                new_datum = datetime.strptime(new_datum, '%Y-%m-%d').date()
+
+            if new_typ == 'dovolena':
+                err = validate_dovolena_kapacita(
+                    smena.user, new_datum, new_typ, ignorovat_smena_id=smena.id,
+                )
+                if err:
+                    return Response({'error': err}, status=status.HTTP_400_BAD_REQUEST)
+
             if 'prodejna' in data:
                 smena.prodejna = data['prodejna']
             if 'datum' in data:
                 smena.datum = data['datum']
-            if 'cas_od' in data:
-                smena.cas_od = data['cas_od']
-            if 'cas_do' in data:
-                smena.cas_do = data['cas_do']
+            if new_typ == 'dovolena':
+                cas_od, cas_do = normalize_dovolena_casy(
+                    new_datum,
+                    data.get('cas_od', smena.cas_od),
+                    data.get('cas_do', smena.cas_do),
+                )
+                smena.cas_od = cas_od
+                smena.cas_do = cas_do
+            else:
+                if 'cas_od' in data:
+                    smena.cas_od = data['cas_od']
+                if 'cas_do' in data:
+                    smena.cas_do = data['cas_do']
             if 'typ_smeny' in data:
                 smena.typ_smeny = data['typ_smeny']
+            if 'brigadnik_rezim' in data or 'typ_smeny' in data:
+                smena.brigadnik_rezim = _normalize_brigadnik_rezim(
+                    smena.user,
+                    smena.typ_smeny,
+                    data.get('brigadnik_rezim', smena.brigadnik_rezim),
+                )
             if 'poznamka' in data:
                 smena.poznamka = data['poznamka']
-            
+
             smena.save()
             
             return Response({'message': 'Směna byla úspěšně aktualizována'})
@@ -402,15 +423,18 @@ def _shift_calendar_payload(smena):
     p = smena.prodejna
     return {
         'id': smena.id,
+        'datum': smena.datum.isoformat(),
         'user_id': smena.user.id,
         'user_jmeno': smena.user.prijmeni,
         'cas_od': smena.cas_od.strftime('%H:%M'),
         'cas_do': smena.cas_do.strftime('%H:%M'),
         'typ_smeny': smena.typ_smeny,
+        'brigadnik_rezim': smena.brigadnik_rezim,
         'je_domaci_prodejna': smena.je_domaci_prodejna,
         'prodejna_id': p.id,
         'prodejna_nazev': (p.nazev_kratkiy or p.nazev or '').strip(),
         'prodejna_barva': p.barva or '#0066cc',
+        'poznamka': smena.poznamka or '',
     }
 
 
@@ -542,10 +566,17 @@ def dochazka_akce(request):
                       status=status.HTTP_403_FORBIDDEN)
     
     try:
+        valid_actions = {choice[0] for choice in SmenaDochazka.TYP_AKCE}
+        if typ_akce not in valid_actions:
+            return Response(
+                {'error': f'Neplatná akce: {typ_akce}'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         dochazka = SmenaDochazka.objects.create(
             smena=smena,
             typ_akce=typ_akce,
-            cas=datetime.now(),
+            cas=dj_timezone.now(),
             poznamka=poznamka
         )
         
@@ -557,6 +588,66 @@ def dochazka_akce(request):
         
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def vacation_balance(request):
+    """Zůstatek ročního fondu dovolené."""
+    user_id = request.GET.get('user_id')
+    rok_param = request.GET.get('rok')
+
+    if user_id:
+        if request.user.role != 'ADMIN' and int(user_id) != request.user.id:
+            return Response({'error': 'Nemáte oprávnění'}, status=status.HTTP_403_FORBIDDEN)
+        user = get_object_or_404(WebUser, id=user_id)
+    else:
+        user = request.user
+
+    if rok_param:
+        try:
+            rok = int(rok_param)
+        except ValueError:
+            return Response({'error': 'Neplatný rok'}, status=status.HTTP_400_BAD_REQUEST)
+    else:
+        rok = date.today().year
+
+    stav = dovolena_stav(user, rok)
+    if stav is None:
+        return Response({'eligible': False, 'message': 'Fond dovolené se nevztahuje na tuto roli.'})
+    return Response({'eligible': True, **stav})
+
+
+def _smena_detail_row(smena):
+    """Jeden řádek detailního rozpisu – plán + skutečná docházka."""
+    row = {
+        'datum': smena.datum,
+        'prodejna': smena.prodejna.nazev,
+        'cas_od': smena.cas_od,
+        'cas_do': smena.cas_do,
+        'hodiny': dovolena_hodin_ze_smeny(smena) if smena.typ_smeny == 'dovolena' else smena.delka_smeny_hodin,
+        'typ_smeny': smena.typ_smeny,
+        'brigadnik_rezim': smena.brigadnik_rezim,
+        'je_domaci_prodejna': smena.je_domaci_prodejna,
+        'dochazka_od': None,
+        'dochazka_do': None,
+        'stav_dochazky': None,
+        'hodiny_z_dochozky': None,
+    }
+    if smena.typ_smeny != 'prace':
+        return row
+
+    history = list(smena.dochazka.all())
+    stav, prichod, odchod = attendance_state_from_history(history)
+    row['stav_dochazky'] = stav
+    if prichod:
+        row['dochazka_od'] = prichod.cas.strftime('%H:%M')
+    if odchod:
+        row['dochazka_do'] = odchod.cas.strftime('%H:%M')
+    elif stav == 'otevreno':
+        row['dochazka_do'] = 'otevřeno'
+    row['hodiny_z_dochozky'] = work_hours_from_history(history, now=dj_timezone.now())
+    return row
 
 
 @api_view(['GET'])
@@ -585,17 +676,19 @@ def smeny_prehled(request):
         dnes = date.today()
         rok, mesic_cislo = dnes.year, dnes.month
     
+    ensure_auto_close_open_shifts(user=user, max_days_back=31)
+
     # Získání směn pro daný měsíc
     smeny = Smena.objects.filter(
         user=user,
         datum__year=rok,
         datum__month=mesic_cislo,
         aktivni=True
-    ).select_related('prodejna')
+    ).select_related('prodejna').prefetch_related('dochazka')
     
     # Výpočet statistik
     celkem_hodin = sum(smena.delka_smeny_hodin for smena in smeny if smena.typ_smeny == 'prace')
-    hodin_dovolene = sum(smena.delka_smeny_hodin for smena in smeny if smena.typ_smeny == 'dovolena')
+    hodin_dovolene = sum(dovolena_hodin_ze_smeny(smena) for smena in smeny if smena.typ_smeny == 'dovolena')
     pocet_smeny = smeny.filter(typ_smeny='prace').count()
     
     # Výpočet skutečných pracovních dnů v měsíci
@@ -612,8 +705,10 @@ def smeny_prehled(request):
                 pracovni_dny += 1
     
     from .labor_hours import fondu_hodin_mesic
+
     mesicni_fond = fondu_hodin_mesic(rok, mesic_cislo)
-    
+    deficit_mesic = deficit_mesic_hodin(user.id, rok, mesic_cislo) if is_dovolena_eligible(user) else 0.0
+
     return Response({
         'mesic': f'{rok}-{mesic_cislo:02d}',
         'user_jmeno': user.prijmeni,
@@ -622,17 +717,11 @@ def smeny_prehled(request):
         'pocet_smeny': pocet_smeny,
         'standardni_hodiny': mesicni_fond,
         'mesicni_fond': mesicni_fond,
+        'deficit_mesic_h': deficit_mesic,
         'procento_naplneni': round((celkem_hodin / mesicni_fond) * 100, 1) if mesicni_fond > 0 else 0,
+        'dovolena_stav': dovolena_stav(user, rok),
         'smeny_detail': [
-            {
-                'datum': smena.datum,
-                'prodejna': smena.prodejna.nazev,
-                'cas_od': smena.cas_od,
-                'cas_do': smena.cas_do,
-                'hodiny': smena.delka_smeny_hodin,
-                'typ_smeny': smena.typ_smeny,
-                'je_domaci_prodejna': smena.je_domaci_prodejna
-            } for smena in smeny.order_by('datum')
+            _smena_detail_row(smena) for smena in smeny.order_by('datum')
         ]
     })
 
@@ -676,7 +765,8 @@ def export_smeny(request):
             ('kop250', 'KOP250'),
             ('kop500', 'KOP500'),
             ('pz1', 'PZ1'),
-            ('knz', 'KNZ'),
+            ('vykupy', 'Výkupy'),
+            ('sunshine', 'Sunshine'),
             ('servis_marze', 'Servis'),
         ]
         doplnek_kody = [
@@ -687,11 +777,14 @@ def export_smeny(request):
             'Měsíc', 'Jméno', 'Středisko',
             'Odpracováno h', 'Dovolená h', 'Nemoc h', 'Svátek h',
             'Fond h', 'Přesčas h',
-            'Základ', 'Doplňky',
+            'Základ', 'Doplňky', 'Cestovné', 'Dovolená body', 'Přesčas body', 'Dýška',
         ]
         headers += [label for _k, label in doplnek_kody]
         headers += [label for _k, label in provize_cols]
-        headers += ['Provize celkem', 'Odměna měsíc', 'Celkem']
+        headers += [
+            'Provize celkem', 'Srážka provize %', 'Srážka provize body', 'Popis srážek',
+            'Odměna měsíc', 'Celkem',
+        ]
 
         def row_values(data):
             bd = data.get('provize_breakdown') or {}
@@ -708,6 +801,10 @@ def export_smeny(request):
                 data.get('prescas_h', 0),
                 data.get('zaklad_body', 0),
                 data.get('doplnky_body', 0),
+                data.get('cestovne_body', 0),
+                data.get('dovolena_body', 0),
+                data.get('prescas_body', 0),
+                data.get('dyska_body', 0),
             ]
             for kod, _label in doplnek_kody:
                 out.append(doplnky_by_kod.get(kod, 0))
@@ -716,6 +813,9 @@ def export_smeny(request):
                 out.append(item.get('points', 0))
             out.extend([
                 data.get('provize_body', 0),
+                data.get('penalizace_procent', 0),
+                data.get('penalizace_srazka_body', 0),
+                data.get('penalizace_popis', '') or '',
                 data.get('odmena_mesic_body', 0),
                 data.get('celkem_body', 0),
             ])

@@ -22,6 +22,7 @@ const OrdersModule = lazy(() => import('../modules/orders/OrdersModule'));
 const PlansModule = lazy(() => import('../modules/plans/PlansModule'));
 const TicketsModule = lazy(() => import('../modules/tickets/TicketsModule'));
 const TasksManageModule = lazy(() => import('../modules/tasks/TasksManageModule'));
+const CoachingModule = lazy(() => import('../modules/coaching/CoachingModule'));
 
 const RouteFallback = () => (
     <div className="dashboard-loading" role="status" aria-live="polite">
@@ -30,7 +31,7 @@ const RouteFallback = () => (
 );
 
 const Dashboard = () => {
-    const { user, logout, isAdmin, canManageTasks } = useAuth();
+    const { user, logout, isAdmin, canManageTasks, canAccessCoaching } = useAuth();
     const { isDarkMode, toggleTheme } = useTheme();
 
     return (
@@ -40,6 +41,7 @@ const Dashboard = () => {
             <DockNavbar
                 user={user}
                 isAdmin={isAdmin}
+                canManageTasks={canManageTasks}
                 logout={logout}
                 isDarkMode={isDarkMode}
                 toggleTheme={toggleTheme}
@@ -65,6 +67,10 @@ const Dashboard = () => {
                         <Route
                             path="/tasks"
                             element={canManageTasks() ? <TasksManageModule /> : <Navigate to="/" />}
+                        />
+                        <Route
+                            path="/coaching/*"
+                            element={canAccessCoaching() ? <CoachingModule /> : <Navigate to="/" />}
                         />
 
                         <Route path="/my-tickets" element={<TicketsModule />} />

@@ -54,6 +54,29 @@ def motion_pilot_prodejna_ids():
     return ids
 
 
+def verify_motion_token(prodejna_id, token):
+    """Token v URL pro Hikvision HTTP push (stejný secret jako u brány)."""
+    import hmac
+
+    secrets = load_motion_secrets()
+    expected = secrets.get(str(prodejna_id))
+    if not expected or not token:
+        return False, 'Neplatný token nebo prodejna není v pilotu'
+    if not hmac.compare_digest(expected, token.strip()):
+        return False, 'Neplatný token'
+    return True, None
+
+
+def hikvision_webhook_url(prodejna_id, *, api_base=None):
+    """Veřejná URL pro nastavení HTTP alarmu v NVR."""
+    secrets = load_motion_secrets()
+    token = secrets.get(str(prodejna_id))
+    if not token:
+        return None
+    base = (api_base or os.getenv('MOBILMAJAK_PUBLIC_URL', 'https://mobilmajak.com')).rstrip('/')
+    return f'{base}/api/shifts/camera-events/hikvision/{prodejna_id}/{token}/'
+
+
 def verify_motion_signature(request, prodejna_id):
     secrets = load_motion_secrets()
     secret = secrets.get(str(prodejna_id))
@@ -153,7 +176,58 @@ def motion_status_for_prodejna(prodejna_id, now=None):
     }
 
 
-def attach_motion_to_stores(store_rows):
-    """Doplní motion do slov prodejen v přehledu absent/ok."""
+def attach_motion_to_stores(store_rows, now=None):
+    """Doplní motion a recent_events do slov prodejen v přehledu absent/ok."""
+    now = now or timezone.now()
+    pilot_ids = set(motion_pilot_prodejna_ids())
     for row in store_rows:
-        row['motion'] = motion_status_for_prodejna(row['prodejna_id'])
+        pid = row['prodejna_id']
+        row['motion'] = motion_status_for_prodejna(pid, now)
+        if pid in pilot_ids:
+            recent_qs = (
+                ProdejnaPohybUdalost.objects.filter(prodejna_id=pid)
+                .order_by('-cas')[:5]
+            )
+            row['recent_events'] = [
+                {
+                    'id': e.id,
+                    'pohyb': e.pohyb,
+                    'cas': e.cas.isoformat(),
+                    'zdroj': e.zdroj,
+                }
+                for e in recent_qs
+            ]
+        else:
+            row['recent_events'] = []
+
+
+def build_pilot_motion_report(now=None):
+    """Pilotní prodejny – stav kamer vždy viditelný (i bez aktivní směny)."""
+    now = now or timezone.now()
+    rows = []
+    for pid in motion_pilot_prodejna_ids():
+        try:
+            prodejna = Prodejna.objects.get(pk=pid, aktivni=True)
+        except Prodejna.DoesNotExist:
+            continue
+        recent_qs = (
+            ProdejnaPohybUdalost.objects.filter(prodejna_id=pid)
+            .order_by('-cas')[:10]
+        )
+        recent_events = [
+            {
+                'id': e.id,
+                'pohyb': e.pohyb,
+                'cas': e.cas.isoformat(),
+                'zdroj': e.zdroj,
+            }
+            for e in recent_qs
+        ]
+        rows.append({
+            'prodejna_id': pid,
+            'prodejna_nazev': prodejna.nazev_kratkiy or prodejna.nazev,
+            'prodejna_barva': prodejna.barva or '#0066cc',
+            'motion': motion_status_for_prodejna(pid, now),
+            'recent_events': recent_events,
+        })
+    return rows

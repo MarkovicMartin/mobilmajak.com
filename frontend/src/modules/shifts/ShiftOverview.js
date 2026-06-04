@@ -38,6 +38,20 @@ function ShiftOverview({ user, month, onMonthChange }) {
         }
     };
 
+    const formatTime = (value) => (value ? String(value).substring(0, 5) : '');
+
+    const formatAttendance = (smena) => {
+        if (smena.typ_smeny !== 'prace') {
+            return '—';
+        }
+        if (!smena.dochazka_od && smena.stav_dochazky === 'bez_zaznamu') {
+            return 'bez záznamu';
+        }
+        const od = smena.dochazka_od || '—';
+        const doValue = smena.dochazka_do || '—';
+        return `${od} – ${doValue}`;
+    };
+
     const formatMonthName = (monthStr) => {
         const [year, month] = monthStr.split('-').map(Number);
         const date = new Date(year, month - 1);
@@ -137,6 +151,32 @@ function ShiftOverview({ user, month, onMonthChange }) {
                 </div>
             </div>
 
+            {overview.dovolena_stav && (
+                <div className="vacation-fund-section">
+                    <h4>🏖️ Roční fond dovolené ({overview.dovolena_stav.rok})</h4>
+                    <div className="vacation-fund-grid">
+                        <span>Fond: <strong>{overview.dovolena_stav.fond_h} h</strong></span>
+                        <span>Čerpáno: <strong>{overview.dovolena_stav.cerpano_h} h</strong></span>
+                        <span>Zbývá: <strong>{overview.dovolena_stav.zbyva_h} h</strong></span>
+                        {overview.dovolena_stav.cerpano_smeny_h > 0 && (
+                            <span>Směny dovolené: <strong>{overview.dovolena_stav.cerpano_smeny_h} h</strong></span>
+                        )}
+                        {overview.dovolena_stav.odeceno_deficit_h > 0 && (
+                            <span>Deficit fondu: <strong>{overview.dovolena_stav.odeceno_deficit_h} h</strong></span>
+                        )}
+                        {overview.dovolena_stav.prevod_h > 0 && (
+                            <span>Převod: <strong>{overview.dovolena_stav.prevod_h} h</strong></span>
+                        )}
+                    </div>
+                    {overview.deficit_mesic_h > 0 && (
+                        <p className="vacation-deficit-hint">
+                            Tento měsíc: deficit fondu <strong>{overview.deficit_mesic_h} h</strong>
+                            {' '}(odečte se z dovolené po skončení měsíce)
+                        </p>
+                    )}
+                </div>
+            )}
+
             {/* Progress bar s procentem naplnění */}
             <div className="progress-section">
                 <div className="progress-header">
@@ -175,7 +215,8 @@ function ShiftOverview({ user, month, onMonthChange }) {
                         <div className="table-header">
                             <div>Datum</div>
                             <div>Prodejna</div>
-                            <div>Čas</div>
+                            <div>Plán</div>
+                            <div>Docházka</div>
                             <div>Hodiny</div>
                             <div>Typ</div>
                         </div>
@@ -189,19 +230,26 @@ function ShiftOverview({ user, month, onMonthChange }) {
                                     {smena.prodejna}
                                     {!smena.je_domaci_prodejna && <span className="foreign-badge">📍</span>}
                                 </div>
-                                <div className="time-cell">
-                                    {smena.cas_od.substring(0, 5)} - {smena.cas_do.substring(0, 5)}
+                                <div className="time-cell plan-cell">
+                                    {formatTime(smena.cas_od)} – {formatTime(smena.cas_do)}
+                                </div>
+                                <div className={`time-cell attendance-cell ${smena.stav_dochazky === 'bez_zaznamu' ? 'missing' : ''} ${smena.stav_dochazky === 'otevreno' ? 'open' : ''}`}>
+                                    {formatAttendance(smena)}
                                 </div>
                                 <div className="hours-cell">
                                     {smena.hodiny}h
+                                    {smena.hodiny_z_dochozky != null && smena.hodiny_z_dochozky !== smena.hodiny && (
+                                        <span className="actual-hours"> / {smena.hodiny_z_dochozky}h</span>
+                                    )}
                                 </div>
                                 <div className="type-cell">
                                     <span className={`type-badge ${smena.typ_smeny}`}>
                                         {smena.typ_smeny === 'prace' && '💼'}
                                         {smena.typ_smeny === 'dovolena' && '🏖️'}
                                         {smena.typ_smeny === 'nemoc' && '🏥'}
-                                        {smena.typ_smeny === 'prace' ? 'Práce' : 
-                                         smena.typ_smeny === 'dovolena' ? 'Dovolená' : 'Nemoc'}
+                                        {smena.typ_smeny === 'prace'
+                                            ? (smena.brigadnik_rezim === 'vypomoc' ? 'Výpomoc' : 'Práce')
+                                            : smena.typ_smeny === 'dovolena' ? 'Dovolená' : 'Nemoc'}
                                     </span>
                                 </div>
                             </div>

@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import './ShiftCalendar.css';
 import UnifiedCalendar from './UnifiedCalendar';
-import { format, parse, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
+import { format, parse, startOfMonth, endOfMonth, eachDayOfInterval, isBefore } from 'date-fns';
 
 const STAFFING_MANAGER_ROLES = ['ADMIN', 'VEDOUCI'];
 
@@ -48,13 +49,25 @@ const getShiftStyle = (shift) => {
     };
 };
 
-function ShiftCalendar({ prodejna, month, user, refreshTrigger, onRefresh, allStores = false, stores = [], showAllEmployees = false }) {
+function ShiftCalendar({
+    prodejna,
+    month,
+    user,
+    refreshTrigger,
+    onRefresh,
+    onRequestBulkAdd,
+    onRequestSingleAdd,
+    allStores = false,
+    stores = [],
+    showAllEmployees = false,
+}) {
     const [kalendarData, setKalendarData] = useState({});
     const [svatky, setSvatky] = useState({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [showConfirm, setShowConfirm] = useState(false);
     const [shiftToDelete, setShiftToDelete] = useState(null);
+    const [pickedDates, setPickedDates] = useState(() => new Set());
 
     useEffect(() => {
         if (prodejna && month) {
@@ -148,12 +161,17 @@ function ShiftCalendar({ prodejna, month, user, refreshTrigger, onRefresh, allSt
         return '🎊';
     };
 
-    const handleShiftClick = async (shift, event) => {
-        event.stopPropagation();
-        
+    const formatShiftDate = (shift, dateStr) => {
+        const raw = shift?.datum || shift?.date || dateStr || '';
+        if (!raw) return '—';
+        const parsed = parse(String(raw).slice(0, 10), 'yyyy-MM-dd', new Date());
+        if (Number.isNaN(parsed.getTime())) return String(raw);
+        return parsed.toLocaleDateString('cs-CZ');
+    };
 
-        
-        // Kontrola oprávnění s informativní hláškou - převádíme na string pro správné porovnání
+    const handleShiftClick = (shift, dateStr, event) => {
+        event.stopPropagation();
+
         if (!['ADMIN', 'VEDOUCI'].includes(user?.role) && String(shift.user_id) !== String(user?.id)) {
             setError('Nemáte oprávnění upravovat tuto směnu. Můžete upravovat pouze své vlastní směny.');
             return;
@@ -161,7 +179,8 @@ function ShiftCalendar({ prodejna, month, user, refreshTrigger, onRefresh, allSt
 
         const today = new Date();
         const currentMonth = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0');
-        const shiftMonth = shift.datum ? shift.datum.substring(0, 7) : month;
+        const shiftDatum = shift.datum || shift.date || dateStr;
+        const shiftMonth = shiftDatum ? String(shiftDatum).substring(0, 7) : month;
         
         // Kontrola měsíce s lepší chybovou hláškou
         if (!['ADMIN', 'VEDOUCI'].includes(user?.role) && shiftMonth < currentMonth) {
@@ -170,8 +189,8 @@ function ShiftCalendar({ prodejna, month, user, refreshTrigger, onRefresh, allSt
         }
 
         // Vše v pořádku, zobrazíme dialog pro mazání
-        setError(''); // Vyčistíme předchozí chyby
-        setShiftToDelete(shift);
+        setError('');
+        setShiftToDelete({ ...shift, datum: shiftDatum });
         setShowConfirm(true);
     };
 
@@ -202,6 +221,38 @@ function ShiftCalendar({ prodejna, month, user, refreshTrigger, onRefresh, allSt
     const handleCancelDelete = () => {
         setShowConfirm(false);
         setShiftToDelete(null);
+    };
+
+    useEffect(() => {
+        setPickedDates(new Set());
+    }, [month, prodejna]);
+
+    const isDateSelectable = useCallback((date) => {
+        if (svatky[format(date, 'yyyy-MM-dd')]) return false;
+        if (user && ['ADMIN', 'VEDOUCI'].includes(user.role)) return true;
+        const firstOfMonth = parse(`${month}-01`, 'yyyy-MM-dd', new Date());
+        return !isBefore(date, firstOfMonth);
+    }, [month, svatky, user]);
+
+    const handlePickDate = useCallback((dateStr) => {
+        setPickedDates((prev) => {
+            const next = new Set(prev);
+            if (next.has(dateStr)) next.delete(dateStr);
+            else next.add(dateStr);
+            return next;
+        });
+    }, []);
+
+    const handleSingleDayAdd = useCallback((dateStr) => {
+        if (!onRequestSingleAdd) return;
+        if (!isDateSelectable(parse(dateStr, 'yyyy-MM-dd', new Date()))) return;
+        onRequestSingleAdd(dateStr);
+    }, [onRequestSingleAdd, isDateSelectable]);
+
+    const handleOpenBulkFromPick = () => {
+        if (!pickedDates.size || !onRequestBulkAdd) return;
+        onRequestBulkAdd(Array.from(pickedDates).sort());
+        setPickedDates(new Set());
     };
 
     if (loading) {
@@ -286,10 +337,19 @@ function ShiftCalendar({ prodejna, month, user, refreshTrigger, onRefresh, allSt
                 </div>
             )}
 
+            <p className="calendar-pick-hint">
+                <strong>Klik na den</strong> = přidat směnu · <strong>táhněte přes dny</strong> = hromadně · <strong>klik na směnu</strong> = smazat
+            </p>
+
             <div className="calendar-container">
                 <UnifiedCalendar
                     month={month}
                     variant="full"
+                    selectedDates={pickedDates}
+                    enableDragSelect
+                    isDateEnabled={isDateSelectable}
+                    onDateClick={(dateStr) => handleSingleDayAdd(dateStr)}
+                    onDateDragSelect={(dateStr) => handlePickDate(dateStr)}
                     getExtraCellClass={getExtraCellClass}
                     renderCellContent={(date) => {
                         const dateStr = format(date, 'yyyy-MM-dd');
@@ -336,7 +396,8 @@ function ShiftCalendar({ prodejna, month, user, refreshTrigger, onRefresh, allSt
                                                 key={shift.id}
                                                 className={shiftClasses}
                                                 style={allStores ? getShiftStyle(shift) : undefined}
-                                                onClick={(e) => handleShiftClick(shift, e)}
+                                                onMouseDown={(e) => e.stopPropagation()}
+                                                onClick={(e) => handleShiftClick(shift, dateStr, e)}
                                                 title={titleParts.join(' · ')}
                                             >
                                                 <div className="shift-content">
@@ -364,28 +425,45 @@ function ShiftCalendar({ prodejna, month, user, refreshTrigger, onRefresh, allSt
                 />
             </div>
 
-            {/* KONFIRMAČNÍ DIALOG */}
-            {showConfirm && shiftToDelete && (
+            {pickedDates.size > 0 && (
+                <div className="calendar-pick-bar" role="status">
+                    <span>
+                        Vybráno <strong>{pickedDates.size}</strong>
+                        {pickedDates.size === 1 ? ' den' : pickedDates.size < 5 ? ' dny' : ' dnů'}
+                    </span>
+                    <div className="calendar-pick-actions">
+                        <button type="button" className="btn-pick-clear" onClick={() => setPickedDates(new Set())}>
+                            Zrušit výběr
+                        </button>
+                        <button type="button" className="btn-pick-submit" onClick={handleOpenBulkFromPick}>
+                            Přidat směny ({pickedDates.size})
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {showConfirm && shiftToDelete && createPortal(
                 <div className="confirm-overlay" onClick={handleCancelDelete}>
                     <div className="confirm-dialog" onClick={(e) => e.stopPropagation()}>
                         <h3>Smazat směnu</h3>
                         <div className="shift-details">
                             <p><strong>Prodejce:</strong> {shiftToDelete.user_jmeno}</p>
-                            <p><strong>Datum:</strong> {new Date(shiftToDelete.datum || shiftToDelete.date || '').toLocaleDateString('cs-CZ')}</p>
+                            <p><strong>Datum:</strong> {formatShiftDate(shiftToDelete)}</p>
                             <p><strong>Čas:</strong> {formatTime(shiftToDelete.cas_od)}-{formatTime(shiftToDelete.cas_do)}</p>
                             <p><strong>Prodejna:</strong> {shiftToDelete.prodejna_nazev || shiftToDelete.prodejna || prodejna}</p>
                         </div>
                         <p className="confirm-question">Opravdu chcete tuto směnu smazat?</p>
                         <div className="confirm-buttons">
-                            <button className="btn-cancel" onClick={handleCancelDelete}>
+                            <button type="button" className="btn-cancel" onClick={handleCancelDelete}>
                                 Zrušit
                             </button>
-                            <button className="btn-delete" onClick={handleConfirmDelete}>
+                            <button type="button" className="btn-delete" onClick={handleConfirmDelete}>
                                 Smazat
                             </button>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body,
             )}
         </div>
     );

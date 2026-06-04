@@ -41,7 +41,21 @@ class WebUser(models.Model):
         default=list, blank=True,
         verbose_name="Volitelné mzdové doplňky (body)",
     )
-    
+    mzda_cestovne = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True,
+        verbose_name="Cestovné (body/měsíc)",
+    )
+    dovolena_fond_extra_h = models.DecimalField(
+        max_digits=6, decimal_places=2, null=True, blank=True,
+        verbose_name="Dovolená – navýšení fondu (h)",
+        help_text="Převod nebo korekce nad 160 h ročně.",
+    )
+    dovolena_korekce_cerpano_h = models.DecimalField(
+        max_digits=6, decimal_places=2, null=True, blank=True,
+        verbose_name="Dovolená – korekce čerpání (h)",
+        help_text="Již čerpané hodiny před evidencí ve směnách.",
+    )
+
     # Časové údaje
     datum_vytvoreni = models.DateTimeField(auto_now_add=True, verbose_name="Datum vytvoření")
     last_login = models.DateTimeField(null=True, blank=True, verbose_name="Poslední přihlášení")

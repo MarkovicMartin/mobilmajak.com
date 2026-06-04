@@ -128,5 +128,16 @@
 
 .confirm-overlay > .confirm-dialog {
     flex-shrink: 0;
-    margin: 0 auto;
+    margin: max(var(--dock-clearance, 7.5rem), calc(env(safe-area-inset-top, 0px) + 12px)) auto 1.5rem;
+}
+
+.modal-overlay > .modal-content,
+.bulk-shift-overlay > .bulk-shift-modal,
+.payroll-modal-overlay > .payroll-modal,
+.user-form-overlay > .user-form-modal,
+.store-form-overlay > .store-form-modal,
+.post-form-overlay > .post-form-modal,
+.access-form-overlay > .access-form-modal,
+.ticket-form-overlay > .ticket-form-modal {
+    margin-top: max(var(--dock-clearance, 7.5rem), calc(env(safe-area-inset-top, 0px) + 12px));
 }

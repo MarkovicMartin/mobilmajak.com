@@ -567,6 +567,14 @@
 }
 
 .dark-mode .shift-info-card,
+.dark-mode .card .shift-info-card,
+.dark-mode .seller-dashboard .shift-info-card {
+    background: var(--bg-inset) !important;
+    border-color: var(--border-subtle) !important;
+    border-left-color: var(--accent-analytics) !important;
+    color: var(--text-primary) !important;
+}
+
 .dark-mode .attendance-controls,
 .dark-mode .attendance-history {
     background: var(--bg-card) !important;
@@ -574,10 +582,56 @@
 }
 
 .dark-mode .shift-info-card h4,
-.dark-mode .shift-details div,
-.dark-mode .shift-details strong,
 .dark-mode .attendance-history h4 {
+    color: var(--text-heading) !important;
+}
+
+.dark-mode .shift-info-card .shift-details {
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+.dark-mode .shift-info-card .shift-details div {
+    color: var(--text-secondary) !important;
+}
+
+.dark-mode .shift-info-card .shift-details strong {
+    color: var(--text-heading) !important;
+}
+
+.dark-mode .confirm-dialog .shift-details {
+    background: var(--bg-inset) !important;
+    border-left-color: var(--accent-analytics) !important;
+}
+
+.dark-mode .confirm-dialog .shift-details p {
+    color: var(--text-secondary) !important;
+}
+
+.dark-mode .confirm-dialog .shift-details strong {
+    color: var(--text-heading) !important;
+}
+
+.dark-mode .uc-shift-chip,
+.dark-mode .profile-calendar .shift-item.mine {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
+    color: #fff !important;
+}
+
+.dark-mode .uc-task-chip {
     color: var(--text-primary) !important;
+}
+
+.dark-mode .profile-calendar .shifts-container {
+    margin-top: 2px;
+}
+
+/* --- Dock: tooltipy pod ikonami --- */
+.dark-mode .dock-icon-btn[data-tooltip]:hover::after {
+    background: var(--brand-navy) !important;
+    color: var(--text-inverse) !important;
 }
 
 .dark-mode .attendance-auto-hint {

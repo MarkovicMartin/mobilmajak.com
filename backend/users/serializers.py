@@ -21,7 +21,7 @@ class WebUserSerializer(serializers.ModelSerializer):
         model = WebUser
         fields = ['id', 'uzivatelske_jmeno', 'jmeno', 'prijmeni', 'role', 'aktivni', 'moduly', 'datum_vytvoreni',
                  'telefon', 'email', 'adresa', 'poznamka', 'prodejna_id', 'prodejna', 'technik_id',
-                 'mzda_zaklad', 'mzda_doplnky', 'vedouci_prodejna_id', 'can_manage_tickets', 'can_manage_tasks']
+                 'mzda_zaklad', 'mzda_doplnky', 'mzda_cestovne', 'vedouci_prodejna_id', 'can_manage_tickets', 'can_manage_tasks']
         read_only_fields = ['datum_vytvoreni']
     
     def to_representation(self, instance):
@@ -31,6 +31,7 @@ class WebUserSerializer(serializers.ModelSerializer):
         if role != 'ADMIN':
             ret.pop('mzda_zaklad', None)
             ret.pop('mzda_doplnky', None)
+            ret.pop('mzda_cestovne', None)
         return ret
     
     def get_prodejna(self, obj):
@@ -100,7 +101,7 @@ class WebUserCreateSerializer(serializers.ModelSerializer):
         model = WebUser
         fields = ['id', 'uzivatelske_jmeno', 'jmeno', 'prijmeni', 'heslo', 'role', 'aktivni', 'moduly',
                  'telefon', 'email', 'adresa', 'poznamka', 'prodejna_id', 'technik_id',
-                 'mzda_zaklad', 'mzda_doplnky']
+                 'mzda_zaklad', 'mzda_doplnky', 'mzda_cestovne']
     
     def validate_mzda_doplnky(self, value):
         return normalize_mzda_doplnky(value)
@@ -136,7 +137,7 @@ class WebUserUpdateSerializer(serializers.ModelSerializer):
         model = WebUser
         fields = ['id', 'uzivatelske_jmeno', 'jmeno', 'prijmeni', 'role', 'aktivni', 'moduly',
                  'telefon', 'email', 'adresa', 'poznamka', 'nove_heslo', 'heslo', 'prodejna_id', 'technik_id',
-                 'mzda_zaklad', 'mzda_doplnky']
+                 'mzda_zaklad', 'mzda_doplnky', 'mzda_cestovne']
         read_only_fields = ['id']
     
     def validate_mzda_doplnky(self, value):

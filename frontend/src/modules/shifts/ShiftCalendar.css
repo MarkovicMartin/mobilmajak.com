@@ -9,6 +9,52 @@
     overflow: hidden; /* žádný horizontální scroll */
 }
 
+.calendar-pick-hint {
+    margin: 0 0 10px;
+    font-size: 13px;
+    color: #6b7280;
+}
+
+.calendar-pick-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 12px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    font-size: 14px;
+}
+
+.calendar-pick-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.btn-pick-clear {
+    border: 1px solid #d1d5db;
+    background: var(--bg-card);
+    border-radius: 8px;
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.btn-pick-submit {
+    border: 0;
+    background: linear-gradient(90deg, #3b82f6, #6366f1);
+    color: #fff;
+    border-radius: 8px;
+    padding: 6px 14px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+}
+
 /* CHYBOVÝ BANNER */
 .error-banner {
     background: #fef7f0;
@@ -404,14 +450,11 @@
 /* KONFIRMAČNÍ DIALOG */
 .confirm-overlay {
     position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    inset: 0;
     background: rgba(0, 0, 0, 0.6);
     display: flex;
     justify-content: center;
-    z-index: 1000;
+    align-items: flex-start;
 }
 
 .confirm-dialog {
@@ -430,22 +473,22 @@
     font-weight: 400;
 }
 
-.shift-details {
-    background: #f8f9fa;
+.confirm-dialog .shift-details {
+    background: var(--bg-inset);
     padding: 16px;
     border-radius: 8px;
     margin: 16px 0;
-    border-left: 4px solid #1a73e8;
+    border-left: 4px solid var(--brand-navy);
 }
 
-.shift-details p {
+.confirm-dialog .shift-details p {
     margin: 6px 0;
-    color: #5f6368;
+    color: var(--text-secondary);
     font-size: 14px;
 }
 
-.shift-details strong {
-    color: #202124;
+.confirm-dialog .shift-details strong {
+    color: var(--text-heading);
     font-weight: 500;
 }
 

@@ -41,6 +41,7 @@ const INTERACTIVE_SELECTOR = [
     'input',
     'select',
     'textarea',
+    'summary',
     '[role="button"]',
     '[role="link"]',
     '[role="tab"]',

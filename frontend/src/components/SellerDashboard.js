@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { formatNewsAge } from '../utils/formatNewsAge';
 import { plansAPI, newsAPI, shiftsAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useSalespersonMetrics } from '../hooks/useSalespersonMetrics';
@@ -107,7 +108,7 @@ export default function SellerDashboard({ user }) {
     const ym = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
     try {
       const data = await shiftsAPI.listByMonth(ym);
-      const todayStr = today.toISOString().split('T')[0];
+      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
       const future = (data || [])
         .filter((s) => s.datum >= todayStr)
         .sort((a, b) => (a.datum < b.datum ? -1 : a.datum > b.datum ? 1 : (a.cas_od || '').localeCompare(b.cas_od || '')))
@@ -262,7 +263,12 @@ export default function SellerDashboard({ user }) {
                           return (
                             <div key={k.kategorie_kod} className="muj-plan-bar-item">
                               <div className="muj-plan-bar-header">
-                                <span className="muj-plan-bar-name">{k.kategorie_nazev}</span>
+                                <span
+                                  className="muj-plan-bar-name"
+                                  title={k.napoveda || undefined}
+                                >
+                                  {k.kategorie_nazev}
+                                </span>
                                 <span className="muj-plan-bar-count">
                                   {skutecne} / {formatKs(cil)} ks{' '}
                                   <span className={`muj-plan-pct-badge ${pct >= 100 ? 'muj-plan-trend-ok' : pct >= 80 ? 'muj-plan-trend-var' : 'muj-plan-trend-chyba'}`}>
@@ -297,16 +303,16 @@ export default function SellerDashboard({ user }) {
             <div className="card">
               <h3>Novinky</h3>
               <div className="news-list">
-                {news.map((n)=> (
-                  <div key={n.id} className="news-item">
-                    <div style={{display:'flex', gap:8, alignItems:'center'}}>
+                {news.map((n) => (
+                  <Link key={n.id} to={`/news#post-${n.id}`} className="news-item news-item-link">
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', minWidth: 0 }}>
                       <span>📰</span>
-                      <div style={{fontWeight:600, maxWidth:210, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>
+                      <div style={{ fontWeight: 600, maxWidth: 210, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {n.obsah}
                       </div>
                     </div>
-                    <div className="metric-sub">před {Math.max(1, Math.round((Date.now() - new Date(n.datum_vytvoreni)) / 36e5))} h</div>
-                  </div>
+                    <div className="metric-sub">{formatNewsAge(n.datum_vytvoreni)}</div>
+                  </Link>
                 ))}
               </div>
             </div>

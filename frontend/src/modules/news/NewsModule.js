@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import PostForm from './PostForm';
@@ -7,6 +8,7 @@ import './NewsModule.css';
 
 const NewsModule = () => {
     const { user } = useAuth();
+    const location = useLocation();
     const [posts, setPosts] = useState([]);
     const [categories, setCategories] = useState([]);
     const [selectedCategories, setSelectedCategories] = useState([]);
@@ -41,6 +43,18 @@ const NewsModule = () => {
         fetchPosts();
         fetchCategories();
     }, []);
+
+    useEffect(() => {
+        if (loading) return;
+        const match = (location.hash || '').match(/^#post-(\d+)$/);
+        if (!match) return;
+        const el = document.getElementById(`post-${match[1]}`);
+        if (el) {
+            requestAnimationFrame(() => {
+                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+        }
+    }, [loading, location.hash, posts]);
 
     // Přidání nového příspěvku
     const handleAddPost = async (newPost) => {

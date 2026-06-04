@@ -6,7 +6,8 @@ from django.db.models import Count, Q, Sum
 from analytics.models import WebProdejeAll
 from analytics.points_config import POINTS_METRIC_KEYS, calculate_product_points
 from analytics.sunshine_config import SUNSHINE_METRIC_KEY, sunshine_kusy_sum, sunshine_row_q
-from analytics.viceprace_config import polozky_nad_100_q
+from analytics.vykupy_config import VYKUPY_METRIC_KEY, vykupy_counts_map
+from analytics.viceprace_config import aggregate_viceprace, polozky_nad_100_q
 from analytics.views import (
     _build_points_payload,
     _empty_servisni_prace_data,
@@ -69,7 +70,31 @@ def batch_sales_metrics_for_month(rok, mesic_cislo, user_ids):
         if uid in metrics and (row['v'] or 0):
             metrics[uid][SUNSHINE_METRIC_KEY] = int(row['v'] or 0)
 
+    vykupy_map = vykupy_counts_map(typ_month_prefix=f'{rok}-{mesic_cislo:02d}')
+    for uid in uid_set:
+        count = vykupy_map.get(uid, 0)
+        if count:
+            metrics[uid][VYKUPY_METRIC_KEY] = count
+
     return metrics
+
+
+def batch_dyska_for_month(rok, mesic_cislo, user_ids):
+    """Dýška (P63615) – obrat v Kč s DPH, 1:1 do bodů výplaty (zaokrouhleno)."""
+    if not user_ids:
+        return {}
+    target = date(rok, mesic_cislo, 1)
+    uid_set = set(int(u) for u in user_ids)
+    out = {uid: {'obrat': 0.0, 'kusy': 0} for uid in uid_set}
+    base = WebProdejeAll.objects.filter(
+        _salesperson_month_filter(target),
+        id_prodejce__in=uid_set,
+    )
+    for uid in uid_set:
+        qs = base.filter(id_prodejce=uid)
+        vp = aggregate_viceprace(qs)
+        out[uid] = {'obrat': float(vp.get('obrat') or 0), 'kusy': int(vp.get('kusy') or 0)}
+    return out
 
 
 def batch_servis_points_for_month(users, ym_prefix):

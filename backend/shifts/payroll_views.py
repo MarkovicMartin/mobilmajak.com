@@ -1,5 +1,5 @@
 """Payroll a docházka – admin API."""
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 
 from django.utils import timezone
 from rest_framework import status
@@ -9,14 +9,18 @@ from rest_framework.response import Response
 
 from users.models import WebUser
 
-from .models import MzdovaOdmenaMesic, Smena, SmenaDochazka
+from .models import MzdovaOdmenaMesic, MzdovaPenalizaceMesic, Smena, SmenaDochazka
 from .payroll_service import build_payroll_preview
 from .attendance_service import (
     attendance_state_from_history,
     ensure_auto_close_open_shifts,
     build_absent_stores_report,
+    build_today_work_board,
+    shift_window,
+    work_hours_from_history,
 )
 from .camera_integration import camera_module_status
+from .camera_motion import build_pilot_motion_report
 
 
 def _require_admin(request):
@@ -41,21 +45,6 @@ def _parse_mesic(mesic):
 
 def _attendance_state(history):
     return attendance_state_from_history(history)
-
-
-def _compute_work_hours_from_history(history):
-    if not history:
-        return 0
-    total_min = 0
-    start = None
-    for action in sorted(history, key=lambda x: x.cas):
-        t = action.cas
-        if action.typ_akce in ('prichod', 'pauza_konec'):
-            start = t
-        elif action.typ_akce in ('pauza_start', 'odchod') and start:
-            total_min += (t - start).total_seconds() / 60
-            start = None
-    return round(total_min / 60, 2)
 
 
 @api_view(['GET'])
@@ -121,6 +110,37 @@ def payroll_odmena(request):
     })
 
 
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def payroll_penalizace(request):
+    """Přidá srážku −10 % z provize (každý záznam = jedna instance)."""
+    denied = _require_admin(request)
+    if denied:
+        return denied
+    user_id = request.data.get('user_id')
+    mesic = request.data.get('mesic')
+    duvod = (request.data.get('duvod') or '').strip()
+    if not user_id or not mesic:
+        return Response({'error': 'Chybí user_id nebo mesic'}, status=status.HTTP_400_BAD_REQUEST)
+    if not duvod:
+        return Response({'error': 'Chybí důvod srážky'}, status=status.HTTP_400_BAD_REQUEST)
+    parsed = _parse_mesic(mesic)
+    if not parsed:
+        return Response({'error': 'Neplatný formát měsíce'}, status=status.HTTP_400_BAD_REQUEST)
+    _, _, mesic_date = parsed
+    user = WebUser.objects.filter(id=user_id).first()
+    if not user:
+        return Response({'error': 'Uživatel nenalezen'}, status=status.HTTP_404_NOT_FOUND)
+    row = MzdovaPenalizaceMesic.objects.create(user=user, mesic=mesic_date, duvod=duvod)
+    return Response({
+        'id': row.id,
+        'user_id': user.id,
+        'mesic': mesic,
+        'duvod': row.duvod,
+        'vytvoreno': row.vytvoreno.isoformat() if row.vytvoreno else None,
+    }, status=status.HTTP_201_CREATED)
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def attendance_log(request):
@@ -148,10 +168,7 @@ def attendance_log(request):
     for smena in smeny.order_by('-datum', 'user__prijmeni'):
         history = list(smena.dochazka.all())
         stav, prichod, odchod = _attendance_state(history)
-        plan_od = datetime.combine(smena.datum, smena.cas_od)
-        plan_do = datetime.combine(smena.datum, smena.cas_do)
-        if plan_do < plan_od:
-            plan_do += timedelta(days=1)
+        plan_od, plan_do = shift_window(smena)
 
         problem = False
         problem_duvod = ''
@@ -188,7 +205,7 @@ def attendance_log(request):
             'stav': stav,
             'problem': problem,
             'problem_duvod': problem_duvod,
-            'hodiny_z_dochozky': _compute_work_hours_from_history(history),
+            'hodiny_z_dochozky': work_hours_from_history(history, now=timezone.now()),
             'akce': [
                 {
                     'typ_akce': d.typ_akce,
@@ -258,10 +275,7 @@ def attendance_my_status(request):
             stav, prichod, _odchod = _attendance_state(history)
             if stav != 'otevreno':
                 continue
-            plan_do = datetime.combine(smena.datum, smena.cas_do)
-            plan_od = datetime.combine(smena.datum, smena.cas_od)
-            if plan_do < plan_od:
-                plan_do += timedelta(days=1)
+            _plan_od, plan_do = shift_window(smena)
             if day < today or timezone.now() > plan_do:
                 warnings.append({
                     'typ': 'zapomenuty_odchod',
@@ -284,4 +298,15 @@ def attendance_absent_stores(request):
         return denied
     report = build_absent_stores_report()
     report['camera'] = camera_module_status()
+    report['pilot_stores'] = build_pilot_motion_report()
     return Response(report)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def attendance_today_board(request):
+    """Admin/vedoucí: dnešní směny po prodejnách se stavy příchodů."""
+    denied = _require_admin_or_vedouci(request)
+    if denied:
+        return denied
+    return Response(build_today_work_board())

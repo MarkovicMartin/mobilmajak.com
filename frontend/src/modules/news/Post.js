@@ -76,7 +76,7 @@ const Post = ({
     };
 
     return (
-        <div className="post">
+        <div className="post" id={`post-${post.id}`}>
             <div className="post-header">
                 <div className="post-author">
                     <div className="author-avatar">

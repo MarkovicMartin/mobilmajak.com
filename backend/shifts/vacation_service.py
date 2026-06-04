@@ -1,0 +1,202 @@
+"""Fond dovolené a výpočet hodin dovolené ze směn."""
+from datetime import date
+
+from users.mzda_utils import is_brigadnik
+
+from .labor_hours import HODINY_NA_PRACOVNI_DEN, fondu_hodin_mesic
+from .models import Smena
+from .czech_holidays import get_ceske_svatky
+
+DOVOLENA_ROCNI_FOND = 160
+DOVOLENA_PREVOD_MAX = 40
+DOVOLENA_HODINY_ZA_DEN = HODINY_NA_PRACOVNI_DEN
+
+
+def _is_markovic_active_seller(user):
+    """Martin Markovič – prodej na pultu při roli ADMIN."""
+    return (
+        (getattr(user, 'jmeno', '') or '').strip().lower() == 'martin'
+        and (getattr(user, 'prijmeni', '') or '').strip().lower() == 'markovič'
+    )
+
+
+def is_dovolena_eligible(user):
+    if not user or is_brigadnik(user):
+        return False
+    if getattr(user, 'role', None) in ('PRODEJCE', 'VEDOUCI'):
+        return True
+    return _is_markovic_active_seller(user)
+
+
+def _svatky_set(rok):
+    return {(y, m, d) for y, m, d in get_ceske_svatky(rok)}
+
+
+def is_pracovni_den(datum, svatky_set=None):
+    if datum.weekday() >= 5:
+        return False
+    if svatky_set is None:
+        svatky_set = _svatky_set(datum.year)
+    return (datum.year, datum.month, datum.day) not in svatky_set
+
+
+def dovolena_hodin_ze_smeny(smena, svatky=None):
+    if smena.typ_smeny != 'dovolena':
+        return 0.0
+    if svatky is not None and isinstance(next(iter(svatky), None), date):
+        if not is_pracovni_den(smena.datum, {(d.year, d.month, d.day) for d in svatky}):
+            return 0.0
+    elif not is_pracovni_den(smena.datum):
+        return 0.0
+    return float(DOVOLENA_HODINY_ZA_DEN)
+
+
+def mel_fond_v_roce(user_id, rok):
+    """True pokud měl uživatel v roce alespoň jednu pracovní nebo dovolenou směnu."""
+    return Smena.objects.filter(
+        user_id=user_id,
+        datum__year=rok,
+        aktivni=True,
+        typ_smeny__in=('prace', 'dovolena'),
+    ).exists()
+
+
+def cerpana_dovolena_rok(user_id, rok, ignorovat_smena_id=None):
+    """Hodiny čerpané směnami typu dovolená (bez deficitu měsíčního fondu)."""
+    smeny = Smena.objects.filter(
+        user_id=user_id,
+        typ_smeny='dovolena',
+        aktivni=True,
+        datum__year=rok,
+    )
+    if ignorovat_smena_id:
+        smeny = smeny.exclude(id=ignorovat_smena_id)
+    return round(sum(dovolena_hodin_ze_smeny(s) for s in smeny), 2)
+
+
+def _mesic_ukoncen(rok, mesic_cislo, referencni_datum=None):
+    """True pokud kalendářní měsíc již skončil (ne aktuální ani budoucí)."""
+    if referencni_datum is None:
+        referencni_datum = date.today()
+    if rok < referencni_datum.year:
+        return True
+    if rok > referencni_datum.year:
+        return False
+    return mesic_cislo < referencni_datum.month
+
+
+def deficit_mesic_hodin(user_id, rok, mesic_cislo):
+    """
+    Nesplněný měsíční pracovní fond: max(0, fondu - odpracováno - dovolená v měsíci).
+    Dovolená v měsíci se odečte, aby se nepočítala dvakrát (směna + deficit).
+    """
+    fondu = fondu_hodin_mesic(rok, mesic_cislo)
+    if fondu <= 0:
+        return 0.0
+    from .payroll_service import aggregate_hours_by_user
+
+    hours = aggregate_hours_by_user(rok, mesic_cislo).get(user_id, {})
+    odpracovano = float(hours.get('odpracovano_h', 0) or 0)
+    dovolena = float(hours.get('dovolena_h', 0) or 0)
+    return round(max(0.0, fondu - odpracovano - dovolena), 2)
+
+
+def deficit_fondu_rok(user_id, rok, referencni_datum=None):
+    """Součet deficitů z ukončených měsíců v daném roce."""
+    if referencni_datum is None:
+        referencni_datum = date.today()
+    celkem = 0.0
+    for mesic in range(1, 13):
+        if not _mesic_ukoncen(rok, mesic, referencni_datum):
+            continue
+        celkem += deficit_mesic_hodin(user_id, rok, mesic)
+    return round(celkem, 2)
+
+
+def celkove_cerpano_rok(user_id, rok, ignorovat_smena_id=None, referencni_datum=None):
+    """Čerpání fondu: směny dovolené + automatický deficit z nesplněného měsíčního fondu."""
+    smeny_h = cerpana_dovolena_rok(user_id, rok, ignorovat_smena_id=ignorovat_smena_id)
+    deficit_h = deficit_fondu_rok(user_id, rok, referencni_datum=referencni_datum)
+    return round(smeny_h + deficit_h, 2)
+
+
+def prevod_z_predchoziho_roku(user_id, rok):
+    if rok <= 2000:
+        return 0.0
+    prev_rok = rok - 1
+    if not mel_fond_v_roce(user_id, prev_rok):
+        return 0.0
+    fond_prev = DOVOLENA_ROCNI_FOND + prevod_z_predchoziho_roku(user_id, prev_rok)
+    cerpano_prev = celkove_cerpano_rok(user_id, prev_rok)
+    nevyuzito = max(0.0, fond_prev - cerpano_prev)
+    return min(float(DOVOLENA_PREVOD_MAX), nevyuzito)
+
+
+def fond_extra_h(user):
+    val = getattr(user, 'dovolena_fond_extra_h', None)
+    return float(val) if val is not None else 0.0
+
+
+def korekce_cerpano_h(user):
+    val = getattr(user, 'dovolena_korekce_cerpano_h', None)
+    return float(val) if val is not None else 0.0
+
+
+def dovolena_fond_rok(user_id, rok, fond_extra=0.0):
+    return round(
+        DOVOLENA_ROCNI_FOND + prevod_z_predchoziho_roku(user_id, rok) + float(fond_extra or 0),
+        2,
+    )
+
+
+def dovolena_stav(user, rok=None):
+    if not is_dovolena_eligible(user):
+        return None
+    if rok is None:
+        rok = date.today().year
+    extra = fond_extra_h(user)
+    korekce = korekce_cerpano_h(user)
+    prevod = prevod_z_predchoziho_roku(user.id, rok)
+    fond = dovolena_fond_rok(user.id, rok, fond_extra=extra)
+    cerpano_smeny = cerpana_dovolena_rok(user.id, rok)
+    odeceno_deficit = deficit_fondu_rok(user.id, rok)
+    cerpano = round(cerpano_smeny + odeceno_deficit + korekce, 2)
+    zbyva = fond - cerpano
+    return {
+        'rok': rok,
+        'fond_h': fond,
+        'rocni_narok_h': DOVOLENA_ROCNI_FOND,
+        'prevod_h': prevod,
+        'fond_extra_h': extra,
+        'korekce_cerpano_h': korekce,
+        'cerpano_smeny_h': cerpano_smeny,
+        'odeceno_deficit_h': odeceno_deficit,
+        'cerpano_h': cerpano,
+        'zbyva_h': round(max(0.0, zbyva), 2),
+        'propadne_h': round(max(0.0, zbyva - DOVOLENA_PREVOD_MAX), 2),
+    }
+
+
+def validate_dovolena_kapacita(user, datum, typ_smeny, ignorovat_smena_id=None):
+    if typ_smeny != 'dovolena' or not is_dovolena_eligible(user):
+        return None
+    nove_h = DOVOLENA_HODINY_ZA_DEN if is_pracovni_den(datum) else 0.0
+    if nove_h <= 0:
+        return None
+    rok = datum.year if isinstance(datum, date) else datum
+    fond = dovolena_fond_rok(user.id, rok, fond_extra=fond_extra_h(user))
+    cerpano = celkove_cerpano_rok(user.id, rok, ignorovat_smena_id=ignorovat_smena_id) + korekce_cerpano_h(user)
+    if cerpano + nove_h > fond + 0.001:
+        zbyva = max(0.0, fond - cerpano)
+        return (
+            f'Překročen fond dovolené pro rok {rok}. '
+            f'Zbývá {zbyva:.0f} h (fond {fond:.0f} h, čerpáno {cerpano:.0f} h vč. deficitu fondu).'
+        )
+    return None
+
+
+def normalize_dovolena_casy(datum, cas_od='08:00', cas_do='16:00'):
+    """Pro dovolenou v pracovní den nastaví 8h; jinak ponechá vstup."""
+    if is_pracovni_den(datum):
+        return '08:00', '16:00'
+    return cas_od, cas_do
