@@ -2,7 +2,7 @@
 .admin-dashboard * { box-sizing: inherit; }
 .admin-dashboard .container { max-width: 1280px; margin: 0 auto; }
 .tiles-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 16px; align-items: stretch; }
-.tile { background: #fff; border: 1px solid #eee; border-radius: 10px; padding: 16px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); min-height: 96px; display: flex; flex-direction: column; justify-content: center; }
+.tile { background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: 10px; padding: 16px; box-shadow: var(--shadow-card); min-height: 96px; display: flex; flex-direction: column; justify-content: center; }
 .tile--clickable {
     cursor: pointer;
     transition: box-shadow 0.15s ease, border-color 0.15s ease;
@@ -15,9 +15,9 @@
     outline: 2px solid #0066cc;
     outline-offset: 2px;
 }
-.tile-title { font-size: 12px; color: #6b7280; margin-bottom: 6px; }
-.tile-value { font-size: 22px; font-weight: 700; color: #111827; font-variant-numeric: tabular-nums; }
-.tile-sub { font-size: 12px; color: #6b7280; margin-top: 4px; }
+.tile-title { font-size: 12px; color: var(--text-label); margin-bottom: 6px; }
+.tile-value { font-size: 22px; font-weight: 700; color: var(--text-strong); font-variant-numeric: tabular-nums; }
+.tile-sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
 
 /* Dlaždice plnění plánu (nad finančními statistikami) */
 .plan-tiles-row {
@@ -66,9 +66,9 @@
 }
 
 .shifts-details {
-    border: 1px solid #ececec;
+    border: 1px solid var(--border-subtle);
     border-radius: 10px;
-    background: #fafafa;
+    background: var(--bg-card);
     overflow: hidden;
 }
 
@@ -122,7 +122,7 @@
     font-size: 11px;
     font-weight: 600;
     color: #6b7280;
-    background: #fff;
+    background: var(--bg-card);
     border: 1px solid #e5e7eb;
     border-radius: 999px;
     padding: 2px 8px;
@@ -136,12 +136,12 @@
 
 .shifts-details[open] .shifts-summary {
     border-bottom: 1px solid #ececec;
-    background: #fff;
+    background: var(--bg-card);
 }
 
 .shifts-tiles-wrap {
     padding: 12px 10px 14px;
-    background: #fff;
+    background: var(--bg-card);
 }
 
 .shifts-tiles {
@@ -153,7 +153,7 @@
 }
 
 .shift-tile {
-    background: #fff;
+    background: var(--bg-card);
     border: 1px solid #ececec;
     border-radius: 8px;
     padding: 10px 12px;
@@ -190,7 +190,7 @@
     padding: 12px 4px;
 }
 
-.card { background: #fff; border: 1px solid #eee; border-radius: 10px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); overflow: hidden; }
+.card { background: var(--bg-card); border: 1px solid #eee; border-radius: 10px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); overflow: hidden; }
 .card-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid #f0f0f0; }
 .card-title { font-weight: 700; color: #111827; }
 .badge { background: #e8f5e9; color: #166534; border-radius: 999px; padding: 2px 10px; font-size: 12px; }
@@ -203,7 +203,7 @@
 .input, .select { border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px 12px; width: 100%; height: 38px; font-size: 14px; }
 .select { min-width: 160px; flex: 0 1 220px; }
 .btn-primary { background: linear-gradient(90deg, #f472b6, #a78bfa); color: white; border: 0; border-radius: 8px; padding: 0 16px; cursor: pointer; height: 38px; white-space: nowrap; font-size: 14px; font-weight: 500; }
-.btn-outline { background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 6px 10px; cursor: pointer; }
+.btn-outline { background: var(--bg-card); border: 1px solid #e5e7eb; border-radius: 8px; padding: 6px 10px; cursor: pointer; }
 .tasks-list { padding: 8px 12px; display: grid; gap: 8px; }
 .task-item { display: flex; align-items: center; justify-content: space-between; border: 1px solid #f2f2f2; border-radius: 8px; padding: 10px; gap: 10px; }
 .task-item > div:first-child {
@@ -252,7 +252,7 @@
     border-top: 1px solid #eee;
     padding-top: 10px;
     margin: 0 6px 8px;
-    background: #fff;
+    background: var(--bg-card);
     border-radius: 0 0 6px 6px;
 }
 .task-title {

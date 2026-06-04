@@ -62,6 +62,61 @@ const DockNavbar = ({
     }, [location.pathname]);
 
     useEffect(() => {
+        const root = document.documentElement;
+        const header = document.querySelector('.dock-navbar');
+        const mq = window.matchMedia('(min-width: 769px)');
+
+        const syncDockClearance = () => {
+            if (!header || !mq.matches) {
+                root.style.removeProperty('--dock-clearance');
+                root.style.removeProperty('--dock-clearance-compact');
+                root.style.removeProperty('--subnav-sticky-top');
+                return;
+            }
+            const { bottom } = header.getBoundingClientRect();
+            const gap = 16;
+            const clearance = Math.ceil(bottom + gap);
+            root.style.setProperty('--dock-clearance', `${clearance}px`);
+            root.style.setProperty('--dock-clearance-compact', `${Math.max(clearance - 14, 68)}px`);
+            root.style.setProperty('--subnav-sticky-top', `${clearance}px`);
+        };
+
+        const scheduleSync = () => {
+            requestAnimationFrame(() => {
+                requestAnimationFrame(syncDockClearance);
+            });
+        };
+
+        const onScroll = () => {
+            root.classList.toggle('dock-scrolled', window.scrollY > 20);
+            scheduleSync();
+        };
+
+        scheduleSync();
+        onScroll();
+
+        const ro = header ? new ResizeObserver(scheduleSync) : null;
+        ro?.observe(header);
+        const glass = document.querySelector('.dock-glass');
+        if (glass && ro) ro.observe(glass);
+
+        window.addEventListener('scroll', onScroll, { passive: true });
+        window.addEventListener('resize', scheduleSync);
+        mq.addEventListener('change', scheduleSync);
+
+        return () => {
+            window.removeEventListener('scroll', onScroll);
+            window.removeEventListener('resize', scheduleSync);
+            mq.removeEventListener('change', scheduleSync);
+            ro?.disconnect();
+            root.classList.remove('dock-scrolled');
+            root.style.removeProperty('--dock-clearance');
+            root.style.removeProperty('--dock-clearance-compact');
+            root.style.removeProperty('--subnav-sticky-top');
+        };
+    }, [location.pathname]);
+
+    useEffect(() => {
         const mq = window.matchMedia('(max-width: 768px)');
         const handleChange = () => {
             if (!mq.matches) closeMobileNav();

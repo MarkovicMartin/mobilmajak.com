@@ -1,3 +1,11 @@
+.tasks-module,
+.profile-tasks {
+    --card-bg: var(--bg-card);
+    --border-color: var(--border-subtle);
+    --text-muted: var(--text-muted);
+    --highlight-bg: var(--brand-navy-soft);
+}
+
 .tasks-module {
     max-width: 1200px;
     margin: 0 auto;
@@ -215,10 +223,6 @@
 
 .legend-dot--task {
     background: #e67e22;
-}
-
-.profile-calendar-link {
-    margin-top: 0.75rem;
 }
 
 .uc-task-chip,

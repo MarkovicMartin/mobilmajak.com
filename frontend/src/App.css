@@ -42,8 +42,10 @@
 .store-form-overlay,
 .post-form-overlay,
 .access-form-overlay,
+.ticket-form-overlay,
 .payroll-modal-overlay,
-.confirm-overlay {
+.confirm-overlay,
+.bulk-shift-overlay {
   z-index: 15000 !important;
 }
 

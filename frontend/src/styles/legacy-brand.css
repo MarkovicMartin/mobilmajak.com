@@ -1,0 +1,33 @@
+/**
+ * Přemapování sdílených UI prvků na CI barvy (doplňuje moduly se starými hex).
+ */
+.module-btn,
+.seller-dashboard .module-btn,
+.login-form button[type="submit"],
+.news-create-btn,
+.orders-header .btn-primary,
+.access-submit-btn,
+.ticket-form-submit,
+.store-form-submit,
+.user-form-submit {
+    background: linear-gradient(135deg, var(--brand-pink), var(--brand-pink-hover)) !important;
+    color: var(--text-inverse) !important;
+    border: none;
+}
+
+.btn-secondary,
+.orders-header .btn-secondary,
+.kanban-add-btn {
+    background: linear-gradient(135deg, var(--brand-navy), var(--brand-navy-hover)) !important;
+    color: var(--text-inverse) !important;
+}
+
+.profile-tab.active,
+.leaderboard-tab.active {
+    border-color: var(--brand-pink) !important;
+    color: var(--brand-navy) !important;
+}
+
+.profile-tab.active {
+    background: var(--brand-pink-soft) !important;
+}

@@ -7,6 +7,13 @@
     padding: 1.25rem 2rem 2rem;
     max-width: 1200px;
     margin: 0 auto;
+    position: relative;
+    z-index: 1;
+}
+
+.dashboard-main:has(.seller-dashboard) {
+    background: var(--bg-primary);
+    color: var(--text-primary);
 }
 
 .dashboard-loading {
@@ -17,28 +24,30 @@
 
 @media (min-width: 769px) {
     .dashboard-main {
-        padding-top: 0.75rem;
+        padding-top: max(
+            7.75rem,
+            calc(var(--dock-clearance, 7.5rem) + 0.75rem)
+        );
     }
 
-    /* Žebříček: lišta Měsíční / Dnešní / Prodejny pod rozšířeným dockem */
     .dashboard-main:has(.leaderboard-module) {
-        padding-top: 1.35rem;
+        padding-top: calc(var(--dock-clearance) + 0.5rem);
     }
 
     .dashboard-main:has(.analytics-module) {
-        padding: 0.65rem 1.35rem 1.15rem;
+        padding: calc(var(--dock-clearance) + 0.25rem) 1.35rem 1.15rem;
         max-width: 1400px;
     }
 }
 
 /* Seller dashboard minimal overrides */
 .seller-dashboard .module-btn { 
-    background: linear-gradient(90deg,#ff72b6,#9b6bff); 
+    background: linear-gradient(90deg,var(--brand-pink),var(--brand-navy)); 
     color:#fff; border:0; padding:8px 12px; border-radius:10px 
 }
 
 .welcome-section {
-    background: white;
+    background: var(--bg-card);
     padding: 2rem;
     border-radius: 12px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
@@ -47,13 +56,13 @@
 }
 
 .welcome-section h2 {
-    color: #333;
+    color: var(--text-heading);
     margin: 0 0 0.5rem 0;
     font-size: 2rem;
 }
 
 .welcome-section p {
-    color: #666;
+    color: var(--text-secondary);
     margin: 0;
     font-size: 1.1rem;
 }
@@ -63,7 +72,7 @@
 }
 
 .modules-section h3 {
-    color: #333;
+    color: var(--text-heading);
     margin-bottom: 1.5rem;
     font-size: 1.5rem;
 }
@@ -75,7 +84,7 @@
 }
 
 .module-card {
-    background: white;
+    background: var(--bg-card);
     padding: 1.5rem;
     border-radius: 12px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
@@ -97,18 +106,18 @@
 }
 
 .module-card h4 {
-    color: #333;
+    color: var(--text-heading);
     margin: 0 0 0.5rem 0;
     font-size: 1.3rem;
 }
 
 .module-card p {
-    color: #666;
+    color: var(--text-secondary);
     margin: 0 0 1rem 0;
 }
 
 .module-btn {
-    background: linear-gradient(90deg, #ff6b9d 0%, #c44569 100%);
+    background: linear-gradient(90deg, var(--brand-pink) 0%, var(--brand-pink-hover) 100%);
     color: white;
     border: none;
     padding: 0.75rem 1.5rem;
@@ -130,14 +139,14 @@
 }
 
 .admin-section {
-    background: white;
+    background: var(--bg-card);
     padding: 2rem;
     border-radius: 12px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
 }
 
 .admin-section h3 {
-    color: #333;
+    color: var(--text-heading);
     margin-bottom: 1.5rem;
     font-size: 1.5rem;
 }

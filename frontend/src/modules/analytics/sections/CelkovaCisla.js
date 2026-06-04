@@ -138,7 +138,7 @@ const CategoryTimeseries = ({ filters, defaultGroupBy, defaultSelected }) => {
                         const yMax = nice * pow;
                         const py = (v) => bottom - (h * (v / yMax));
                         const groupW = dates.length ? w / dates.length : w;
-                        const palette = ['#e74c3c', '#3498db', '#27ae60', '#9b59b6', '#f39c12', '#2ecc71'];
+                        const palette = ['#1B2848', '#E40B4D', '#4a6fa5', '#7b8fb8', '#27ae60', '#c9d4e8'];
                         const barGap = 3;
                         const barW = Math.max(6, Math.min(22, (groupW - 6) / Math.max(1, series.length) - barGap));
                         return (

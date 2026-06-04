@@ -15,14 +15,14 @@
 }
 
 .store-management-header h1 {
-    color: #333;
+    color: var(--text-heading);
     margin: 0;
     font-size: 28px;
     font-weight: 600;
 }
 
 .add-store-btn {
-    background: linear-gradient(135deg, #ff6b9d, #c44569);
+    background: linear-gradient(135deg, var(--brand-pink), var(--brand-pink-hover));
     color: white;
     border: none;
     padding: 12px 24px;
@@ -90,7 +90,7 @@
 
 .search-box input:focus {
     outline: none;
-    border-color: #ff6b9d;
+    border-color: var(--brand-pink);
 }
 
 .filter-buttons {
@@ -101,7 +101,7 @@
 .filter-buttons button {
     padding: 8px 16px;
     border: 2px solid #e0e0e0;
-    background: white;
+    background: var(--bg-card);
     border-radius: 6px;
     font-size: 14px;
     cursor: pointer;
@@ -109,14 +109,14 @@
 }
 
 .filter-buttons button.active {
-    background: #ff6b9d;
-    border-color: #ff6b9d;
+    background: var(--brand-pink);
+    border-color: var(--brand-pink);
     color: white;
 }
 
 .filter-buttons button:hover:not(.active) {
-    border-color: #ff6b9d;
-    color: #ff6b9d;
+    border-color: var(--brand-pink);
+    color: var(--brand-pink);
 }
 
 /* Bulk Actions */
@@ -139,7 +139,7 @@
 .bulk-actions button {
     padding: 6px 12px;
     border: 1px solid #ddd;
-    background: white;
+    background: var(--bg-card);
     border-radius: 4px;
     font-size: 12px;
     cursor: pointer;
@@ -160,12 +160,11 @@
     background: rgba(0, 0, 0, 0.5);
     display: flex;
     justify-content: center;
-    align-items: center;
     z-index: 15000;
 }
 
 .store-form {
-    background: white;
+    background: var(--bg-card);
     border-radius: 12px;
     padding: 30px;
     width: 90%;
@@ -246,7 +245,7 @@
 .form-group textarea:focus,
 .form-group select:focus {
     outline: none;
-    border-color: #ff6b9d;
+    border-color: var(--brand-pink);
 }
 
 .form-group input[type="checkbox"] {
@@ -287,7 +286,7 @@
 }
 
 .save-btn {
-    background: linear-gradient(135deg, #ff6b9d, #c44569);
+    background: linear-gradient(135deg, var(--brand-pink), var(--brand-pink-hover));
     color: white;
     border: none;
     padding: 12px 24px;
@@ -305,7 +304,7 @@
 
 /* Table Styles */
 .stores-table {
-    background: white;
+    background: var(--bg-card);
     border-radius: 12px;
     overflow: hidden;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
@@ -317,11 +316,11 @@
 }
 
 .stores-table th {
-    background: #f8f9fa;
+    background: var(--bg-inset);
     padding: 15px 12px;
     text-align: left;
     font-weight: 600;
-    color: #333;
+    color: var(--text-label);
     font-size: 14px;
     border-bottom: 2px solid #e9ecef;
 }
@@ -334,7 +333,7 @@
 }
 
 .stores-table tr:hover {
-    background: #f8f9fa;
+    background: var(--bg-inset);
 }
 
 /* Status Badge */

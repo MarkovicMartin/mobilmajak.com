@@ -167,7 +167,7 @@ const EshopCategoryAnalytics = ({ filters }) => {
                                     const yMax = niceMax(maxYraw*1.1);
                                     const py = v => bottom - (height * (v / yMax));
                                     const groupW = dates.length>0 ? width / dates.length : width;
-                                    const palette = ['#e74c3c','#3498db','#27ae60','#9b59b6','#f39c12','#2ecc71'];
+                                    const palette = ['#1B2848','#E40B4D','#4a6fa5','#7b8fb8','#27ae60','#c9d4e8'];
                                     const barGap = 4;
                                     const barW = Math.max(8, Math.min(26, (groupW - 8) / Math.max(1, series.length) - barGap));
 

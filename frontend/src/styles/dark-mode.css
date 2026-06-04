@@ -1,0 +1,365 @@
+/**
+ * Tmavý režim – čitelnost textů, vstupů a panelů (přepisuje modulové hex/barvy).
+ * Načítat jako poslední globální styl v App.js.
+ */
+
+/* --- Globální formuláře --- */
+.dark-mode label {
+    color: var(--text-label);
+}
+
+.dark-mode input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']),
+.dark-mode select,
+.dark-mode textarea {
+    background-color: var(--bg-input);
+    color: var(--text-primary);
+    border-color: var(--border-input);
+}
+
+.dark-mode input::placeholder,
+.dark-mode textarea::placeholder {
+    color: var(--text-muted);
+}
+
+.dark-mode option {
+    background-color: var(--bg-card);
+    color: var(--text-primary);
+}
+
+/* --- Custom dropdown --- */
+.dark-mode .dropdown-trigger {
+    background: var(--bg-input) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-input) !important;
+    box-shadow: var(--shadow-card);
+}
+
+.dark-mode .dropdown-trigger:hover,
+.dark-mode .dropdown-trigger.open {
+    background: var(--bg-tertiary) !important;
+    color: var(--text-primary) !important;
+}
+
+.dark-mode .dropdown-menu {
+    background: var(--bg-card) !important;
+    border-color: var(--border-primary) !important;
+    color: var(--text-primary);
+}
+
+.dark-mode .dropdown-search {
+    background: var(--bg-inset) !important;
+    border-bottom-color: var(--border-primary) !important;
+}
+
+.dark-mode .search-input {
+    background: var(--bg-input) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-input) !important;
+}
+
+.dark-mode .dropdown-option {
+    color: var(--text-primary) !important;
+}
+
+.dark-mode .dropdown-option:hover {
+    background: var(--brand-pink-soft) !important;
+    color: var(--text-primary) !important;
+}
+
+.dark-mode .dropdown-option.selected {
+    background: linear-gradient(135deg, var(--brand-pink), var(--brand-navy)) !important;
+    color: var(--text-inverse) !important;
+}
+
+.dark-mode .dropdown-arrow {
+    color: var(--text-secondary);
+}
+
+/* --- Analytika: filtry, popisky, selecty --- */
+.dark-mode .analytics-module .filter-group label,
+.dark-mode .celkova-cisla-filters .filter-group label,
+.dark-mode .polozky-view .filter-group label,
+.dark-mode .chart-filters .filter-group label,
+.dark-mode .polozky-metric-dropdown > label {
+    color: var(--text-label) !important;
+}
+
+.dark-mode .analytics-module .filter-group select,
+.dark-mode .analytics-module .filter-group input,
+.dark-mode .celkova-cisla-filters select,
+.dark-mode .celkova-cisla-filters input,
+.dark-mode .polozky-view select,
+.dark-mode .polozky-view input,
+.dark-mode .chart-filters select,
+.dark-mode .chart-filters input,
+.dark-mode .prodejce-select,
+.dark-mode .analytics-date-picker-input {
+    background-color: var(--bg-input) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-input) !important;
+}
+
+.dark-mode .chart-filters {
+    background: var(--bg-card) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-subtle) !important;
+}
+
+.dark-mode .chart-filters .filters-header h3 {
+    -webkit-text-fill-color: var(--text-primary);
+    color: var(--text-primary);
+}
+
+/* --- Položky: metriky dropdown panel --- */
+.dark-mode .polozky-metric-dropdown__panel,
+.dark-mode .polozky-metric-dropdown__all,
+.dark-mode .polozky-metric-dropdown__item,
+.dark-mode .polozky-metric-dropdown__group-title {
+    background: var(--bg-card);
+    color: var(--text-primary);
+    border-color: var(--border-subtle);
+}
+
+.dark-mode .polozky-metric-dropdown__group-title {
+    color: var(--text-muted) !important;
+}
+
+.dark-mode .polozky-metric-dropdown__item:hover {
+    background: var(--brand-pink-soft) !important;
+}
+
+.dark-mode .polozky-metric-dropdown__item span {
+    color: var(--text-primary);
+}
+
+/* --- Panely a tabulky --- */
+.dark-mode .analytics-module .data-table,
+.dark-mode .polozky-view .data-table,
+.dark-mode .section-content .data-table {
+    background: var(--bg-card) !important;
+    color: var(--text-primary);
+    box-shadow: var(--shadow-card);
+}
+
+.dark-mode .data-table h4,
+.dark-mode .data-table h3 {
+    color: var(--text-primary) !important;
+    background: var(--bg-inset) !important;
+    border-bottom-color: var(--border-primary) !important;
+}
+
+.dark-mode .sellers-panel {
+    background: transparent !important;
+}
+
+.dark-mode .data-table th {
+    background: var(--bg-inset) !important;
+    color: var(--text-label) !important;
+    border-bottom-color: var(--border-primary) !important;
+}
+
+.dark-mode .data-table td {
+    color: var(--text-primary);
+    border-bottom-color: var(--border-secondary) !important;
+}
+
+.dark-mode .data-table tr:hover {
+    background: var(--bg-inset) !important;
+}
+
+/* --- Last update / info pruhy --- */
+.dark-mode .last-update {
+    background: var(--brand-navy-soft) !important;
+    border-left-color: var(--brand-pink) !important;
+}
+
+.dark-mode .last-update small {
+    color: var(--text-secondary) !important;
+}
+
+.dark-mode .backup-info {
+    background: var(--bg-inset) !important;
+    border-color: var(--border-primary) !important;
+    color: var(--text-primary);
+}
+
+.dark-mode .backup-status h4,
+.dark-mode .backup-status p {
+    color: var(--text-primary);
+}
+
+/* --- Navigace analytiky --- */
+.dark-mode .analytics-nav-tab--active,
+.dark-mode .analytics-nav-tab.active {
+    color: var(--text-primary) !important;
+    background: var(--brand-pink-soft) !important;
+}
+
+.dark-mode .analytics-nav-tab {
+    color: var(--text-secondary);
+}
+
+.dark-mode .analytics-nav .actor-status {
+    color: var(--text-secondary);
+}
+
+/* --- Karty prodejců / metriky --- */
+.dark-mode .seller-card,
+.dark-mode .analytics-module .stat-card,
+.dark-mode .metric-card {
+    background: var(--bg-card) !important;
+    border-color: var(--border-primary);
+}
+
+.dark-mode .analytics-module .stat-card {
+    border-left-color: var(--accent-analytics) !important;
+}
+
+.dark-mode .seller-info h5.seller-name,
+.dark-mode .analytics-module .metric-value,
+.dark-mode .analytics-module .stat-value {
+    color: var(--text-strong) !important;
+}
+
+.dark-mode .seller-store,
+.dark-mode .metric-label,
+.dark-mode .analytics-module .stat-card h4,
+.dark-mode .stat-change {
+    color: var(--text-secondary) !important;
+}
+
+.dark-mode .metric-item {
+    background: var(--bg-inset) !important;
+}
+
+.dark-mode .metric-item.primary {
+    background: var(--bg-tertiary) !important;
+}
+
+.dark-mode .seller-header {
+    border-bottom-color: var(--border-primary) !important;
+}
+
+/* --- Loading / error --- */
+.dark-mode .celkova-cisla-loading,
+.dark-mode .celkova-cisla-filters {
+    background: var(--bg-card) !important;
+    color: var(--text-primary);
+}
+
+.dark-mode .celkova-cisla-loading p {
+    color: var(--text-secondary);
+}
+
+.dark-mode .celkova-cisla-error {
+    background: rgba(180, 35, 24, 0.15) !important;
+    border-color: var(--accent-negative) !important;
+    color: var(--text-primary) !important;
+}
+
+/* --- Servis / E-shop / Celková čísla – přepis tmavých textů na světlých podkladech --- */
+.dark-mode .servis h2,
+.dark-mode .servis h3,
+.dark-mode .servis h4,
+.dark-mode .eshop-analytics h2,
+.dark-mode .eshop-analytics h3,
+.dark-mode .eshop-analytics h4,
+.dark-mode .celkova-cisla h2,
+.dark-mode .celkova-cisla h3,
+.dark-mode .celkova-cisla h4,
+.dark-mode .celkova-cisla-header h2,
+.dark-mode .celkova-cisla-header p {
+    color: var(--text-primary) !important;
+}
+
+.dark-mode .servis .filter-group label,
+.dark-mode .eshop-analytics .filter-group label,
+.dark-mode .celkova-cisla .filter-group label {
+    color: var(--text-label) !important;
+}
+
+.dark-mode .overview-card,
+.dark-mode .breakdown-card,
+.dark-mode .kanal-card {
+    background: var(--bg-card) !important;
+    color: var(--text-primary);
+}
+
+/* --- Datepicker --- */
+.dark-mode .react-datepicker {
+    background-color: var(--bg-card) !important;
+    border-color: var(--border-primary) !important;
+    color: var(--text-primary);
+}
+
+.dark-mode .react-datepicker__header {
+    background-color: var(--bg-inset) !important;
+    border-bottom-color: var(--border-primary) !important;
+}
+
+.dark-mode .react-datepicker__current-month,
+.dark-mode .react-datepicker__day-name,
+.dark-mode .react-datepicker__day {
+    color: var(--text-primary);
+}
+
+.dark-mode .react-datepicker__day:hover {
+    background-color: var(--bg-tertiary) !important;
+}
+
+.dark-mode .analytics-date-range-sep {
+    color: var(--text-muted);
+}
+
+/* --- Porovnání KPI --- */
+.dark-mode .polozky-comparison-kpi,
+.dark-mode .polozky-comparison-summary {
+    background: var(--bg-card);
+    color: var(--text-primary);
+}
+
+.dark-mode .polozky-comparison-kpi__label {
+    color: var(--text-label);
+}
+
+.dark-mode .polozky-comparison-kpi__value {
+    color: var(--text-strong);
+}
+
+.dark-mode .polozky-seller-detail__metric-btn,
+.dark-mode .polozky-seller-detail__metric-chip {
+    background: var(--bg-input) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-input) !important;
+}
+
+.dark-mode .polozky-seller-detail__detail-chart {
+    background: var(--bg-inset) !important;
+}
+
+.dark-mode .polozky-seller-panel__clear,
+.dark-mode .polozky-seller-filter .dropdown-menu {
+    color: var(--text-primary);
+    border-color: var(--border-subtle);
+}
+
+/* --- Grafy / sekce s bílým pozadím --- */
+.dark-mode .analytics-module .charts-section,
+.dark-mode .analytics-module .chart-container,
+.dark-mode .analytics-module .analysis-section,
+.dark-mode .analytics-module .modal-content {
+    background: var(--bg-card) !important;
+    color: var(--text-primary);
+}
+
+.dark-mode .analytics-module .charts-section h4,
+.dark-mode .analytics-module .chart-container h4 {
+    color: var(--text-primary) !important;
+}
+
+/* --- Graf tooltip --- */
+.dark-mode .polozky-chart-tooltip {
+    background: var(--bg-card);
+    border-color: var(--border-primary);
+    color: var(--text-primary);
+}

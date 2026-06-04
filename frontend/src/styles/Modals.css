@@ -1,0 +1,132 @@
+/**
+ * Projektové modály – scrollování při přetečení viewportu, obsah odshora.
+ * Importováno z App.js (před lazy chunky komponent).
+ */
+
+/* --- Backdrop: scroll celé vrstvy, modal začíná nahoře --- */
+.modal-overlay,
+.user-form-overlay,
+.store-form-overlay,
+.post-form-overlay,
+.access-form-overlay,
+.ticket-form-overlay,
+.payroll-modal-overlay,
+.confirm-overlay,
+.bulk-shift-overlay {
+    align-items: flex-start !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    box-sizing: border-box;
+}
+
+.modal-overlay,
+.payroll-modal-overlay,
+.confirm-overlay {
+    padding: max(12px, env(safe-area-inset-top, 0px))
+        max(12px, env(safe-area-inset-right, 0px))
+        max(12px, env(safe-area-inset-bottom, 0px))
+        max(12px, env(safe-area-inset-left, 0px));
+}
+
+/* --- Analytika / servis: hlavička fixní, tělo scrolluje --- */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    display: flex;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal-overlay > .modal-content:has(.modal-body) {
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-card);
+    color: var(--text-primary);
+    width: min(900px, 92vw);
+    max-height: min(90vh, calc(100dvh - 24px));
+    margin: 0 auto;
+    flex-shrink: 0;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    overflow: hidden;
+}
+
+.modal-overlay > .modal-content:has(.modal-body) > .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+    padding: 14px 18px;
+    background: var(--bg-inset);
+    border-bottom: 1px solid var(--border-subtle);
+    color: var(--text-primary);
+}
+
+.modal-overlay > .modal-content:has(.modal-body) > .modal-body {
+    padding: 18px;
+    overflow-y: auto;
+    flex: 1 1 auto;
+    min-height: 0;
+    -webkit-overflow-scrolling: touch;
+}
+
+.modal-close {
+    border: none;
+    background: transparent;
+    font-size: 1.2rem;
+    cursor: pointer;
+}
+
+.modal-loading,
+.modal-error {
+    padding: 12px;
+}
+
+/* --- Jednopanelové modály uvnitř overlay (objednávky, profil, přístupy…) --- */
+.modal-overlay > .order-form-modal,
+.modal-overlay > .order-detail-modal,
+.modal-overlay > .user-form,
+.modal-overlay > .store-form,
+.modal-overlay > .post-form,
+.modal-overlay > .access-form-modal,
+.access-form-overlay > .access-form-modal,
+.user-form-overlay > .user-form,
+.store-form-overlay > .store-form,
+.post-form-overlay > .post-form {
+    flex-shrink: 0;
+    margin: 0 auto;
+    max-height: min(90vh, calc(100dvh - 24px)) !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Směna – jeden panel .modal-content bez .modal-body */
+.modal-overlay > .modal-content:not(:has(.modal-body)) {
+    flex-shrink: 0;
+    margin: 0 auto;
+    max-height: min(90vh, calc(100dvh - 24px));
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Hromadné směny – overlay scroll + vnitřní scroll obsahu */
+.bulk-shift-overlay > .bulk-shift-modal {
+    flex-shrink: 0;
+    margin: 0 auto;
+    max-height: min(90svh, calc(100dvh - 24px)) !important;
+}
+
+/* Mzdový panel – malý dialog, ale scrollovatelný při zoomu */
+.payroll-modal-overlay > .payroll-modal {
+    flex-shrink: 0;
+    margin: 0 auto;
+    max-height: min(90vh, calc(100dvh - 24px));
+    overflow-y: auto;
+}
+
+.confirm-overlay > .confirm-dialog {
+    flex-shrink: 0;
+    margin: 0 auto;
+}

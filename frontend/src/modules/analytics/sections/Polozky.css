@@ -1,0 +1,535 @@
+.sellers-panel {
+    margin-top: 0.5rem;
+    background: transparent;
+}
+
+.polozky-view .sellers-panel .no-data {
+    padding: 1.5rem;
+    color: var(--text-muted);
+}
+
+.polozky-global-filters {
+    margin-bottom: 12px;
+}
+
+.polozky-global-filters .filter-row {
+    align-items: flex-end;
+}
+
+/* Srovnání období – stejný vzor jako Celková čísla (controls + split v CelkovaCisla.css) */
+.polozky-container.comparison-mode .polozky-global-filters {
+    margin-bottom: 8px;
+}
+
+.polozky-compact-group {
+    min-width: 0;
+}
+
+.polozky-compact-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-label);
+    cursor: pointer;
+}
+
+.polozky-metric-dropdown__control {
+    min-width: 11rem;
+}
+
+.polozky-metric-dropdown__panel {
+    max-height: 320px;
+    overflow-y: auto;
+    min-width: 260px;
+}
+
+.polozky-metric-dropdown__all {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    font-weight: 600;
+    border-bottom: 1px solid #e1e8ed;
+    cursor: pointer;
+}
+
+.polozky-metric-dropdown__group {
+    padding: 6px 0;
+    border-bottom: 1px solid #f0f2f5;
+}
+
+.polozky-metric-dropdown__group:last-child {
+    border-bottom: none;
+}
+
+.polozky-metric-dropdown__group-title {
+    padding: 6px 14px 4px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--text-muted);
+}
+
+.polozky-metric-dropdown__item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    cursor: pointer;
+    font-size: 0.88rem;
+}
+
+.polozky-metric-dropdown__item:hover {
+    background: var(--brand-pink-soft);
+}
+
+.polozky-delta {
+    font-size: 0.75rem;
+    margin-left: 6px;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.polozky-delta--up {
+    color: var(--accent-positive);
+}
+
+.polozky-delta--down {
+    color: var(--accent-negative);
+}
+
+.polozky-seller-chart {
+    margin: 16px 0;
+    padding: 12px;
+    background: var(--bg-inset);
+    border-radius: 8px;
+}
+
+.polozky-seller-chart__head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
+.polozky-seller-chart__head h5 {
+    margin: 0 0 4px;
+}
+
+.polozky-seller-chart__meta {
+    font-size: 0.8rem;
+    opacity: 0.75;
+}
+
+.polozky-seller-chart__controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 20px;
+    margin-bottom: 12px;
+}
+
+.polozky-seller-chart__control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.polozky-seller-chart__control-label {
+    font-size: 0.75rem;
+    opacity: 0.8;
+}
+
+.polozky-seller-chart__btn-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.polozky-seller-chart__preset {
+    font-size: 0.75rem;
+    padding: 4px 10px;
+}
+
+.polozky-seller-chart__preset--on {
+    background: color-mix(in srgb, var(--accent-analytics) 28%, transparent);
+    border-color: var(--accent-analytics);
+}
+
+.polozky-seller-chart__plot {
+    width: 100%;
+    height: 260px;
+    min-height: 200px;
+}
+
+.polozky-seller-chart__plot--loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    opacity: 0.85;
+}
+
+.polozky-chart-hint {
+    font-size: 0.9rem;
+    opacity: 0.85;
+    margin: 8px 0;
+}
+
+.polozky-chart-tooltip {
+    background: rgba(20, 24, 32, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 0.85rem;
+}
+
+.polozky-chart-tooltip__title {
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.polozky-chart-tooltip__sub {
+    margin-top: 4px;
+    font-size: 0.75rem;
+    opacity: 0.75;
+}
+
+.polozky-tasks-panel {
+    margin-top: 24px;
+}
+
+.polozky-tasks-panel__toggle {
+    width: 100%;
+    text-align: left;
+    padding: 10px 12px;
+    background: rgba(255, 255, 255, 0.06);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    color: inherit;
+    font-weight: 600;
+}
+
+.polozky-tasks-panel__body {
+    margin-top: 8px;
+    padding: 12px;
+}
+
+.polozky-tasks-hint {
+    font-size: 0.85rem;
+    opacity: 0.8;
+    margin-bottom: 10px;
+}
+
+.polozky-tasks-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.polozky-tasks-table th,
+.polozky-tasks-table td {
+    padding: 6px 8px;
+    text-align: left;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.seller-card--highlight {
+    outline: 2px solid var(--accent-analytics);
+}
+
+.seller-card__chart-btn {
+    margin-left: 8px;
+    font-size: 0.75rem;
+}
+
+.polozky-pane-label {
+    font-size: 0.9rem;
+    opacity: 0.9;
+    margin-bottom: 8px;
+}
+
+.polozky-seller-filter {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem 1rem;
+    align-items: flex-end;
+    width: 100%;
+}
+
+.polozky-seller-filter__pick {
+    position: relative;
+    min-width: 12rem;
+}
+
+.polozky-seller-panel__clear {
+    display: block;
+    width: 100%;
+    padding: 8px 14px;
+    text-align: left;
+    border: none;
+    border-bottom: 1px solid #e1e8ed;
+    background: transparent;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.polozky-seller-option-role {
+    margin-left: auto;
+    font-size: 0.72rem;
+    opacity: 0.65;
+}
+
+.polozky-self-time-btn {
+    padding: 8px 12px;
+    background: #ebf5fb;
+    color: #2c5282;
+    border: 1px solid #bee3f8;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.82rem;
+}
+
+.polozky-self-time-btn:hover {
+    background: #d6eaf8;
+}
+
+.polozky-seller-compare {
+    margin: 12px 0;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 8px;
+}
+
+.polozky-seller-compare h4 {
+    margin: 0 0 10px;
+    font-size: 1rem;
+}
+
+.polozky-seller-compare-table-wrap {
+    overflow-x: auto;
+}
+
+.polozky-seller-compare-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+}
+
+.polozky-seller-compare-table th,
+.polozky-seller-compare-table td {
+    padding: 6px 10px;
+    text-align: left;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.polozky-seller-compare-table th {
+    font-weight: 600;
+    font-size: 0.8rem;
+}
+
+/* Detail prodejce – rozklik */
+.polozky-seller-detail {
+    margin: 12px 0 16px;
+}
+
+.polozky-seller-detail__header h4 {
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+.polozky-seller-detail__sub {
+    font-size: 0.8rem;
+    color: #64748b;
+}
+
+.polozky-seller-detail__body {
+    max-height: min(85vh, 920px);
+    overflow-y: auto;
+}
+
+.polozky-seller-detail__compare-select {
+    width: 100%;
+    max-width: 280px;
+    padding: 0.4rem 0.55rem;
+    font-size: 0.85rem;
+}
+
+.polozky-seller-detail__section {
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid #e9ecef;
+}
+
+.polozky-seller-detail__section-title {
+    margin: 0 0 8px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--brand-navy);
+}
+
+.polozky-seller-detail__overview-metrics,
+.polozky-seller-detail__metric-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+
+.polozky-seller-detail__metric-btn,
+.polozky-seller-detail__metric-chip {
+    padding: 5px 10px;
+    border-radius: 16px;
+    border: 1px solid var(--border-input);
+    background: var(--bg-input);
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    color: var(--text-primary);
+}
+
+.polozky-seller-detail__metric-btn--on,
+.polozky-seller-detail__metric-chip--on {
+    background: var(--brand-navy-soft);
+    border-color: var(--brand-navy);
+    color: var(--text-primary);
+}
+
+.polozky-seller-detail__detail-chart {
+    margin-top: 10px;
+    padding: 10px;
+    background: var(--bg-inset);
+    border-radius: 8px;
+}
+
+.polozky-seller-detail__detail-chart h6 {
+    margin: 0 0 8px;
+    font-size: 0.85rem;
+}
+
+.polozky-seller-chart__plot--compact {
+    height: 200px;
+    min-height: 200px;
+}
+
+.seller-card--clickable {
+    cursor: pointer;
+}
+
+.seller-card--clickable:hover {
+    border-color: var(--brand-navy);
+    box-shadow: 0 2px 8px rgba(52, 152, 219, 0.15);
+}
+
+.seller-card--active {
+    outline: 2px solid var(--brand-navy);
+    outline-offset: 2px;
+}
+
+.seller-card__open-hint {
+    margin-left: 8px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--brand-navy);
+}
+
+/* Rozpad metrik u prodejce – malé dlaždičky: číslo + název */
+.seller-detail-chips {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(2.85rem, 1fr));
+    gap: 3px;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border-subtle);
+}
+
+.seller-detail-chips--dense {
+    grid-template-columns: repeat(auto-fill, minmax(2.65rem, 1fr));
+    gap: 2px;
+}
+
+.polozky-chip {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    padding: 3px 2px;
+    border-radius: 4px;
+    background: var(--bg-inset);
+    border: 1px solid var(--border-subtle);
+    min-height: 0;
+    text-align: center;
+}
+
+.polozky-chip--zero {
+    opacity: 0.5;
+}
+
+.polozky-chip__value {
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: var(--text-strong);
+    line-height: 1.1;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.seller-detail-chips--dense .polozky-chip__value {
+    font-size: 0.64rem;
+}
+
+.polozky-chip__label {
+    font-size: 0.5rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    line-height: 1.05;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.seller-detail-chips--dense .polozky-chip__label {
+    font-size: 0.48rem;
+}
+
+.polozky-chip__extra {
+    font-size: 0.45rem;
+    font-weight: 600;
+    color: var(--accent-analytics);
+    line-height: 1;
+}
+
+.polozky-chip--servis {
+    background: color-mix(in srgb, var(--accent-positive) 12%, var(--bg-inset));
+    border-color: color-mix(in srgb, var(--accent-positive) 35%, var(--border-subtle));
+}
+
+.polozky-chip--vykup .polozky-chip__value,
+.polozky-chip--sun .polozky-chip__value {
+    color: var(--accent-warning);
+}
+
+.polozky-chip--sun {
+    background: color-mix(in srgb, var(--accent-warning) 10%, var(--bg-inset));
+    border-color: color-mix(in srgb, var(--accent-warning) 30%, var(--border-subtle));
+}
+
+.dark-mode .polozky-chip--servis {
+    background: var(--bg-inset);
+}
+
+.dark-mode .polozky-chip--sun {
+    background: var(--bg-inset);
+}

@@ -1,7 +1,7 @@
 .plans-nav {
     position: sticky;
-    top: 0;
-    z-index: 50;
+    top: var(--subnav-sticky-top, var(--dock-clearance));
+    z-index: 1000;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -9,9 +9,9 @@
     gap: 0.65rem 1rem;
     padding: 0.65rem 0.85rem;
     margin-bottom: 1rem;
-    background: #fff;
+    background: var(--bg-card);
     border-radius: 12px;
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--border-subtle);
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
 }
 
@@ -84,7 +84,7 @@
     padding: 0.35rem 0.5rem;
     border: 1px solid #dee2e6;
     border-radius: 8px;
-    background: #fff;
+    background: var(--bg-card);
     font-size: 0.85rem;
     font-family: inherit;
     color: #2d3748;
@@ -101,7 +101,7 @@
 .plans-nav-rezim-btn {
     padding: 0.35rem 0.6rem;
     border: none;
-    background: #fff;
+    background: var(--bg-card);
     font-size: 0.8rem;
     font-weight: 500;
     color: #64748b;

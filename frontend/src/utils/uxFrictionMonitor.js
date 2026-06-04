@@ -6,9 +6,34 @@ import api from '../services/api';
 import { routeToScreen } from './clarity';
 
 const SESSION_SENT = new Set();
-const RAGE_WINDOW_MS = 900;
-const RAGE_MIN_CLICKS = 4;
+const RAGE_WINDOW_MS = 1500;
+const RAGE_MIN_CLICKS = 7;
+const DEAD_CLICK_WINDOW_MS = 2500;
+const DEAD_CLICK_MIN = 3;
+const MIN_REPORT_INTERVAL_MS = 3 * 60 * 1000;
+const JS_ERROR_MIN_OCCURRENCES = 2;
+const API_ERROR_MIN_OCCURRENCES = 2;
+
 const clickBuckets = new Map();
+const deadClickBuckets = new Map();
+const jsErrorCounts = new Map();
+const apiErrorCounts = new Map();
+let lastReportAt = 0;
+
+const JS_ERROR_IGNORE = [
+    /resizeobserver loop/i,
+    /^script error\.?$/i,
+    /loading chunk \d+ failed/i,
+    /loading css chunk/i,
+    /dynamically imported module/i,
+    /non-error promise rejection/i,
+    /\bcancel(led|ed)?\b/i,
+    /\babort(ed)?\b/i,
+    /^network error$/i,
+    /chrome-extension:/i,
+    /moz-extension:/i,
+    /extension context/i,
+];
 
 const INTERACTIVE_SELECTOR = [
     'a[href]',
@@ -47,10 +72,33 @@ function isInteractive(el) {
 }
 
 function sessionKey(kind, route, element, detail) {
-    return `${kind}|${route}|${element}|${detail}`.slice(0, 400);
+    const stableDetail = (kind === 'dead_click' || kind === 'rage_click') ? '' : detail;
+    return `${kind}|${route}|${element}|${stableDetail}`.slice(0, 400);
+}
+
+function shouldIgnoreJsError(detail) {
+    const text = (detail || '').trim();
+    if (!text) {
+        return true;
+    }
+    return JS_ERROR_IGNORE.some((re) => re.test(text));
+}
+
+function bumpStrikeCounter(map, key, windowMs) {
+    const now = Date.now();
+    const prev = map.get(key) || [];
+    const recent = prev.filter((t) => now - t <= windowMs);
+    recent.push(now);
+    map.set(key, recent);
+    return recent.length;
 }
 
 export async function reportUxFriction(payload) {
+    const now = Date.now();
+    if (now - lastReportAt < MIN_REPORT_INTERVAL_MS) {
+        return;
+    }
+
     const route = payload.route || window.location.pathname;
     const screen = payload.screen || routeToScreen(route);
     const element = payload.element || '';
@@ -62,7 +110,7 @@ export async function reportUxFriction(payload) {
     SESSION_SENT.add(key);
 
     try {
-        await api.post('/tickets/ux-friction/', {
+        const res = await api.post('/tickets/ux-friction/', {
             kind: payload.kind,
             route,
             screen,
@@ -70,6 +118,9 @@ export async function reportUxFriction(payload) {
             detail,
             url: window.location.href,
         });
+        if (!res.data?.skipped) {
+            lastReportAt = now;
+        }
     } catch {
         SESSION_SENT.delete(key);
     }
@@ -107,24 +158,41 @@ function onDeadClick(event) {
         const style = window.getComputedStyle(el);
         if (style.cursor === 'pointer') {
             const element = describeElement(el);
-            reportUxFriction({
-                kind: 'dead_click',
-                element,
-                detail: 'Prvek vypadá klikací (cursor: pointer), ale neproběhla interakce.',
-            });
+            const count = bumpStrikeCounter(deadClickBuckets, element, DEAD_CLICK_WINDOW_MS);
+            if (count >= DEAD_CLICK_MIN) {
+                deadClickBuckets.delete(element);
+                reportUxFriction({
+                    kind: 'dead_click',
+                    element,
+                    detail: `${count}× klik na prvek s cursor:pointer bez očekávané reakce.`,
+                });
+            }
             return;
         }
         el = el.parentElement;
     }
 }
 
+function reportJsErrorIfRepeated(detail) {
+    const normalized = detail.slice(0, 500);
+    if (shouldIgnoreJsError(normalized)) {
+        return;
+    }
+    const count = bumpStrikeCounter(jsErrorCounts, normalized, 10 * 60 * 1000);
+    if (count < JS_ERROR_MIN_OCCURRENCES) {
+        return;
+    }
+    jsErrorCounts.delete(normalized);
+    reportUxFriction({
+        kind: 'js_error',
+        detail: `${normalized} (${count}× v relaci)`,
+    });
+}
+
 function onGlobalError(event) {
     const msg = event.message || 'Neznámá chyba';
     const src = event.filename ? `${event.filename}:${event.lineno || 0}` : '';
-    reportUxFriction({
-        kind: 'js_error',
-        detail: [msg, src].filter(Boolean).join(' @ ').slice(0, 500),
-    });
+    reportJsErrorIfRepeated([msg, src].filter(Boolean).join(' @ '));
 }
 
 function onUnhandledRejection(event) {
@@ -132,10 +200,7 @@ function onUnhandledRejection(event) {
     const detail = typeof reason === 'string'
         ? reason
         : (reason?.message || String(reason || 'Unhandled rejection'));
-    reportUxFriction({
-        kind: 'js_error',
-        detail: detail.slice(0, 500),
-    });
+    reportJsErrorIfRepeated(detail);
 }
 
 let started = false;
@@ -161,12 +226,18 @@ export function reportApiUxError(error) {
     if (url.includes('/tickets/ux-friction')) {
         return;
     }
-    if (status < 500 && status !== 408 && status !== 429) {
+    if (status < 500) {
         return;
     }
     const method = (error?.config?.method || 'get').toUpperCase();
+    const strikeKey = `${method}|${url}|${status}`;
+    const count = bumpStrikeCounter(apiErrorCounts, strikeKey, 5 * 60 * 1000);
+    if (count < API_ERROR_MIN_OCCURRENCES) {
+        return;
+    }
+    apiErrorCounts.delete(strikeKey);
     reportUxFriction({
         kind: 'api_error',
-        detail: `${method} ${url} → HTTP ${status}`,
+        detail: `${method} ${url} → HTTP ${status} (${count}× za 5 min)`,
     });
 }

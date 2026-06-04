@@ -65,12 +65,34 @@ UX_FRICTION_LABELS = {
     'slow_action': 'Pomalá odezva aplikace',
 }
 
-UX_FRICTION_DEDUP_HOURS = 6
+UX_FRICTION_DEDUP_HOURS = 48
+UX_FRICTION_MAX_PER_USER_PER_DAY = 5
+
+
+def _ux_normalize_detail(kind, detail):
+    detail = (detail or '').strip()
+    if kind in ('dead_click', 'rage_click'):
+        return ''
+    if kind == 'js_error' and ' @ ' in detail:
+        return detail.split(' @ ', 1)[0].strip()
+    if kind == 'api_error':
+        return detail.split(' (', 1)[0].strip()
+    return detail
 
 
 def _ux_fingerprint(user_id, kind, route, element, detail):
+    detail = _ux_normalize_detail(kind, detail)
     raw = f'{user_id}|{kind}|{route}|{element}|{detail}'[:500]
     return hashlib.sha256(raw.encode('utf-8')).hexdigest()[:20]
+
+
+def _ux_auto_ticket_count_24h(user_id):
+    since = timezone.now() - timedelta(hours=24)
+    return Ticket.objects.filter(
+        autor_id=user_id,
+        nazev__startswith='[UX]',
+        vytvoreno__gte=since,
+    ).count()
 
 
 @api_view(['POST'])
@@ -89,6 +111,9 @@ def ux_friction_report(request):
     element = (request.data.get('element') or '').strip()[:300]
     detail = (request.data.get('detail') or '').strip()[:1000]
     url = (request.data.get('url') or '').strip()[:500]
+
+    if _ux_auto_ticket_count_24h(request.user.id) >= UX_FRICTION_MAX_PER_USER_PER_DAY:
+        return Response({'success': True, 'skipped': True, 'reason': 'daily_limit'})
 
     fingerprint = _ux_fingerprint(request.user.id, kind, route, element, detail)
     since = timezone.now() - timedelta(hours=UX_FRICTION_DEDUP_HOURS)

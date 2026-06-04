@@ -31,7 +31,7 @@
 .payroll-month-block .nav-btn {
     padding: 8px 12px;
     border: 2px solid #ddd;
-    background: white;
+    background: var(--bg-card);
     border-radius: 8px;
     cursor: pointer;
     font-size: 14px;
@@ -46,7 +46,7 @@
 .month-picker-trigger {
     padding: 8px 16px;
     border: 2px solid #ddd;
-    background: white;
+    background: var(--bg-card);
     border-radius: 8px;
     cursor: pointer;
     font-size: 16px;
@@ -75,7 +75,7 @@
     left: 0;
     z-index: 50;
     margin-top: 6px;
-    background: #fff;
+    background: var(--bg-card);
     border: 2px solid #e0e0e0;
     border-radius: 12px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
@@ -140,7 +140,7 @@
 }
 
 .payroll-stats .stat-card {
-    background: white;
+    background: var(--bg-card);
     border-radius: 12px;
     padding: 16px 20px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
@@ -188,7 +188,7 @@
 
 .payroll-table-wrap {
     overflow-x: auto;
-    background: #fff;
+    background: var(--bg-card);
     border-radius: 12px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
@@ -311,13 +311,12 @@
     inset: 0;
     background: rgba(0, 0, 0, 0.45);
     display: flex;
-    align-items: center;
     justify-content: center;
     z-index: 15000;
 }
 
 .payroll-modal {
-    background: #fff;
+    background: var(--bg-card);
     border-radius: 12px;
     padding: 1.25rem 1.5rem;
     width: min(400px, 92vw);
@@ -361,7 +360,7 @@
 .payroll-modal .btn-cancel {
     padding: 0.45rem 0.9rem;
     border: 2px solid #ddd;
-    background: #fff;
+    background: var(--bg-card);
     border-radius: 8px;
     cursor: pointer;
 }

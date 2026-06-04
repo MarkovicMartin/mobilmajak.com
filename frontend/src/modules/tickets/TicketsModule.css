@@ -224,7 +224,7 @@
 }
 
 .ticket-url a {
-    color: var(--accent-primary, #667eea);
+    color: var(--accent-primary, var(--brand-navy));
     text-decoration: none;
     word-break: break-all;
 }
@@ -396,7 +396,7 @@
 }
 
 .btn-comment-save {
-    background: var(--accent-primary, #667eea);
+    background: var(--accent-primary, var(--brand-navy));
     color: #fff;
     border: none;
 }
@@ -442,7 +442,7 @@
     padding: 8px 18px;
     border-radius: 8px;
     border: none;
-    background: var(--accent-primary, #667eea);
+    background: var(--accent-primary, var(--brand-navy));
     color: #fff;
     font-size: 0.9rem;
     font-weight: 600;

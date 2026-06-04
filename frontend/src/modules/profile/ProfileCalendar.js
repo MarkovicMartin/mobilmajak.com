@@ -7,6 +7,7 @@ import { taskAPI } from '../../services/api';
 import UnifiedCalendar from '../shifts/UnifiedCalendar';
 import { urgencyClassName, urgencyForTask } from '../../utils/taskUrgency';
 import '../tasks/TasksModule.css';
+import './ProfileModule.css';
 
 const ProfileCalendar = () => {
     const [month, setMonth] = useState(() => format(new Date(), 'yyyy-MM'));
@@ -89,9 +90,11 @@ const ProfileCalendar = () => {
                 {loading && <span className="muted">Načítám…</span>}
             </div>
             <UnifiedCalendar month={month} variant="full" renderCellContent={renderCell} />
-            <p className="profile-calendar-link">
-                <Link to="/shifts">Upravit směny v modulu Směny →</Link>
-            </p>
+            <div className="profile-calendar-footer">
+                <Link to="/shifts" className="profile-btn profile-btn-primary">
+                    Upravit směny v modulu Směny
+                </Link>
+            </div>
         </div>
     );
 };

@@ -9,14 +9,13 @@
     background: rgba(0, 0, 0, 0.6);
     display: flex;
     justify-content: center;
-    align-items: center;
     z-index: 1000;
     backdrop-filter: blur(4px);
     padding: 16px; /* bezpečný okraj, aby modal neřezal okraje v Safari */
 }
 
 .bulk-shift-modal {
-    background: #ffffff;
+    background: var(--bg-card);
     border-radius: 16px;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
     width: clamp(340px, 92vw, 720px);
@@ -168,7 +167,7 @@
     border: 2px solid #e5e7eb;
     border-radius: 8px;
     font-size: 14px;
-    background: white;
+    background: var(--bg-card);
     transition: all 0.2s ease;
     width: 100%;
 }
@@ -184,7 +183,7 @@
     border: 2px solid #e5e7eb;
     border-radius: 8px;
     font-size: 14px;
-    background: white;
+    background: var(--bg-card);
     min-height: 64px;
     resize: vertical;
     font-family: inherit;
@@ -255,7 +254,7 @@
 
 /* MODERNNÍ KALENDÁŘ */
 .bulk-calendar {
-    background: white;
+    background: var(--bg-card);
     border: 1px solid #e5e7eb;
     border-radius: 12px;
     overflow: hidden;

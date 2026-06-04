@@ -2,7 +2,7 @@
     padding: 6px 16px;
     border-radius: 8px;
     border: none;
-    background: var(--accent-primary, #667eea);
+    background: var(--accent-primary, var(--brand-navy));
     color: #fff;
     font-size: 0.9rem;
     font-weight: 600;

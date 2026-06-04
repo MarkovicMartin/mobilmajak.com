@@ -3,6 +3,29 @@ import { useAuth } from '../context/AuthContext';
 import { categoryAPI } from '../services/api';
 import './CategoryManager.css';
 
+/** Světlý text na tmavém štítku, navy na světlém (žlutá, světle růžová…). */
+function badgeStyle(backgroundColor) {
+    const hex = (backgroundColor || '#0066cc').trim();
+    let h = hex.startsWith('#') ? hex.slice(1) : hex;
+    if (h.length === 3) {
+        h = h.split('').map((c) => c + c).join('');
+    }
+    const n = parseInt(h, 16);
+    if (Number.isNaN(n)) {
+        return { backgroundColor: hex, color: '#ffffff' };
+    }
+    const r = (n >> 16) & 255;
+    const g = (n >> 8) & 255;
+    const b = n & 255;
+    const luminance = (r * 299 + g * 587 + b * 114) / 1000;
+    const lightText = luminance < 165;
+    return {
+        backgroundColor: hex.startsWith('#') ? hex : `#${hex}`,
+        color: lightText ? '#ffffff' : '#1b2848',
+        textShadow: lightText ? '0 1px 2px rgba(0,0,0,0.35)' : 'none',
+    };
+}
+
 const CategoryManager = () => {
     const { user } = useAuth();
     const [categories, setCategories] = useState([]);
@@ -118,9 +141,9 @@ const CategoryManager = () => {
                     
                     <div className="form-preview">
                         <span>Náhled:</span>
-                        <span 
+                        <span
                             className="category-preview"
-                            style={{ backgroundColor: newCategory.barva }}
+                            style={badgeStyle(newCategory.barva)}
                         >
                             {newCategory.ikona && <i className={newCategory.ikona}></i>}
                             {newCategory.nazev || 'Název kategorie'}
@@ -146,9 +169,9 @@ const CategoryManager = () => {
                     <div className="categories-grid">
                         {categories.map(category => (
                             <div key={category.id} className="category-item">
-                                <span 
+                                <span
                                     className="category-badge"
-                                    style={{ backgroundColor: category.barva }}
+                                    style={badgeStyle(category.barva)}
                                 >
                                     {category.ikona && <i className={category.ikona}></i>}
                                     {category.nazev}

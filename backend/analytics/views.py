@@ -46,7 +46,7 @@ from .points_config import (
     build_product_points_breakdown,
     normalize_points_metrics,
 )
-from .sunshine_config import sunshine_kusy_sum, sunshine_row_q
+from .sunshine_config import prolepenost_pct, sunshine_kusy_sum, sunshine_row_q
 from .viceprace_config import (
     polozky_nad_100_q,
     viceprace_row_q,
@@ -4687,6 +4687,7 @@ def phones_accessories_by_salesperson_view(request):
             for r in qs.filter(id_prodejce__in=prodejce_ids).values('id_prodejce').annotate(
                 los_kusy=Count('id', filter=Q(kod='LOS')),
                 skla_folie_kusy=Count('id', filter=Q(kategorie_1='Skla a fólie')),
+                sunshine_kusy=sunshine_kusy_sum(),
             ):
                 los_skla_agg[r['id_prodejce']] = r
 
@@ -4723,9 +4724,12 @@ def phones_accessories_by_salesperson_view(request):
             extra = los_skla_agg.get(pid) or {}
             los = int(extra.get('los_kusy') or 0)
             skla = int(extra.get('skla_folie_kusy') or 0)
+            sunshine = int(extra.get('sunshine_kusy') or 0)
             row['los_kusy'] = los
             row['skla_folie_kusy'] = skla
-            row['los_pct_vs_skla'] = round(100.0 * los / skla, 1) if skla > 0 else None
+            row['sunshine_kusy'] = sunshine
+            row['prolepenost_zaklad_kusy'] = skla + sunshine
+            row['los_pct_vs_skla'] = prolepenost_pct(los, skla, sunshine)
 
         return JsonResponse({
             'success': True,
@@ -5573,28 +5577,21 @@ def web_prodeje_polozky_view(request):
     """
     API endpoint pro modul 'Prodejny - Položky' - čte přímo z tabulky WEB_PRODEJE_ALL
     """
-    
+    from .polozky_aggregate import aggregate_polozky_by_salesperson, parse_polozky_params
+
     try:
-        # Získání parametrů (nové + staré pro zpětnou kompatibilitu)
-        period = request.GET.get('period', 'custom')  # daily, weekly, monthly, monthly_select, custom
-        selected_month = request.GET.get('selected_month')  # Formát: YYYY-MM
-        start_date = request.GET.get('start_date')  # Formát: YYYY-MM-DD
-        end_date = request.GET.get('end_date')      # Formát: YYYY-MM-DD
-        
-        # Staré parametry pro zpětnou kompatibilitu
-        data_type = request.GET.get('type', 'daily')  # daily nebo monthly
-        target_date = request.GET.get('date')  # pro historická data (YYYY-MM-DD)
-        
-        from stores.models import Prodejna
-        prodejny_map = {p.id: p.nazev for p in Prodejna.objects.all()}
-        
-        # Test databázového připojení
+        params = parse_polozky_params(request.GET)
+        period = params.period
+        selected_month = params.selected_month
+        start_date = params.start_date
+        end_date = params.end_date
+        data_type = params.data_type
+        target_date = params.target_date
+
         try:
-            # Zkusíme základní dotaz na WEB_PRODEJE_ALL
-            queryset = WebProdejeAll.objects.all()
-            count = queryset.count()
+            count = WebProdejeAll.objects.count()
             print(f"[polozky] WEB_PRODEJE_ALL celkem: {count} zaznamu")
-            
+
             if count == 0:
                 # Fallback na mock data
                 data_list = [
@@ -5634,207 +5631,24 @@ def web_prodeje_polozky_view(request):
                     'message': 'Žádná data v tabulce WEB_PRODEJE_ALL'
                 })
             
-            # Filtrování podle období
-            today = date.today()
-            
-            # Nová logika pro selected_month
-            if period == 'monthly_select' and selected_month:
-                try:
-                    # selected_month je ve formátu YYYY-MM
-                    year, month = selected_month.split('-')
-                    start_date = date(int(year), int(month), 1)
-                    # Poslední den měsíce
-                    if int(month) == 12:
-                        end_date = date(int(year) + 1, 1, 1) - timedelta(days=1)
-                    else:
-                        end_date = date(int(year), int(month) + 1, 1) - timedelta(days=1)
-                    
-                    queryset = queryset.filter(
-                        typ__gte=start_date.strftime('%Y-%m-%d'),
-                        typ__lte=end_date.strftime('%Y-%m-%d')
-                    )
-                    print(f"[polozky] Filtr mesice: {selected_month} ({start_date} az {end_date})")
-                except Exception as e:
-                    print(f"[polozky] Chyba pri parsovani selected_month: {e}")
-            # Stará logika pro target_date (zpětná kompatibilita)
-            elif target_date:
-                if data_type == 'daily':
-                    queryset = queryset.filter(typ=target_date)
-                else:  # monthly
-                    year_month = target_date[:7]  # YYYY-MM
-                    queryset = queryset.filter(typ__startswith=year_month)
-            # Vlastní období
-            elif start_date and end_date:
-                queryset = queryset.filter(
-                    typ__gte=start_date,
-                    typ__lte=end_date
-                )
-            else:
-                # Pro dnešní data
-                today_str = today.strftime('%Y-%m-%d')
-                queryset = queryset.filter(typ=today_str)
-            
-            print(f"[polozky] Po filtru data: {queryset.count()} zaznamu")
-
-            servis_period_kwargs = _polozky_servis_period_kwargs(
-                period, selected_month, target_date, data_type, start_date, end_date, today
+            data_list = aggregate_polozky_by_salesperson(
+                params,
+                servis_loader=servisni_prace_for_user,
             )
-            
-            # ⚡ OPTIMALIZACE: Jeden agregační dotaz místo N dotazů na prodejce
-            from django.db.models import Case, When, Value, IntegerField, CharField
-            
-            # Agregujeme data pro všechny prodejce najednou (GROUP BY id_prodejce)
-            agregace = queryset.filter(
-                id_prodejce__isnull=False
-            ).values('id_prodejce').annotate(
-                # 1. Položky nad 100 Kč (suma Pocet_kusu, bez dopravného)
-                polozky_nad_100=Sum(
-                    'pocet_kusu',
-                    filter=polozky_nad_100_q(),
-                    default=0
-                ),
-                viceprace_obrat=viceprace_obrat_sum(),
-                # 2. Služby podle kódů
-                ct300=Count('id', filter=Q(kod='P114194')),
-                ct600=Count('id', filter=Q(kod='CT600')),
-                ct1200=Count('id', filter=Q(kod='CT1200')),
-                akt=Count('id', filter=Q(kod='AKT')),
-                zah250=Count('id', filter=Q(kod='ZAH250')),
-                nap=Count('id', filter=Q(kod__in=['NAP', 'NAN'])),
-                zah500=Count('id', filter=Q(kod='ZAH500')),
-                kop250=Count('id', filter=Q(kod='KOP250')),
-                kop500=Count('id', filter=Q(kod='KOP500')),
-                pz1=Count('id', filter=Q(kod='PZ1')),
-                knz=Count('id', filter=Q(kod='KNZ')),
-                # 3. SUNSHINE
-                sunshine=sunshine_kusy_sum(),
-                # 4. Sklíčka a Lepení
-                sklicka=Count('id', filter=Q(kategorie_1='Skla a fólie')),
-                lepeni=Count('id', filter=Q(kod='LOS')),
-                # 5. Položky nad 29 Kč (bez dopravného - stejná logika jako v profilu)
-                polozky_nad_29=Count('id', filter=qualifying_polozka_q()),
-                # 6. Pomocné hodnoty pro výpočet unikátních dokladů
-                prvni_stredisko=Max('stredisko')  # Pro fallback prodejna
-            ).order_by('-polozky_nad_100')[:20]  # Top 20 prodejců
-            
-            print(f"[polozky] Agregovana data pro {len(agregace)} prodejcu")
-            
-            # ⚡ VÝKUPY: Agregujeme výkupy pro stejné období a prodejce
-            # Sloupec `vystaveno` v WEB_VYKUPY odpovídá `typ` v WEB_PRODEJE_ALL
-            vykupy_qs = WebVykupy.objects.all()
-            if period == 'monthly_select' and selected_month:
-                vykupy_qs = vykupy_qs.filter(vystaveno__gte=start_date, vystaveno__lte=end_date)
-            elif target_date:
-                if data_type == 'daily':
-                    vykupy_qs = vykupy_qs.filter(vystaveno=target_date)
-                else:
-                    vykupy_qs = vykupy_qs.filter(vystaveno__startswith=target_date[:7])
-            elif start_date and end_date:
-                vykupy_qs = vykupy_qs.filter(vystaveno__gte=start_date, vystaveno__lte=end_date)
-            else:
-                vykupy_qs = vykupy_qs.filter(vystaveno=today.strftime('%Y-%m-%d'))
+            print(f"[polozky] Agregovana data pro {len(data_list)} prodejcu")
 
-            vykupy_agregace = vykupy_qs.values('id_prodejce').annotate(
-                pocet_vykupu=Sum('pocet_kusů', default=0)
-            )
-            vykupy_map = {v['id_prodejce']: v['pocet_vykupu'] for v in vykupy_agregace if v['id_prodejce'] is not None}
-            
-            # Načteme všechny prodejce najednou (místo N dotazů)
-            prodejci_ids = [p['id_prodejce'] for p in agregace]
-            users_dict = {
-                u.id: u 
-                for u in WebUser.objects.filter(id__in=prodejci_ids)
-            }
-            
-            # Výpočet unikátních dokladů pro každého prodejce (rychlejší než v smyčce)
-            doklady_cache = {}
-            for prodejce_id in prodejci_ids:
-                prodejce_qs = queryset.filter(id_prodejce=prodejce_id)
-                doklady_cache[prodejce_id] = _count_active_receipts(prodejce_qs)
-            
-            # Sestavíme výsledná data
-            data_list = []
-            for agg_data in agregace:
-                prodejce_id = agg_data['id_prodejce']
-                
-                # Získáme jméno prodejce z cache
-                if prodejce_id in users_dict:
-                    user = users_dict[prodejce_id]
-                    prodejce_jmeno = f"{user.jmeno} {user.prijmeni}".strip()
-                    # Namapujeme ID prodejny na název
-                    p_id = getattr(user, 'prodejna_id', None)
-                    prodejna_nazev = prodejny_map.get(p_id, str(p_id)) if p_id else 'Neznámá'
-                else:
-                    prodejce_jmeno = f"Prodejce {prodejce_id}"
-                    prodejna_nazev = agg_data.get('prvni_stredisko', 'Neznámá')
-                
-                # Výpočet služeb celkem
-                sluzby_celkem = (
-                    agg_data['ct300'] + agg_data['ct600'] + agg_data['ct1200'] +
-                    agg_data['akt'] + agg_data['zah250'] + agg_data['nap'] +
-                    agg_data['zah500'] + agg_data['kop250'] + agg_data['kop500'] +
-                    agg_data['pz1'] + agg_data['knz']
-                )
-                
-                unikatni_doklady = doklady_cache.get(prodejce_id, 0)
-                prodejce_qs = queryset.filter(id_prodejce=prodejce_id)
-                celkovy_obrat = float(sum_obrat_s_dph(prodejce_qs))
-                prumer_polozek = prumer_polozek_uctu(agg_data['polozky_nad_29'], unikatni_doklady)
-                prumer_hodnota = prumer_hodnota_uctenky(celkovy_obrat, unikatni_doklady)
-
-                servisni_prace = None
-                servis_provize = 0
-                user = users_dict.get(prodejce_id)
-                if user:
-                    servis_data, _reason = servisni_prace_for_user(user, **servis_period_kwargs)
-                    if servis_data:
-                        servisni_prace = servis_data
-                        servis_provize = int(round(servis_data.get('odmena') or 0))
-                
-                data_list.append({
-                    'id_prodejce': prodejce_id,
-                    'prodejce': prodejce_jmeno,
-                    'prodejna': str(prodejna_nazev),
-                    'polozky_nad_100': agg_data['polozky_nad_100'],
-                    'sluzby_celkem': sluzby_celkem,
-                    'sunshine': agg_data['sunshine'],
-                    'pol_dok': prumer_polozek,
-                    'prumer_polozek_uctu': prumer_polozek,
-                    'prumer_hodnota_uctenky': prumer_hodnota,
-                    'celkovy_obrat': celkovy_obrat,
-                    'polozky_nad_29': agg_data['polozky_nad_29'],
-                    'unikatni_doklady': unikatni_doklady,
-                    'ct300': agg_data['ct300'],
-                    'ct600': agg_data['ct600'],
-                    'ct1200': agg_data['ct1200'],
-                    'akt': agg_data['akt'],
-                    'zah250': agg_data['zah250'],
-                    'nap': agg_data['nap'],
-                    'zah500': agg_data['zah500'],
-                    'kop250': agg_data['kop250'],
-                    'kop500': agg_data['kop500'],
-                    'pz1': agg_data['pz1'],
-                    'knz': agg_data['knz'],
-                    'sklicka': agg_data['sklicka'],
-                    'lepeni': agg_data['lepeni'],
-                    'vykupy': vykupy_map.get(prodejce_id, 0),
-                    'servis_provize': servis_provize,
-                    'servisni_prace': servisni_prace,
-                    'viceprace_obrat': round(float(agg_data.get('viceprace_obrat') or 0), 2),
-                    'aligator': 0
-                })
-            
-            # Seřazení podle počtu položek nad 100 Kč (sestupně)
-            data_list.sort(key=lambda x: x['polozky_nad_100'], reverse=True)
-                
             return Response({
                 'success': True,
                 'data': data_list,
                 'count': len(data_list),
                 'lastUpdate': datetime.now().isoformat(),
+                'period': period,
+                'selected_month': selected_month,
                 'dataType': data_type,
                 'date': target_date,
-                'source': 'WEB_PRODEJE_ALL'
+                'segment': params.segment,
+                'prodejna_id': params.prodejna_id,
+                'source': 'WEB_PRODEJE_ALL',
             })
             
         except Exception as db_error:
@@ -5885,6 +5699,62 @@ def web_prodeje_polozky_view(request):
             'data': [],
             'count': 0
         }, status=500)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def web_prodeje_polozky_timeline_view(request):
+    """Měsíční časová řada metriky pro jednoho prodejce."""
+    from .polozky_aggregate import aggregate_polozky_timeline, parse_polozky_params
+
+    try:
+        user_id = request.GET.get('user_id')
+        metric = request.GET.get('metric', 'polozky_nad_100')
+        if not user_id:
+            return Response({'success': False, 'error': 'Chybí user_id'}, status=400)
+        params = parse_polozky_params(request.GET)
+        rok = request.GET.get('rok')
+        has_explicit_range = bool(
+            request.GET.get('start_date') and request.GET.get('end_date')
+        )
+        rok_int = int(rok) if rok and not has_explicit_range else None
+        compare_period = request.GET.get('compare_period')
+        if compare_period not in ('prev_month', 'prev_quarter', 'prev_year'):
+            compare_period = None
+        points = aggregate_polozky_timeline(
+            int(user_id),
+            metric,
+            rok=rok_int,
+            start_date=params.period_start,
+            end_date=params.period_end,
+            kanal=params.kanal,
+            prodejna_id=params.prodejna_id,
+            segment=params.segment,
+            compare_period=compare_period,
+        )
+        return Response({
+            'success': True,
+            'user_id': int(user_id),
+            'metric': metric,
+            'compare_period': compare_period,
+            'points': points,
+        })
+    except Exception as e:
+        return Response({'success': False, 'error': str(e)}, status=500)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def web_prodeje_polozky_tasks_workload_view(request):
+    """SLA úkolů a index vytížení prodejců v období."""
+    from .polozky_aggregate import aggregate_tasks_workload, parse_polozky_params
+
+    try:
+        params = parse_polozky_params(request.GET)
+        payload = aggregate_tasks_workload(params)
+        return Response({'success': True, **payload})
+    except Exception as e:
+        return Response({'success': False, 'error': str(e)}, status=500)
 
 
 # =============================================================================
@@ -6140,6 +6010,7 @@ def _aggregate_web_prodeje_all_salesperson(queryset, user_id, iso_date):
             'id_prodejce': int(user_id),
             'polozky_nad_100': 0,
             'viceprace_obrat': 0,
+            'viceprace_kusy': 0,
             'sluzby_celkem': 0,
             'pol_dok': 0.0,
             'prumer_polozek_uctu': 0.0,
@@ -6161,6 +6032,9 @@ def _aggregate_web_prodeje_all_salesperson(queryset, user_id, iso_date):
             'aligator': 0,
             'sunshine': 0,
             'vykupy': 0,
+            'sklicka': 0,
+            'lepeni': 0,
+            'prolepenost_pct': None,
         }
 
     # Základní info
@@ -6189,6 +6063,9 @@ def _aggregate_web_prodeje_all_salesperson(queryset, user_id, iso_date):
     kop500 = queryset.filter(kod='KOP500').count()
     pz1 = queryset.filter(kod='PZ1').count()
     knz = queryset.filter(kod='KNZ').count()
+    sklicka = queryset.filter(kategorie_1='Skla a fólie').count()
+    lepeni = queryset.filter(kod='LOS').count()
+    sunshine_int = int(sunshine or 0)
 
     sluzby_celkem = (
         ct300 + ct600 + ct1200 + akt + zah250 + nap + zah500 + kop250 + kop500 + pz1 + knz
@@ -6209,6 +6086,7 @@ def _aggregate_web_prodeje_all_salesperson(queryset, user_id, iso_date):
         'id_prodejce': int(user_id),
         'polozky_nad_100': polozky_nad_100,
         'viceprace_obrat': viceprace_data['obrat'],
+        'viceprace_kusy': viceprace_data['kusy'],
         'viceprace': viceprace_data,
         'sluzby_celkem': sluzby_celkem,
         'pol_dok': prumer_polozek,
@@ -6229,7 +6107,10 @@ def _aggregate_web_prodeje_all_salesperson(queryset, user_id, iso_date):
         'pz1': pz1,
         'knz': knz,
         'aligator': 0,
-        'sunshine': sunshine,
+        'sunshine': sunshine_int,
+        'sklicka': sklicka,
+        'lepeni': lepeni,
+        'prolepenost_pct': prolepenost_pct(lepeni, sklicka, sunshine_int),
     }
 
 

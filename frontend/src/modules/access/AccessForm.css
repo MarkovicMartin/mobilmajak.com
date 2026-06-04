@@ -8,14 +8,13 @@
     bottom: 0;
     background: rgba(0, 0, 0, 0.5);
     display: flex;
-    align-items: center;
     justify-content: center;
     z-index: 1000;
     padding: 20px;
 }
 
 .access-form-modal {
-    background: white;
+    background: var(--bg-card);
     border-radius: 20px;
     width: 100%;
     max-width: 800px;
@@ -42,7 +41,7 @@
     align-items: center;
     padding: 24px 30px;
     border-bottom: 2px solid #f7fafc;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, var(--brand-navy) 0%, var(--brand-navy-hover) 100%);
     color: white;
     border-radius: 20px 20px 0 0;
 }
@@ -115,8 +114,8 @@
 .form-group select:focus,
 .form-group textarea:focus {
     outline: none;
-    border-color: #667eea;
-    background: white;
+    border-color: var(--brand-navy);
+    background: var(--bg-card);
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 

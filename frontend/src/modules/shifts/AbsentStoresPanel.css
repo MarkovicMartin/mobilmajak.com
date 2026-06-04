@@ -230,7 +230,7 @@
 .btn-secondary-sm {
     padding: 6px 12px;
     border: 1px solid #cbd5e1;
-    background: #fff;
+    background: var(--bg-card);
     border-radius: 6px;
     cursor: pointer;
     font-size: 0.85rem;

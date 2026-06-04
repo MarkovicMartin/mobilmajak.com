@@ -1,3 +1,4 @@
+from django.utils import timezone
 from rest_framework import serializers
 
 from stores.models import Prodejna
@@ -64,13 +65,14 @@ class UkolSerializer(serializers.ModelSerializer):
             "id_prodejny",
             "vytvoreno",
             "upraveno",
+            "dokonceno_v",
             "assignee",
             "zadavatel",
             "prodejna",
             "urgency",
             "is_unread",
         ]
-        read_only_fields = ["vytvoreno", "upraveno", "precteno_v"]
+        read_only_fields = ["vytvoreno", "upraveno", "dokonceno_v", "precteno_v"]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -131,6 +133,19 @@ class UkolSerializer(serializers.ModelSerializer):
         if value not in dict(Ukol.TYPY):
             raise serializers.ValidationError("Neplatný typ.")
         return value
+
+    def update(self, instance, validated_data):
+        new_stav = validated_data.get("stav", instance.stav)
+        if new_stav == "hotovo" and instance.stav != "hotovo":
+            validated_data["dokonceno_v"] = timezone.now()
+        elif new_stav != "hotovo" and "stav" in validated_data:
+            validated_data["dokonceno_v"] = None
+        return super().update(instance, validated_data)
+
+    def create(self, validated_data):
+        if validated_data.get("stav") == "hotovo":
+            validated_data["dokonceno_v"] = timezone.now()
+        return super().create(validated_data)
 
 
 def serialize_tasks_list(tasks, request):

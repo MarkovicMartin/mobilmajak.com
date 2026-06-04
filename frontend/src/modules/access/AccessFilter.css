@@ -1,7 +1,7 @@
 /* CSS styly pro filtrování přístupů */
 
 .access-filter {
-    background: white;
+    background: var(--bg-card);
     border-radius: 16px;
     padding: 24px;
     margin-bottom: 25px;
@@ -20,7 +20,7 @@
 
 .filter-header h4 {
     margin: 0;
-    color: #2d3748;
+    color: var(--text-heading);
     font-size: 1.3rem;
     font-weight: 700;
 }
@@ -58,7 +58,7 @@
 
 .filter-group label {
     font-weight: 600;
-    color: #4a5568;
+    color: var(--text-label);
     font-size: 0.95rem;
     display: flex;
     align-items: center;
@@ -78,8 +78,8 @@
 .search-input:focus,
 .filter-select:focus {
     outline: none;
-    border-color: #667eea;
-    background: white;
+    border-color: var(--brand-navy);
+    background: var(--bg-card);
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
@@ -116,7 +116,7 @@
 }
 
 .filter-tag {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, var(--brand-navy) 0%, var(--brand-navy-hover) 100%);
     color: white;
     padding: 6px 12px;
     border-radius: 20px;

@@ -27,3 +27,16 @@ def sunshine_kusy_sum():
 def calculate_sunshine_points(count):
     """Příplatek za SUNSHINE – navíc k položkám nad 100 Kč a službám."""
     return int(count or 0) * SUNSHINE_POINTS_PER_UNIT
+
+
+def prolepenost_zaklad_kusy(skla_folie_kusy, sunshine_kusy):
+    """Základ pro % prolepenosti: tvrzená skla/fólie + SUNSHINE fólie (oddělené metriky v UI)."""
+    return int(skla_folie_kusy or 0) + int(sunshine_kusy or 0)
+
+
+def prolepenost_pct(los_kusy, skla_folie_kusy, sunshine_kusy):
+    """LOS / (skla + sunshine) × 100 – stejné kusy jako ve výpisu prodejce."""
+    zaklad = prolepenost_zaklad_kusy(skla_folie_kusy, sunshine_kusy)
+    if zaklad <= 0:
+        return None
+    return round(100.0 * int(los_kusy or 0) / zaklad, 1)

@@ -1,0 +1,680 @@
+/**
+ * Tmavý režim – moduly Plány, Směny, Přístupy, Profil (kalendář).
+ */
+
+/* --- Společné nadpisy (ne gradient hlavičky) --- */
+.dark-mode .shifts-header h2,
+.dark-mode .overview-header h3,
+.dark-mode .month-navigation h3,
+.dark-mode .progress-header h4,
+.dark-mode .attendance-panel h3,
+.dark-mode .attendance-panel h4,
+.dark-mode .payroll-panel h2,
+.dark-mode .payroll-panel h3,
+.dark-mode .profile-calendar .calendar-header strong {
+    color: var(--text-heading) !important;
+}
+
+.dark-mode .stat-value,
+.dark-mode .stat-label,
+.dark-mode .progress-labels,
+.dark-mode .prodejna-selector label,
+.dark-mode .current-month,
+.dark-mode .user-info,
+.dark-mode .profile-calendar-legend,
+.dark-mode .profile-calendar-legend span,
+.dark-mode .muted {
+    color: var(--text-secondary) !important;
+}
+
+.dark-mode .view-tabs button {
+    color: var(--text-secondary) !important;
+    background: var(--bg-inset) !important;
+    border-color: var(--border-primary) !important;
+}
+
+.dark-mode .view-tabs button.active {
+    color: var(--text-inverse) !important;
+}
+
+/* --- Směny --- */
+.dark-mode .shifts-module {
+    color: var(--text-primary);
+}
+
+.dark-mode .shifts-header {
+    border-bottom-color: var(--border-subtle);
+}
+
+.dark-mode .shifts-controls,
+.dark-mode .shifts-store-legend,
+.dark-mode .calendar-header,
+.dark-mode .uc-header {
+    background: var(--bg-inset) !important;
+    border-color: var(--border-subtle) !important;
+}
+
+.dark-mode .legend-item,
+.dark-mode .day-name,
+.dark-mode .uc-day-name {
+    color: var(--text-label) !important;
+}
+
+.dark-mode .month-navigation {
+    background: var(--bg-inset) !important;
+    box-shadow: var(--shadow-card);
+}
+
+.dark-mode .shifts-content,
+.dark-mode .calendar-container {
+    background: var(--bg-card) !important;
+    border-color: var(--border-subtle) !important;
+}
+
+.dark-mode .progress-section {
+    background: var(--bg-card) !important;
+}
+
+.dark-mode .progress-bar {
+    background: var(--bg-tertiary) !important;
+}
+
+/* --- Žebříček bodů --- */
+.dark-mode .points-leaderboard .stat-card,
+.dark-mode .points-leaderboard .stat-card.clickable.active {
+    background: var(--bg-card) !important;
+    border-color: var(--border-subtle) !important;
+}
+
+.dark-mode .points-leaderboard .stat-card.clickable.active {
+    background: var(--brand-pink-soft) !important;
+    border-color: var(--brand-pink) !important;
+}
+
+.dark-mode .points-leaderboard .stat-card-title {
+    color: var(--text-label) !important;
+}
+
+.dark-mode .points-leaderboard .stat-card .stat-value {
+    color: var(--text-strong) !important;
+}
+
+.dark-mode .points-leaderboard .stat-card-foot {
+    color: var(--text-secondary) !important;
+}
+
+.dark-mode .leaderboard-module .period-tab {
+    background: var(--bg-card) !important;
+    color: var(--text-secondary) !important;
+    border-color: var(--border-subtle) !important;
+}
+
+.dark-mode .leaderboard-module .period-tab:hover:not(.period-tab--expanded) {
+    background: var(--bg-inset) !important;
+    border-color: var(--border-primary) !important;
+}
+
+.dark-mode .leaderboard-module .leaderboard-updated {
+    color: var(--text-secondary) !important;
+}
+
+.dark-mode .leaderboard-module .loading-container,
+.dark-mode .leaderboard-module .no-data {
+    background: var(--bg-inset) !important;
+    border-color: var(--border-subtle) !important;
+    color: var(--text-primary);
+}
+
+.dark-mode .leaderboard-module .loading-container p,
+.dark-mode .leaderboard-module .no-data h3 {
+    color: var(--text-heading) !important;
+}
+
+.dark-mode .leaderboard-module .no-data p {
+    color: var(--text-secondary) !important;
+}
+
+.dark-mode .points-leaderboard .top-seller-card {
+    background: var(--bg-card) !important;
+    border-color: var(--border-subtle) !important;
+}
+
+.dark-mode .points-leaderboard .top-seller-card.winner {
+    background: var(--brand-pink-soft) !important;
+    border-color: var(--brand-pink) !important;
+}
+
+.dark-mode .points-leaderboard .top-seller-card.second,
+.dark-mode .points-leaderboard .top-seller-card.third {
+    background: var(--bg-inset) !important;
+    border-color: var(--border-primary) !important;
+}
+
+.dark-mode .points-leaderboard .leaderboard-table tr.current-user-row td {
+    background: var(--brand-navy-soft) !important;
+}
+
+.dark-mode .analytics-module .stat-card {
+    background: var(--bg-card) !important;
+}
+
+/* --- Plány / výhled --- */
+.dark-mode .plans-module {
+    color: var(--text-primary);
+}
+
+.dark-mode .plans-vyhled-toolbar,
+.dark-mode .plans-vyhled-chart,
+.dark-mode .plans-vyhled-legenda {
+    background: var(--bg-inset) !important;
+    border-color: var(--border-subtle) !important;
+    color: var(--text-primary);
+}
+
+.dark-mode .plans-vyhled-toolbar-summary,
+.dark-mode .plans-vyhled-legenda-nadpis,
+.dark-mode .plans-vyhled-legenda-polozka,
+.dark-mode .plans-vyhled-bar-label,
+.dark-mode .plans-vyhled-dropdown-section,
+.dark-mode .plans-vyhled-dropdown-caret {
+    color: var(--text-secondary) !important;
+}
+
+.dark-mode .plans-vyhled-dropdown-trigger {
+    color: var(--text-primary) !important;
+    background: var(--bg-input) !important;
+    border-color: var(--border-input) !important;
+}
+
+.dark-mode .plans-vyhled-dropdown-row:hover {
+    background: var(--brand-navy-soft) !important;
+}
+
+.dark-mode .plans-vyhled-table th {
+    background: var(--bg-tertiary) !important;
+    color: var(--text-label) !important;
+    border-bottom-color: var(--border-subtle) !important;
+}
+
+.dark-mode .plans-vyhled-table td {
+    color: var(--text-primary) !important;
+    border-bottom-color: var(--border-secondary) !important;
+}
+
+.dark-mode .plans-vyhled-mesic-label {
+    color: var(--text-primary) !important;
+}
+
+.dark-mode .plans-vyhled-pct-neutral {
+    color: var(--text-muted) !important;
+}
+
+.dark-mode .plans-vyhled-row-probiha {
+    background: var(--bg-inset) !important;
+}
+
+.dark-mode .plans-vyhled-row-aktualni,
+.dark-mode .plans-vyhled-row-aktualni td {
+    background: var(--brand-navy-soft) !important;
+    color: var(--text-primary) !important;
+    box-shadow: inset 3px 0 0 var(--accent-analytics);
+}
+
+.dark-mode .plans-vyhled-foot td,
+.dark-mode .plans-vyhled-foot-obdobi td {
+    background: var(--bg-tertiary) !important;
+    color: var(--text-primary) !important;
+}
+
+/* --- Přístupy --- */
+.dark-mode .access-module {
+    background: var(--bg-primary) !important;
+}
+
+.dark-mode .access-filter .filter-header h4,
+.dark-mode .access-filter .filter-group label,
+.dark-mode .access-filter .filters-label,
+.dark-mode .stats-card h4,
+.dark-mode .stats-card p,
+.dark-mode .stores-overview h4,
+.dark-mode .store-stat span:first-child {
+    color: var(--text-label) !important;
+}
+
+.dark-mode .access-filter .filter-header {
+    border-bottom-color: var(--border-subtle);
+}
+
+.dark-mode .access-filter .search-input,
+.dark-mode .access-filter .filter-select {
+    background: var(--bg-input) !important;
+    border-color: var(--border-input) !important;
+    color: var(--text-primary) !important;
+}
+
+.dark-mode .stats-card,
+.dark-mode .stores-overview,
+.dark-mode .access-filter {
+    background: var(--bg-card) !important;
+    border-color: var(--border-subtle) !important;
+}
+
+.dark-mode .store-stat {
+    border-bottom-color: var(--border-subtle);
+    color: var(--text-primary);
+}
+
+/* --- Unified kalendář (profil + směny) --- */
+.dark-mode .unified-calendar {
+    --uc-bg: var(--bg-card);
+    --uc-border: var(--border-subtle);
+    --uc-muted: var(--text-muted);
+    --uc-fg: var(--text-primary);
+    --uc-accent: var(--accent-analytics);
+    background: var(--uc-bg) !important;
+    border-color: var(--uc-border) !important;
+}
+
+.dark-mode .uc-cell {
+    background: var(--bg-card) !important;
+    color: var(--text-primary) !important;
+}
+
+.dark-mode .uc-cell.other {
+    background: var(--bg-secondary) !important;
+    color: var(--text-muted) !important;
+}
+
+.dark-mode .uc-cell.disabled {
+    background: var(--bg-inset) !important;
+    color: var(--text-muted) !important;
+}
+
+.dark-mode .uc-cell:hover:not(.selected) {
+    background: var(--bg-tertiary) !important;
+}
+
+.dark-mode .uc-cell.selected {
+    background: var(--brand-navy) !important;
+    color: var(--text-inverse) !important;
+}
+
+.dark-mode .uc-cell.today:not(.selected) {
+    box-shadow: inset 0 0 0 2px var(--brand-pink);
+}
+
+.dark-mode .profile-calendar .btn-outline {
+    background: var(--bg-inset) !important;
+    border-color: var(--border-primary) !important;
+    color: var(--text-primary) !important;
+}
+
+.dark-mode .profile-tabs button:not(.active) {
+    color: var(--text-secondary) !important;
+    border-color: var(--border-primary) !important;
+}
+
+.dark-mode .profile-tabs button.active {
+    background: var(--bg-card) !important;
+    color: var(--text-heading) !important;
+}
+
+/* --- Novinky --- */
+.dark-mode .news-module {
+    color: var(--text-primary);
+}
+
+.dark-mode .category-filters {
+    background: var(--bg-inset) !important;
+    border-color: var(--border-subtle) !important;
+}
+
+.dark-mode .filters-header h3,
+.dark-mode .empty-posts h3 {
+    color: var(--text-heading) !important;
+}
+
+.dark-mode .empty-posts,
+.dark-mode .empty-posts p {
+    color: var(--text-secondary) !important;
+}
+
+.dark-mode .post {
+    border-color: var(--border-subtle) !important;
+}
+
+.dark-mode .post .post-author {
+    background: transparent !important;
+}
+
+.dark-mode .post-content p,
+.dark-mode .post .author-name,
+.dark-mode .post .post-date,
+.dark-mode .reactions-count,
+.dark-mode .comments-count {
+    color: var(--text-primary) !important;
+}
+
+.dark-mode .post .post-date,
+.dark-mode .reactions-count,
+.dark-mode .comments-count,
+.dark-mode .delete-btn {
+    color: var(--text-secondary) !important;
+}
+
+.dark-mode .post-stats {
+    border-color: var(--border-subtle) !important;
+}
+
+.dark-mode .reaction-btn,
+.dark-mode .file-link,
+.dark-mode .comment-form,
+.dark-mode .comment-item {
+    background: var(--bg-inset) !important;
+    border-color: var(--border-subtle) !important;
+    color: var(--text-primary) !important;
+}
+
+/* --- Správa uživatelů / prodejen --- */
+.dark-mode .user-management-header h1,
+.dark-mode .store-management-header h1 {
+    color: var(--text-heading) !important;
+}
+
+.dark-mode .user-management-header,
+.dark-mode .store-management-header {
+    border-bottom-color: var(--border-subtle) !important;
+}
+
+.dark-mode .users-table th,
+.dark-mode .stores-table th {
+    background: var(--bg-tertiary) !important;
+    color: var(--text-label) !important;
+    border-bottom-color: var(--border-subtle) !important;
+}
+
+.dark-mode .users-table td,
+.dark-mode .stores-table td {
+    color: var(--text-primary) !important;
+    border-bottom-color: var(--border-secondary) !important;
+}
+
+.dark-mode .users-table tr:hover,
+.dark-mode .stores-table tr:hover {
+    background: var(--bg-inset) !important;
+}
+
+.dark-mode .users-table tr.current-user,
+.dark-mode .users-table tr.current-user:hover {
+    background: var(--brand-navy-soft) !important;
+}
+
+.dark-mode .prodejna-text {
+    color: var(--text-secondary) !important;
+}
+
+.dark-mode .no-modules {
+    color: var(--text-muted) !important;
+}
+
+.dark-mode .search-filters,
+.dark-mode .filter-buttons button:not(.active) {
+    background: var(--bg-inset) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-primary) !important;
+}
+
+/* --- Profil: údaje, úkoly --- */
+.dark-mode .profile-image-embedded__name {
+    color: var(--text-heading) !important;
+}
+
+.dark-mode .profile-image-embedded__meta,
+.dark-mode .upload-button span,
+.dark-mode .upload-button small {
+    color: var(--text-secondary) !important;
+}
+
+.dark-mode .profile-image--embedded .upload-button--compact {
+    background: var(--bg-inset) !important;
+    border-color: var(--border-primary) !important;
+    color: var(--text-primary) !important;
+}
+
+.dark-mode .info-section {
+    background: var(--bg-card) !important;
+    border-color: var(--border-subtle) !important;
+}
+
+.dark-mode .info-section h3,
+.dark-mode .info-row .label,
+.dark-mode .info-row .value,
+.dark-mode .form-group label {
+    color: var(--text-primary) !important;
+}
+
+.dark-mode .info-row .label {
+    color: var(--text-label) !important;
+}
+
+.dark-mode .info-row {
+    border-bottom-color: var(--border-subtle) !important;
+}
+
+.dark-mode .profile-tasks .tasks-list-panel,
+.dark-mode .profile-tasks .task-detail-panel,
+.dark-mode .profile-tasks .task-form-card {
+    background: var(--bg-card) !important;
+    color: var(--text-primary) !important;
+}
+
+.dark-mode .profile-tasks .muted,
+.dark-mode .profile-tasks .tasks-list-panel p {
+    color: var(--text-secondary) !important;
+}
+
+.dark-mode .profile-tasks-filters button {
+    background: var(--bg-inset) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border-primary) !important;
+}
+
+.dark-mode .profile-tasks-filters button.active {
+    background: var(--brand-navy) !important;
+    color: var(--text-inverse) !important;
+}
+
+.dark-mode .profile-tasks .input::placeholder {
+    color: var(--text-muted) !important;
+}
+
+.dark-mode .tab-button:not(.active) {
+    color: var(--text-secondary) !important;
+    border-color: var(--border-primary) !important;
+    background: var(--bg-inset) !important;
+}
+
+/* --- Plány: plnění, úprava (panely používají --card-bg) --- */
+.dark-mode .plneni-sekce,
+.dark-mode .prodejna-karta,
+.dark-mode .plans-empty-form,
+.dark-mode .plans-firma-castka,
+.dark-mode .plneni-strom-polozky {
+    background: var(--bg-card) !important;
+    border-color: var(--border-subtle) !important;
+    color: var(--text-primary);
+}
+
+.dark-mode .plneni-nadpis,
+.dark-mode .plneni-bar-label span:first-child,
+.dark-mode .plneni-prodejna-nazev,
+.dark-mode .plneni-strom-nadpis,
+.dark-mode .plans-title {
+    color: var(--text-heading) !important;
+}
+
+.dark-mode .plneni-kusy,
+.dark-mode .plneni-prodejna-meta,
+.dark-mode .plneni-strom-meta,
+.dark-mode .plneni-strom-polozka-meta,
+.dark-mode .plneni-bar-meta,
+.dark-mode .plans-firma-hint,
+.dark-mode .prodejna-castka-badge {
+    color: var(--text-secondary) !important;
+}
+
+.dark-mode .prodejna-castka-badge,
+.dark-mode .prodejna-castka-badge-input {
+    background: var(--bg-inset) !important;
+    border-color: var(--border-input) !important;
+    color: var(--accent-analytics) !important;
+}
+
+.dark-mode .plans-souhrn,
+.dark-mode .plans-total-lock-btn,
+.dark-mode .kategorie-radek {
+    background: var(--bg-inset) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-subtle) !important;
+}
+
+.dark-mode .kategorie-radek:hover {
+    background: var(--bg-tertiary) !important;
+}
+
+.dark-mode .plneni-strom-kat-toggle:hover {
+    background: var(--bg-tertiary) !important;
+}
+
+.dark-mode .plans-souhrn-ok {
+    background: color-mix(in srgb, var(--accent-success) 15%, var(--bg-card)) !important;
+    color: var(--text-primary) !important;
+}
+
+.dark-mode .plans-souhrn-warn,
+.dark-mode .plans-alert-warn {
+    background: color-mix(in srgb, var(--accent-warning) 18%, var(--bg-card)) !important;
+    color: var(--text-primary) !important;
+}
+
+/* --- Směny: docházka, není v práci --- */
+.dark-mode .attendance-header {
+    border-bottom-color: var(--border-subtle) !important;
+}
+
+.dark-mode .attendance-header h3 {
+    color: var(--text-heading) !important;
+}
+
+.dark-mode .shift-info-card,
+.dark-mode .attendance-controls,
+.dark-mode .attendance-history {
+    background: var(--bg-card) !important;
+    color: var(--text-primary);
+}
+
+.dark-mode .shift-info-card h4,
+.dark-mode .shift-details div,
+.dark-mode .shift-details strong,
+.dark-mode .attendance-history h4 {
+    color: var(--text-primary) !important;
+}
+
+.dark-mode .attendance-auto-hint {
+    background: var(--bg-inset) !important;
+    color: var(--text-secondary) !important;
+    border-color: var(--border-subtle) !important;
+}
+
+.dark-mode .history-item {
+    background: var(--bg-inset) !important;
+}
+
+.dark-mode .history-item:hover {
+    background: var(--bg-tertiary) !important;
+}
+
+.dark-mode .absent-stores-sub,
+.dark-mode .absent-checked-at {
+    color: var(--text-secondary) !important;
+}
+
+.dark-mode .camera-planned-card {
+    background: var(--bg-inset) !important;
+    border-color: var(--border-subtle) !important;
+    color: var(--text-primary) !important;
+}
+
+.dark-mode .camera-planned-card p,
+.dark-mode .camera-nvr-guide summary {
+    color: var(--text-secondary) !important;
+}
+
+.dark-mode .absent-store-card {
+    background: color-mix(in srgb, var(--accent-danger) 12%, var(--bg-card)) !important;
+    border-color: var(--border-subtle) !important;
+}
+
+.dark-mode .absent-store-card h4 {
+    color: var(--accent-danger) !important;
+}
+
+.dark-mode .absent-shift-list li {
+    color: var(--text-primary) !important;
+}
+
+.dark-mode .absent-all-ok {
+    background: color-mix(in srgb, var(--accent-success) 14%, var(--bg-card)) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-subtle) !important;
+}
+
+/* --- Úvodní stránka prodejce (SellerDashboard) --- */
+.dark-mode .dashboard:has(.seller-dashboard),
+.dark-mode .dashboard-main:has(.seller-dashboard),
+.dark-mode .seller-dashboard {
+    background-color: var(--bg-primary) !important;
+    color: var(--text-primary);
+}
+
+.dark-mode .seller-dashboard .seller-head-title,
+.dark-mode .seller-dashboard .chart-title,
+.dark-mode .seller-dashboard .card h3 {
+    color: var(--text-heading) !important;
+}
+
+.dark-mode .seller-dashboard .seller-head-sub,
+.dark-mode .seller-dashboard .metric-title,
+.dark-mode .seller-dashboard .metric-sub,
+.dark-mode .seller-dashboard .muj-plan-loading,
+.dark-mode .seller-dashboard .muj-plan-empty {
+    color: var(--text-secondary) !important;
+}
+
+.dark-mode .seller-dashboard .metric-value {
+    color: var(--text-strong) !important;
+}
+
+.dark-mode .seller-dashboard .btn-rounded {
+    background: var(--bg-button) !important;
+    border-color: var(--border-primary) !important;
+    color: var(--brand-pink) !important;
+}
+
+.dark-mode .seller-dashboard .pill-toggle button.active {
+    background: var(--bg-tertiary) !important;
+    color: var(--text-primary) !important;
+}
+
+.dark-mode .seller-dashboard .attendance-panel {
+    padding: 0;
+    max-width: none;
+}
+
+.dark-mode .seller-dashboard .attendance-header {
+    border-bottom-color: var(--border-subtle);
+}
+
+.dark-mode .seller-dashboard .attendance-header h3 {
+    color: var(--text-heading) !important;
+}

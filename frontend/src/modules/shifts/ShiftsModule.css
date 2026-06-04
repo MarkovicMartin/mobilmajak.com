@@ -16,7 +16,7 @@
 
 .shifts-header h2 {
     margin: 0;
-    color: #333;
+    color: var(--text-heading);
     font-size: 28px;
     font-weight: 600;
 }
@@ -29,13 +29,13 @@
 .view-tabs button {
     padding: 10px 20px;
     border: 2px solid #ddd;
-    background: white;
+    background: var(--bg-card);
     cursor: pointer;
     border-radius: 8px;
     font-size: 14px;
     font-weight: 500;
     transition: all 0.3s ease;
-    color: #666;
+    color: var(--text-secondary);
 }
 
 .view-tabs button:hover {
@@ -53,7 +53,7 @@
 
 .shifts-controls {
     padding: 14px 16px;
-    background: #f8f9fa;
+    background: var(--bg-inset);
     border-radius: 12px;
     margin-bottom: 24px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
@@ -76,7 +76,7 @@
 
 .prodejna-selector label {
     font-weight: 600;
-    color: #333;
+    color: var(--text-label);
     font-size: 14px;
 }
 
@@ -87,7 +87,7 @@
     font-size: 14px;
     min-width: 0;
     max-width: 180px;
-    background: white;
+    background: var(--bg-card);
     cursor: pointer;
     transition: border-color 0.3s ease;
 }
@@ -102,7 +102,7 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    background: white;
+    background: var(--bg-card);
     padding: 8px 12px;
     border-radius: 8px;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
@@ -131,7 +131,7 @@
 .current-month {
     font-size: 15px;
     font-weight: 600;
-    color: #374151;
+    color: var(--text-primary);
     min-width: 140px;
     text-align: center;
     white-space: nowrap;
@@ -193,7 +193,7 @@
 }
 
 .shifts-content {
-    background: white;
+    background: var(--bg-card);
     border-radius: 12px;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
     overflow: hidden;

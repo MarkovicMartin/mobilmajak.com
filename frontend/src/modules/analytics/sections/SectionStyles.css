@@ -12,7 +12,7 @@
     gap: 12px;
     margin-bottom: 16px;
     padding: 10px 12px;
-    background: white;
+    background: var(--bg-card);
     border-radius: 10px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     align-items: flex-end;
@@ -35,7 +35,7 @@
     padding: 8px 12px;
     border: 1px solid #dee2e6;
     border-radius: 5px;
-    background: white;
+    background: var(--bg-card);
     font-size: 14px;
     max-height: 300px;
     overflow-y: auto;
@@ -77,7 +77,7 @@
     padding: 8px 16px;
     border: 1px solid #dee2e6;
     border-radius: 5px;
-    background: white;
+    background: var(--bg-card);
     color: #495057;
     font-size: 14px;
     cursor: pointer;
@@ -120,13 +120,13 @@
 .last-update {
     margin-bottom: 20px;
     padding: 8px 15px;
-    background: #e7f3ff;
-    border-left: 4px solid #007bff;
+    background: var(--brand-navy-soft);
+    border-left: 4px solid var(--brand-pink);
     border-radius: 4px;
 }
 
 .last-update small {
-    color: #495057;
+    color: var(--text-secondary);
     font-size: 12px;
 }
 
@@ -200,16 +200,16 @@
 }
 
 .stat-card {
-    background: white;
+    background: var(--bg-card);
     padding: 14px 16px;
     border-radius: 10px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    border-left: 4px solid #007bff;
+    box-shadow: var(--shadow-card);
+    border-left: 4px solid var(--accent-analytics);
 }
 
 .stat-card h4 {
     margin: 0 0 10px 0;
-    color: #495057;
+    color: var(--text-label);
     font-size: 14px;
     font-weight: 500;
 }
@@ -217,7 +217,7 @@
 .stat-value {
     font-size: 22px;
     font-weight: bold;
-    color: #212529;
+    color: var(--text-strong);
     margin-bottom: 5px;
 }
 
@@ -227,11 +227,11 @@
 }
 
 .stat-change.positive {
-    color: #28a745;
+    color: var(--accent-positive);
 }
 
 .stat-change.negative {
-    color: #dc3545;
+    color: var(--accent-negative);
 }
 
 /* Table wrapper pro horizontal scroll */
@@ -254,7 +254,7 @@
 .no-data {
     text-align: center;
     padding: 40px;
-    color: #6c757d;
+    color: var(--text-muted);
     font-style: italic;
 }
 
@@ -284,7 +284,7 @@
 }
 
 .summary-card {
-    background: white;
+    background: var(--bg-card);
     padding: 20px;
     border-radius: 10px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
@@ -441,7 +441,7 @@
 }
 
 .overview-card {
-    background: white;
+    background: var(--bg-card);
     padding: 14px 16px;
     border-radius: 10px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
@@ -484,16 +484,17 @@
 
 /* Datové tabulky */
 .data-table {
-    background: white;
+    background: var(--bg-card);
     border-radius: 10px;
     padding: 12px 14px;
     margin-bottom: 16px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--shadow-card);
+    color: var(--text-primary);
 }
 
 .data-table h4 {
     margin: 0 0 20px 0;
-    color: #495057;
+    color: var(--text-primary);
 }
 
 .data-table table {
@@ -502,21 +503,22 @@
 }
 
 .data-table th {
-    background: #f8f9fa;
+    background: var(--bg-inset);
     padding: 12px;
     text-align: left;
     font-weight: 600;
-    color: #495057;
-    border-bottom: 2px solid #dee2e6;
+    color: var(--text-label);
+    border-bottom: 2px solid var(--border-primary);
 }
 
 .data-table td {
     padding: 12px;
-    border-bottom: 1px solid #dee2e6;
+    border-bottom: 1px solid var(--border-secondary);
+    color: var(--text-primary);
 }
 
 .data-table tr:hover {
-    background: #f8f9fa;
+    background: var(--bg-inset);
 }
 
 /* Kategorie tagy */
@@ -610,7 +612,7 @@
 
 /* Metriky */
 .metrics-comparison, .service-metrics, .ecommerce-metrics, .summary-metrics {
-    background: white;
+    background: var(--bg-card);
     border-radius: 10px;
     padding: 20px;
     margin-bottom: 30px;
@@ -679,7 +681,7 @@
 
 /* Cíle */
 .goals-section {
-    background: white;
+    background: var(--bg-card);
     border-radius: 10px;
     padding: 20px;
     margin-bottom: 30px;
@@ -754,7 +756,7 @@
 }
 
 .prediction-card {
-    background: white;
+    background: var(--bg-card);
     padding: 20px;
     border-radius: 10px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
@@ -774,7 +776,7 @@
 }
 
 .trend-analysis, .segments-table {
-    background: white;
+    background: var(--bg-card);
     border-radius: 10px;
     padding: 20px;
     margin-bottom: 30px;
@@ -802,7 +804,7 @@
 }
 
 .segment-stat {
-    background: white;
+    background: var(--bg-card);
     padding: 20px;
     border-radius: 10px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
@@ -843,7 +845,7 @@
 }
 
 .analysis-placeholder {
-    background: white;
+    background: var(--bg-card);
     border-radius: 10px;
     padding: 40px;
     text-align: center;
@@ -864,7 +866,7 @@
 }
 
 .chart-placeholder {
-    background: white;
+    background: var(--bg-card);
     border-radius: 10px;
     padding: 20px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
@@ -975,7 +977,7 @@
     padding: 8px 12px;
     border: 1px solid #dee2e6;
     border-radius: 5px;
-    background: white;
+    background: var(--bg-card);
     font-size: 14px;
     color: #495057;
     width: 150px;
@@ -1051,7 +1053,7 @@
 }
 
 .metric-card {
-    background: white;
+    background: var(--bg-card);
     border-radius: 10px;
     padding: 14px 16px;
     box-shadow: 0 2px 10px rgba(0,0,0,0.1);
@@ -1072,7 +1074,7 @@
 }
 
 .analysis-section {
-    background: white;
+    background: var(--bg-card);
     border-radius: 10px;
     padding: 14px 16px;
     margin-bottom: 16px;
@@ -1327,7 +1329,7 @@
 .error-container {
     text-align: center;
     padding: 50px;
-    background: #fff5f5;
+    background: #f5f5f5;
     border-radius: 12px;
     border: 1px solid #fed7d7;
 }
@@ -1381,7 +1383,7 @@
 
 /* Styly pro grafy v Prodejní analytice */
 .chart-container {
-    background: white;
+    background: var(--bg-card);
     border-radius: 12px;
     padding: 25px;
     margin-bottom: 25px;
@@ -1406,7 +1408,7 @@
 
 /* Custom tooltip pro grafy */
 .custom-tooltip {
-    background: #ffffff;
+    background: var(--bg-card);
     border: 1px solid #e2e8f0;
     border-radius: 8px;
     padding: 16px;
@@ -1492,7 +1494,7 @@
     align-items: center;
     justify-content: center;
     height: 400px;
-    background: #fff5f5;
+    background: #f5f5f5;
     border: 1px solid #fed7d7;
     border-radius: 8px;
     color: #c53030;
@@ -1584,16 +1586,16 @@
     }
     
     .chart-wrapper {
-        background: white;
+        background: var(--bg-card);
         border: 1px solid #000;
     }
 } 
 
 /* Vylepšené styly pro tabulku */
 .data-table {
-    background: white;
+    background: var(--bg-card);
     border-radius: 10px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--shadow-card);
     margin-top: 20px;
     overflow: hidden;
 }
@@ -1601,11 +1603,11 @@
 .data-table h4 {
     padding: 20px 20px 15px 20px;
     margin: 0;
-    border-bottom: 1px solid #e9ecef;
-    background: #f8f9fa;
+    border-bottom: 1px solid var(--border-secondary);
+    background: var(--bg-inset);
     font-size: 18px;
     font-weight: 600;
-    color: #495057;
+    color: var(--text-primary);
 }
 
 .table-wrapper {
@@ -1620,7 +1622,7 @@
 }
 
 .data-table th {
-    background: #f8f9fa;
+    background: var(--bg-inset);
     padding: 12px 8px;
     text-align: center;
     font-weight: 600;
@@ -1640,7 +1642,7 @@
 }
 
 .data-table tr:hover {
-    background: #f8f9fa;
+    background: var(--bg-inset);
     transition: background-color 0.2s ease;
 }
 
@@ -1945,12 +1947,12 @@
 }
 
 .seller-card {
-    background: white;
+    background: var(--bg-card);
     border-radius: 12px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--shadow-card);
     padding: 20px;
     transition: all 0.3s ease;
-    border: 1px solid #e9ecef;
+    border: 1px solid var(--border-secondary);
     animation: fadeIn 0.5s ease-out;
 }
 
@@ -1982,7 +1984,7 @@
 }
 
 .seller-rank {
-    background: linear-gradient(135deg, #007bff, #0056b3);
+    background: linear-gradient(135deg, var(--brand-navy), var(--brand-navy-hover));
     color: white;
     padding: 8px 12px;
     border-radius: 20px;
@@ -2273,7 +2275,7 @@
     border: 1px solid #ddd;
     border-radius: 4px;
     font-size: 14px;
-    background-color: white;
+    background-color: var(--bg-card);
     color: #333;
     min-width: 150px;
 }
@@ -2302,7 +2304,7 @@
 
 .date-picker-group select.date-input option {
     padding: 8px;
-    background-color: white;
+    background-color: var(--bg-card);
     color: #333;
 }
 

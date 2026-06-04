@@ -7,7 +7,7 @@ import Dashboard from './components/Dashboard';
 import ScrollToTop from './components/ScrollToTop';
 import ClarityPageTracker from './components/ClarityPageTracker';
 import './App.css';
-import './styles/theme.css';
+import './styles/ui.css';
 
 const AppContent = () => {
   const { user, loading } = useAuth();

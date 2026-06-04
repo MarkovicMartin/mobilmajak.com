@@ -72,7 +72,7 @@ const SalespersonBreakdown = ({ filters }) => {
                             <th style={{textAlign:'right', padding:'8px'}}>Příslušenství ≥ 100 (ks)</th>
                             <th style={{textAlign:'right', padding:'8px'}}>Přísl./telefon</th>
                             <th style={{textAlign:'right', padding:'8px'}} title="Kód LOS">LOS (ks)</th>
-                            <th style={{textAlign:'right', padding:'8px'}} title="LOS vs tvrzená skla a fólie (kategorie Skla a fólie)">LOS / skla %</th>
+                            <th style={{textAlign:'right', padding:'8px'}} title="LOS / (skla+fólie + SUNSHINE fólie)">Prolepenost %</th>
                             <th style={{textAlign:'right', padding:'8px'}}>Doklady pouze telefon</th>
                             <th style={{textAlign:'center', padding:'8px'}}>Detail</th>
                         </tr>

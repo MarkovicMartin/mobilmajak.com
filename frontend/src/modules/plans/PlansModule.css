@@ -381,6 +381,12 @@
 
 /* ===================== PLNĚNÍ VIEW ===================== */
 
+.plans-module {
+  --card-bg: var(--bg-card);
+  --border-color: var(--border-subtle);
+  --border-color-light: var(--border-secondary);
+}
+
 .plans-plneni {
   display: flex;
   flex-direction: column;
@@ -538,7 +544,7 @@
 
 .plneni-progress-track {
   height: 10px;
-  background: #e2e8f0;
+  background: var(--bg-tertiary);
   border-radius: 5px;
   overflow: hidden;
 }
@@ -1086,7 +1092,7 @@
   padding: 3px 6px;
   font-size: 0.82rem;
   text-align: center;
-  background: #fff;
+  background: var(--bg-card);
   color: var(--text-primary, #1a1a2e);
 }
 
@@ -1113,7 +1119,7 @@
 .pp-form-wrap {
   margin-bottom: 16px;
   padding: 16px;
-  background: #fff;
+  background: var(--bg-card);
   border-radius: 8px;
   border: 1px solid #bbf7d0;
   box-shadow: 0 1px 2px rgba(22, 101, 52, 0.06);
@@ -1150,7 +1156,7 @@
   border: 1px solid #86efac;
   border-radius: 6px;
   font-size: 0.9rem;
-  background: #fff;
+  background: var(--bg-card);
   color: var(--text-primary, #1a1a2e);
 }
 
@@ -1282,7 +1288,7 @@
 }
 
 .pp-radek-karta {
-  background: #fff;
+  background: var(--bg-card);
   border: 1px solid #bbf7d0;
   border-radius: 6px;
   padding: 10px 12px;
@@ -1675,13 +1681,14 @@
   margin-top: 4px;
   border: 1px solid #e2e8f0;
   border-radius: 6px;
-  background: #ffffff;
+  background: var(--bg-card);
   transition: background 0.15s;
 }
 .kategorie-radek:hover { background: #f8fafc; }
 
-/* ==== Dark mode ==== */
+/* ==== Dark mode (záloha pro OS; hlavní je .dark-mode + tokeny v theme.css) ==== */
 @media (prefers-color-scheme: dark) {
+  .plans-title,
   .plans-title { color: #f1f5f9; }
   .plans-firma-formatted { color: #60a5fa; }
   .prodejna-castka-badge { background: #1e3a5f; color: #60a5fa; }
@@ -1876,7 +1883,7 @@
   font-size: 0.8rem;
   font-weight: 600;
   color: #1e293b;
-  background: #fff;
+  background: var(--bg-card);
   border: 1px solid #cbd5e1;
   border-radius: 6px;
   cursor: pointer;
@@ -1910,7 +1917,7 @@
   max-height: min(70vh, 420px);
   overflow: auto;
   padding: 8px 0 6px;
-  background: #fff;
+  background: var(--bg-card);
   border: 1px solid #cbd5e1;
   border-radius: 8px;
   box-shadow: 0 10px 28px rgba(15, 23, 42, 0.12);

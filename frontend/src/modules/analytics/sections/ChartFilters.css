@@ -1,5 +1,5 @@
 .chart-filters {
-    background: #ffffff;
+    background: var(--bg-card);
     border-radius: 12px;
     padding: 24px;
     margin-bottom: 24px;
@@ -107,7 +107,7 @@
 
 .date-inputs .analytics-date-picker-input,
 .date-inputs input[type="date"] {
-    background: #ffffff;
+    background: var(--bg-card);
     border: 2px solid #e2e8f0;
     border-radius: 8px;
     padding: 10px 14px;
@@ -139,7 +139,7 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    background: #ffffff;
+    background: var(--bg-card);
     padding: 10px 14px;
     border-radius: 8px;
     cursor: pointer;
@@ -185,7 +185,7 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    background: #ffffff;
+    background: var(--bg-card);
     padding: 10px 14px;
     border-radius: 8px;
     cursor: pointer;
@@ -226,7 +226,7 @@
 
 .prodejce-select {
     width: 100%;
-    background: #ffffff;
+    background: var(--bg-card);
     border: 2px solid #e2e8f0;
     border-radius: 8px;
     padding: 12px 16px;

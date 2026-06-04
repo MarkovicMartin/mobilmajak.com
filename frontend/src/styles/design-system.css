@@ -1,0 +1,331 @@
+/**
+ * MOBIL MAJÁK design system – sdílené povrchy (CI 2017: #1B2848, #E40B4D).
+ * Vyžaduje theme.css. Doplňuje modulové CSS, nepřepisuje layout.
+ */
+
+/* --- Analytika: stránka a navigace --- */
+.analytics-module {
+    background: var(--bg-page-analytics);
+}
+
+.analytics-nav {
+    background: var(--bg-card);
+    border-color: var(--border-subtle);
+    box-shadow: var(--shadow-card);
+}
+
+.analytics-nav-tab {
+    background: var(--bg-nav-tab);
+    color: var(--text-secondary);
+}
+
+.analytics-nav-tab:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.analytics-nav-tab--active,
+.analytics-nav-tab.active {
+    background: var(--brand-pink-soft);
+    border-color: var(--brand-pink);
+    color: var(--brand-navy);
+}
+
+.dark-mode .analytics-nav-tab--active,
+.dark-mode .analytics-nav-tab.active {
+    color: var(--text-primary);
+}
+
+.analytics-nav .actor-status {
+    background: var(--bg-nav-tab);
+    border-color: var(--border-primary);
+    color: var(--text-secondary);
+}
+
+.analytics-nav-refresh {
+    background: var(--bg-card);
+    border-color: var(--border-primary);
+    color: var(--text-primary);
+}
+
+.analytics-nav-refresh:hover {
+    background: var(--bg-tertiary);
+}
+
+/* --- Filtry a panely --- */
+.celkova-cisla-filters,
+.section-filters,
+.servis-filters,
+.eshop-filters,
+.chart-filters {
+    background: var(--bg-card);
+    color: var(--text-primary);
+    box-shadow: var(--shadow-card);
+}
+
+.filter-group label,
+.polozky-compact-label {
+    color: var(--text-label);
+}
+
+.filter-group select,
+.filter-group input {
+    background: var(--bg-input);
+    border-color: var(--border-input);
+    color: var(--text-primary);
+}
+
+.filter-group select:focus,
+.filter-group input:focus {
+    border-color: var(--accent-analytics);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-analytics) 18%, transparent);
+}
+
+/* --- Dlaždice: stat, metrika, prodejce, přehled --- */
+.stat-card,
+.metric-card,
+.seller-card,
+.overview-card,
+.breakdown-card,
+.kanal-card,
+.summary-card,
+.celkova-cisla-loading,
+.celkova-cisla-top,
+.celkova-cisla-breakdown {
+    background: var(--bg-card);
+    color: var(--text-primary);
+    box-shadow: var(--shadow-card);
+}
+
+.stat-card {
+    border-left: 4px solid var(--accent-analytics);
+}
+
+.dark-mode .stat-card {
+    border-left-color: var(--accent-analytics);
+}
+
+.stat-card h4,
+.metric-card h4 {
+    color: var(--text-label);
+}
+
+.stat-value,
+.metric-value {
+    color: var(--text-strong);
+}
+
+.stat-change {
+    color: var(--text-muted);
+}
+
+.stat-change.positive,
+.polozky-view .stat-change.positive {
+    color: var(--accent-positive);
+}
+
+.stat-change.negative,
+.polozky-view .stat-change.negative {
+    color: var(--accent-negative);
+}
+
+.metric-card:nth-child(1) { border-left-color: var(--chart-1); }
+.metric-card:nth-child(2) { border-left-color: var(--chart-2); }
+.metric-card:nth-child(3) { border-left-color: var(--chart-3); }
+.metric-card:nth-child(4) { border-left-color: var(--chart-4); }
+.metric-card:nth-child(5) { border-left-color: var(--chart-5); }
+
+.seller-card {
+    border-color: var(--border-secondary);
+}
+
+.seller-header {
+    border-bottom-color: var(--border-secondary);
+}
+
+.seller-info h5.seller-name {
+    color: var(--text-primary);
+}
+
+.seller-store,
+.metric-label {
+    color: var(--text-secondary);
+}
+
+.metric-item {
+    background: var(--bg-inset);
+}
+
+.metric-item.primary {
+    background: var(--bg-tertiary);
+}
+
+.metric-value {
+    color: var(--text-primary);
+}
+
+/* --- Tlačítka analytiky (navy = akce, pink = aktivní stav) --- */
+.refresh-btn,
+.comparison-toggle {
+    background: linear-gradient(135deg, var(--brand-navy), var(--brand-navy-hover));
+    color: var(--text-inverse);
+}
+
+.comparison-toggle.active {
+    background: linear-gradient(135deg, var(--brand-pink), var(--brand-pink-hover));
+}
+
+.comparison-toggle.active:hover:not(:disabled) {
+    background: linear-gradient(135deg, var(--brand-pink-hover), var(--brand-pink));
+}
+
+.seller-rank {
+    background: linear-gradient(135deg, var(--brand-navy), var(--brand-navy-hover));
+    color: var(--text-inverse);
+}
+
+.analytics-module .analytics-quick-btn {
+    background: var(--bg-card);
+    border-color: var(--border-primary);
+    color: var(--text-secondary);
+}
+
+.analytics-module .analytics-quick-btn:hover {
+    border-color: var(--brand-pink);
+    background: var(--brand-pink-soft);
+    color: var(--brand-navy);
+}
+
+.dark-mode .analytics-module .analytics-quick-btn:hover {
+    color: var(--text-primary);
+}
+
+/* --- Položky: seznam prodejců (bez bílého panelu s nadpisem) --- */
+.analytics-module .sellers-panel {
+    padding: 0;
+    margin-bottom: 0.75rem;
+    background: transparent;
+    box-shadow: none;
+}
+
+/* --- Položky & výkony --- */
+.polozky-comparison-hint {
+    color: var(--text-muted);
+}
+
+.polozky-metric-dropdown__group-title {
+    color: var(--text-muted);
+}
+
+.polozky-metric-dropdown__group,
+.polozky-metric-dropdown__all {
+    border-color: var(--border-subtle);
+}
+
+.polozky-metric-dropdown__item:hover {
+    background: var(--brand-pink-soft);
+}
+
+.polozky-delta--up {
+    color: var(--accent-positive);
+}
+
+.polozky-delta--down {
+    color: var(--accent-negative);
+}
+
+.polozky-seller-chart {
+    background: var(--bg-inset);
+}
+
+.polozky-seller-chart__preset--on {
+    background: var(--brand-navy-soft);
+    border-color: var(--brand-navy);
+}
+
+.seller-card--highlight {
+    outline-color: var(--brand-pink);
+}
+
+.polozky-tasks-panel__toggle {
+    background: var(--bg-inset);
+}
+
+.polozky-tasks-table th,
+.polozky-tasks-table td {
+    border-bottom-color: var(--border-subtle);
+}
+
+.celkova-cisla-views--split .right-pane {
+    border-left-color: var(--border-subtle);
+}
+
+.celkova-pane-title {
+    color: var(--brand-navy);
+}
+
+.dark-mode .celkova-pane-title {
+    color: var(--accent-analytics);
+}
+
+/* --- Analytika: Servis / E-shop (bílé dlaždice z modulových CSS) --- */
+.servis .metric-card,
+.servis .celkova-cisla-filters,
+.servis .celkova-cisla-loading,
+.servis .celkova-cisla-breakdown,
+.servis .celkova-cisla-top,
+.eshop-analytics .metric-card,
+.eshop-analytics .celkova-cisla-filters,
+.eshop-analytics .celkova-cisla-loading,
+.eshop-analytics .overview-card,
+.eshop-analytics .breakdown-card {
+    background: var(--bg-card);
+    color: var(--text-primary);
+}
+
+.servis .filter-group select,
+.servis .filter-group input,
+.eshop-analytics .filter-group select,
+.eshop-analytics .filter-group input {
+    background: var(--bg-input);
+    color: var(--text-primary);
+    border-color: var(--border-input);
+}
+
+/* --- Sdílené komponenty --- */
+.dropdown-trigger:focus,
+.dropdown-trigger.open {
+    border-color: var(--brand-pink);
+}
+
+.dropdown-option.selected,
+.dropdown-option:hover {
+    background: var(--brand-pink-soft);
+}
+
+.btn-primary-gradient,
+.module-btn-primary {
+    background: linear-gradient(135deg, var(--brand-pink), var(--brand-pink-hover));
+    color: var(--text-inverse);
+}
+
+.btn-secondary-gradient {
+    background: linear-gradient(135deg, var(--brand-navy), var(--brand-navy-hover));
+    color: var(--text-inverse);
+}
+
+/* --- Dashboard dlaždice (základ) --- */
+.welcome-section,
+.module-card {
+    background: var(--bg-card);
+    color: var(--text-primary);
+}
+
+.welcome-section h2,
+.modules-section h3 {
+    color: var(--text-heading);
+}
+
+.welcome-section p {
+    color: var(--text-secondary);
+}

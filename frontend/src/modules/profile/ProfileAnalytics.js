@@ -7,7 +7,7 @@ import {
     CT300_INFO_KEY,
     CT300_INFO_LABEL,
 } from '../../constants/productCommissions';
-import { VICEPRACE_LABEL, formatVicepraceObrat } from '../../constants/viceprace';
+import { VICEPRACE_LABEL } from '../../constants/viceprace';
 import './ProfileAnalytics.css';
 
 const SERVIS_RATE = 0.1;
@@ -184,7 +184,9 @@ const ProfileAnalytics = ({ userId }) => {
                             <span className="metric-label">Služby</span>
                         </div>
                         <div className="metric-item metric-item--mini">
-                            <span className="metric-value">{formatVicepraceObrat(data.viceprace_obrat)}</span>
+                            <span className="metric-value">
+                                {data.viceprace_kusy ?? data.viceprace?.kusy ?? 0}
+                            </span>
                             <span className="metric-label">{VICEPRACE_LABEL}</span>
                         </div>
                         <div className="metric-item metric-item--mini">
@@ -194,6 +196,20 @@ const ProfileAnalytics = ({ userId }) => {
                         <div className="metric-item metric-item--mini">
                             <span className="metric-value">{data.vykupy ?? 0}</span>
                             <span className="metric-label">Výkupy</span>
+                        </div>
+                        <div className="metric-item metric-item--mini">
+                            <span className="metric-value">{data.lepeni ?? 0}</span>
+                            <span className="metric-label">LOS</span>
+                        </div>
+                        <div className="metric-item metric-item--mini">
+                            <span className="metric-value">{data.sklicka ?? 0}</span>
+                            <span className="metric-label">Skla/fólie</span>
+                        </div>
+                        <div className="metric-item metric-item--mini">
+                            <span className="metric-value">
+                                {data.prolepenost_pct != null ? `${data.prolepenost_pct} %` : '—'}
+                            </span>
+                            <span className="metric-label">Prolepenost</span>
                         </div>
                     </div>
 
@@ -211,12 +227,23 @@ const ProfileAnalytics = ({ userId }) => {
                         </div>
                         <div className="products-list-pre-servis">
                             {sunshineRow}
-                            <div className={`product-item product-item-info${(data.viceprace_obrat || 0) > 0 ? '' : ' product-item--zero'}`}>
-                                <span>{VICEPRACE_LABEL}</span>
+                            <div
+                                className={`product-item product-item-info${(data.sklicka || 0) ? '' : ' product-item--zero'}`}
+                                title="Tvrzená skla a fólie"
+                            >
+                                <span>Skla / fólie</span>
+                                <span className="product-calc">{data.sklicka ?? 0} ks</span>
+                            </div>
+                            <div
+                                className={`product-item product-item-info product-item-los-profile${(data.lepeni || 0) ? '' : ' product-item--zero'}`}
+                                title="LOS vůči sklům/fóliím + SUNSHINE"
+                            >
+                                <span>LOS</span>
                                 <span className="product-calc">
-                                    {(data.viceprace_obrat || 0) > 0
-                                        ? `${formatVicepraceObrat(data.viceprace_obrat)} (0 b.)`
-                                        : '0 (0 b.)'}
+                                    {data.lepeni ?? 0} ks
+                                    {data.prolepenost_pct != null
+                                        ? ` · ${data.prolepenost_pct} %`
+                                        : ''}
                                 </span>
                             </div>
                         </div>

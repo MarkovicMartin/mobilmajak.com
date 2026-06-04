@@ -1,7 +1,7 @@
 .kanban-column {
     min-width: 320px;
     max-width: 350px;
-    background: white;
+    background: var(--bg-card);
     border-radius: 15px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
     display: flex;
@@ -14,7 +14,7 @@
 .kanban-column.drag-over {
     transform: scale(1.02);
     box-shadow: 0 8px 30px rgba(102, 126, 234, 0.3);
-    border: 2px solid #667eea;
+    border: 2px solid var(--brand-navy);
 }
 
 /* Header sloupce */
@@ -25,7 +25,7 @@
     font-weight: 700;
     font-size: 16px;
     text-align: center;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, var(--brand-navy) 0%, var(--brand-navy-hover) 100%);
     position: relative;
     overflow: hidden;
 }
@@ -120,7 +120,7 @@
     right: 0;
     bottom: 0;
     background: rgba(102, 126, 234, 0.1);
-    border: 2px dashed #667eea;
+    border: 2px dashed var(--brand-navy);
     border-radius: 15px;
     display: flex;
     align-items: center;
@@ -146,10 +146,10 @@
 
 .drop-zone-content {
     text-align: center;
-    color: #667eea;
+    color: var(--brand-navy);
     font-weight: 600;
     padding: 20px;
-    background: white;
+    background: var(--bg-card);
     border-radius: 10px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
 }

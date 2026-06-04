@@ -6,7 +6,6 @@
     bottom: 0;
     background: rgba(0, 0, 0, 0.6);
     display: flex;
-    align-items: center;
     justify-content: center;
     z-index: 1000;
     backdrop-filter: blur(4px);
@@ -23,7 +22,7 @@
 }
 
 .order-form-modal {
-    background: white;
+    background: var(--bg-card);
     border-radius: 20px;
     width: 90%;
     max-width: 600px;
@@ -50,7 +49,7 @@
     justify-content: space-between;
     align-items: center;
     padding: 25px 30px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, var(--brand-navy) 0%, var(--brand-navy-hover) 100%);
     color: white;
     border-radius: 20px 20px 0 0;
 }
@@ -130,7 +129,7 @@
     border-radius: 10px;
     font-size: 14px;
     transition: all 0.3s ease;
-    background: white;
+    background: var(--bg-card);
     box-sizing: border-box;
 }
 
@@ -138,7 +137,7 @@
 .form-group textarea:focus,
 .form-group select:focus {
     outline: none;
-    border-color: #667eea;
+    border-color: var(--brand-navy);
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
     transform: translateY(-2px);
 }
@@ -207,7 +206,7 @@ textarea::placeholder {
 }
 
 .form-actions .btn-primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, var(--brand-navy) 0%, var(--brand-navy-hover) 100%);
     color: white;
     box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
 }
@@ -245,7 +244,7 @@ textarea::placeholder {
 }
 
 .order-form-modal::-webkit-scrollbar-thumb {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, var(--brand-navy) 0%, var(--brand-navy-hover) 100%);
     border-radius: 10px;
 }
 

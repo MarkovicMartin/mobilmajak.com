@@ -1,0 +1,242 @@
+/* Položky – kompaktní stat karty a filtry (scoped pod .polozky-view) */
+
+.analytics-module .polozky-view .celkova-cisla-filters,
+.polozky-view .celkova-cisla-filters {
+    padding: 8px 10px;
+    margin-bottom: 10px;
+}
+
+.polozky-view .filter-row {
+    align-items: flex-end;
+    gap: 0.65rem 1rem;
+}
+
+.polozky-view .filter-group {
+    min-width: 0;
+}
+
+.polozky-view .filter-group label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-label);
+    margin-bottom: 4px;
+}
+
+.polozky-view .filter-group select {
+    padding: 0.4rem 0.55rem;
+    font-size: 0.85rem;
+    border-width: 1px;
+}
+
+.polozky-view .refresh-btn {
+    padding: 0.35rem 0.6rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    border-radius: 6px;
+    line-height: 1.2;
+}
+
+.polozky-view .refresh-btn:hover:not(:disabled) {
+    transform: none;
+    box-shadow: 0 2px 6px rgba(52, 152, 219, 0.25);
+}
+
+/* Stat karty – vertikální stack: label → hodnota → podtext */
+.analytics-module .polozky-view .stats-cards,
+.polozky-view .stats-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 0.55rem;
+    margin-bottom: 0.75rem;
+    align-items: stretch;
+}
+
+.analytics-module .polozky-view .stat-card,
+.polozky-view .stat-card {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: 0.12rem;
+    padding: 0.5rem 0.65rem;
+    min-height: 0;
+    height: auto;
+    border-radius: 8px;
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.07);
+}
+
+.analytics-module .polozky-view .stat-card:hover,
+.polozky-view .stat-card:hover {
+    transform: none;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.analytics-module .polozky-view .stat-card h4,
+.polozky-view .stat-card h4 {
+    margin: 0;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-label);
+    line-height: 1.2;
+    width: 100%;
+}
+
+.analytics-module .polozky-view .stat-value,
+.polozky-view .stat-value {
+    margin: 0.1rem 0 0;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--text-strong);
+    line-height: 1.15;
+    width: 100%;
+    word-break: break-word;
+}
+
+.analytics-module .polozky-view .stat-change,
+.polozky-view .stat-change {
+    margin: 0.08rem 0 0;
+    padding: 0;
+    font-size: 0.68rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    line-height: 1.25;
+    width: 100%;
+    text-align: left;
+    align-self: stretch;
+}
+
+.polozky-view .last-update {
+    margin-bottom: 0.5rem;
+}
+
+/* Srovnání období – layout jako Celková čísla (split = celkova-cisla-views--split) */
+.polozky-view.is-comparison .celkova-cisla-filters {
+    padding: 8px 10px;
+    margin-bottom: 8px;
+}
+
+.polozky-view.is-comparison .filter-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+}
+
+.polozky-view.is-comparison .filter-group {
+    width: 100%;
+}
+
+.polozky-view.is-comparison .filter-group label {
+    font-size: 0.8rem;
+    margin-bottom: 3px;
+}
+
+.polozky-view.is-comparison .last-update {
+    font-size: 0.72rem;
+    margin-bottom: 6px;
+}
+
+.polozky-comparison-summary {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    margin-bottom: 10px;
+}
+
+.polozky-comparison-kpi {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 8px 10px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    min-width: 0;
+}
+
+.polozky-comparison-kpi__label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-label);
+    line-height: 1.2;
+}
+
+.polozky-comparison-kpi__value {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-strong);
+    line-height: 1.2;
+}
+
+.polozky-view.is-comparison .sellers-cards--comparison {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: min(72vh, 900px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 4px;
+}
+
+.polozky-view.is-comparison .seller-card {
+    padding: 8px 10px;
+    margin: 0;
+}
+
+.polozky-view.is-comparison .seller-card:hover {
+    transform: none;
+}
+
+.polozky-view.is-comparison .seller-header {
+    margin-bottom: 6px;
+}
+
+.polozky-view.is-comparison .seller-name {
+    font-size: 0.9rem;
+}
+
+.polozky-view.is-comparison .seller-main-metrics {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px 8px;
+    margin-bottom: 6px;
+}
+
+.polozky-view.is-comparison .seller-main-metrics .metric-item {
+    padding: 0;
+}
+
+.polozky-view.is-comparison .seller-main-metrics .metric-label {
+    font-size: 0.65rem;
+}
+
+.polozky-view.is-comparison .seller-main-metrics .metric-value {
+    font-size: 0.85rem;
+}
+
+.polozky-view.is-comparison .seller-detail-chips {
+    grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+    gap: 4px;
+    margin-top: 6px;
+    padding-top: 6px;
+}
+
+.polozky-view.is-comparison .polozky-chip {
+    min-height: 44px;
+}
+
+.polozky-view.is-comparison .seller-card__open-hint {
+    font-size: 0.65rem;
+}
+
+@media (max-width: 1600px) {
+    .polozky-comparison-summary {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .polozky-view .filter-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}

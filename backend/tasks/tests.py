@@ -1,6 +1,7 @@
 from datetime import date, time
 
 from django.test import TestCase
+from django.utils import timezone
 from rest_framework.test import APIClient
 
 from stores.models import Prodejna
@@ -206,3 +207,24 @@ class TasksApiTests(TestCase):
 
         self.assertGreaterEqual(count_all, 2)
         self.assertEqual(count_mine, 1)
+
+    def test_dokonceno_v_set_on_hotovo(self):
+        task = Ukol.objects.create(
+            ukol="Dokončit",
+            priorita="stredni",
+            typ="osobni",
+            stav="novy",
+            id_prodejce_ukol=self.prodejce.id,
+            id_prodejce_zadal=self.prodejce.id,
+        )
+        self.assertIsNone(task.dokonceno_v)
+        self._auth(self.prodejce)
+        res = self.client.patch(
+            f"/api/tasks/{task.id}/",
+            {"stav": "hotovo"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 200)
+        task.refresh_from_db()
+        self.assertIsNotNone(task.dokonceno_v)
+        self.assertLessEqual(task.dokonceno_v, timezone.now())

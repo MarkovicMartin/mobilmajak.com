@@ -1,6 +1,8 @@
 .analytics-date-picker-input {
     padding: 10px 12px;
-    border: 2px solid #e9ecef;
+    border: 2px solid var(--border-input);
+    background: var(--bg-input);
+    color: var(--text-primary);
     border-radius: 8px;
     font-size: 0.9rem;
     width: 100%;
@@ -10,7 +12,7 @@
 
 .analytics-date-picker-input:focus {
     outline: none;
-    border-color: #667eea;
+    border-color: var(--brand-navy);
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
@@ -30,7 +32,7 @@
 
 .analytics-date-range-sep {
     font-size: 0.85rem;
-    color: #64748b;
+    color: var(--text-muted);
 }
 
 .analytics-date-range--inline .analytics-date-picker-input,
@@ -52,6 +54,6 @@
 
 .react-datepicker__day--selected.analytics-day-has-data,
 .react-datepicker__day--keyboard-selected.analytics-day-has-data {
-    background-color: #667eea;
+    background-color: var(--brand-navy);
     color: #fff;
 }

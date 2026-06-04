@@ -9,7 +9,7 @@
 
 /* Filters Header */
 .traffic-filters {
-    background: white;
+    background: var(--bg-card);
     padding: 16px 20px;
     border-radius: 12px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
@@ -73,7 +73,7 @@
 }
 
 .traffic-quick-btn.active {
-    background: white;
+    background: var(--bg-card);
     color: #3b82f6;
     font-weight: 600;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
@@ -109,7 +109,7 @@
 }
 
 .traffic-tile {
-    background: white;
+    background: var(--bg-card);
     padding: 14px 16px;
     border-radius: 10px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
@@ -172,7 +172,7 @@
 
 /* Charts Section */
 .traffic-chart-container {
-    background: white;
+    background: var(--bg-card);
     padding: 14px 16px;
     border-radius: 10px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
@@ -205,7 +205,7 @@
 }
 
 .traffic-heatmap-card {
-    background: white;
+    background: var(--bg-card);
     padding: 24px;
     border-radius: 12px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);

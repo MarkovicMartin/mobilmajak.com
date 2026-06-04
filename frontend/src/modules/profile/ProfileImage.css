@@ -146,21 +146,21 @@
     padding: 40px 20px;
     border: 2px dashed #dee2e6;
     border-radius: 12px;
-    background: #fff;
+    background: var(--bg-card);
     cursor: pointer;
     transition: all 0.3s ease;
     text-align: center;
 }
 
 .upload-button:hover {
-    border-color: #667eea;
+    border-color: var(--brand-navy);
     background: #f8f9ff;
     transform: translateY(-2px);
 }
 
 .upload-button i {
     font-size: 2.5rem;
-    color: #667eea;
+    color: var(--brand-navy);
 }
 
 .upload-button span {
@@ -176,7 +176,7 @@
 
 /* Vybraný soubor */
 .file-selected {
-    background: #fff;
+    background: var(--bg-card);
     border: 2px solid #e9ecef;
     border-radius: 12px;
     padding: 20px;
@@ -400,7 +400,7 @@
     margin: 0 0 4px;
     font-size: 1.15rem;
     font-weight: 700;
-    color: #2c3e50;
+    color: var(--text-heading);
 }
 
 .profile-image-embedded__meta {

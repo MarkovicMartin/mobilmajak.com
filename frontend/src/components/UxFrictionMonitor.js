@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { startUxFrictionMonitor } from '../utils/uxFrictionMonitor';
 
-/** Po přihlášení spustí detekci rage/dead kliků a JS chyb → automatické UX tickety. */
+/** Po přihlášení spustí přísnější detekci UX záseků → automatické UX tickety (s limity). */
 const UxFrictionMonitor = () => {
     useEffect(() => {
         startUxFrictionMonitor();

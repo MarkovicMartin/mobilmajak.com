@@ -1,7 +1,13 @@
 .analytics-module {
     padding: 0.25rem 0 0.5rem;
-    background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
     min-height: 0;
+    position: relative;
+    z-index: 1;
+}
+
+.analytics-content {
+    position: relative;
+    z-index: 1;
 }
 
 .analytics-content {

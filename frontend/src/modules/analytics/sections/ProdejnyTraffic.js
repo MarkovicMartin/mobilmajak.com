@@ -488,7 +488,7 @@ const ProdejnyZakaznici = () => {
                         onClick={() => setIsComparison(!isComparison)}
                         style={{
                             padding: '8px 16px',
-                            background: isComparison ? '#e74c3c' : '#3498db',
+                            background: isComparison ? 'var(--brand-pink)' : 'var(--brand-navy)',
                             color: 'white',
                             border: 'none',
                             borderRadius: '6px',

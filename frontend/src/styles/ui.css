@@ -1,0 +1,11 @@
+/**
+ * MOBIL MAJÁK – jediný globální vstup pro styly.
+ * V App.js importovat pouze tento soubor (+ App.css).
+ */
+@import './theme.css';
+@import './design-system.css';
+@import './legacy-brand.css';
+@import './dark-mode.css';
+@import './dark-mode-modules.css';
+@import './components.css';
+@import './Modals.css';

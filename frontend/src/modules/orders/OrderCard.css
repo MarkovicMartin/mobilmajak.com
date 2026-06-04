@@ -1,5 +1,5 @@
 .order-card {
-    background: white;
+    background: var(--bg-card);
     border-radius: 12px;
     padding: 15px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
@@ -48,11 +48,11 @@
 .card-id {
     font-weight: 700;
     font-size: 14px;
-    color: #667eea;
+    color: var(--brand-navy);
     background: linear-gradient(135deg, #e8f2ff 0%, #f0f8ff 100%);
     padding: 4px 10px;
     border-radius: 20px;
-    border: 1px solid #667eea;
+    border: 1px solid var(--brand-navy);
 }
 
 .card-actions {

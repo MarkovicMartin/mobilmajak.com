@@ -74,7 +74,7 @@
 }
 
 .data-type-toggle button.active {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, var(--brand-navy) 0%, var(--brand-navy-hover) 100%);
     color: #fff;
     box-shadow: 
         0 8px 25px rgba(102, 126, 234, 0.4),
@@ -189,7 +189,7 @@
     gap: 8px;
     padding: 12px 20px;
     border: 2px solid #e0e0e0;
-    background: #fff;
+    background: var(--bg-card);
     color: #666;
     border-radius: 25px;
     cursor: pointer;
@@ -199,14 +199,14 @@
 }
 
 .toggle-button:hover {
-    border-color: #667eea;
-    color: #667eea;
+    border-color: var(--brand-navy);
+    color: var(--brand-navy);
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
 }
 
 .toggle-button.active {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, var(--brand-navy) 0%, var(--brand-navy-hover) 100%);
     border-color: transparent;
     color: #fff;
     box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
@@ -235,7 +235,7 @@
 .date-picker input:focus,
 .date-picker .analytics-date-picker-input:focus {
     outline: none;
-    border-color: #667eea;
+    border-color: var(--brand-navy);
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
@@ -259,7 +259,7 @@
 }
 
 .data-card {
-    background: #fff;
+    background: var(--bg-card);
     border: 1px solid #e9ecef;
     border-radius: 12px;
     padding: 25px;
@@ -439,7 +439,7 @@
 }
 
 .historical-item {
-    background: #fff;
+    background: var(--bg-card);
     padding: 20px;
     border-radius: 8px;
     border: 1px solid #e9ecef;
@@ -648,7 +648,7 @@
 
 .profile-analytics--fit .analytics-loading-inline {
     font-size: 0.78rem;
-    color: #667eea;
+    color: var(--brand-navy);
     font-weight: 600;
 }
 
@@ -820,6 +820,10 @@
 
 .profile-analytics--fit .product-item--zero {
     opacity: 0.55;
+}
+
+.profile-analytics--fit .product-item-los-profile .product-calc {
+    font-size: 0.78rem;
 }
 
 .profile-analytics--fit .profile-analytics-source {

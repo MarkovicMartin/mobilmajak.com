@@ -5,15 +5,25 @@
     top: 0;
     z-index: 1100;
     width: 100%;
-    padding: 0.75rem 1rem 0.5rem;
+    padding: 0.5rem 1rem 0.4rem;
     box-sizing: border-box;
+    transition: padding 0.25s ease;
 }
 
-/* Desktop: odsazení nahoře kvůli tooltipům nad ikonami */
+/* Desktop: dock nad obsahem, obsah má padding-top v .dashboard-main */
 @media (min-width: 769px) {
     .dock-navbar {
-        padding-top: 1rem;
-        padding-bottom: 0.75rem;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        padding: 0.65rem 1rem 0.5rem;
+        pointer-events: none;
+    }
+
+    html.dock-scrolled .dock-navbar {
+        padding-top: 0.35rem;
+        padding-bottom: 0.35rem;
     }
 }
 
@@ -116,6 +126,18 @@
     -webkit-backdrop-filter: blur(24px);
     box-shadow: var(--shadow-secondary);
     position: relative;
+    pointer-events: auto;
+    transform-origin: top center;
+    transition: transform 0.28s ease, box-shadow 0.28s ease, padding 0.28s ease;
+}
+
+@media (hover: hover) and (min-width: 769px) {
+    .dock-navbar-desktop:hover .dock-glass,
+    .dock-glass:focus-within {
+        box-shadow: 0 12px 40px rgba(27, 40, 72, 0.22);
+        padding: 0.72rem 1.35rem 0.92rem;
+        border-color: var(--brand-pink);
+    }
 }
 
 .dark-mode .dock-glass {

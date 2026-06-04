@@ -4,7 +4,6 @@
     inset: 0;
     background: rgba(0, 0, 0, 0.5);
     display: flex;
-    align-items: center;
     justify-content: center;
     z-index: 15000;
     padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right)) max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
@@ -14,7 +13,7 @@
 }
 
 .ticket-form-modal {
-    background: var(--bg-primary);
+    background: var(--bg-card);
     border-radius: 16px;
     width: 100%;
     max-width: 560px;
@@ -37,7 +36,7 @@
 }
 
 .ticket-form-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, var(--brand-navy) 0%, var(--brand-navy-hover) 100%);
     color: white;
     padding: 18px 22px;
     display: flex;
@@ -78,8 +77,8 @@
 }
 
 .ticket-form-error {
-    background: #fde8e8;
-    color: #c0392b;
+    background: color-mix(in srgb, var(--accent-danger) 12%, var(--bg-card));
+    color: var(--accent-danger);
     border-radius: 8px;
     padding: 10px 14px;
     font-size: 0.9rem;
@@ -91,18 +90,18 @@
     gap: 6px;
 }
 
-.form-group label {
+.ticket-form-body .form-group label {
     font-weight: 600;
     font-size: 0.9rem;
-    color: var(--text-secondary);
+    color: var(--text-label);
 }
 
 .form-group input,
 .form-group textarea {
     padding: 10px 14px;
     border-radius: 8px;
-    border: 1px solid var(--border-primary);
-    background: var(--bg-secondary);
+    border: 1px solid var(--border-input);
+    background: var(--bg-input);
     color: var(--text-primary);
     font-family: inherit;
     font-size: 0.95rem;
@@ -112,7 +111,7 @@
 .form-group input:focus,
 .form-group textarea:focus {
     outline: none;
-    border-color: #667eea;
+    border-color: var(--brand-navy);
 }
 
 .form-group textarea {
@@ -132,8 +131,8 @@
 }
 
 .file-drop-area:hover {
-    border-color: #667eea;
-    background: rgba(102, 126, 234, 0.05);
+    border-color: var(--brand-navy);
+    background: var(--brand-navy-soft);
 }
 
 .file-previews {
@@ -201,7 +200,7 @@
     padding: 10px 24px;
     border-radius: 8px;
     border: none;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, var(--brand-navy) 0%, var(--brand-navy-hover) 100%);
     color: white;
     font-size: 0.95rem;
     font-weight: 600;

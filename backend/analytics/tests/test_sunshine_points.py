@@ -5,6 +5,8 @@ from analytics.points_config import calculate_product_points, build_product_poin
 from analytics.sunshine_config import (
     SUNSHINE_POINTS_PER_UNIT,
     calculate_sunshine_points,
+    prolepenost_pct,
+    prolepenost_zaklad_kusy,
     sunshine_row_q,
 )
 
@@ -41,3 +43,10 @@ class SunshinePointsTests(SimpleTestCase):
 
     def test_sunshine_row_q_matches_name(self):
         self.assertIn('SUNSHINE', str(sunshine_row_q()))
+
+    def test_prolepenost_includes_sunshine_in_denominator(self):
+        self.assertEqual(prolepenost_zaklad_kusy(10, 5), 15)
+        self.assertEqual(prolepenost_pct(6, 10, 5), 40.0)
+        self.assertEqual(prolepenost_pct(12, 10, 0), 120.0)
+        self.assertEqual(prolepenost_pct(12, 10, 5), 80.0)
+        self.assertIsNone(prolepenost_pct(5, 0, 0))

@@ -1,0 +1,124 @@
+/**
+ * Sdílené UI komponenty – formuláře, karty, analytika, tlačítka.
+ * Modulové *.css řeší jen layout; barvy jdou z theme.css tokenů.
+ */
+
+/* ========== Globální formuláře (přepíše modulové background: var(--bg-card)) ========== */
+.App input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='file']):not([type='hidden']):not([type='submit']):not([type='button']):not([type='reset']),
+.App select,
+.App textarea,
+.App .form-group input:not([type='checkbox']):not([type='radio']):not([type='color']),
+.App .form-group select,
+.App .form-group textarea {
+    background-color: var(--bg-input) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-input) !important;
+}
+
+.App input::placeholder,
+.App textarea::placeholder {
+    color: var(--text-muted);
+}
+
+.App input:focus,
+.App select:focus,
+.App textarea:focus,
+.App .form-group input:focus,
+.App .form-group select:focus,
+.App .form-group textarea:focus {
+    outline: none;
+    border-color: var(--border-focus) !important;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--border-focus) 20%, transparent);
+}
+
+.App option {
+    background-color: var(--bg-card);
+    color: var(--text-primary);
+}
+
+/* ========== Sdílené povrchy ========== */
+.App .module-card,
+.App .welcome-section,
+.App .card,
+.App .metric-card,
+.App .stat-card,
+.App .seller-card,
+.App .overview-card,
+.App .breakdown-card,
+.App .kanal-card,
+.App .summary-card,
+.App .order-card,
+.App .post-card,
+.App .category-item,
+.App .category-manager,
+.App .admin-dashboard,
+.App .access-list-item {
+    background: var(--bg-card);
+    color: var(--text-primary);
+}
+
+.App label,
+.App .form-group label {
+    color: var(--text-label);
+}
+
+.App .btn-cancel,
+.App button.btn-cancel {
+    background: var(--bg-button);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-primary);
+}
+
+.App .btn-cancel:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+/* Formuláře v portálu na body (ticket, uživatel, prodejna…) */
+.dark-mode :is(
+        .ticket-form-overlay,
+        .user-form-overlay,
+        .store-form-overlay,
+        .post-form-overlay,
+        .access-form-overlay
+    )
+    .form-group
+    label {
+    color: var(--text-label) !important;
+}
+
+.dark-mode
+    :is(
+        .ticket-form-overlay,
+        .user-form-overlay,
+        .store-form-overlay,
+        .post-form-overlay,
+        .access-form-overlay
+    )
+    input:not([type='checkbox']):not([type='radio']):not([type='color']):not([type='file']):not([type='hidden']):not([type='submit']):not([type='button']),
+.dark-mode
+    :is(
+        .ticket-form-overlay,
+        .user-form-overlay,
+        .store-form-overlay,
+        .post-form-overlay,
+        .access-form-overlay
+    )
+    select,
+.dark-mode
+    :is(
+        .ticket-form-overlay,
+        .user-form-overlay,
+        .store-form-overlay,
+        .post-form-overlay,
+        .access-form-overlay
+    )
+    textarea {
+    background-color: var(--bg-input) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-input) !important;
+}
+
+.dark-mode .ticket-form-modal {
+    background: var(--bg-card) !important;
+}

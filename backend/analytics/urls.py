@@ -9,6 +9,8 @@ urlpatterns = [
     
     # API endpoint pro modul "Prodejny - Položky" z tabulky WEB_PRODEJE
     path('web-prodeje/polozky/', views.web_prodeje_polozky_view, name='web_prodeje_polozky'),
+    path('web-prodeje/polozky/timeline/', views.web_prodeje_polozky_timeline_view, name='web_prodeje_polozky_timeline'),
+    path('web-prodeje/polozky/tasks-workload/', views.web_prodeje_polozky_tasks_workload_view, name='web_prodeje_polozky_tasks_workload'),
     # Leaderboardy z WEB_PRODEJE_ALL
     path('web-prodeje/leaderboard/points/today/', views.web_prodeje_leaderboard_points_today, name='web_prodeje_leaderboard_points_today'),
     path('web-prodeje/leaderboard/points/', views.web_prodeje_leaderboard_points, name='web_prodeje_leaderboard_points'),

@@ -39,6 +39,7 @@ class Ukol(models.Model):
     id_prodejny = models.IntegerField(null=True, blank=True, db_column="ID_PRODEJNY")
     vytvoreno = models.DateTimeField(auto_now_add=True, db_column="VYTVORENO")
     upraveno = models.DateTimeField(auto_now=True, db_column="UPRAVENO")
+    dokonceno_v = models.DateTimeField(null=True, blank=True, db_column="DOKONCENO_V")
 
     class Meta:
         db_table = "WEB_UKOLY"

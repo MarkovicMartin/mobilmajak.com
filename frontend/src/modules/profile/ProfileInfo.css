@@ -24,7 +24,7 @@
     align-items: center;
     gap: 8px;
     padding: 10px 20px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, var(--brand-navy) 0%, var(--brand-navy-hover) 100%);
     color: white;
     border: none;
     border-radius: 25px;
@@ -64,14 +64,14 @@
 }
 
 .info-section {
-    background: #f8f9fa;
+    background: var(--bg-card);
     padding: 16px 18px;
     border-radius: 10px;
-    border: 1px solid #e9ecef;
+    border: 1px solid var(--border-subtle);
 }
 
 .info-section h3 {
-    color: #333;
+    color: var(--text-heading);
     font-size: 1.05rem;
     margin: 0 0 14px;
     padding-bottom: 8px;
@@ -97,13 +97,13 @@
 
 .info-row .label {
     font-weight: 600;
-    color: #495057;
+    color: var(--text-label);
     min-width: 120px;
     margin-right: 15px;
 }
 
 .info-row .value {
-    color: #333;
+    color: var(--text-primary);
     flex: 1;
 }
 
@@ -143,7 +143,7 @@
 .form-group input:focus,
 .form-group textarea:focus {
     outline: none;
-    border-color: #667eea;
+    border-color: var(--brand-navy);
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
@@ -248,7 +248,7 @@
 
 .password-form .form-group input:focus {
     outline: none;
-    border-color: #667eea;
+    border-color: var(--brand-navy);
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 

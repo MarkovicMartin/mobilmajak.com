@@ -7,17 +7,16 @@
     background: rgba(0, 0, 0, 0.6);
     display: flex;
     justify-content: center;
-    align-items: center;
     z-index: 1000;
 }
 
 .modal-content {
-    background: white;
+    background: var(--bg-card);
     border-radius: 12px;
     padding: 30px;
     max-width: 500px;
     width: 90%;
-    max-height: 80vh;
+    max-height: min(90vh, calc(100dvh - 24px));
     overflow-y: auto;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
 }
