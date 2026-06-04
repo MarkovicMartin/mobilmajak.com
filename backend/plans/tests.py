@@ -1,21 +1,27 @@
 """
-Testy modulu plánů – 3m průměr, auto přiřazení prodejců, Vychodil.
+Testy modulu plánů – 3m průměr, rozdělení prodejců podle hodin.
 """
+from datetime import date
 from decimal import Decimal
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 from django.test import TestCase
 
 from plans.plneni import mesice_pred_planem, _prev_month
 from plans.historie_3m import historie_3m_nahled, vypocitej_plan_z_3_mesicu
 from plans.historie import ChybejiciDataError, vypocitej_plan_z_baseline
+from plans.historie_auto import historie_auto_nahled, vypocitej_plan_automaticky, _sloucit_prodejny_hybrid
+from plans.plan_service import ensure_plan_mesic, ensure_plans_bulk, mesice_bez_aktualniho_planu
+from plans.prodejci_prepocet import mesice_pro_denni_prepocet
+from plans.forecast import predikce_rok, vypocitej_plan_z_projekce, vyhled_forecast
 from plans.prodejci_auto import (
     VYCHODIL_USER_ID,
-    _hlavni_prodejce_id,
+    _rozdel_kusy,
+    _podily_z_hodin,
     _prirad_prodejce_prodejna,
     prirad_prodejce_automaticky,
 )
-from plans.models import PlanMonth, PlanStore, PlanCategory, PlanProdejce
+from plans.models import PlanMonth, PlanStore, PlanCategory, PlanProdejce, PlanProdejceKategorie
 from stores.models import Prodejna
 from users.models import WebUser
 
@@ -27,6 +33,16 @@ class MesicePredPlanemTests(TestCase):
 
     def test_prev_month_leden(self):
         self.assertEqual(_prev_month(2026, 1), (2025, 12))
+
+
+class RozdelKusyTests(TestCase):
+    def test_soucet_sedi(self):
+        podily = {1: 0.5, 2: 0.4, 3: 0.1}
+        out = _rozdel_kusy(100, podily)
+        self.assertEqual(sum(out.values()), 100)
+        self.assertEqual(out[1], 50)
+        self.assertEqual(out[2], 40)
+        self.assertEqual(out[3], 10)
 
 
 class Historie3mTests(TestCase):
@@ -50,41 +66,25 @@ class Historie3mTests(TestCase):
         nahled = historie_3m_nahled(2026, 6, 10)
         self.assertEqual(nahled['obrat_prumer_3m'], 1000000.0)
         self.assertEqual(nahled['navrh_obrat'], 1100000.0)
-        self.assertEqual(len(nahled['mesice']), 3)
-
-    @patch('plans.historie_3m.vypocitej_plan_z_baseline')
-    @patch('plans.historie_3m.plneni_celkem_firma_za_obdobi')
-    @patch('plans.historie_3m.plneni_prodejny_za_obdobi')
-    @patch('plans.historie_3m.plneni_firma_za_obdobi')
-    def test_vypocet_volá_baseline(self, mock_fk, mock_pd, mock_celkem, mock_baseline):
-        mock_celkem.return_value = {'obrat': Decimal('900000'), 'pocet_mesicu': 3}
-        mock_pd.return_value = {}
-        mock_fk.return_value = {}
-        mock_baseline.return_value = (Decimal('990000'), [])
-
-        result = vypocitej_plan_z_3_mesicu(2026, 6, 10)
-        self.assertEqual(result[0], Decimal('990000'))
-        mock_baseline.assert_called_once()
 
 
-class ProdejciAutoTests(TestCase):
+class ProdejciAutoHodinyTests(TestCase):
     def setUp(self):
         self.prodejna = Prodejna.objects.create(
             nazev='Test Globus Plans', nazev_kratkiy='TG', barva='#000000', aktivni=True,
         )
         pid = self.prodejna.id
-        self.hlavni = WebUser.objects.create(
-            id=201, uzivatelske_jmeno='hlavni_plans', jmeno='Hlavní', prijmeni='Prodejce',
-            role='PRODEJCE', prodejna_id=pid, aktivni=True,
-        )
-        self.hlavni.set_heslo('x')
-        self.hlavni.save()
-        self.brigadnik = WebUser.objects.create(
-            id=202, uzivatelske_jmeno='brig_plans', jmeno='Brig', prijmeni='Adnik',
-            role='BRIGADNIK', prodejna_id=pid, aktivni=True,
-        )
-        self.brigadnik.set_heslo('x')
-        self.brigadnik.save()
+        for uid, jmeno, role in [
+            (201, 'Gabriel', 'PRODEJCE'),
+            (202, 'Létal', 'PRODEJCE'),
+            (203, 'Brig', 'BRIGADNIK'),
+        ]:
+            u = WebUser.objects.create(
+                id=uid, uzivatelske_jmeno=f'u{uid}', jmeno=jmeno, prijmeni='T',
+                role=role, prodejna_id=pid, aktivni=True,
+            )
+            u.set_heslo('x')
+            u.save()
         self.plan = PlanMonth.objects.create(
             rok=2026, mesic=7, cislo_verze=1, castka_celkem=Decimal('100000'),
         )
@@ -104,35 +104,253 @@ class ProdejciAutoTests(TestCase):
             prumerna_cena_za_kus=Decimal('5000'),
         )
 
-    @patch('plans.prodejci_auto.Smena')
-    def test_hlavni_prodejce_nejvic_smen(self, mock_smena):
-        mock_smena.objects.filter.return_value.values_list.return_value.distinct.return_value = [201, 202]
-        mock_smena.objects.filter.return_value.count.side_effect = [20, 5]
+    def test_vychodil_vyloucen_z_prodejnich_podilu(self):
+        hodiny = {201: 50.0, 202: 40.0, VYCHODIL_USER_ID: 10.0}
+        p = _podily_z_hodin(hodiny, exclude_user_ids=[VYCHODIL_USER_ID])
+        self.assertAlmostEqual(p[201], 50 / 90)
+        self.assertAlmostEqual(p[202], 40 / 90)
+        self.assertNotIn(VYCHODIL_USER_ID, p)
 
-        hlavni = _hlavni_prodejce_id(2026, 7, self.prodejna.id)
-        self.assertEqual(hlavni, 201)
+    @patch('plans.prodejci_auto._hodiny_na_prodejne')
+    def test_proporcionalni_rozděleni_tri_lide(self, mock_hodiny):
+        mock_hodiny.return_value = {201: 50.0, 202: 40.0, 203: 10.0}
+        prirazeno, _ = _prirad_prodejce_prodejna(self.ps, 2026, 7)
+        self.assertEqual(prirazeno, 3)
+        g = PlanProdejce.objects.get(uzivatel_id=201)
+        l = PlanProdejce.objects.get(uzivatel_id=202)
+        b = PlanProdejce.objects.get(uzivatel_id=203)
+        g_k = g.kategorie.get(kategorie_kod='NOVE_TELEFONY').pocet_kusu
+        l_k = l.kategorie.get(kategorie_kod='NOVE_TELEFONY').pocet_kusu
+        b_k = b.kategorie.get(kategorie_kod='NOVE_TELEFONY').pocet_kusu
+        self.assertEqual(g_k + l_k + b_k, 20)
+        self.assertEqual(g_k, 10)
+        self.assertEqual(l_k, 8)
+        self.assertEqual(b_k, 2)
 
-    @patch('plans.prodejci_auto._servis_kusy_vychodil', return_value=3)
-    @patch('plans.prodejci_auto._hlavni_prodejce_id', return_value=201)
-    @patch('plans.prodejci_auto._lide_se_smenou_na_prodejne', return_value={121, 201})
-    def test_vychodil_jen_servis_pri_dvojobsazeni(self, *_mocks):
-        prirazeno, warnings = _prirad_prodejce_prodejna(self.ps, 2026, 7)
-        self.assertEqual(prirazeno, 2)
-        vych = PlanProdejce.objects.filter(uzivatel_id=VYCHODIL_USER_ID).first()
-        self.assertIsNotNone(vych)
-        self.assertEqual(list(vych.kategorie.values_list('kategorie_kod', flat=True)), ['SERVIS'])
-        hlavni = PlanProdejce.objects.get(uzivatel_id=201)
-        kody = set(hlavni.kategorie.values_list('kategorie_kod', flat=True))
-        self.assertIn('NOVE_TELEFONY', kody)
-        self.assertNotIn('SERVIS', kody)
+    @patch('plans.prodejci_auto._hodiny_na_prodejne')
+    def test_vychodil_bez_kusovych_kategorii(self, mock_hodiny):
+        mock_hodiny.return_value = {VYCHODIL_USER_ID: 80.0, 201: 20.0}
+        PlanCategory.objects.create(
+            plan_prodejna=self.ps,
+            kategorie_kod='SERVIS',
+            podil_procenta=Decimal('0'),
+            castka_kategorie=Decimal('1'),
+            prumerna_cena_za_kus=Decimal('1'),
+        )
+        prirazeno, _ = _prirad_prodejce_prodejna(self.ps, 2026, 7)
+        self.assertFalse(
+            PlanProdejceKategorie.objects.filter(
+                plan_prodejce__uzivatel_id=VYCHODIL_USER_ID,
+                kategorie_kod='NOVE_TELEFONY',
+            ).exists()
+        )
+        self.assertTrue(PlanProdejce.objects.filter(uzivatel_id=201).exists())
 
-    @patch('plans.prodejci_auto._prirad_prodejce_prodejna', return_value=(1, []))
-    def test_prirad_celý_plan(self, mock_one):
-        res = prirad_prodejce_automaticky(self.plan)
-        self.assertEqual(res['prirazeno_prodejen'], 1)
+
+class HybridHistorieAutoTests(TestCase):
+    def test_sloucit_6m_obrat_3m_kategorie(self):
+        p6 = {
+            1: {'obrat': Decimal('600'), 'kusy': 0, 'kategorie': {'A': {'obrat': Decimal('1')}}},
+        }
+        p3 = {
+            1: {'obrat': Decimal('100'), 'kusy': 0, 'kategorie': {'B': {'obrat': Decimal('50')}}},
+        }
+        merged = _sloucit_prodejny_hybrid(p6, p3)
+        self.assertEqual(merged[1]['obrat'], Decimal('600'))
+        self.assertIn('B', merged[1]['kategorie'])
+
+    @patch('plans.historie_auto.plneni_celkem_firma')
+    @patch('plans.historie_auto.plneni_prodejny_za_obdobi')
+    @patch('plans.historie_auto.plneni_firma_za_obdobi')
+    @patch('plans.historie_auto.vypocitej_plan_z_baseline')
+    def test_vypocet_yoy_a_okna(
+        self, mock_baseline, mock_firma, mock_prodejny, mock_celkem
+    ):
+        mock_celkem.return_value = {'obrat': Decimal('2000000'), 'kusy': 0}
+        mock_prodejny.side_effect = [
+            {10: {'obrat': Decimal('800000'), 'kusy': 0, 'kategorie': {}}},
+            {10: {'obrat': Decimal('100000'), 'kusy': 0, 'kategorie': {'NOVE_TELEFONY': {'obrat': Decimal('50')}}}},
+        ]
+        mock_firma.return_value = {'NOVE_TELEFONY': {'obrat': Decimal('500000'), 'kusy': 0}}
+        mock_baseline.return_value = (Decimal('2200000'), [])
+
+        vypocitej_plan_automaticky(2026, 6, 10)
+        mock_celkem.assert_called_with(2025, 6)
+        self.assertEqual(mock_prodejny.call_count, 2)
+        args_baseline = mock_baseline.call_args[0]
+        self.assertEqual(args_baseline[0], Decimal('2000000'))
+        prodejny_arg = args_baseline[1]
+        self.assertEqual(prodejny_arg[10]['obrat'], Decimal('800000'))
+        self.assertIn('NOVE_TELEFONY', prodejny_arg[10]['kategorie'])
+
+    @patch('plans.historie_auto.plneni_celkem_firma')
+    @patch('plans.historie_auto.plneni_prodejny_za_obdobi')
+    @patch('plans.historie_auto.plneni_firma_za_obdobi')
+    @patch('plans.historie_auto.Prodejna.get_aktivni_prodejny')
+    def test_nahled_hybrid(self, mock_aktivni, mock_fk, mock_pd, mock_celkem):
+        mock_celkem.return_value = {'obrat': Decimal('1000000'), 'kusy': 0}
+        mock_pd.side_effect = [
+            {1: {'obrat': Decimal('1000000'), 'kusy': 0, 'kategorie': {}}},
+            {1: {'obrat': Decimal('1000000'), 'kusy': 0, 'kategorie': {}}},
+        ]
+        mock_fk.return_value = {}
+        p = MagicMock(id=1, nazev='A')
+        mock_aktivni.return_value = [p]
+        nahled = historie_auto_nahled(2026, 6, 10)
+        self.assertEqual(nahled['zdroj'], 'hybrid_yoy_6m_3m')
+        self.assertEqual(nahled['navrh_obrat'], 1100000.0)
 
 
-class BaselineErrorTests(TestCase):
-    def test_zero_obrat_raises(self):
-        with self.assertRaises(ChybejiciDataError):
-            vypocitej_plan_z_baseline(Decimal('0'), {}, {}, 10)
+class EnsurePlanMesicTests(TestCase):
+    def setUp(self):
+        self.admin = WebUser.objects.create(
+            uzivatelske_jmeno='admin_plans',
+            jmeno='Admin',
+            prijmeni='Plans',
+            role='ADMIN',
+            aktivni=True,
+        )
+        self.admin.set_heslo('x')
+        self.admin.save()
+
+    def test_past_month_not_allowed(self):
+        res = ensure_plan_mesic(2020, 1, self.admin, rust_procent=10)
+        self.assertFalse(res['created'])
+        self.assertEqual(res['reason'], 'past_month')
+
+    @patch('plans.plan_service.vypocitej_plan_automaticky')
+    @patch('plans.plan_service._vytvor_plan_z_prodejny_data')
+    def test_idempotent_second_call(self, mock_vytvor, mock_vypocet):
+        mock_vypocet.return_value = (Decimal('1000000'), [])
+        mock_vytvor.return_value = (
+            PlanMonth.objects.create(rok=2028, mesic=6, cislo_verze=1, castka_celkem=Decimal('1000000')),
+            {'id': 1, 'castka_celkem': '1000000'},
+        )
+        r1 = ensure_plan_mesic(2028, 6, self.admin)
+        self.assertTrue(r1['created'])
+        r2 = ensure_plan_mesic(2028, 6, self.admin)
+        self.assertFalse(r2['created'])
+        self.assertEqual(r2['reason'], 'already_exists')
+        mock_vypocet.assert_called_once()
+
+
+class ForecastTests(TestCase):
+    def test_stav_mesice(self):
+        from plans.forecast import stav_mesice
+        ref = date(2026, 6, 4)
+        self.assertEqual(stav_mesice(2026, 5, ref), 'ukonceny')
+        self.assertEqual(stav_mesice(2026, 6, ref), 'probiha')
+        self.assertEqual(stav_mesice(2026, 7, ref), 'budouci')
+
+    @patch('plans.forecast.plneni_celkem_firma')
+    @patch('plans.forecast.PlanMonth')
+    def test_dopln_plneni_ukonceny(self, mock_plan, mock_plneni):
+        from plans.forecast import dopln_plneni_k_mesici
+        mock_plneni.return_value = {'obrat': Decimal('1100000'), 'kusy': 50}
+        mock_plan.objects.filter.return_value.first.return_value = None
+        pm = {'rok': 2026, 'mesic': 1, 'obrat_pred': 1000000.0}
+        dopln_plneni_k_mesici(pm, reference=date(2026, 6, 4))
+        self.assertEqual(pm['stav'], 'ukonceny')
+        self.assertEqual(pm['plneni']['obrat'], 1100000.0)
+        self.assertEqual(pm['plneni']['pct_predikce'], 110.0)
+
+    @patch('plans.forecast.plneni_celkem_firma_mesicne')
+    def test_predikce_rok_12_mesicu(self, mock_map):
+        mock_map.return_value = {
+            (y, m): {'obrat': Decimal('100000'), 'kusy': 10}
+            for y in range(2023, 2028)
+            for m in range(1, 13)
+        }
+        out = predikce_rok(2027, rust_procent=10, reference=date(2026, 6, 4))
+        self.assertEqual(len(out['mesice']), 12)
+        self.assertEqual(mock_map.call_count, 1)
+        self.assertIn('obrat_pred', out['mesice'][0])
+        self.assertNotIn('prodejny_data', out['mesice'][0])
+        self.assertIn('souhrn_roku', out)
+
+    @patch('plans.forecast.plneni_celkem_firma_mesicne')
+    def test_vyhled_forecast_porovnani(self, mock_map):
+        mock_map.return_value = {
+            (y, m): {'obrat': Decimal('100000'), 'kusy': 10}
+            for y in range(2023, 2028)
+            for m in range(1, 13)
+        }
+        out = vyhled_forecast(2026, compare_roky=[2025, 2024], reference=date(2026, 6, 4))
+        self.assertEqual(out['hlavni_rok'], 2026)
+        self.assertEqual(len(out['predikce']['mesice']), 12)
+        self.assertGreaterEqual(len(out['porovnani_roky']), 2)
+
+    @patch('plans.forecast.vypocitej_plan_z_baseline')
+    @patch('plans.forecast.predikce_mesic')
+    def test_projekce_plan(self, mock_pred, mock_base):
+        mock_pred.return_value = {
+            'obrat_baseline': Decimal('500000'),
+            'prodejny_data': {},
+            'firma_kategorie': {},
+            'rust_pouzity_pct': 10.0,
+        }
+        mock_base.return_value = (Decimal('550000'), [])
+        result = vypocitej_plan_z_projekce(2027, 3, rust_procent=10)
+        self.assertEqual(result[0], Decimal('550000'))
+
+    def test_mesice_pro_denni_prepocet(self):
+        self.assertEqual(
+            mesice_pro_denni_prepocet(date(2026, 6, 4)),
+            [(2026, 7)],
+        )
+        self.assertEqual(
+            mesice_pro_denni_prepocet(date(2026, 6, 15)),
+            [(2026, 6), (2026, 7)],
+        )
+
+    @patch('plans.prodejci_prepocet.prepocet_prodejci_mesice')
+    @patch('plans.plan_service.ensure_plan_mesic')
+    def test_bulk_prepocet_prodejci(self, mock_ensure, mock_prepocet):
+        mock_ensure.return_value = {'created': True, 'plan_id': 1, 'warnings': []}
+        mock_prepocet.return_value = {
+            'vysledky': [],
+            'pocet_prepocet': 2,
+            'warnings': [],
+        }
+        admin = MagicMock()
+        souhrn = ensure_plans_bulk([(2026, 1), (2026, 2)], admin, prepocet_prodejci=True)
+        mock_prepocet.assert_called_once()
+        self.assertEqual(souhrn['pocet_prepocet_prodejci'], 2)
+
+    def test_bulk_skip_existing(self):
+        PlanMonth.objects.create(
+            rok=2027, mesic=1, cislo_verze=1, je_aktualni=True, castka_celkem=Decimal('1'),
+        )
+        admin = MagicMock()
+        with patch('plans.plan_service.ensure_plan_mesic') as mock_ensure:
+            souhrn = ensure_plans_bulk([(2027, 1), (2027, 2)], admin, skip_existing=True)
+            self.assertEqual(souhrn['pocet_preskoceno'], 1)
+            mock_ensure.assert_called_once()
+
+    def test_mesice_bez_aktualniho_planu(self):
+        PlanMonth.objects.create(
+            rok=2029, mesic=1, cislo_verze=1, je_aktualni=True, castka_celkem=Decimal('1'),
+        )
+        PlanMonth.objects.create(
+            rok=2029, mesic=6, cislo_verze=1, je_aktualni=True, castka_celkem=Decimal('2'),
+        )
+        PlanMonth.objects.create(
+            rok=2029, mesic=3, cislo_verze=1, je_aktualni=False, castka_celkem=Decimal('3'),
+        )
+        self.assertEqual(
+            mesice_bez_aktualniho_planu(2029),
+            [2, 3, 4, 5, 7, 8, 9, 10, 11, 12],
+        )
+
+    @patch('plans.prodejci_prepocet.prepocet_prodejci_mesice')
+    @patch('plans.plan_service.ensure_plan_mesic')
+    def test_bulk_prepocet_only_created(self, mock_ensure, mock_prepocet):
+        mock_ensure.return_value = {'created': True, 'plan_id': 1, 'warnings': []}
+        mock_prepocet.return_value = {'vysledky': [], 'pocet_prepocet': 1, 'warnings': []}
+        admin = MagicMock()
+        PlanMonth.objects.create(
+            rok=2030, mesic=1, cislo_verze=1, je_aktualni=True, castka_celkem=Decimal('1'),
+        )
+        souhrn = ensure_plans_bulk([(2030, 2), (2030, 3)], admin, prepocet_prodejci=True)
+        mock_prepocet.assert_called_once_with([(2030, 2), (2030, 3)])
+        self.assertEqual(souhrn['pocet_vytvoreno'], 2)

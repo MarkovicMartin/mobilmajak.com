@@ -330,6 +330,28 @@ export const plansAPI = {
     getHistorieNahled: async (rok, mesic, rustProcent = 10) => (
         await api.get(`/plans/${rok}/${mesic}/historie-nahled/`, { params: { rust_procent: rustProcent } })
     ).data,
+    getHistorieAutoNahled: async (rok, mesic, rustProcent = 10) => (
+        await api.get(`/plans/${rok}/${mesic}/historie-auto-nahled/`, { params: { rust_procent: rustProcent } })
+    ).data,
+    getForecast: async (rok, rustProcent = 10, rokyPorovnani = [], prodejnaIds = null) => {
+        const ids = Array.isArray(prodejnaIds) ? prodejnaIds.filter(Boolean) : (prodejnaIds ? [prodejnaIds] : []);
+        return (await api.get('/plans/forecast/', {
+            params: {
+                rok,
+                rust: rustProcent,
+                roky: rokyPorovnani.length ? rokyPorovnani.join(',') : undefined,
+                prodejna_ids: ids.length ? ids.join(',') : undefined,
+                prodejna_id: ids.length === 1 ? ids[0] : undefined,
+            },
+        })).data;
+    },
+    createForecastYear: async (rok, rustProcent = 10, skipExisting = true) => (
+        await api.post('/plans/forecast/create-year/', {
+            rok,
+            rust_procent: rustProcent,
+            skip_existing: skipExisting,
+        })
+    ).data,
     getPlan: async (rok, mesic) => (await api.get(`/plans/${rok}/${mesic}/`)).data,
     getVerze: async (verzeId) => (await api.get(`/plans/verze/${verzeId}/`)).data,
     createPlan: async (rok, mesic, payload) => (await api.post(`/plans/${rok}/${mesic}/`, payload)).data,

@@ -1,4 +1,5 @@
 import math
+from datetime import date
 from decimal import Decimal, ROUND_HALF_UP
 from django.db import transaction
 from rest_framework import status
@@ -12,6 +13,10 @@ from .models import PlanMonth, PlanStore, PlanCategory, PlanProdejce, PlanProdej
 from .helpers import vypocti_prumerne_ceny
 from .historie import vypocitej_plan_z_historie, historie_nahled, ChybejiciDataError
 from .historie_3m import historie_3m_nahled, vypocitej_plan_z_3_mesicu
+from .historie_auto import historie_auto_nahled
+from .plan_service import ensure_plan_mesic
+from .forecast import predikce_rok, vypocitej_plan_z_projekce, vyhled_forecast
+from .plan_service import ensure_plans_bulk, mesice_bez_aktualniho_planu
 from .prodejci_auto import prirad_prodejce_automaticky
 from .plneni import plneni_polozky
 from .plneni_kontext import historie_plneni_prodejce
@@ -194,13 +199,31 @@ def plan_mesic(request, rok, mesic):
     copy_from_previous = data.get('copy_from_previous', False)
     create_from_history = data.get('create_from_history', False)
     create_from_3m = data.get('create_from_3m', False)
-    auto_prodejci = bool(data.get('auto_prodejci', create_from_3m))
+    create_auto = data.get('create_auto', False)
+    auto_prodejci = bool(data.get('auto_prodejci', create_from_3m or create_auto))
     castka_celkem_raw = data.get('castka_celkem')
 
     try:
         rust_procent = float(data.get('rust_procent', 10))
     except (TypeError, ValueError):
         rust_procent = 10
+
+    if create_auto:
+        res = ensure_plan_mesic(rok, mesic, request.user, rust_procent=rust_procent)
+        if res.get('created'):
+            return Response(res['plan'], status=status.HTTP_201_CREATED)
+        if res.get('reason') == 'missing_data':
+            return Response({'error': res.get('error')}, status=status.HTTP_400_BAD_REQUEST)
+        if res.get('plan'):
+            out = res['plan']
+            if res.get('warnings'):
+                out = dict(out)
+                out['auto_prodejci_warnings'] = res['warnings']
+            return Response(out, status=status.HTTP_200_OK)
+        return Response(
+            {'error': 'Plán nelze vytvořit automaticky.', 'reason': res.get('reason')},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
     if create_from_3m:
         try:
@@ -302,6 +325,140 @@ def plan_historie_nahled(request, rok, mesic):
 
     nahled = historie_nahled(rok, mesic, rust_procent)
     return Response(nahled)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def plan_historie_auto_nahled(request, rok, mesic):
+    """GET – Náhled hybridního plánu (YoY + 6m prodejny + 3m kategorie)."""
+    if request.user.role != 'ADMIN':
+        return Response({'error': 'Přístup pouze pro administrátory.'}, status=status.HTTP_403_FORBIDDEN)
+    try:
+        rust_procent = float(request.query_params.get('rust_procent', 10))
+    except (TypeError, ValueError):
+        rust_procent = 10
+    try:
+        nahled = historie_auto_nahled(rok, mesic, rust_procent)
+    except ChybejiciDataError as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    return Response(nahled)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def plan_forecast_nahled(request):
+    """GET – Roční predikce 12 měsíců (?rok= &rust=)."""
+    if request.user.role != 'ADMIN':
+        return Response({'error': 'Přístup pouze pro administrátory.'}, status=status.HTTP_403_FORBIDDEN)
+    try:
+        rok = int(request.query_params.get('rok', date.today().year))
+    except (TypeError, ValueError):
+        return Response({'error': 'Neplatný rok.'}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        rust = request.query_params.get('rust')
+        rust_procent = float(rust) if rust is not None else None
+    except (TypeError, ValueError):
+        rust_procent = None
+    try:
+        mesice_historie = int(request.query_params.get('mesice_historie', 36))
+    except (TypeError, ValueError):
+        mesice_historie = 36
+    roky_raw = request.query_params.get('roky', '')
+    compare_roky = []
+    if roky_raw:
+        for part in roky_raw.split(','):
+            part = part.strip()
+            if not part:
+                continue
+            try:
+                compare_roky.append(int(part))
+            except (TypeError, ValueError):
+                pass
+    prodejna_id = None
+    prodejna_ids = []
+    ids_raw = request.query_params.get('prodejna_ids', '')
+    if ids_raw:
+        for part in ids_raw.split(','):
+            part = part.strip()
+            if not part:
+                continue
+            try:
+                prodejna_ids.append(int(part))
+            except (TypeError, ValueError):
+                return Response({'error': 'Neplatné prodejna_ids.'}, status=status.HTTP_400_BAD_REQUEST)
+    pid_raw = request.query_params.get('prodejna_id')
+    if pid_raw not in (None, '', '0', 'all', 'firma'):
+        try:
+            prodejna_id = int(pid_raw)
+        except (TypeError, ValueError):
+            return Response({'error': 'Neplatné prodejna_id.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    data = vyhled_forecast(
+        rok,
+        compare_roky=compare_roky,
+        rust_procent=rust_procent,
+        mesice_historie=mesice_historie,
+        prodejna_id=prodejna_id,
+        prodejna_ids=prodejna_ids or None,
+    )
+    return Response(data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def plan_forecast_create_year(request):
+    """POST – Založí až 12 plánů z projekce (?skip_existing default true)."""
+    if request.user.role != 'ADMIN':
+        return Response({'error': 'Přístup pouze pro administrátory.'}, status=status.HTTP_403_FORBIDDEN)
+    data = request.data or {}
+    try:
+        rok = int(data.get('rok'))
+    except (TypeError, ValueError):
+        return Response({'error': 'Chybí nebo je neplatný rok.'}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        rust_procent = float(data.get('rust_procent', 10))
+    except (TypeError, ValueError):
+        rust_procent = 10
+    skip_existing = data.get('skip_existing', True)
+    if isinstance(skip_existing, str):
+        skip_existing = skip_existing.lower() in ('1', 'true', 'yes')
+
+    chybi_mesice = mesice_bez_aktualniho_planu(rok)
+    jiz_mesice = [m for m in range(1, 13) if m not in chybi_mesice]
+    mesice = [(rok, m) for m in chybi_mesice]
+
+    def baseline_fn(r, m, rust):
+        return vypocitej_plan_z_projekce(r, m, rust_procent=rust)
+
+    if not mesice:
+        souhrn = {
+            'vytvoreno': [],
+            'preskoceno': [],
+            'jiz_existovalo': [{'rok': rok, 'mesic': m} for m in jiz_mesice],
+            'chyby': [],
+            'warnings': [],
+            'pocet_vytvoreno': 0,
+            'pocet_preskoceno': 0,
+            'pocet_jiz_existovalo': len(jiz_mesice),
+            'pocet_prepocet_prodejci': 0,
+            'info': 'Všechny měsíce tohoto roku už mají aktivní plán.',
+        }
+        return Response(souhrn, status=status.HTTP_200_OK)
+
+    souhrn = ensure_plans_bulk(
+        mesice,
+        request.user,
+        rust_procent=rust_procent,
+        skip_existing=skip_existing,
+        baseline_fn=baseline_fn,
+        prepocet_prodejci=True,
+    )
+    souhrn['jiz_existovalo'] = [{'rok': rok, 'mesic': m} for m in jiz_mesice]
+    souhrn['pocet_jiz_existovalo'] = len(jiz_mesice)
+    status_code = status.HTTP_201_CREATED if (
+        souhrn['pocet_vytvoreno'] or souhrn.get('pocet_prepocet_prodejci')
+    ) else status.HTTP_200_OK
+    return Response(souhrn, status=status_code)
 
 
 @api_view(['GET'])

@@ -31,6 +31,24 @@ sudo -u webmajak bash -lc 'cd /home/webmajak/staging && source venv/bin/activate
 ```
 Po změně modulů: **odhlásit a znovu přihlásit** v prohlížeči.
 
+**Cron – automatické měsíční plány (staging/produkce):**
+
+1. den v měsíci v 6:00 – hybridní plán pro aktuální a příští měsíc:
+
+```bash
+0 6 1 * * cd /home/webmajak/staging && source venv/bin/activate && export DJANGO_SETTINGS_MODULE=webapp.settings_production && python manage.py ensure_monthly_plans --rust 10 >> logs/ensure_monthly_plans.log 2>&1
+```
+
+Pro produkci upravte cestu (`/home/webmajak/app` nebo dle VPS). Volitelně jeden měsíc: `ensure_monthly_plans --mesic 2026-07`.
+
+**Cron – přepočet prodejců podle směn (od 15. dne v měsíci aktuální + příští měsíc):**
+
+```bash
+0 7 * * * cd /home/webmajak/staging && source venv/bin/activate && export DJANGO_SETTINGS_MODULE=webapp.settings_production && python manage.py prepocet_plan_prodejci >> logs/prepocet_plan_prodejci.log 2>&1
+```
+
+Po založení plánů na celý rok z UI se prodejci přepočítají hned. Denní cron od 15. zachytí dovolené a záskoky ve směnách. Ručně: `prepocet_plan_prodejci --rok 2026` nebo `--mesic 2026-06 --force`.
+
 **Pilot pohybu kamer (bez obrazu na serveru):**
 
 | Soubor | Účel |

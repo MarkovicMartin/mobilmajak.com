@@ -266,12 +266,6 @@ const CelkovaCislaView = ({ isComparison = false, paneRole = 'single', filtersFr
     const [zasilkovnaDetailError, setZasilkovnaDetailError] = useState(null);
     const [zasilkovnaDetailData, setZasilkovnaDetailData] = useState(null);
 
-    // Detailní SERVIS modal
-    const [servisDetailOpen, setServisDetailOpen] = useState(false);
-    const [servisDetailLoading, setServisDetailLoading] = useState(false);
-    const [servisDetailError, setServisDetailError] = useState(null);
-    const [servisDetailData, setServisDetailData] = useState(null);
-
     // Filtry
     const [filters, setFilters] = useState(() => filtersFromParent || buildInitialCelkovaFilters());
     const periodLabel = formatFiltersPeriodLabel(filters);
@@ -548,48 +542,16 @@ const CelkovaCislaView = ({ isComparison = false, paneRole = 'single', filtersFr
         setZasilkovnaDetailError(null);
     };
 
-    // Otevření detailního SERVIS modalu
-    const openServisDetail = async () => {
-        setServisDetailOpen(true);
-        setServisDetailLoading(true);
-        setServisDetailError(null);
-        setServisDetailData(null);
-
-        try {
-            const params = new URLSearchParams();
-            Object.keys(filters).forEach(key => {
-                if (filters[key] && filters[key] !== '') {
-                    params.append(key, filters[key]);
-                }
-            });
-
-            const result = await analyticsGet('celkova-cisla/servis-detail/', params);
-            if (!result.success) throw new Error(result.error || 'Chyba načítání SERVIS detailů');
-            setServisDetailData(result);
-        } catch (e) {
-            setServisDetailError(e.message);
-        } finally {
-            setServisDetailLoading(false);
-        }
-    };
-
-    // Zavření detailního SERVIS modalu
-    const closeServisDetail = () => {
-        setServisDetailOpen(false);
-        setServisDetailData(null);
-        setServisDetailError(null);
-    };
-
     // Auto-scroll na inline panel v comparison modu
     useEffect(() => {
         if (isComparison && inlinePanelRef.current) {
-            const anyOpen = (detailOpen && detailChannel === 'prodejna') ||
-                allegroDetailOpen || eshopDetailOpen || zasilkovnaDetailOpen || servisDetailOpen;
+            const anyOpen = (detailOpen && (detailChannel === 'prodejna' || detailChannel === 'servis')) ||
+                allegroDetailOpen || eshopDetailOpen || zasilkovnaDetailOpen;
             if (anyOpen) {
                 inlinePanelRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }
         }
-    }, [isComparison, detailOpen, detailChannel, allegroDetailOpen, eshopDetailOpen, zasilkovnaDetailOpen, servisDetailOpen]);
+    }, [isComparison, detailOpen, detailChannel, allegroDetailOpen, eshopDetailOpen, zasilkovnaDetailOpen]);
 
     // Načtení dat při změně filtrů
     useEffect(() => {
@@ -667,30 +629,61 @@ const CelkovaCislaView = ({ isComparison = false, paneRole = 'single', filtersFr
         ? `Rozpad prodejen - ${detailChannel === 'servis' ? 'SERVIS' : 'PRODEJNA'}`
         : `Detail kanálu: ${detailChannel?.toUpperCase()}`;
 
-    const renderStoreLikeDetail = () => (
-        <div className="detail-grid">
-            <div className="detail-card" style={{ gridColumn: '1/-1' }}>
-                <h5>{detailChannel === 'servis' ? '🔧' : '🏪'} Prodejny</h5>
-                <div className="breakdown-cards" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
-                    {(detailData?.prodejny || []).map((p, i) => (
-                        <div key={i} className="breakdown-card clickable" onClick={() => loadProdejnaItems(p.stredisko)}>
-                            <h4>{p.stredisko || `ID ${p.id_prodejny || ''}`}</h4>
-                            <div className="breakdown-metrics">
-                                <div>Obrat bez DPH: <strong>{formatCurrency(p.obrat)}</strong></div>
-                                <div>Marže: <strong>{formatCurrency(p.marze)}</strong></div>
-                                <div>Položky: <strong>{formatNumber(p.polozky)}</strong></div>
-                                <div>Doklady: <strong>{formatNumber(p.doklady)}</strong></div>
+    const renderChannelSummary = (rows) => (
+        <div className="celkova-detail-summary">
+            <div className="breakdown-metrics-row">
+                {rows.map((row, i) => (
+                    <div key={i}>
+                        {row.label}: <strong>{row.value}</strong>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+
+    const renderProdejnyCards = (prodejny, onSelect, { showVykupy = false } = {}) => (
+        <div className="breakdown-cards" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
+            {(prodejny || []).map((p, i) => (
+                <div
+                    key={i}
+                    className={`breakdown-card${onSelect ? ' clickable' : ''}`}
+                    onClick={onSelect ? () => onSelect(p.stredisko) : undefined}
+                    style={p.barva ? { borderColor: p.barva } : undefined}
+                >
+                    <h4>{p.stredisko || p.nazev_plny || p.nazev || `ID ${p.id_prodejny || ''}`}</h4>
+                    <div className="breakdown-metrics">
+                        <div>Obrat bez DPH: <strong>{formatCurrency(p.obrat)}</strong></div>
+                        <div>Marže bez DPH: <strong>{formatCurrency(p.marze)}</strong></div>
+                        <div>Položky: <strong>{formatNumber(p.polozky)}</strong></div>
+                        <div>Doklady: <strong>{formatNumber(p.doklady)}</strong></div>
+                        {showVykupy && (
+                            <>
                                 <div style={{ color: '#f39c12' }}>
                                     Výkupy: <strong>{formatCurrency(p.vykupy_suma)}</strong> ({formatNumber(p.vykupy_pocet)} ks)
                                 </div>
                                 <div style={{ color: '#e67e22' }}>
                                     Prodané bazar: <strong>{formatCurrency(p.bazar_prodano_suma)}</strong> ({formatNumber(p.bazar_prodano_pocet)} ks)
                                 </div>
-                            </div>
-                            <div className="click-hint">Klikni pro položky</div>
-                        </div>
-                    ))}
+                            </>
+                        )}
+                    </div>
+                    {onSelect && <div className="click-hint">Klikni pro položky</div>}
                 </div>
+            ))}
+        </div>
+    );
+
+    const renderStoreLikeDetail = () => (
+        <div className="detail-grid">
+            {detailChannel === 'servis' && detailData?.celkovy_obrat != null && renderChannelSummary([
+                { label: 'Celkový obrat bez DPH', value: formatCurrency(detailData.celkovy_obrat) },
+                { label: 'Celková marže bez DPH', value: formatCurrency(detailData.celkova_marze) },
+                { label: 'Položky', value: formatNumber(detailData.celkem_polozky) },
+                { label: 'Doklady', value: formatNumber(detailData.celkem_doklady) },
+            ])}
+            <div className="detail-card" style={{ gridColumn: '1/-1' }}>
+                <h5>{detailChannel === 'servis' ? '🔧' : '🏪'} Prodejny</h5>
+                {renderProdejnyCards(detailData?.prodejny, loadProdejnaItems, { showVykupy: detailChannel === 'prodejna' })}
             </div>
             {detailData?.items && (
                 <div className="detail-card" style={{ gridColumn: '1/-1' }}>
@@ -712,7 +705,14 @@ const CelkovaCislaView = ({ isComparison = false, paneRole = 'single', filtersFr
             {allegroDetailLoading && <div className="modal-loading">Načítám…</div>}
             {allegroDetailError && <div className="modal-error">{allegroDetailError}</div>}
             {allegroDetailData && allegroDetailData.breakdown && (
-                <div className="detail-grid">
+                <>
+                    {renderChannelSummary([
+                        { label: 'Obrat bez DPH', value: formatCurrency(allegroDetailData.breakdown.obrat_bez_dph || 0) },
+                        { label: 'Marže bez DPH', value: formatCurrency(allegroDetailData.breakdown.zisk || 0) },
+                        { label: 'Položky', value: formatNumber(allegroDetailData.breakdown.polozky || 0) },
+                        { label: 'Objednávky', value: formatNumber(allegroDetailData.breakdown.objednavky || 0) },
+                    ])}
+                    <div className="detail-grid">
                     <div className="detail-card" style={{ cursor: 'pointer' }}>
                         <h5>🏷️ Kategorie</h5>
                         {(allegroDetailData.breakdown.kategorie || []).slice(0, 8).map((it, i) => (
@@ -778,6 +778,7 @@ const CelkovaCislaView = ({ isComparison = false, paneRole = 'single', filtersFr
                         )}
                     </div>
                 </div>
+                </>
             )}
         </>
     );
@@ -788,12 +789,12 @@ const CelkovaCislaView = ({ isComparison = false, paneRole = 'single', filtersFr
             {eshopDetailError && <div className="modal-error">{eshopDetailError}</div>}
             {eshopDetailData && eshopDetailData.breakdown && (
                 <div>
-                    <div className="breakdown-metrics-row">
-                        <div>Obrat bez DPH: <strong>{formatCurrency(eshopDetailData.breakdown.obrat_bez_dph || 0)}</strong></div>
-                        <div>Marže bez DPH: <strong>{formatCurrency(eshopDetailData.breakdown.zisk || 0)}</strong></div>
-                        <div>Položky: <strong>{formatNumber(eshopDetailData.breakdown.polozky || 0)}</strong></div>
-                        <div>Objednávky: <strong>{formatNumber(eshopDetailData.breakdown.objednavky || 0)}</strong></div>
-                    </div>
+                    {renderChannelSummary([
+                        { label: 'Obrat bez DPH', value: formatCurrency(eshopDetailData.breakdown.obrat_bez_dph || 0) },
+                        { label: 'Marže bez DPH', value: formatCurrency(eshopDetailData.breakdown.zisk || 0) },
+                        { label: 'Položky', value: formatNumber(eshopDetailData.breakdown.polozky || 0) },
+                        { label: 'Objednávky', value: formatNumber(eshopDetailData.breakdown.objednavky || 0) },
+                    ])}
                     <div className="detail-grid">
                         <div className="detail-card" style={{ cursor: 'pointer' }}>
                             <h5>🏷️ Kategorie</h5>
@@ -867,34 +868,35 @@ const CelkovaCislaView = ({ isComparison = false, paneRole = 'single', filtersFr
 
     const renderZasilkovnaContent = () => (
         <>
-            {zasilkovnaDetailLoading && <div className="modal-loading">Načítám...</div>}
+            {zasilkovnaDetailLoading && <div className="modal-loading">Načítám…</div>}
             {zasilkovnaDetailError && <div className="modal-error">{zasilkovnaDetailError}</div>}
             {!zasilkovnaDetailLoading && !zasilkovnaDetailError && zasilkovnaDetailData && (
                 <div>
-                    <div style={{ marginBottom: '20px', padding: '15px', background: '#f8f9fa', borderRadius: '8px' }}>
-                        <h5>📊 Souhrn</h5>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', marginTop: '10px' }}>
-                            <div><strong>Celkové provize:</strong><div style={{ fontSize: '1.3em', color: '#27ae60' }}>{formatCurrency(zasilkovnaDetailData.celkove_provize)}</div></div>
-                            <div><strong>Počet prodejen:</strong><div style={{ fontSize: '1.3em', color: '#3498db' }}>{zasilkovnaDetailData.pocet_prodejen}</div></div>
-                            <div><strong>Počet měsíců:</strong><div style={{ fontSize: '1.3em', color: '#9b59b6' }}>{zasilkovnaDetailData.pocet_mesicu}</div></div>
-                        </div>
-                    </div>
-                    <h5>🏪 Rozpad podle prodejen</h5>
-                    <div className="detail-grid" style={{ marginTop: '15px' }}>
-                        {(zasilkovnaDetailData.prodejny || []).map((prodejna, index) => (
-                            <div key={index} className="detail-card" style={{ borderLeft: `4px solid ${prodejna.barva || '#0066cc'}` }}>
-                                <h5>{prodejna.nazev_plny || prodejna.nazev}</h5>
-                                <div style={{ marginTop: '10px' }}>
-                                    <div><strong>Celkové provize:</strong> {formatCurrency(prodejna.celkove_provize)}</div>
-                                    <div style={{ fontSize: '0.9em', marginTop: '8px', paddingTop: '8px', borderTop: '1px dashed #e0e0e0' }}>
-                                        <div>Za zpracování: {formatCurrency(prodejna.za_zpracovani)}</div>
-                                        <div>Za dobírku: {formatCurrency(prodejna.za_vyber_dobirky)}</div>
-                                        <div>Ostatní: {formatCurrency(prodejna.ostatni_provize)}</div>
+                    {renderChannelSummary([
+                        { label: 'Celková provize bez DPH', value: formatCurrency(zasilkovnaDetailData.celkove_provize) },
+                        { label: 'Počet prodejen', value: formatNumber(zasilkovnaDetailData.pocet_prodejen) },
+                        { label: 'Počet měsíců', value: formatNumber(zasilkovnaDetailData.pocet_mesicu) },
+                    ])}
+                    <div className="detail-card" style={{ gridColumn: '1/-1', marginBottom: '16px' }}>
+                        <h5>🏪 Rozpad podle prodejen</h5>
+                        <div className="breakdown-cards" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
+                            {(zasilkovnaDetailData.prodejny || []).map((prodejna, index) => (
+                                <div
+                                    key={index}
+                                    className="breakdown-card"
+                                    style={prodejna.barva ? { borderColor: prodejna.barva } : undefined}
+                                >
+                                    <h4>{prodejna.nazev_plny || prodejna.nazev}</h4>
+                                    <div className="breakdown-metrics">
+                                        <div>Celková provize: <strong>{formatCurrency(prodejna.celkove_provize)}</strong></div>
+                                        <div>Za zpracování: <strong>{formatCurrency(prodejna.za_zpracovani)}</strong></div>
+                                        <div>Za dobírku: <strong>{formatCurrency(prodejna.za_vyber_dobirky)}</strong></div>
+                                        <div>Ostatní: <strong>{formatCurrency(prodejna.ostatni_provize)}</strong></div>
+                                        <div>Počet měsíců: <strong>{formatNumber(prodejna.pocet_mesicu)}</strong></div>
                                     </div>
-                                    <div style={{ marginTop: '8px', fontSize: '0.85em', color: '#7f8c8d' }}>Počet měsíců: {prodejna.pocet_mesicu}</div>
                                 </div>
-                            </div>
-                        ))}
+                            ))}
+                        </div>
                     </div>
                     {zasilkovnaDetailData.mesice && zasilkovnaDetailData.mesice.length > 0 && (
                         <>
@@ -927,42 +929,6 @@ const CelkovaCislaView = ({ isComparison = false, paneRole = 'single', filtersFr
                             </div>
                         </>
                     )}
-                </div>
-            )}
-        </>
-    );
-
-    const renderServisContent = () => (
-        <>
-            {servisDetailLoading && <div className="modal-loading">Načítám...</div>}
-            {servisDetailError && <div className="modal-error">{servisDetailError}</div>}
-            {!servisDetailLoading && !servisDetailError && servisDetailData && (
-                <div>
-                    <div style={{ marginBottom: '20px', padding: '15px', background: '#f8f9fa', borderRadius: '8px' }}>
-                        <h5>📊 Souhrn</h5>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', marginTop: '10px' }}>
-                            <div><strong>Celkový obrat:</strong><div style={{ fontSize: '1.3em', color: '#27ae60' }}>{formatCurrency(servisDetailData.celkovy_obrat)}</div></div>
-                            <div><strong>Celková marže:</strong><div style={{ fontSize: '1.3em', color: '#3498db' }}>{formatCurrency(servisDetailData.celkova_marze)}</div></div>
-                            <div><strong>Počet položek:</strong><div style={{ fontSize: '1.3em', color: '#9b59b6' }}>{formatNumber(servisDetailData.celkem_polozky)}</div></div>
-                            <div><strong>Počet dokladů:</strong><div style={{ fontSize: '1.3em', color: '#f39c12' }}>{formatNumber(servisDetailData.celkem_doklady)}</div></div>
-                        </div>
-                    </div>
-                    <h5>🏪 Rozpad podle prodejen</h5>
-                    <div className="detail-grid" style={{ marginTop: '15px' }}>
-                        {(servisDetailData.prodejny || []).map((prodejna, index) => (
-                            <div key={index} className="detail-card" style={{ borderLeft: `4px solid ${prodejna.barva || '#0066cc'}` }}>
-                                <h5>{prodejna.nazev_plny || prodejna.nazev || 'Nezařazeno'}</h5>
-                                <div style={{ marginTop: '10px' }}>
-                                    <div><strong>Obrat bez DPH:</strong> {formatCurrency(prodejna.obrat)}</div>
-                                    <div><strong>Marže bez DPH:</strong> {formatCurrency(prodejna.marze)}</div>
-                                    <div style={{ fontSize: '0.9em', marginTop: '8px', paddingTop: '8px', borderTop: '1px dashed #e0e0e0' }}>
-                                        <div>Položky: {formatNumber(prodejna.polozky)}</div>
-                                        <div>Doklady: {formatNumber(prodejna.doklady)}</div>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
                 </div>
             )}
         </>
@@ -1200,7 +1166,7 @@ const CelkovaCislaView = ({ isComparison = false, paneRole = 'single', filtersFr
                                 </div>
                             </div>
 
-                            <div className="breakdown-card clickable" onClick={openServisDetail}>
+                            <div className="breakdown-card clickable" onClick={() => openChannelDetail('servis')}>
                                 <h4>🔧 SERVIS</h4>
                                 <div className="breakdown-metrics">
                                     <div>Obrat bez DPH: <strong>{formatCurrency(data.breakdown.kanaly.servis.obrat)}</strong></div>
@@ -1240,7 +1206,7 @@ const CelkovaCislaView = ({ isComparison = false, paneRole = 'single', filtersFr
                     </div>
                     </div>
 
-                    {isComparison && detailOpen && detailChannel === 'prodejna' && (
+                    {isComparison && detailOpen && isStoreLikeDetail && (
                             <div className="inline-detail-panel" ref={inlinePanelRef}>
                                 <div className="inline-detail-header">
                                     <h4>{detailTitle}{selectedEntity?.stredisko ? ` – ${selectedEntity.stredisko}` : ''}</h4>
@@ -1274,18 +1240,8 @@ const CelkovaCislaView = ({ isComparison = false, paneRole = 'single', filtersFr
                             </div>
                         )}
 
-                        {isComparison && servisDetailOpen && (
-                            <div className="inline-detail-panel" ref={!detailOpen && !eshopDetailOpen && !allegroDetailOpen ? inlinePanelRef : undefined}>
-                                <div className="inline-detail-header">
-                                    <h4>🔧 SERVIS - Rozpad podle prodejen</h4>
-                                    <button className="modal-close" onClick={closeServisDetail}>✕</button>
-                                </div>
-                                <div className="inline-detail-body">{renderServisContent()}</div>
-                            </div>
-                        )}
-
                         {isComparison && zasilkovnaDetailOpen && (
-                            <div className="inline-detail-panel" ref={!detailOpen && !eshopDetailOpen && !allegroDetailOpen && !servisDetailOpen ? inlinePanelRef : undefined}>
+                            <div className="inline-detail-panel" ref={!detailOpen && !eshopDetailOpen && !allegroDetailOpen ? inlinePanelRef : undefined}>
                                 <div className="inline-detail-header">
                                     <h4>📦 Zásilkovna - Rozpad podle prodejen</h4>
                                     <button className="modal-close" onClick={closeZasilkovnaDetail}>✕</button>
@@ -1383,18 +1339,6 @@ const CelkovaCislaView = ({ isComparison = false, paneRole = 'single', filtersFr
                 </>
             )}
 
-            {/* SERVIS Detail Modal - pouze mimo comparison mode */}
-            {servisDetailOpen && !isComparison && (
-                <div className="modal-overlay" onClick={closeServisDetail}>
-                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                        <div className="modal-header">
-                            <h4>🔧 SERVIS - Rozpad podle prodejen</h4>
-                            <button className="modal-close" onClick={closeServisDetail}>✕</button>
-                        </div>
-                        <div className="modal-body">{renderServisContent()}</div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 };

@@ -6,6 +6,7 @@ import './PlansModule.css';
 import ProdejnaKarta from './ProdejnaKarta';
 import DraftNumberInput from './DraftNumberInput';
 import PlneniStrom, { PlneniHistorieMini } from './PlneniStrom';
+import VyhledFilterMenu from './VyhledFilterMenu';
 
 const NAZVY_MESICU = [
   'Leden','Únor','Březen','Duben','Květen','Červen',
@@ -41,6 +42,145 @@ const plneniFillClass = (pct) =>
 const dnesniMesic = () => {
   const d = new Date();
   return { rok: d.getFullYear(), mesic: d.getMonth() + 1 };
+};
+
+const jeMesicAktualniNeboBudouci = (rok, mesic) => {
+  const d = dnesniMesic();
+  return rok > d.rok || (rok === d.rok && mesic >= d.mesic);
+};
+
+const GRAF_ROKY_BARVY = ['#1d4ed8', '#16a34a', '#d97706', '#7c3aed', '#db2777', '#475569'];
+
+const formatKc = (v) =>
+  Math.round(Number(v) || 0).toLocaleString('cs-CZ', { maximumFractionDigits: 0 }) + ' Kč';
+
+/** Částka bez měny (tabulka výhledu – sloupec je v Kč). */
+const formatNum = (v) => {
+  const n = Math.round(Number(v) || 0);
+  if (!n) return '—';
+  return n.toLocaleString('cs-CZ', { maximumFractionDigits: 0 });
+};
+
+const formatKcShort = (v) => {
+  const n = Math.round(Number(v) || 0);
+  if (n >= 1_000_000) {
+    return `${(n / 1_000_000).toLocaleString('cs-CZ', { maximumFractionDigits: 1 })} mil Kč`;
+  }
+  return formatKc(n);
+};
+
+const formatKcDeltaShort = (kc, { withKc = true } = {}) => {
+  const v = Math.round(Number(kc) || 0);
+  if (v === 0) return 'stejně';
+  const abs = Math.abs(v);
+  const word = v > 0 ? 'více' : 'méně';
+  const suf = withKc ? ' Kč' : '';
+  if (abs >= 1_000_000) {
+    const mil = (abs / 1_000_000).toLocaleString('cs-CZ', { maximumFractionDigits: 1 });
+    return `o ${mil} mil${suf} ${word}`;
+  }
+  if (abs >= 1000) {
+    const tis = Math.round(abs / 1000).toLocaleString('cs-CZ');
+    return `o ${tis} tis.${suf} ${word}`;
+  }
+  return `o ${abs.toLocaleString('cs-CZ')}${suf} ${word}`;
+};
+
+/** Plnění % + rozdíl pro shrnutí nahoře (slovně). */
+const formatPorovnani = (pct, kc, { table = false } = {}) => {
+  const parts = [];
+  if (pct != null) parts.push(`${Math.round(pct)} %`);
+  if (kc != null && kc !== 0) parts.push(formatKcDeltaShort(kc, { withKc: !table }));
+  return parts.length ? parts.join(' · ') : '—';
+};
+
+/** Kompaktní rozdíl: -190tis, +324mil */
+const formatDeltaTis = (kc) => {
+  const v = Math.round(Number(kc) || 0);
+  if (v === 0) return '';
+  const sign = v > 0 ? '+' : '-';
+  const abs = Math.abs(v);
+  if (abs >= 1_000_000) {
+    return `${sign}${(abs / 1_000_000).toLocaleString('cs-CZ', { maximumFractionDigits: 1 })}mil`;
+  }
+  if (abs >= 1000) {
+    return `${sign}${Math.round(abs / 1000)}tis`;
+  }
+  return `${sign}${abs.toLocaleString('cs-CZ')}`;
+};
+
+/** Barva buňky vs …: down = červená, neutral = černá, up = zelená */
+const vyhledPorovnaniTone = (pct, kc) => {
+  const p = pct != null ? Math.round(Number(pct)) : null;
+  const k = Math.round(Number(kc) || 0);
+  if (p == null && k === 0) return 'neutral';
+  if (p != null && p >= 98 && p <= 102 && Math.abs(k) < 50_000) return 'neutral';
+  if (k > 0 || (p != null && p >= 103)) return 'up';
+  if (k < 0 || (p != null && p <= 97)) return 'down';
+  return 'neutral';
+};
+
+const formatPorovnaniCompact = (pct, kc) => {
+  const p = pct != null ? Math.round(Number(pct)) : null;
+  const delta = formatDeltaTis(kc);
+  if (p == null && !delta) return null;
+  const text = delta
+    ? `${p != null ? `${p}%` : ''} ${delta}`.trim()
+    : `${p}%`;
+  return { text, tone: vyhledPorovnaniTone(pct, kc) };
+};
+
+const VyhledPorovnaniCell = ({ pct, kc }) => {
+  const out = formatPorovnaniCompact(pct, kc);
+  if (!out) return '—';
+  return (
+    <span className={`plans-vyhled-pct plans-vyhled-pct-${out.tone}`}>
+      {out.text}
+    </span>
+  );
+};
+
+/** Řádky tooltipu měsíce – vše co je v grafu (hlavní rok + porovnání). */
+const grafMesicTooltipRadky = (mesic, forecastPred, forecastData, hlavniRok) => {
+  const radky = [];
+  const hm = forecastPred?.mesice?.find(x => x.mesic === mesic);
+  if (hm) {
+    radky.push({
+      key: `${hlavniRok}-pred`,
+      dot: 'pred',
+      label: `${hlavniRok} predikce`,
+      hodnota: formatKc(hm.obrat_pred),
+    });
+    if (hm.plneni?.obrat != null) {
+      radky.push({
+        key: `${hlavniRok}-pln`,
+        dot: 'pln',
+        label: `${hlavniRok} plnění`,
+        hodnota: formatKc(hm.plneni.obrat),
+      });
+    }
+  }
+  (forecastData?.porovnani_roky || []).forEach((serie, si) => {
+    const row = serie.mesice?.find(x => x.mesic === mesic);
+    if (!row) return;
+    const val = row.obrat_skutecny ?? row.obrat ?? row.obrat_pred ?? 0;
+    const jeSkutecnost = serie.typ === 'skutecnost';
+    radky.push({
+      key: `serie-${serie.rok}`,
+      barva: GRAF_ROKY_BARVY[(si + 1) % GRAF_ROKY_BARVY.length],
+      label: `${serie.rok} ${jeSkutecnost ? 'obrat' : 'predikce'}`,
+      hodnota: formatKc(val),
+    });
+  });
+  return radky;
+};
+
+const MESIC_ZKRATKA = ['Led', 'Úno', 'Bře', 'Dub', 'Kvě', 'Čvn', 'Čvc', 'Srp', 'Zář', 'Říj', 'Lis', 'Pro'];
+
+const formatChybejiciPobocky = (list) => {
+  if (!list?.length) return '';
+  const labels = { bez_obratu: 'bez obratu', bez_smen: 'bez směn', bez_obratu_i_smen: 'bez obratu i směn' };
+  return list.map(p => `${p.nazev} (${labels[p.duvod] || p.duvod})`).join(', ');
 };
 
 const generateMesiceOptions = () => {
@@ -99,6 +239,27 @@ export default function PlansModule() {
   const [plneniLoading, setPlneniLoading] = useState(false);
   const [nahled3m, setNahled3m] = useState(null);
   const [nahled3mLoading, setNahled3mLoading] = useState(false);
+  const [autoGenerating, setAutoGenerating] = useState(false);
+  const [pokrocileOpen, setPokrocileOpen] = useState(false);
+  const autoGenerateAttempted = useRef(null);
+
+  const [forecastRok, setForecastRok] = useState(() => new Date().getFullYear());
+  const [forecastCompareRoky, setForecastCompareRoky] = useState(() => {
+    const y = new Date().getFullYear();
+    return [y - 1, y - 2];
+  });
+  const [vyhledFirma, setVyhledFirma] = useState(true);
+  const [vyhledProdejny, setVyhledProdejny] = useState([]);
+  const [dostupneRoky, setDostupneRoky] = useState([]);
+  const [forecastData, setForecastData] = useState(null);
+  const [forecastLoading, setForecastLoading] = useState(false);
+  const [forecastCreating, setForecastCreating] = useState(false);
+  const [prodejnyMenuOpen, setProdejnyMenuOpen] = useState(false);
+  const [rokyMenuOpen, setRokyMenuOpen] = useState(false);
+  const [draftVyhledFirma, setDraftVyhledFirma] = useState(true);
+  const [draftVyhledProdejny, setDraftVyhledProdejny] = useState([]);
+  const [draftForecastRok, setDraftForecastRok] = useState(() => new Date().getFullYear());
+  const [draftCompareRoky, setDraftCompareRoky] = useState([]);
 
   const mesiceOptions = generateMesiceOptions();
 
@@ -193,6 +354,33 @@ export default function PlansModule() {
     setPrepocet(null);
   }, []);
 
+  const vytvorPlanAuto = useCallback(async (rok, mesic) => {
+    const rust = Number(String(rustProcent).replace(',', '.'));
+    const rustVal = Number.isNaN(rust) || rust < -100 ? 10 : rust;
+    setAutoGenerating(true);
+    setChyba(null);
+    setWarnings([]);
+    try {
+      const res = await plansAPI.createPlan(rok, mesic, {
+        create_auto: true,
+        rust_procent: rustVal,
+        auto_prodejci: true,
+      });
+      setAktivniPlan(res);
+      nactiVerziDoPlaneru(res);
+      const aw = res.auto_prodejci_warnings || [];
+      if (aw.length) setWarnings(aw);
+      setUspech('Plán byl automaticky vytvořen z historie (YoY + 6m prodejny + 3m kategorie).');
+      const reload = await plansAPI.getPlan(rok, mesic);
+      setVerze(reload.verze || []);
+      if (reload.aktualni) setVybranaVezeId(reload.aktualni.id);
+    } catch (e) {
+      setChyba(e.response?.data?.error || 'Automatické vytvoření plánu se nezdařilo.');
+    } finally {
+      setAutoGenerating(false);
+    }
+  }, [nactiVerziDoPlaneru, rustProcent]);
+
   const loadPlan = useCallback(async (rok, mesic) => {
     setLoading(true);
     setChyba(null);
@@ -210,17 +398,230 @@ export default function PlansModule() {
         setProdejny([]);
         setCastkaFirma('');
         setVybranaVezeId(null);
+        const key = `${rok}-${mesic}`;
+        if (
+          jeMesicAktualniNeboBudouci(rok, mesic)
+          && autoGenerateAttempted.current !== key
+        ) {
+          autoGenerateAttempted.current = key;
+          setLoading(false);
+          await vytvorPlanAuto(rok, mesic);
+          return;
+        }
       }
     } catch (e) {
       setChyba('Nepodařilo se načíst plán.');
     } finally {
       setLoading(false);
     }
-  }, [nactiVerziDoPlaneru]);
+  }, [nactiVerziDoPlaneru, vytvorPlanAuto]);
 
   useEffect(() => {
+    autoGenerateAttempted.current = null;
     loadPlan(vybraneMesic.rok, vybraneMesic.mesic);
   }, [vybraneMesic, loadPlan]);
+
+  const loadForecast = useCallback(async () => {
+    const rust = Number(String(rustProcent).replace(',', '.'));
+    if (Number.isNaN(rust) || rust < -100) {
+      setChyba('Zadejte platné procento růstu.');
+      return;
+    }
+    setForecastLoading(true);
+    setChyba(null);
+    try {
+      const roky = [...new Set([...forecastCompareRoky, forecastRok])].filter(
+        r => r !== forecastRok,
+      );
+      const pids = vyhledFirma || !vyhledProdejny.length ? [] : vyhledProdejny;
+      const res = await plansAPI.getForecast(forecastRok, rust, roky, pids.length ? pids : null);
+      setForecastData(res);
+      if (res.meta?.dostupne_roky?.length) {
+        setDostupneRoky(res.meta.dostupne_roky);
+      }
+    } catch (e) {
+      setForecastData(null);
+      setChyba(e.response?.data?.error || 'Nepodařilo se načíst výhled.');
+    } finally {
+      setForecastLoading(false);
+    }
+  }, [forecastRok, forecastCompareRoky, vyhledFirma, vyhledProdejny, rustProcent]);
+
+  useEffect(() => {
+    if (viewMode === 'vyhled') loadForecast();
+  }, [viewMode, forecastRok, forecastCompareRoky, vyhledFirma, vyhledProdejny, loadForecast]);
+
+  const forecastPred = forecastData?.predikce || forecastData;
+  const vyhledMeta = forecastData?.meta;
+
+  const rokyVolba = useMemo(() => {
+    const todayY = new Date().getFullYear();
+    const set = new Set(dostupneRoky.length ? dostupneRoky : [todayY]);
+    for (let y = todayY; y <= todayY + 2; y += 1) set.add(y);
+    set.add(forecastRok);
+    forecastCompareRoky.forEach((r) => set.add(r));
+    return [...set].sort((a, b) => b - a);
+  }, [dostupneRoky, forecastRok, forecastCompareRoky]);
+
+  const prodejnyTriggerLabel = useMemo(() => {
+    if (vyhledFirma && !vyhledProdejny.length) return 'Celá firma';
+    const list = vyhledMeta?.prodejny || [];
+    if (vyhledProdejny.length === 1) {
+      const p = list.find(x => x.id === vyhledProdejny[0]);
+      return p?.nazev || '1 pobočka';
+    }
+    return `${vyhledProdejny.length} pobočky`;
+  }, [vyhledFirma, vyhledProdejny, vyhledMeta]);
+
+  const rokyTriggerLabel = useMemo(() => {
+    const cmp = forecastCompareRoky.length
+      ? ` · ${forecastCompareRoky.join(', ')}`
+      : '';
+    return `${forecastRok} ★${cmp}`;
+  }, [forecastRok, forecastCompareRoky]);
+
+  const grafLegendaPolozky = useMemo(() => {
+    const polozky = [
+      { key: 'pred', typ: 'pred', label: `${forecastRok} predikce` },
+      { key: 'pln', typ: 'pln', label: `${forecastRok} plnění` },
+    ];
+    (forecastData?.porovnani_roky || []).forEach((serie, si) => {
+      polozky.push({
+        key: `rok-${serie.rok}`,
+        barva: GRAF_ROKY_BARVY[(si + 1) % GRAF_ROKY_BARVY.length],
+        label: String(serie.rok),
+      });
+    });
+    return polozky;
+  }, [forecastRok, forecastData?.porovnani_roky]);
+
+  const toggleProdejnyMenu = () => {
+    if (prodejnyMenuOpen) {
+      setProdejnyMenuOpen(false);
+      return;
+    }
+    setDraftVyhledFirma(vyhledFirma);
+    setDraftVyhledProdejny([...vyhledProdejny]);
+    setProdejnyMenuOpen(true);
+    setRokyMenuOpen(false);
+  };
+
+  const closeProdejnyMenu = (apply) => {
+    setProdejnyMenuOpen(false);
+    if (apply) {
+      setVyhledFirma(draftVyhledFirma);
+      setVyhledProdejny([...draftVyhledProdejny]);
+    }
+  };
+
+  const toggleDraftProdejna = (id) => {
+    setDraftVyhledFirma(false);
+    setDraftVyhledProdejny((prev) => {
+      const next = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id];
+      if (!next.length) {
+        setDraftVyhledFirma(true);
+        return [];
+      }
+      return next;
+    });
+  };
+
+  const toggleRokyMenu = () => {
+    if (rokyMenuOpen) {
+      setRokyMenuOpen(false);
+      return;
+    }
+    setDraftForecastRok(forecastRok);
+    setDraftCompareRoky([...forecastCompareRoky]);
+    setRokyMenuOpen(true);
+    setProdejnyMenuOpen(false);
+  };
+
+  const closeRokyMenu = (apply) => {
+    setRokyMenuOpen(false);
+    if (apply) {
+      setForecastRok(draftForecastRok);
+      setForecastCompareRoky([...draftCompareRoky].sort((a, b) => b - a));
+      if (draftForecastRok !== vybraneMesic.rok) {
+        setVybraneMesic({ rok: draftForecastRok, mesic: 1 });
+      }
+    }
+  };
+
+  const setDraftHlavniRok = (rok) => {
+    setDraftForecastRok(rok);
+    setDraftCompareRoky((prev) => prev.filter(r => r !== rok));
+  };
+
+  const toggleDraftCompareRok = (rok) => {
+    if (rok === draftForecastRok) return;
+    setDraftCompareRoky((prev) => (
+      prev.includes(rok) ? prev.filter(r => r !== rok) : [...prev, rok].sort((a, b) => b - a)
+    ));
+  };
+
+  const mesiceBezPlanu = vyhledMeta?.mesice_bez_planu || [];
+  const pocetMesicuBezPlanu = vyhledMeta?.pocet_mesicu_bez_planu ?? mesiceBezPlanu.length;
+
+  const zalozitPlanyNaRok = async () => {
+    const rust = Number(String(rustProcent).replace(',', '.'));
+    if (Number.isNaN(rust) || rust < -100) {
+      setChyba('Zadejte platné procento růstu.');
+      return;
+    }
+    if (pocetMesicuBezPlanu === 0) {
+      setUspech(`Rok ${forecastRok}: všechny měsíce už mají aktivní plán.`);
+      return;
+    }
+    const mesiceText = mesiceBezPlanu.map(m => NAZVY_MESICU[m - 1]).join(', ');
+    const conf = forecastPred?.meta?.confidence || 'medium';
+    const warnCount = (forecastPred?.warnings || []).length;
+    const msg = `Založit ${pocetMesicuBezPlanu} plánů pro rok ${forecastRok} (${mesiceText})`
+      + ' a rozdělit cíle na prodejce podle hodin na směnách?'
+      + (warnCount ? ` (${warnCount} upozornění v náhledu)` : '')
+      + `\nSpolehlivost odhadu: ${conf}.`
+      + '\nMěsíce, které už plán mají, se přeskočí.';
+    if (!window.confirm(msg)) return;
+    setForecastCreating(true);
+    setChyba(null);
+    try {
+      const res = await plansAPI.createForecastYear(forecastRok, rust, true);
+      setWarnings(res.warnings || []);
+      const prep = res.pocet_prepocet_prodejci ?? 0;
+      const vytvoreneMesice = (res.vytvoreno || [])
+        .map(x => NAZVY_MESICU[x.mesic - 1])
+        .join(', ');
+      const jizMesice = (res.jiz_existovalo || [])
+        .map(x => NAZVY_MESICU[x.mesic - 1])
+        .join(', ');
+      const chybyData = (res.preskoceno || []).filter(p => p.reason === 'missing_data');
+      if (res.pocet_vytvoreno > 0) {
+        let txt = `Vytvořeno ${res.pocet_vytvoreno} plánů: ${vytvoreneMesice}.`;
+        if (res.pocet_jiz_existovalo > 0) {
+          txt += ` Již existovalo: ${jizMesice}.`;
+        }
+        if (prep > 0) {
+          txt += ` Prodejci přepočítáni u ${prep} měsíců.`;
+        }
+        setUspech(txt);
+        setVybraneMesic({ rok: forecastRok, mesic: res.vytvoreno[0]?.mesic || 1 });
+        setViewMode('plan');
+        loadForecast();
+      } else if (res.info || res.pocet_jiz_existovalo === 12) {
+        setUspech(res.info || `Rok ${forecastRok}: všechny měsíce už mají plán.`);
+      } else if (chybyData.length) {
+        setChyba(
+          `Plány se nevytvořily (chybí historie): ${chybyData.map(c => NAZVY_MESICU[c.mesic - 1]).join(', ')}.`,
+        );
+      } else {
+        setChyba('Žádný plán nebyl vytvořen. Zkontrolujte náhled výhledu nebo log.');
+      }
+    } catch (e) {
+      setChyba(e.response?.data?.error || 'Hromadné založení plánů selhalo.');
+    } finally {
+      setForecastCreating(false);
+    }
+  };
 
   const loadVerzi = async (verzeId) => {
     setLoading(true);
@@ -562,34 +963,43 @@ export default function PlansModule() {
             </div>
           )}
 
-          {aktivniPlan && (
-            <div className="plans-control-group">
-              <label>Zobrazení</label>
-              <div className="plans-toggle-row">
-                <button
-                  type="button"
-                  className={`plans-toggle-btn ${viewMode === 'plan' ? 'plans-toggle-btn-active' : ''}`}
-                  onClick={() => setViewMode('plan')}
-                >
-                  Plán
-                </button>
-                <button
-                  type="button"
-                  className={`plans-toggle-btn ${viewMode === 'prodejny' ? 'plans-toggle-btn-active' : ''}`}
-                  onClick={() => setViewMode('prodejny')}
-                >
-                  Plnění Prodejny
-                </button>
-                <button
-                  type="button"
-                  className={`plans-toggle-btn ${viewMode === 'prodejci' ? 'plans-toggle-btn-active' : ''}`}
-                  onClick={() => setViewMode('prodejci')}
-                >
-                  Plnění Prodejci
-                </button>
-              </div>
+          <div className="plans-control-group">
+            <label>Zobrazení</label>
+            <div className="plans-toggle-row">
+              <button
+                type="button"
+                className={`plans-toggle-btn ${viewMode === 'plan' ? 'plans-toggle-btn-active' : ''}`}
+                onClick={() => setViewMode('plan')}
+              >
+                Plán
+              </button>
+              {aktivniPlan && (
+                <>
+                  <button
+                    type="button"
+                    className={`plans-toggle-btn ${viewMode === 'prodejny' ? 'plans-toggle-btn-active' : ''}`}
+                    onClick={() => setViewMode('prodejny')}
+                  >
+                    Plnění Prodejny
+                  </button>
+                  <button
+                    type="button"
+                    className={`plans-toggle-btn ${viewMode === 'prodejci' ? 'plans-toggle-btn-active' : ''}`}
+                    onClick={() => setViewMode('prodejci')}
+                  >
+                    Plnění Prodejci
+                  </button>
+                </>
+              )}
+              <button
+                type="button"
+                className={`plans-toggle-btn ${viewMode === 'vyhled' ? 'plans-toggle-btn-active' : ''}`}
+                onClick={() => setViewMode('vyhled')}
+              >
+                Výhled
+              </button>
             </div>
-          )}
+          </div>
           <div className="plans-control-group">
             <label>Měsíc</label>
             <select
@@ -662,88 +1072,476 @@ export default function PlansModule() {
         </div>
       )}
 
-      {loading && <div className="plans-loading">Načítám...</div>}
+      {(loading || autoGenerating) && (
+        <div className="plans-loading">
+          {autoGenerating ? 'Generuji plán z historie…' : 'Načítám...'}
+        </div>
+      )}
 
-      {!loading && !aktivniPlan && (
+      {!loading && !autoGenerating && !aktivniPlan && viewMode !== 'vyhled' && (
         <div className="plans-empty">
           <h3>Pro {NAZVY_MESICU[vybraneMesic.mesic - 1]} {vybraneMesic.rok} zatím neexistuje plán.</h3>
-          <div className="plans-empty-form">
-            <label>Celková částka firmy (Kč)</label>
-            <input
-              type="number"
-              value={castkaFirma}
-              onChange={e => setCastkaFirma(e.target.value)}
-              placeholder="např. 3000000"
-              className="plans-input"
-              min="500000"
-              max="90000000"
-            />
-            <div className="plans-empty-actions">
-              <button className="plans-btn plans-btn-primary" onClick={() => vytvorNovyPlan(false)} disabled={loading}>
-                Vytvořit prázdný plán
-              </button>
-              <button className="plans-btn plans-btn-secondary" onClick={() => vytvorNovyPlan(true)} disabled={loading}>
-                Zkopírovat z předchozího měsíce
-              </button>
-            </div>
-            <div className="plans-empty-form plans-empty-form-historie">
-              <label>Růst (%)</label>
+          {jeMesicAktualniNeboBudouci(vybraneMesic.rok, vybraneMesic.mesic) ? (
+            <p className="plans-empty-hint">
+              U aktuálního a budoucích měsíců se plán obvykle vytvoří automaticky při otevření.
+            </p>
+          ) : (
+            <p className="plans-empty-hint">U minulých měsíců použijte ruční akce níže.</p>
+          )}
+          <button
+            type="button"
+            className="plans-btn plans-btn-secondary"
+            onClick={() => vytvorPlanAuto(vybraneMesic.rok, vybraneMesic.mesic)}
+            disabled={loading || autoGenerating}
+          >
+            Zkusit znovu (hybridní auto)
+          </button>
+          <details
+            className="plans-pokrocile"
+            open={pokrocileOpen}
+            onToggle={e => setPokrocileOpen(e.target.open)}
+          >
+            <summary>Pokročilé – ruční vytvoření</summary>
+            <div className="plans-empty-form">
+              <label>Celková částka firmy (Kč)</label>
               <input
                 type="number"
-                value={rustProcent}
-                onChange={e => setRustProcent(e.target.value)}
-                placeholder="10"
-                className="plans-input plans-input-sm"
-                min="-100"
-                max="500"
-                step="0.5"
+                value={castkaFirma}
+                onChange={e => setCastkaFirma(e.target.value)}
+                placeholder="např. 3000000"
+                className="plans-input"
+                min="500000"
+                max="90000000"
               />
-              <button
-                type="button"
-                className="plans-btn plans-btn-secondary"
-                onClick={nactiNahled3m}
-                disabled={loading || nahled3mLoading}
-              >
-                {nahled3mLoading ? 'Načítám…' : 'Náhled z 3 měsíců'}
-              </button>
-              <button
-                className="plans-btn plans-btn-primary"
-                onClick={vytvorPlanZ3Mesicu}
-                disabled={loading}
-              >
-                Vytvořit z posledních 3 měsíců + růst
-              </button>
-              <button
-                type="button"
-                className="plans-btn plans-btn-ghost"
-                onClick={vytvorPlanZHistorie}
-                disabled={loading}
-                title="Stejný měsíc minulý rok"
-              >
-                YoY minulý rok
-              </button>
+              <div className="plans-empty-actions">
+                <button className="plans-btn plans-btn-primary" onClick={() => vytvorNovyPlan(false)} disabled={loading}>
+                  Vytvořit prázdný plán
+                </button>
+                <button className="plans-btn plans-btn-secondary" onClick={() => vytvorNovyPlan(true)} disabled={loading}>
+                  Zkopírovat z předchozího měsíce
+                </button>
+              </div>
+              <div className="plans-empty-form plans-empty-form-historie">
+                <label>Růst (%)</label>
+                <input
+                  type="number"
+                  value={rustProcent}
+                  onChange={e => setRustProcent(e.target.value)}
+                  placeholder="10"
+                  className="plans-input plans-input-sm"
+                  min="-100"
+                  max="500"
+                  step="0.5"
+                />
+                <button
+                  type="button"
+                  className="plans-btn plans-btn-secondary"
+                  onClick={nactiNahled3m}
+                  disabled={loading || nahled3mLoading}
+                >
+                  {nahled3mLoading ? 'Načítám…' : 'Náhled z 3 měsíců'}
+                </button>
+                <button
+                  className="plans-btn plans-btn-secondary"
+                  onClick={vytvorPlanZ3Mesicu}
+                  disabled={loading}
+                >
+                  Z 3 měsíců + růst
+                </button>
+                <button
+                  type="button"
+                  className="plans-btn plans-btn-ghost"
+                  onClick={vytvorPlanZHistorie}
+                  disabled={loading}
+                  title="Stejný měsíc minulý rok"
+                >
+                  YoY minulý rok
+                </button>
+              </div>
+              {nahled3m && (
+                <div className="plans-nahled-3m">
+                  <p>
+                    Průměr 3 měsíců: <strong>{Number(nahled3m.obrat_prumer_3m).toLocaleString('cs-CZ')} Kč</strong>
+                    {' → '}návrh: <strong>{Number(nahled3m.navrh_obrat).toLocaleString('cs-CZ')} Kč</strong>
+                  </p>
+                </div>
+              )}
             </div>
-            {nahled3m && (
-              <div className="plans-nahled-3m">
-                <p>
-                  Průměr 3 měsíců: <strong>{Number(nahled3m.obrat_prumer_3m).toLocaleString('cs-CZ')} Kč</strong>
-                  {' → '}návrh s růstem: <strong>{Number(nahled3m.navrh_obrat).toLocaleString('cs-CZ')} Kč</strong>
-                  {nahled3m.mesice?.length > 0 && (
-                    <span className="plans-nahled-3m-mesice">
-                      {' '}(
-                      {nahled3m.mesice.map(m => `${NAZVY_MESICU[m.mesic - 1]} ${m.rok}`).join(', ')}
-                      )
+          </details>
+        </div>
+      )}
+
+      {viewMode === 'vyhled' && (
+        <div className="plans-vyhled">
+          {forecastLoading && <div className="plans-loading">Načítám výhled…</div>}
+          {!forecastLoading && forecastPred && (
+            <>
+              <div className="plans-vyhled-toolbar">
+                <div className="plans-vyhled-toolbar-filters">
+                  <VyhledFilterMenu
+                    open={prodejnyMenuOpen}
+                    onClose={closeProdejnyMenu}
+                    triggerLabel={prodejnyTriggerLabel}
+                    onTriggerClick={toggleProdejnyMenu}
+                    title="Výběr poboček"
+                    className="plans-vyhled-dropdown-prodejny"
+                  >
+                    <p className="plans-vyhled-dropdown-section">Pohled na obrat</p>
+                    <label className="plans-vyhled-dropdown-row">
+                      <input
+                        type="checkbox"
+                        checked={draftVyhledFirma && !draftVyhledProdejny.length}
+                        onChange={() => {
+                          setDraftVyhledFirma(true);
+                          setDraftVyhledProdejny([]);
+                        }}
+                      />
+                      <span>Celá firma</span>
+                    </label>
+                    {(vyhledMeta?.prodejny || []).map(p => (
+                      <label key={p.id} className="plans-vyhled-dropdown-row" title={p.nazev}>
+                        <input
+                          type="checkbox"
+                          checked={draftVyhledProdejny.includes(p.id)}
+                          onChange={() => toggleDraftProdejna(p.id)}
+                        />
+                        <span>{p.nazev}</span>
+                      </label>
+                    ))}
+                  </VyhledFilterMenu>
+                  <VyhledFilterMenu
+                    open={rokyMenuOpen}
+                    onClose={closeRokyMenu}
+                    triggerLabel={rokyTriggerLabel}
+                    onTriggerClick={toggleRokyMenu}
+                    title="Rok plánování a porovnání v grafu"
+                    className="plans-vyhled-dropdown-roky"
+                  >
+                    <p className="plans-vyhled-dropdown-section">Plánovaný rok (tabulka, predikce, založení plánů)</p>
+                    <div className="plans-vyhled-dropdown-roky-hlavni">
+                      {rokyVolba.map((rok, i) => (
+                        <button
+                          key={`h-${rok}`}
+                          type="button"
+                          className={`plans-vyhled-dropdown-rok-btn${rok === draftForecastRok ? ' is-hlavni' : ''}`}
+                          onClick={() => setDraftHlavniRok(rok)}
+                        >
+                          <span
+                            className="plans-vyhled-chip-dot"
+                            style={{ background: GRAF_ROKY_BARVY[i % GRAF_ROKY_BARVY.length] }}
+                          />
+                          {rok}{rok === draftForecastRok ? ' ★' : ''}
+                          {rok > new Date().getFullYear() && (
+                            <span className="plans-vyhled-rok-budouci"> plán</span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="plans-vyhled-dropdown-section">Roky v grafu (porovnání)</p>
+                    {rokyVolba.map((rok, i) => (
+                      <label
+                        key={`c-${rok}`}
+                        className={`plans-vyhled-dropdown-row${rok === draftForecastRok ? ' is-disabled' : ''}`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={rok === draftForecastRok || draftCompareRoky.includes(rok)}
+                          disabled={rok === draftForecastRok}
+                          onChange={() => toggleDraftCompareRok(rok)}
+                        />
+                        <span
+                          className="plans-vyhled-chip-dot"
+                          style={{ background: GRAF_ROKY_BARVY[i % GRAF_ROKY_BARVY.length] }}
+                        />
+                        <span>{rok}{rok === draftForecastRok ? ' (hlavní)' : ''}</span>
+                      </label>
+                    ))}
+                  </VyhledFilterMenu>
+                </div>
+                <div className="plans-vyhled-toolbar-summary">
+                  <span className="plans-vyhled-summary-pred">
+                    <strong>{forecastRok}</strong>
+                    {vyhledMeta?.prodejna_nazev ? ` · ${vyhledMeta.prodejna_nazev}` : ''}
+                    {' '}{formatKcShort(forecastPred.celkem_obrat_pred)}
+                  </span>
+                  {forecastPred.souhrn_roku?.za_ukoncene_obdobi && (
+                    <span className="plans-vyhled-summary-obdobi">
+                      YTD vs pred:{' '}
+                      <strong>
+                        {formatPorovnani(
+                          forecastPred.souhrn_roku.za_ukoncene_obdobi.pct_vs_predikce,
+                          forecastPred.souhrn_roku.za_ukoncene_obdobi.odchylka_pred_kc,
+                        )}
+                      </strong>
+                      {' · '}
+                      vs LY:{' '}
+                      <strong>
+                        {formatPorovnani(
+                          forecastPred.souhrn_roku.za_ukoncene_obdobi.pct_vs_ly,
+                          forecastPred.souhrn_roku.za_ukoncene_obdobi.odchylka_ly_kc,
+                        )}
+                      </strong>
                     </span>
                   )}
-                </p>
-                <ul className="plans-nahled-3m-prodejny">
-                  {(nahled3m.prodejny || []).map(p => (
-                    <li key={p.prodejna_id}>{p.prodejna_nazev}: {p.podil_procenta} %</li>
-                  ))}
-                </ul>
+                  <span className={`plans-confidence plans-confidence-${forecastPred.meta?.confidence || 'medium'}`}>
+                    {forecastPred.meta?.confidence || '—'}
+                  </span>
+                </div>
               </div>
-            )}
-          </div>
+              <div
+                className="plans-vyhled-legenda"
+                title="Tabulka: částky v Kč. Sloupce vs: zelená nad referencí, červená pod, černá ≈ shoda. Modrý řádek = probíhající měsíc. ⚠ = chybějící pobočky."
+              >
+                <span className="plans-vyhled-legenda-skupina">
+                  <span className="plans-vyhled-legenda-nadpis">Graf</span>
+                  {grafLegendaPolozky.map(p => (
+                    <span key={p.key} className="plans-vyhled-legenda-polozka">
+                      <span
+                        className={
+                          p.typ
+                            ? `plans-vyhled-legenda-swatch plans-vyhled-legenda-swatch-${p.typ}`
+                            : 'plans-vyhled-legenda-swatch'
+                        }
+                        style={p.barva ? { background: p.barva } : undefined}
+                      />
+                      {p.label}
+                    </span>
+                  ))}
+                </span>
+                <span className="plans-vyhled-legenda-skupina plans-vyhled-legenda-tab" aria-hidden="true">
+                  ·
+                </span>
+                <span className="plans-vyhled-legenda-skupina plans-vyhled-legenda-tab">
+                  Tabulka Kč · najetí měsíc · <span className="plans-vyhled-legenda-warn">⚠</span>
+                  {' · '}
+                  <span className="plans-vyhled-pct-up">▲</span>
+                  <span className="plans-vyhled-pct-down">▼</span> vs
+                </span>
+              </div>
+              <div className="plans-vyhled-chart plans-vyhled-chart-multi plans-vyhled-chart-compact">
+                {Array.from({ length: 12 }, (_, i) => i + 1).map((mesic) => {
+                  const allVals = [];
+                  if (forecastPred.mesice) {
+                    const hm = forecastPred.mesice.find(x => x.mesic === mesic);
+                    if (hm) {
+                      allVals.push(hm.obrat_pred || 0, hm.plneni?.obrat || 0);
+                    }
+                  }
+                  (forecastData?.porovnani_roky || []).forEach((serie) => {
+                    const row = serie.mesice?.find(x => x.mesic === mesic);
+                    if (row) {
+                      allVals.push(row.obrat_skutecny ?? row.obrat ?? row.obrat_pred ?? 0);
+                    }
+                  });
+                  const max = Math.max(...allVals, 1);
+                  const tooltipRadky = grafMesicTooltipRadky(
+                    mesic, forecastPred, forecastData, forecastRok,
+                  );
+                  return (
+                    <div
+                      key={mesic}
+                      className="plans-vyhled-bar-wrap"
+                      tabIndex={0}
+                      aria-label={`${NAZVY_MESICU[mesic - 1]} – ${tooltipRadky.length} hodnot v grafu`}
+                    >
+                      {tooltipRadky.length > 0 && (
+                        <div className="plans-vyhled-chart-tooltip" role="tooltip">
+                          <div className="plans-vyhled-chart-tooltip-title">
+                            {NAZVY_MESICU[mesic - 1]}
+                          </div>
+                          <ul className="plans-vyhled-chart-tooltip-list">
+                            {tooltipRadky.map(r => (
+                              <li key={r.key}>
+                                <span
+                                  className={`plans-vyhled-chart-tooltip-dot${r.dot ? ` plans-vyhled-chart-tooltip-dot-${r.dot}` : ''}`}
+                                  style={r.barva ? { background: r.barva } : undefined}
+                                />
+                                <span className="plans-vyhled-chart-tooltip-label">{r.label}</span>
+                                <span className="plans-vyhled-chart-tooltip-value">{r.hodnota}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      <div className="plans-vyhled-bars plans-vyhled-bars-multi">
+                        {(() => {
+                          const hm = forecastPred.mesice?.find(x => x.mesic === mesic);
+                          if (!hm) return null;
+                          const hPred = Math.round((hm.obrat_pred / max) * 100);
+                          const sk = hm.plneni?.obrat;
+                          const hPln = sk != null ? Math.round((sk / max) * 100) : 0;
+                          return (
+                            <>
+                              <div
+                                className="plans-vyhled-bar plans-vyhled-bar-pred"
+                                style={{ height: `${hPred}%` }}
+                              />
+                              {sk != null && (
+                                <div
+                                  className="plans-vyhled-bar plans-vyhled-bar-pln"
+                                  style={{ height: `${hPln}%` }}
+                                />
+                              )}
+                            </>
+                          );
+                        })()}
+                        {(forecastData?.porovnani_roky || []).map((serie, si) => {
+                          const row = serie.mesice?.find(x => x.mesic === mesic);
+                          const val = row?.obrat_skutecny ?? row?.obrat ?? row?.obrat_pred ?? 0;
+                          const h = Math.round((val / max) * 100);
+                          const barva = GRAF_ROKY_BARVY[(si + 1) % GRAF_ROKY_BARVY.length];
+                          return (
+                            <div
+                              key={serie.rok}
+                              className="plans-vyhled-bar"
+                              style={{ height: `${h}%`, background: barva }}
+                            />
+                          );
+                        })}
+                      </div>
+                      <span className="plans-vyhled-bar-label">{MESIC_ZKRATKA[mesic - 1]}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="plans-vyhled-table-wrap">
+                <table className="plans-vyhled-table plans-vyhled-table-compact">
+                  <thead className="plans-vyhled-thead-sticky">
+                    <tr>
+                      <th className="plans-vyhled-col-mesic" />
+                      <th>LY</th>
+                      <th>Pred.</th>
+                      <th>Plán</th>
+                      <th>Plnění</th>
+                      <th>vs LY</th>
+                      <th>vs pred.</th>
+                      <th>vs plán</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {forecastPred.mesice?.map(m => {
+                      const pl = m.plneni;
+                      const chybiHint = formatChybejiciPobocky(m.chybejici_pobocky);
+                      const rowTitle = [
+                        chybiHint,
+                        m.stav === 'probiha' && pl?.den_v_mesici
+                          ? `Probíhá – ${pl.den_v_mesici}. den v měsíci`
+                          : null,
+                        m.stav === 'probiha' && pl?.trend_k_mesici != null
+                          ? `Trend do konce: ${formatNum(pl.trend_k_mesici)}`
+                          : null,
+                      ].filter(Boolean).join(' · ') || undefined;
+                      const rowClass = [
+                        m.stav ? `plans-vyhled-row-${m.stav}` : '',
+                        m.stav === 'probiha' ? 'plans-vyhled-row-aktualni' : '',
+                      ].filter(Boolean).join(' ');
+                      return (
+                        <tr key={m.mesic} className={rowClass} title={rowTitle}>
+                          <td className="plans-vyhled-col-mesic">
+                            <span className="plans-vyhled-mesic-label">{MESIC_ZKRATKA[m.mesic - 1]}</span>
+                            {chybiHint && (
+                              <span className="plans-vyhled-chybi" title={chybiHint}>⚠</span>
+                            )}
+                          </td>
+                          <td className="plans-vyhled-num">{m.obrat_ly > 0 ? formatNum(m.obrat_ly) : '—'}</td>
+                          <td className="plans-vyhled-num">{formatNum(m.obrat_pred)}</td>
+                          <td className="plans-vyhled-num">{pl?.ma_plan ? formatNum(pl.plan_obrat) : '—'}</td>
+                          <td className="plans-vyhled-num">
+                            {pl ? formatNum(pl.obrat) : '—'}
+                          </td>
+                          <td className="plans-vyhled-pct">
+                            {pl && m.obrat_ly > 0
+                              ? <VyhledPorovnaniCell pct={pl.pct_vs_ly} kc={pl.odchylka_ly_kc} />
+                              : '—'}
+                          </td>
+                          <td className="plans-vyhled-pct">
+                            {pl ? <VyhledPorovnaniCell pct={pl.pct_predikce} kc={pl.odchylka_pred_kc} /> : '—'}
+                          </td>
+                          <td className="plans-vyhled-pct">
+                            {pl?.plan_obrat
+                              ? <VyhledPorovnaniCell pct={pl.pct_plan} kc={pl.odchylka_plan_kc} />
+                              : '—'}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot>
+                    <tr className="plans-vyhled-foot">
+                      <td><strong>Celkem</strong></td>
+                      <td className="plans-vyhled-num">{formatNum(forecastPred.souhrn_roku?.celkem_obrat_ly_rok)}</td>
+                      <td className="plans-vyhled-num"><strong>{formatNum(forecastPred.celkem_obrat_pred)}</strong></td>
+                      <td colSpan={2} />
+                      <td colSpan={3} />
+                    </tr>
+                    {forecastPred.souhrn_roku?.za_ukoncene_obdobi && (
+                      <tr className="plans-vyhled-foot plans-vyhled-foot-obdobi">
+                        <td>
+                          <strong>YTD ({forecastPred.souhrn_roku.za_ukoncene_obdobi.mesicu} m.)</strong>
+                        </td>
+                        <td className="plans-vyhled-num">{formatNum(forecastPred.souhrn_roku.za_ukoncene_obdobi.obrat_ly)}</td>
+                        <td className="plans-vyhled-num">{formatNum(forecastPred.souhrn_roku.za_ukoncene_obdobi.obrat_predikce)}</td>
+                        <td className="plans-vyhled-num">
+                          {forecastPred.souhrn_roku.za_ukoncene_obdobi.obrat_plan != null
+                            ? formatNum(forecastPred.souhrn_roku.za_ukoncene_obdobi.obrat_plan)
+                            : '—'}
+                        </td>
+                        <td className="plans-vyhled-num">
+                          <strong>{formatNum(forecastPred.souhrn_roku.za_ukoncene_obdobi.obrat_skutecny)}</strong>
+                        </td>
+                        <td className="plans-vyhled-pct">
+                          <strong>
+                            <VyhledPorovnaniCell
+                              pct={forecastPred.souhrn_roku.za_ukoncene_obdobi.pct_vs_ly}
+                              kc={forecastPred.souhrn_roku.za_ukoncene_obdobi.odchylka_ly_kc}
+                            />
+                          </strong>
+                        </td>
+                        <td className="plans-vyhled-pct">
+                          <strong>
+                            <VyhledPorovnaniCell
+                              pct={forecastPred.souhrn_roku.za_ukoncene_obdobi.pct_vs_predikce}
+                              kc={forecastPred.souhrn_roku.za_ukoncene_obdobi.odchylka_pred_kc}
+                            />
+                          </strong>
+                        </td>
+                        <td className="plans-vyhled-pct">
+                          <strong>
+                            <VyhledPorovnaniCell
+                              pct={forecastPred.souhrn_roku.za_ukoncene_obdobi.pct_vs_plan}
+                              kc={forecastPred.souhrn_roku.za_ukoncene_obdobi.odchylka_plan_kc}
+                            />
+                          </strong>
+                        </td>
+                      </tr>
+                    )}
+                  </tfoot>
+                </table>
+              </div>
+              {(forecastPred.warnings || []).length > 0 && (
+                <ul className="plans-souhrn-warnings">
+                  {forecastPred.warnings.map((w, i) => <li key={i}>{w}</li>)}
+                </ul>
+              )}
+              <button
+                type="button"
+                className="plans-btn plans-btn-primary"
+                onClick={zalozitPlanyNaRok}
+                disabled={forecastCreating || pocetMesicuBezPlanu === 0}
+                title={
+                  pocetMesicuBezPlanu === 0
+                    ? 'Všechny měsíce tohoto roku už mají plán'
+                    : undefined
+                }
+              >
+                {forecastCreating
+                  ? 'Zakládám plány…'
+                  : pocetMesicuBezPlanu === 0
+                    ? `Rok ${forecastRok} – všechny plány hotové`
+                    : `Založit ${pocetMesicuBezPlanu} chybějících plánů (${forecastRok})`}
+              </button>
+            </>
+          )}
         </div>
       )}
 

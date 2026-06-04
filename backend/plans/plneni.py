@@ -398,6 +398,118 @@ def plneni_celkem_firma(rok, mesic):
     return {'obrat': obrat, 'kusy': kusy}
 
 
+def _web_prodeje_base_where(extra=''):
+    return f"""
+        AND (
+            Cena_ks_vcl_DPH > 14
+            OR Cena_ks_vcl_DPH < 0
+        )
+        AND KATEGORIE IS NOT NULL
+        AND TRIM(COALESCE(KATEGORIE,'')) != ''
+        AND COALESCE(KATEGORIE,'') != 'Nezařazeno'
+        {extra}
+    """
+
+
+def dostupne_roky_z_prodeje():
+    """Min/max rok z WEB_PRODEJE_ALL (stejné filtry jako plnění)."""
+    sql = f"""
+        SELECT MIN(YEAR(Vystaveno)), MAX(YEAR(Vystaveno))
+        FROM WEB_PRODEJE_ALL
+        WHERE Vystaveno IS NOT NULL
+        {_web_prodeje_base_where()}
+    """
+    with connection.cursor() as cursor:
+        cursor.execute(sql)
+        row = cursor.fetchone()
+    if not row or row[0] is None or row[1] is None:
+        y = date.today().year
+        return {'rok_od': y, 'rok_do': y, 'roky': [y]}
+    rok_od, rok_do = int(row[0]), int(row[1])
+    return {
+        'rok_od': rok_od,
+        'rok_do': rok_do,
+        'roky': list(range(rok_do, rok_od - 1, -1)),
+    }
+
+
+def plneni_celkem_firma_mesicne(rok_od, mesic_od, rok_do, mesic_do, prodejna_id=None, prodejna_ids=None):
+    """
+    Jeden dotaz: celkový obrat a kusy pro každý kalendářní měsíc v intervalu.
+    Vrací {(rok, mesic): {'obrat': Decimal, 'kusy': int}}.
+    """
+    start_d = date(rok_od, mesic_od, 1).isoformat()
+    if mesic_do == 12:
+        end_d = date(rok_do + 1, 1, 1).isoformat()
+    else:
+        end_d = date(rok_do, mesic_do + 1, 1).isoformat()
+
+    extra = ''
+    params = [start_d, end_d]
+    ids = None
+    if prodejna_ids:
+        ids = [int(x) for x in prodejna_ids if x is not None]
+    elif prodejna_id is not None:
+        ids = [int(prodejna_id)]
+    if ids:
+        placeholders = ','.join(['%s'] * len(ids))
+        extra = f' AND COALESCE(ID_PRODEJNY, 0) IN ({placeholders})'
+        params.extend(ids)
+
+    sql = f"""
+        SELECT
+            YEAR(Vystaveno) AS rok,
+            MONTH(Vystaveno) AS mesic,
+            SUM(COALESCE(NULLIF(Pocet_kusu, 0), 1) * COALESCE(Cena_ks_vcl_DPH, 0)) AS obrat,
+            SUM(
+                CASE WHEN COALESCE(Cena_ks_vcl_DPH, 0) >= 0
+                THEN COALESCE(NULLIF(Pocet_kusu, 0), 1)
+                ELSE -COALESCE(NULLIF(Pocet_kusu, 0), 1)
+                END
+            ) AS kusy
+        FROM WEB_PRODEJE_ALL
+        WHERE Vystaveno >= %s AND Vystaveno < %s
+        {_web_prodeje_base_where(extra)}
+        GROUP BY YEAR(Vystaveno), MONTH(Vystaveno)
+    """
+    with connection.cursor() as cursor:
+        cursor.execute(sql, params)
+        rows = cursor.fetchall()
+
+    result = {}
+    for row in rows:
+        if not row or row[0] is None or row[1] is None:
+            continue
+        key = (int(row[0]), int(row[1]))
+        result[key] = {
+            'obrat': Decimal(str(row[2])) if row[2] else Decimal('0'),
+            'kusy': int(row[3]) if row[3] is not None else 0,
+        }
+    return result
+
+
+def pobocky_bez_dat_v_mesici(rok, mesic):
+    """
+    Aktivní prodejny bez obratu nebo bez směn v daném měsíci (pro náhled ve výhledu).
+    """
+    from stores.models import Prodejna
+    from .prodejci_auto import _hodiny_na_prodejne
+
+    pd = plneni_prodejny(rok, mesic)
+    chybi = []
+    for p in Prodejna.get_aktivni_prodejny():
+        obrat = float(pd.get(p.id, {}).get('obrat', 0) or 0)
+        hodiny = _hodiny_na_prodejne(rok, mesic, p.id)
+        h_sum = sum(hodiny.values()) if hodiny else 0
+        if obrat <= 0 and h_sum <= 0:
+            chybi.append({'id': p.id, 'nazev': p.nazev, 'duvod': 'bez_obratu_i_smen'})
+        elif obrat <= 0:
+            chybi.append({'id': p.id, 'nazev': p.nazev, 'duvod': 'bez_obratu'})
+        elif h_sum <= 0:
+            chybi.append({'id': p.id, 'nazev': p.nazev, 'duvod': 'bez_smen'})
+    return chybi
+
+
 def _prev_month(rok, mesic):
     """Vrátí (rok, mesic) předchozího kalendářního měsíce."""
     if mesic == 1:
