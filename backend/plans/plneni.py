@@ -18,6 +18,11 @@ from decimal import Decimal
 from django.db import connection
 
 
+def kategorie_case_params():
+    """Parametry pro _kategorie_case_sql (SERVIS podmínky)."""
+    return ['%servis eda%', '%!Servis%']
+
+
 def _kategorie_case_sql():
     """CASE výraz pro mapování řádku na plánovací kategorii."""
     return """
@@ -391,3 +396,255 @@ def plneni_celkem_firma(rok, mesic):
     obrat = Decimal(str(row[0])) if row and row[0] else Decimal('0')
     kusy = int(row[1]) if row and row[1] is not None else 0
     return {'obrat': obrat, 'kusy': kusy}
+
+
+def _prev_month(rok, mesic):
+    """Vrátí (rok, mesic) předchozího kalendářního měsíce."""
+    if mesic == 1:
+        return rok - 1, 12
+    return rok, mesic - 1
+
+
+def mesice_pred_planem(rok, mesic, pocet=3):
+    """
+    M−pocet … M−1 vůči cílovému plánovanému měsíci (rok, mesic).
+    Např. plán na červen 2026 → březen, duben, květen 2026.
+    """
+    result = []
+    r, m = rok, mesic
+    for _ in range(pocet):
+        r, m = _prev_month(r, m)
+        result.append((r, m))
+    result.reverse()
+    return result
+
+
+def plneni_firma_za_obdobi(rok_od, mesic_od, rok_do, mesic_do):
+    """
+    Průměrné měsíční plnění firmy za období (součet měsíců / počet měsíců s obratem > 0).
+    Returns: dict kategorie_kod -> {obrat, kusy} (průměrné měsíční).
+    """
+    months = _iter_months_inclusive(rok_od, mesic_od, rok_do, mesic_do)
+    if not months:
+        return {}
+    per_month = []
+    for r, m in months:
+        kat = plneni_firma(r, m)
+        total_obrat = sum(d['obrat'] for d in kat.values())
+        if total_obrat > 0:
+            per_month.append(kat)
+    if not per_month:
+        return {}
+    n = len(per_month)
+    result = {}
+    all_kody = set()
+    for pm in per_month:
+        all_kody.update(pm.keys())
+    for kod in all_kody:
+        obraty = [pm.get(kod, {}).get('obrat', Decimal('0')) for pm in per_month]
+        kusy = [pm.get(kod, {}).get('kusy', 0) for pm in per_month]
+        result[kod] = {
+            'obrat': (sum(obraty, Decimal('0')) / n).quantize(Decimal('0.01')),
+            'kusy': round(sum(kusy) / n),
+        }
+    return result
+
+
+def plneni_celkem_firma_za_obdobi(rok_od, mesic_od, rok_do, mesic_do):
+    """Průměrný měsíční obrat a kusy firmy za období."""
+    months = _iter_months_inclusive(rok_od, mesic_od, rok_do, mesic_do)
+    obraty = []
+    kusy_list = []
+    for r, m in months:
+        t = plneni_celkem_firma(r, m)
+        if t['obrat'] > 0:
+            obraty.append(t['obrat'])
+            kusy_list.append(t['kusy'])
+    if not obraty:
+        return {'obrat': Decimal('0'), 'kusy': 0, 'pocet_mesicu': 0}
+    n = len(obraty)
+    return {
+        'obrat': (sum(obraty, Decimal('0')) / n).quantize(Decimal('0.01')),
+        'kusy': round(sum(kusy_list) / n),
+        'pocet_mesicu': n,
+    }
+
+
+def plneni_prodejny_za_obdobi(rok_od, mesic_od, rok_do, mesic_do):
+    """
+    Průměrné měsíční plnění per prodejna za období.
+    Stejná struktura jako plneni_prodejny().
+    """
+    months = _iter_months_inclusive(rok_od, mesic_od, rok_do, mesic_do)
+    monthly = []
+    for r, m in months:
+        pd = plneni_prodejny(r, m)
+        has_data = any(d.get('obrat', 0) > 0 for d in pd.values())
+        if has_data:
+            monthly.append(pd)
+    if not monthly:
+        return {}
+    n = len(monthly)
+    result = {}
+    all_pids = set()
+    for pm in monthly:
+        all_pids.update(pm.keys())
+    for pid in all_pids:
+        obraty = []
+        kusy_total = []
+        kat_acc = {}
+        for pm in monthly:
+            d = pm.get(pid, {'obrat': Decimal('0'), 'kusy': 0, 'kategorie': {}})
+            obraty.append(d.get('obrat', Decimal('0')))
+            kusy_total.append(d.get('kusy', 0))
+            for kod, kd in d.get('kategorie', {}).items():
+                if kod not in kat_acc:
+                    kat_acc[kod] = {'obrat': [], 'kusy': []}
+                kat_acc[kod]['obrat'].append(kd.get('obrat', Decimal('0')))
+                kat_acc[kod]['kusy'].append(kd.get('kusy', 0))
+        kategorie = {}
+        for kod, acc in kat_acc.items():
+            kategorie[kod] = {
+                'obrat': (sum(acc['obrat'], Decimal('0')) / n).quantize(Decimal('0.01')),
+                'kusy': round(sum(acc['kusy']) / n),
+            }
+        result[pid] = {
+            'obrat': (sum(obraty, Decimal('0')) / n).quantize(Decimal('0.01')),
+            'kusy': round(sum(kusy_total) / n),
+            'kategorie': kategorie,
+        }
+    return result
+
+
+def plneni_prodejce_za_obdobi(prodejce_id, rok_od, mesic_od, rok_do, mesic_do, prodejna_id=None):
+    """
+    Průměrné měsíční plnění prodejce za období (volitelně jen na prodejně).
+    Returns: {obrat, kusy, kategorie: {kod: {obrat, kusy}}}
+    """
+    months = _iter_months_inclusive(rok_od, mesic_od, rok_do, mesic_do)
+    monthly = []
+    for r, m in months:
+        det = plneni_prodejce_s_detailem(r, m, prodejce_id)
+        if prodejna_id is not None:
+            det = _filter_prodejce_detail_prodejna(det, r, m, prodejce_id, prodejna_id)
+        if det['obrat'] > 0 or det['kategorie']:
+            monthly.append(det)
+    if not monthly:
+        return {'obrat': Decimal('0'), 'kusy': 0, 'kategorie': {}}
+    n = len(monthly)
+    obraty = [d['obrat'] for d in monthly]
+    kusy_celkem = [sum(k['kusy'] for k in d['kategorie'].values()) for d in monthly]
+    kat_acc = {}
+    for d in monthly:
+        for kod, kd in d['kategorie'].items():
+            if kod not in kat_acc:
+                kat_acc[kod] = {'obrat': [], 'kusy': []}
+            kat_acc[kod]['obrat'].append(kd['obrat'])
+            kat_acc[kod]['kusy'].append(kd['kusy'])
+    kategorie = {}
+    for kod, acc in kat_acc.items():
+        kategorie[kod] = {
+            'obrat': (sum(acc['obrat'], Decimal('0')) / n).quantize(Decimal('0.01')),
+            'kusy': round(sum(acc['kusy']) / n),
+        }
+    return {
+        'obrat': (sum(obraty, Decimal('0')) / n).quantize(Decimal('0.01')),
+        'kusy': round(sum(kusy_celkem) / n),
+        'kategorie': kategorie,
+    }
+
+
+def _filter_prodejce_detail_prodejna(det, rok, mesic, prodejce_id, prodejna_id):
+    """Ořízne plnění prodejce na jednu prodejnu (SQL agregace)."""
+    start_d, end_d = _base_where_params(rok, mesic)
+    case_sql = _kategorie_case_sql()
+    params = kategorie_case_params() + [start_d, end_d, prodejce_id, prodejna_id]
+    sql = f"""
+        SELECT {case_sql} AS kategorie_kod,
+            SUM(COALESCE(NULLIF(Pocet_kusu, 0), 1) * COALESCE(Cena_ks_vcl_DPH, 0)) AS obrat,
+            SUM(CASE WHEN COALESCE(Cena_ks_vcl_DPH, 0) >= 0
+                THEN COALESCE(NULLIF(Pocet_kusu, 0), 1)
+                ELSE -COALESCE(NULLIF(Pocet_kusu, 0), 1) END) AS kusy
+        FROM WEB_PRODEJE_ALL
+        WHERE Vystaveno >= %s AND Vystaveno < %s
+        AND (Cena_ks_vcl_DPH > 14 OR Cena_ks_vcl_DPH < 0)
+        AND KATEGORIE IS NOT NULL AND TRIM(COALESCE(KATEGORIE,'')) != ''
+        AND COALESCE(KATEGORIE,'') != 'Nezařazeno'
+        AND ID_PRODEJCE = %s AND COALESCE(ID_PRODEJNY, 0) = %s
+        GROUP BY kategorie_kod
+    """
+    with connection.cursor() as cursor:
+        cursor.execute(sql, params)
+        rows = cursor.fetchall()
+    result = {'obrat': Decimal('0'), 'kategorie': {}}
+    for row in rows:
+        kod, obrat, kusy = row
+        if kod:
+            obrat_val = Decimal(str(obrat)) if obrat else Decimal('0')
+            kusy_val = int(kusy) if kusy is not None else 0
+            result['obrat'] += obrat_val
+            result['kategorie'][kod] = {'obrat': obrat_val, 'kusy': kusy_val}
+    return result
+
+
+def plneni_polozky(rok, mesic, kategorie_kod, prodejna_id=None, prodejce_id=None, limit=50):
+    """
+    Položky (Kod + Nazev) prodané v dané plánovací kategorii za měsíc.
+    """
+    start_d, end_d = _base_where_params(rok, mesic)
+    case_sql = _kategorie_case_sql()
+    extra = []
+    params = list(kategorie_case_params()) + [start_d, end_d]
+    if prodejna_id is not None:
+        extra.append('AND COALESCE(ID_PRODEJNY, 0) = %s')
+        params.append(prodejna_id)
+    if prodejce_id is not None:
+        extra.append('AND ID_PRODEJCE = %s')
+        params.append(prodejce_id)
+    extra_sql = ' '.join(extra)
+    params.append(kategorie_kod)
+    params.append(limit)
+    sql = f"""
+        SELECT
+            COALESCE(NULLIF(TRIM(Kod), ''), '(bez kódu)') AS kod,
+            MAX(COALESCE(Nazev, '')) AS nazev,
+            SUM(COALESCE(NULLIF(Pocet_kusu, 0), 1) * COALESCE(Cena_ks_vcl_DPH, 0)) AS obrat,
+            SUM(CASE WHEN COALESCE(Cena_ks_vcl_DPH, 0) >= 0
+                THEN COALESCE(NULLIF(Pocet_kusu, 0), 1)
+                ELSE -COALESCE(NULLIF(Pocet_kusu, 0), 1) END) AS kusy
+        FROM WEB_PRODEJE_ALL
+        WHERE Vystaveno >= %s AND Vystaveno < %s
+        AND (Cena_ks_vcl_DPH > 14 OR Cena_ks_vcl_DPH < 0)
+        AND KATEGORIE IS NOT NULL AND TRIM(COALESCE(KATEGORIE,'')) != ''
+        AND COALESCE(KATEGORIE,'') != 'Nezařazeno'
+        {extra_sql}
+        AND ({case_sql}) = %s
+        GROUP BY kod
+        ORDER BY obrat DESC
+        LIMIT %s
+    """
+    with connection.cursor() as cursor:
+        cursor.execute(sql, params)
+        rows = cursor.fetchall()
+    result = []
+    for kod, nazev, obrat, kusy in rows:
+        result.append({
+            'kod': kod,
+            'nazev': (nazev or '')[:200],
+            'obrat': round(float(obrat or 0), 2),
+            'kusy': int(kusy) if kusy is not None else 0,
+        })
+    return result
+
+
+def _iter_months_inclusive(rok_od, mesic_od, rok_do, mesic_do):
+    """Všechny kalendářní měsíce v intervalu včetně krajů."""
+    months = []
+    r, m = rok_od, mesic_od
+    while (r, m) <= (rok_do, mesic_do):
+        months.append((r, m))
+        if m == 12:
+            r, m = r + 1, 1
+        else:
+            m += 1
+    return months

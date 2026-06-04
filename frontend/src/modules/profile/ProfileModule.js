@@ -1,16 +1,28 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { profileAPI } from '../../services/api';
 import './ProfileModule.css';
 import ProfileInfo from './ProfileInfo';
 import ProfileAnalytics from './ProfileAnalytics';
+import ProfileCalendar from './ProfileCalendar';
+import ProfileTasks from './ProfileTasks';
 
 const ProfileModule = () => {
     const { user: authUser } = useAuth();
-    const [activeTab, setActiveTab] = useState('analytics');
+    const location = useLocation();
+    const [activeTab, setActiveTab] = useState(
+        () => location.state?.profileTab || 'calendar',
+    );
     const [profileUser, setProfileUser] = useState(null);
     const [profileLoading, setProfileLoading] = useState(true);
     const [profileError, setProfileError] = useState(false);
+
+    useEffect(() => {
+        if (location.state?.profileTab) {
+            setActiveTab(location.state.profileTab);
+        }
+    }, [location.state?.profileTab]);
 
     useEffect(() => {
         let cancelled = false;
@@ -51,6 +63,26 @@ const ProfileModule = () => {
                 <button
                     type="button"
                     role="tab"
+                    aria-selected={activeTab === 'calendar'}
+                    className={`tab-button ${activeTab === 'calendar' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('calendar')}
+                >
+                    <i className="fas fa-calendar" aria-hidden="true" />
+                    Můj kalendář
+                </button>
+                <button
+                    type="button"
+                    role="tab"
+                    aria-selected={activeTab === 'tasks'}
+                    className={`tab-button ${activeTab === 'tasks' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('tasks')}
+                >
+                    <i className="fas fa-clipboard-list" aria-hidden="true" />
+                    Moje úkoly
+                </button>
+                <button
+                    type="button"
+                    role="tab"
                     aria-selected={activeTab === 'analytics'}
                     className={`tab-button ${activeTab === 'analytics' ? 'active' : ''}`}
                     onClick={() => setActiveTab('analytics')}
@@ -71,6 +103,8 @@ const ProfileModule = () => {
             </div>
 
             <div className="profile-content">
+                {activeTab === 'calendar' && <ProfileCalendar />}
+                {activeTab === 'tasks' && <ProfileTasks />}
                 {activeTab === 'analytics' && (
                     <ProfileAnalytics userId={authUser.id} />
                 )}

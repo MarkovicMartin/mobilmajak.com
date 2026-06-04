@@ -3,8 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { format, getDaysInMonth } from 'date-fns';
 import { cs } from 'date-fns/locale';
 import { useAuth } from '../context/AuthContext';
-import api, { analyticsAPI, userAPI, newsAPI, shiftsAPI, plansAPI } from '../services/api';
-import { useTasks } from '../hooks/useTasks';
+import api, { analyticsAPI, newsAPI, shiftsAPI, plansAPI } from '../services/api';
 import { castkaBezDphZCelkem } from '../utils/dph';
 import './AdminDashboard.css';
 
@@ -45,9 +44,6 @@ export default function AdminDashboard() {
     const [monthStats, setMonthStats] = useState(null);
     const [todayShifts, setTodayShifts] = useState([]);
     const [latestNews, setLatestNews] = useState([]);
-    const [users, setUsers] = useState([]);
-    const [newTask, setNewTask] = useState({ ukol: '', priorita: 'stredni', deadline: '', id_prodejce_ukol: '' });
-    const { tasks, create: createTaskItem, markDone, load: loadTasks } = useTasks({ autoLoad: false });
     const [planDashboardBundle, setPlanDashboardBundle] = useState(null);
     const [planProdejciList, setPlanProdejciList] = useState([]);
 
@@ -77,18 +73,6 @@ export default function AdminDashboard() {
         const fetchNews = async () => {
             const list = (await newsAPI.list() || []).slice(0, 3);
             setLatestNews(list);
-        };
-
-        const fetchTasks = () => loadTasks('vse');
-
-        const fetchUsers = async () => {
-            try {
-                const payload = await userAPI.getUsers({ aktivni: true });
-                const arr = Array.isArray(payload) ? payload : payload.users || [];
-                setUsers(arr.filter((u) => u.aktivni !== false));
-            } catch (_e) {
-                setUsers([]);
-            }
         };
 
         const fetchPlanDashboard = async () => {
@@ -123,11 +107,9 @@ export default function AdminDashboard() {
         fetchStats();
         fetchShifts();
         fetchNews();
-        fetchTasks();
-        fetchUsers();
         fetchPlanDashboard();
         fetchPlanProdejci();
-    }, [isAdmin, currentMonth, todayStr, today, loadTasks]);
+    }, [isAdmin, currentMonth, todayStr, today]);
 
     const groupedShifts = useMemo(() => {
         const groups = {};
@@ -139,14 +121,6 @@ export default function AdminDashboard() {
         });
         return groups;
     }, [todayShifts]);
-
-    const userNameById = useMemo(() => {
-        const map = {};
-        (users || []).forEach((u) => {
-            map[u.id] = [u.jmeno, u.prijmeni].filter(Boolean).join(' ').trim();
-        });
-        return map;
-    }, [users]);
 
     const planMetrics = useMemo(() => {
         const plneni = planDashboardBundle?.plneni;
@@ -239,17 +213,7 @@ export default function AdminDashboard() {
         }
     };
 
-    const handleCreateTask = async (e) => {
-        e.preventDefault();
-        if (!newTask.ukol || !newTask.id_prodejce_ukol) return;
-        await createTaskItem({
-            ukol: newTask.ukol,
-            priorita: newTask.priorita || 'stredni',
-            deadline: newTask.deadline || null,
-            id_prodejce_ukol: Number(newTask.id_prodejce_ukol),
-        }, { prepend: true });
-        setNewTask({ ukol: '', priorita: 'stredni', deadline: '', id_prodejce_ukol: '' });
-    };
+    const goTasks = () => navigate('/tasks');
 
     if (!isAdmin()) return null;
 
@@ -405,12 +369,18 @@ export default function AdminDashboard() {
                     <div className="tile-value">{todayShifts.length} lidí</div>
                     <div className="tile-sub">Prodejny: {Object.keys(groupedShifts).length}</div>
                 </div>
-                <div className="tile">
-                    <div className="tile-title">Aktivní úkoly (celkem)</div>
-                    <div className="tile-value">{tasks.filter((t) => t.stav !== 'hotovo').length}</div>
-                    <div className="tile-sub">
-                        {tasks.filter((t) => t.stav !== 'hotovo').length} otevřených
+                <div
+                    className="tile tile--clickable"
+                    role="button"
+                    tabIndex={0}
+                    onClick={goTasks}
+                    onKeyDown={tileKeyActivate(goTasks)}
+                >
+                    <div className="tile-title">Správa úkolů</div>
+                    <div className="tile-value">
+                        <i className="fas fa-clipboard-list" aria-hidden="true" />
                     </div>
+                    <div className="tile-sub">Přiřazení a přehled úkolů →</div>
                 </div>
                 </div>
 
@@ -445,78 +415,6 @@ export default function AdminDashboard() {
                             </div>
                         </details>
                     </section>
-
-                    <div className="card card--tasks">
-                        <div className="card-header">
-                            <div className="card-title">Úkoly – přehled</div>
-                        </div>
-                        <form className="task-form" onSubmit={handleCreateTask} style={{ overflow: 'visible' }}>
-                            <input
-                                className="input task-input"
-                                placeholder="Zadat nový úkol… (např. Zkontrolovat sklad – Samsung)"
-                                value={newTask.ukol}
-                                onChange={(e) => setNewTask((t) => ({ ...t, ukol: e.target.value }))}
-                            />
-                            <select
-                                className="select"
-                                value={newTask.id_prodejce_ukol}
-                                onChange={(e) => setNewTask((t) => ({ ...t, id_prodejce_ukol: e.target.value }))}
-                            >
-                                <option value="">Přiřadit prodejci…</option>
-                                {users.map((u) => (
-                                    <option key={u.id} value={u.id}>
-                                        {[u.jmeno, u.prijmeni].filter(Boolean).join(' ').trim()}
-                                    </option>
-                                ))}
-                            </select>
-                            <button className="btn-primary" type="submit">
-                                Přidat
-                            </button>
-                        </form>
-                        <div className="tasks-list">
-                            {tasks.length === 0 && <div className="muted">Žádné úkoly</div>}
-                            {tasks[0] && (
-                                <div className="task-item task-item--preview">
-                                    <div>
-                                        <div className="task-title">{tasks[0].ukol}</div>
-                                        <div className="task-meta">
-                                            Přiřazeno: {userNameById[tasks[0].id_prodejce_ukol] || tasks[0].id_prodejce_ukol} • Stav:{' '}
-                                            {tasks[0].stav}
-                                        </div>
-                                    </div>
-                                    {tasks[0].stav !== 'hotovo' && (
-                                        <button type="button" className="btn-outline" onClick={() => markDone(tasks[0].id)}>
-                                            Označit hotovo
-                                        </button>
-                                    )}
-                                </div>
-                            )}
-                            {tasks.length > 1 && (
-                                <details className="tasks-more">
-                                    <summary className="tasks-more-summary">
-                                        Další úkoly ({tasks.length - 1})
-                                    </summary>
-                                    <div className="tasks-more-list">
-                                        {tasks.slice(1, 50).map((t) => (
-                                            <div className="task-item" key={t.id}>
-                                                <div>
-                                                    <div className="task-title">{t.ukol}</div>
-                                                    <div className="task-meta">
-                                                        Přiřazeno: {userNameById[t.id_prodejce_ukol] || t.id_prodejce_ukol} • Stav: {t.stav}
-                                                    </div>
-                                                </div>
-                                                {t.stav !== 'hotovo' && (
-                                                    <button type="button" className="btn-outline" onClick={() => markDone(t.id)}>
-                                                        Označit hotovo
-                                                    </button>
-                                                )}
-                                            </div>
-                                        ))}
-                                    </div>
-                                </details>
-                            )}
-                        </div>
-                    </div>
 
                     <div className="card">
                         <div className="card-header">

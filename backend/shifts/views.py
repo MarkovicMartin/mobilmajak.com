@@ -438,20 +438,25 @@ def kalendar_data(request):
         rok, mesic_cislo = map(int, mesic.split('-'))
         from stores.models import Prodejna
 
+        mine_scope = str(request.GET.get('scope', '')).lower() == 'mine'
         all_stores = str(prodejna_id or '').lower() in ('vse', 'all', '0')
         see_all_employees = request.user.role == 'ADMIN'
         prodejna = None
         if not all_stores:
             if not prodejna_id:
-                return Response({'error': 'Chybí parametr prodejna.'},
-                              status=status.HTTP_400_BAD_REQUEST)
-            try:
-                prodejna = Prodejna.objects.get(id=int(prodejna_id), aktivni=True)
-            except (Prodejna.DoesNotExist, ValueError, TypeError):
-                return Response(
-                    {'error': f"Prodejna '{prodejna_id}' nebyla nalezena nebo není aktivní."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+                if mine_scope:
+                    all_stores = True
+                else:
+                    return Response({'error': 'Chybí parametr prodejna.'},
+                                  status=status.HTTP_400_BAD_REQUEST)
+            if not all_stores and prodejna_id:
+                try:
+                    prodejna = Prodejna.objects.get(id=int(prodejna_id), aktivni=True)
+                except (Prodejna.DoesNotExist, ValueError, TypeError):
+                    return Response(
+                        {'error': f"Prodejna '{prodejna_id}' nebyla nalezena nebo není aktivní."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
 
         smeny = Smena.objects.filter(
             datum__year=rok,
@@ -460,7 +465,10 @@ def kalendar_data(request):
         ).select_related('user', 'prodejna')
         if prodejna is not None:
             smeny = smeny.filter(prodejna=prodejna)
-        if not see_all_employees:
+        if mine_scope:
+            smeny = smeny.filter(user=request.user)
+            see_all_employees = False
+        elif not see_all_employees:
             smeny = smeny.filter(user=request.user)
         smeny = smeny.order_by('datum', 'prodejna__poradi', 'prodejna__nazev', 'cas_od')
         

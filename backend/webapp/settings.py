@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
 import os
+import sys
 from pathlib import Path
 
 import pymysql
@@ -120,6 +121,39 @@ DATABASES = {
         },
     }
 }
+
+# Shared MySQL (e.g. Webglobe) often lacks CREATE DATABASE for test_* DBs.
+_use_sqlite_for_tests = os.getenv('DJANGO_TEST_SQLITE', '').lower() in (
+    '1',
+    'true',
+    'yes',
+) or 'test' in sys.argv
+if _use_sqlite_for_tests:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'test_db.sqlite3',
+        }
+    }
+    # Run tasks migrations on SQLite; sync other apps from models (legacy migrations are MySQL-specific).
+    MIGRATION_MODULES = {
+        app: None
+        for app in (
+            'admin',
+            'analytics',
+            'auth',
+            'contenttypes',
+            'news',
+            'orders',
+            'plans',
+            'sessions',
+            'shifts',
+            'stores',
+            'tickets',
+            'users',
+            'web_pristupy',
+        )
+    }
 
 
 # Password validation

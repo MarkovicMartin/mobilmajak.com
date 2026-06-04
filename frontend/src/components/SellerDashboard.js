@@ -1,11 +1,8 @@
-import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AnalyticsDateInput } from './AnalyticsDateRange';
-import { taskAPI, plansAPI, newsAPI, shiftsAPI } from '../services/api';
-import { useUnreadPoll } from '../hooks/useUnreadPoll';
+import { plansAPI, newsAPI, shiftsAPI } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import { useSalespersonMetrics } from '../hooks/useSalespersonMetrics';
-import { useTasks } from '../hooks/useTasks';
-import { showAppToast } from './AppToast';
 import './SellerDashboard.css';
 import AttendancePanel from '../modules/shifts/AttendancePanel';
 
@@ -35,6 +32,7 @@ function MetricCard({ title, value, sub, delta }) {
 
 export default function SellerDashboard({ user }) {
   const navigate = useNavigate();
+  const { canManageTasks } = useAuth();
   const {
     today,
     month,
@@ -50,28 +48,6 @@ export default function SellerDashboard({ user }) {
   const [mujPlanError, setMujPlanError] = useState(null);
   const [mujPlanMesic, setMujPlanMesic] = useState(null); // {rok, mesic} pro dropdown
   const [mujPlanView, setMujPlanView] = useState('denni'); // 'denni' | 'mesicni' – výchozí denní
-  const [newTask, setNewTask] = useState({ ukol: '', priorita: 'stredni', deadline: '' });
-
-  const fetchTaskUnread = useCallback(async () => {
-    const res = await taskAPI.getUnreadSummary();
-    return res.success ? (res.unread_count || 0) : 0;
-  }, []);
-
-  const notifyTasks = useCallback((delta) => {
-    const word = delta === 1 ? 'nový úkol' : `${delta} nových úkolů`;
-    showAppToast(`📋 Máte ${word} od vedoucího`);
-  }, []);
-
-  const { count: taskUnreadCount, refresh: refreshTaskUnread } = useUnreadPoll({
-    enabled: !!user,
-    fetchCount: fetchTaskUnread,
-    onNotify: notifyTasks,
-  });
-
-  const { tasks, create: createTaskItem, toggleDone: toggleTaskDone, load: loadTasks } = useTasks({
-    autoLoad: !!user,
-    onLoaded: refreshTaskUnread,
-  });
   const [news, setNews] = useState([]);
   const [upcoming, setUpcoming] = useState([]);
 
@@ -114,20 +90,6 @@ export default function SellerDashboard({ user }) {
       setMujPlan(null);
     } finally {
       setMujPlanLoading(false);
-    }
-  };
-
-  const createTask = async () => {
-    if (!newTask.ukol) return;
-    try {
-      await createTaskItem({
-        ukol: newTask.ukol,
-        priorita: newTask.priorita,
-        deadline: newTask.deadline || null,
-      });
-      setNewTask({ ukol: '', priorita: 'stredni', deadline: '' });
-    } catch {
-      /* tiché */
     }
   };
 
@@ -174,6 +136,17 @@ export default function SellerDashboard({ user }) {
           } • Dnes je {new Date().toLocaleDateString('cs-CZ')}</div>
         </div>
         <div className="seller-head-actions">
+          <button
+            className="btn-rounded"
+            onClick={() => navigate('/profile', { state: { profileTab: 'tasks' } })}
+          >
+            Moje úkoly v profilu
+          </button>
+          {canManageTasks() && (
+            <button className="btn-rounded" onClick={() => navigate('/tasks')}>
+              Správa úkolů
+            </button>
+          )}
           <button className="btn-rounded" onClick={() => navigate('/shifts')}>Plán směn</button>
         </div>
       </div>
@@ -320,51 +293,7 @@ export default function SellerDashboard({ user }) {
             )}
           </div>
 
-          {/* Novinky + Úkoly přímo pod grafem v levém sloupci */}
           <div className="below-cards">
-            <div className="card">
-              <h3>
-                Úkoly od vedoucího
-                {taskUnreadCount > 0 && (
-                  <span className="tasks-unread-pill" title="Nové úkoly">
-                    {taskUnreadCount}
-                  </span>
-                )}
-              </h3>
-              <div className="tasks-header">
-                <div style={{display:'flex', gap:8}}>
-                  <button onClick={() => loadTasks('vse')}>Aktuální</button>
-                  <button onClick={() => loadTasks('hotovo')}>Hotové</button>
-                </div>
-              </div>
-              <div style={{display:'grid', gap:8, marginTop:12}}>
-                <input placeholder="Úkol" value={newTask.ukol} onChange={(e)=>setNewTask({...newTask, ukol:e.target.value})} />
-                <select value={newTask.priorita} onChange={(e)=>setNewTask({...newTask, priorita:e.target.value})}>
-                  <option value="nizka">Nízká</option>
-                  <option value="stredni">Střední</option>
-                  <option value="vysoka">Vysoká</option>
-                </select>
-                <AnalyticsDateInput
-                  value={newTask.deadline}
-                  onApply={(deadline) => setNewTask(prev => ({ ...prev, deadline }))}
-                  showError={false}
-                />
-                <button onClick={createTask}>Přidat úkol</button>
-              </div>
-              <div className="tasks-list">
-                {tasks.map((t)=> (
-                  <div key={t.id} className="task-item">
-                    <div className="task-left">
-                      <input type="checkbox" checked={t.stav==='hotovo'} onChange={()=>toggleTaskDone(t)} />
-                      <div>
-                        <div className="task-title">{t.ukol}</div>
-                        <div className="metric-sub">Priorita: {t.priorita} {t.deadline && `· do ${new Date(t.deadline).toLocaleDateString('cs-CZ')}`}</div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
             <div className="card">
               <h3>Novinky</h3>
               <div className="news-list">

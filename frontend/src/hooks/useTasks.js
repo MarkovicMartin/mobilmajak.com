@@ -1,14 +1,20 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { taskAPI } from '../services/api';
 
-export function useTasks({ autoLoad = true, stav = 'vse', onLoaded } = {}) {
+export function useTasks({ autoLoad = true, stav = 'vse', listParams: listParamsProp, onLoaded } = {}) {
     const [tasks, setTasks] = useState([]);
     const [loading, setLoading] = useState(false);
 
-    const load = useCallback(async (nextStav = stav) => {
+    const resolvedParams = useMemo(() => {
+        if (listParamsProp) return listParamsProp;
+        return { stav };
+    }, [listParamsProp, stav]);
+
+    const load = useCallback(async (overrideParams) => {
+        const params = overrideParams || resolvedParams;
         setLoading(true);
         try {
-            const data = await taskAPI.list(nextStav);
+            const data = await taskAPI.list(params);
             const list = Array.isArray(data) ? data : [];
             setTasks(list);
             onLoaded?.();
@@ -19,7 +25,7 @@ export function useTasks({ autoLoad = true, stav = 'vse', onLoaded } = {}) {
         } finally {
             setLoading(false);
         }
-    }, [stav, onLoaded]);
+    }, [resolvedParams, onLoaded]);
 
     const create = useCallback(async (payload, { prepend = false } = {}) => {
         const created = await taskAPI.create(payload);
@@ -49,6 +55,11 @@ export function useTasks({ autoLoad = true, stav = 'vse', onLoaded } = {}) {
         [update],
     );
 
+    const remove = useCallback(async (id) => {
+        await taskAPI.delete(id);
+        setTasks((list) => list.filter((t) => t.id !== id));
+    }, []);
+
     useEffect(() => {
         if (autoLoad) load();
     }, [autoLoad, load]);
@@ -62,5 +73,6 @@ export function useTasks({ autoLoad = true, stav = 'vse', onLoaded } = {}) {
         update,
         markDone,
         toggleDone,
+        remove,
     };
 }

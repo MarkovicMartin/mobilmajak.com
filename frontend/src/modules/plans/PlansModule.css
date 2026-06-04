@@ -1741,3 +1741,98 @@
   .kategorie-lock-pct { background: rgba(59, 130, 246, 0.08); }
   .kategorie-lock-kc  { background: rgba(34, 197, 94, 0.08); }
 }
+
+/* ==== Plnění strom + historie 3m ==== */
+.plneni-strom { margin-bottom: 16px; }
+.plneni-strom-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.plneni-strom-nadpis { font-weight: 600; font-size: 1.05rem; }
+.plneni-strom-pct { margin-left: auto; font-weight: 700; }
+.plneni-strom-meta { font-size: 0.85rem; color: #64748b; margin-bottom: 8px; }
+.plneni-strom-kat-list { margin-top: 8px; padding-left: 4px; }
+.plneni-strom-kat { margin-bottom: 8px; }
+.plneni-strom-kat-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 6px 4px;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+.plneni-strom-kat-toggle:hover { background: #f1f5f9; border-radius: 6px; }
+.plneni-strom-kat-arrow { width: 1rem; color: #64748b; }
+.plneni-strom-kat-bar { margin: 4px 0 4px 1.25rem; height: 6px; }
+.plneni-strom-polozky {
+  margin: 6px 0 8px 1.75rem;
+  padding: 8px 12px;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+.plneni-strom-polozka {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 0;
+  font-size: 0.88rem;
+}
+.plneni-strom-polozka-nazev { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.plneni-strom-polozka-meta { color: #64748b; white-space: nowrap; }
+.plneni-historie-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.plneni-historie-mini {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 32px;
+}
+.plneni-historie-bar {
+  width: 12px;
+  min-height: 4px;
+  border-radius: 3px 3px 0 0;
+}
+.plneni-signal {
+  font-size: 0.75rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.plneni-signal-warn { background: #fef3c7; color: #92400e; }
+.plneni-signal-ok { background: #dcfce7; color: #166534; }
+.plneni-prodejce-karta-top { margin-bottom: 4px; }
+.plans-nahled-3m {
+  margin-top: 16px;
+  padding: 16px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  text-align: left;
+  max-width: 560px;
+}
+.plans-nahled-3m-prodejny {
+  margin: 8px 0 0;
+  padding-left: 20px;
+  font-size: 0.9rem;
+}
+.plans-nahled-3m-mesice { color: #64748b; font-size: 0.85rem; }
+.pp-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}

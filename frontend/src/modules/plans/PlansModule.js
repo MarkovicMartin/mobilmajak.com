@@ -5,6 +5,7 @@ import { castkaBezDphZCelkem } from '../../utils/dph';
 import './PlansModule.css';
 import ProdejnaKarta from './ProdejnaKarta';
 import DraftNumberInput from './DraftNumberInput';
+import PlneniStrom, { PlneniHistorieMini } from './PlneniStrom';
 
 const NAZVY_MESICU = [
   'Leden','Únor','Březen','Duben','Květen','Červen',
@@ -96,6 +97,8 @@ export default function PlansModule() {
   const [plneniData, setPlneniData] = useState(null);
   const [plneniProdejciData, setPlneniProdejciData] = useState(null);
   const [plneniLoading, setPlneniLoading] = useState(false);
+  const [nahled3m, setNahled3m] = useState(null);
+  const [nahled3mLoading, setNahled3mLoading] = useState(false);
 
   const mesiceOptions = generateMesiceOptions();
 
@@ -256,6 +259,53 @@ export default function PlansModule() {
     }
   };
 
+  const nactiNahled3m = async () => {
+    const rust = Number(String(rustProcent).replace(',', '.'));
+    if (Number.isNaN(rust) || rust < -100) {
+      setChyba('Zadejte platné procento růstu.');
+      return;
+    }
+    setNahled3mLoading(true);
+    setChyba(null);
+    try {
+      const res = await plansAPI.getHistorie3mNahled(vybraneMesic.rok, vybraneMesic.mesic, rust);
+      setNahled3m(res);
+    } catch (e) {
+      setNahled3m(null);
+      setChyba(e.response?.data?.error || 'Nepodařilo se načíst náhled.');
+    } finally {
+      setNahled3mLoading(false);
+    }
+  };
+
+  const vytvorPlanZ3Mesicu = async () => {
+    const rust = Number(String(rustProcent).replace(',', '.'));
+    if (Number.isNaN(rust) || rust < -100) {
+      setChyba('Zadejte platné procento růstu (např. 10 pro +10 %).');
+      return;
+    }
+    setLoading(true);
+    setChyba(null);
+    try {
+      const res = await plansAPI.createPlan(vybraneMesic.rok, vybraneMesic.mesic, {
+        create_from_3m: true,
+        rust_procent: rust,
+        auto_prodejci: true,
+      });
+      setAktivniPlan(res);
+      nactiVerziDoPlaneru(res);
+      await loadPlan(vybraneMesic.rok, vybraneMesic.mesic);
+      const aw = res.auto_prodejci_warnings || [];
+      if (aw.length) setWarnings(aw);
+      setUspech('Plán byl vytvořen z průměru 3 měsíců; prodejci přiřazeni podle směn.');
+      setNahled3m(null);
+    } catch (e) {
+      setChyba(e.response?.data?.error || 'Nepodařilo se vytvořit plán.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const vytvorPlanZHistorie = async () => {
     const rust = Number(String(rustProcent).replace(',', '.'));
     if (Number.isNaN(rust) || rust < -100) {
@@ -272,7 +322,7 @@ export default function PlansModule() {
       setAktivniPlan(res);
       nactiVerziDoPlaneru(res);
       await loadPlan(vybraneMesic.rok, vybraneMesic.mesic);
-      setUspech('Plán byl vytvořen z historie a růstu.');
+      setUspech('Plán byl vytvořen z minulého roku a růstu.');
     } catch (e) {
       setChyba(e.response?.data?.error || 'Nepodařilo se vytvořit plán z historie.');
     } finally {
@@ -637,7 +687,7 @@ export default function PlansModule() {
               </button>
             </div>
             <div className="plans-empty-form plans-empty-form-historie">
-              <label>Růst oproti minulému roku (%)</label>
+              <label>Růst (%)</label>
               <input
                 type="number"
                 value={rustProcent}
@@ -649,13 +699,50 @@ export default function PlansModule() {
                 step="0.5"
               />
               <button
+                type="button"
+                className="plans-btn plans-btn-secondary"
+                onClick={nactiNahled3m}
+                disabled={loading || nahled3mLoading}
+              >
+                {nahled3mLoading ? 'Načítám…' : 'Náhled z 3 měsíců'}
+              </button>
+              <button
                 className="plans-btn plans-btn-primary"
-                onClick={vytvorPlanZHistorie}
+                onClick={vytvorPlanZ3Mesicu}
                 disabled={loading}
               >
-                Vyplnit z historie + růst
+                Vytvořit z posledních 3 měsíců + růst
+              </button>
+              <button
+                type="button"
+                className="plans-btn plans-btn-ghost"
+                onClick={vytvorPlanZHistorie}
+                disabled={loading}
+                title="Stejný měsíc minulý rok"
+              >
+                YoY minulý rok
               </button>
             </div>
+            {nahled3m && (
+              <div className="plans-nahled-3m">
+                <p>
+                  Průměr 3 měsíců: <strong>{Number(nahled3m.obrat_prumer_3m).toLocaleString('cs-CZ')} Kč</strong>
+                  {' → '}návrh s růstem: <strong>{Number(nahled3m.navrh_obrat).toLocaleString('cs-CZ')} Kč</strong>
+                  {nahled3m.mesice?.length > 0 && (
+                    <span className="plans-nahled-3m-mesice">
+                      {' '}(
+                      {nahled3m.mesice.map(m => `${NAZVY_MESICU[m.mesic - 1]} ${m.rok}`).join(', ')}
+                      )
+                    </span>
+                  )}
+                </p>
+                <ul className="plans-nahled-3m-prodejny">
+                  {(nahled3m.prodejny || []).map(p => (
+                    <li key={p.prodejna_id}>{p.prodejna_nazev}: {p.podil_procenta} %</li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -721,34 +808,26 @@ export default function PlansModule() {
 
               <div className="plneni-sekce">
                 <h3 className="plneni-nadpis">Kategorie (firma)</h3>
-                <div className="plneni-kategorie-list">
-                  {agrFirmaKategorie.map(kat => {
+                <PlneniStrom
+                  rok={vybraneMesic.rok}
+                  mesic={vybraneMesic.mesic}
+                  showCelkemBar={false}
+                  kategorie={agrFirmaKategorie.map(kat => {
                     const pd = plneniData.kategorie?.[kat.kategorie_kod] || {};
-                    const pct = pd.plneni_procent ?? 0;
-                    return (
-                      <div key={kat.kategorie_kod} className="plneni-kat-item">
-                        <div className="plneni-bar-label">
-                          <span>{kat.kategorie_nazev || kat.kategorie_kod}</span>
-                          <span className="plneni-bar-meta">
-                            {pd.skutecne_kusy ?? 0} / {kat.kusy} ks
-                            <span className="plneni-pct-badge">{pct} %</span>
-                            {pd.trend_kusy != null && (
-                              <span className={`plneni-trend-badge ${trendTrida(pd.trend_procent)}`}>
-                                → ~{pd.trend_kusy} ks
-                              </span>
-                            )}
-                          </span>
-                        </div>
-                        <div className="plneni-progress-track">
-                          <div
-                            className={plneniFillClass(pct)}
-                            style={{ width: `${plneniBarWidthPct(pct)}%` }}
-                          />
-                        </div>
-                      </div>
-                    );
+                    return {
+                      kategorie_kod: kat.kategorie_kod,
+                      kategorie_nazev: kat.kategorie_nazev,
+                      plan_kusy: kat.kusy,
+                      skutecne_kusy: pd.skutecne_kusy,
+                      plneni_procent: pd.plneni_procent,
+                      trend_kusy: pd.trend_kusy,
+                      trend_procent: pd.trend_procent,
+                    };
                   })}
-                </div>
+                  plneniFillClass={plneniFillClass}
+                  plneniBarWidthPct={plneniBarWidthPct}
+                  trendTrida={trendTrida}
+                />
               </div>
 
               <div className="plneni-sekce">
@@ -760,60 +839,42 @@ export default function PlansModule() {
                   const pctProd = pdProd.plneni_procent ?? 0;
                   return (
                     <div key={p.prodejna_id} className="plneni-prodejna">
-                      <div className="plneni-prodejna-header">
-                        <span className="plneni-prodejna-nazev">{p.prodejna_nazev}</span>
-                        <span className="plneni-bar-meta">
-                          {formatCastka(pdProd.skutecny_obrat || 0)}
-                          {formatBezDphParen(pdProd.skutecny_obrat || 0)}
-                          {' / '}
-                          {formatCastka(p.castka_prodejna)}
-                          {formatBezDphParen(p.castka_prodejna)}
-                          <span className="plneni-pct-badge">{pctProd} %</span>
-                          {pdProd.skutecne_kusy != null && ` · ${pdProd.skutecne_kusy} ks`}
-                          {pdProd.trend_obrat != null && (
-                            <span className={`plneni-trend-badge ${trendTrida(pdProd.trend_procent)}`}>
-                              → ~{formatCastka(pdProd.trend_obrat)}
-                              {formatBezDphParen(pdProd.trend_obrat)}
-                            </span>
-                          )}
-                        </span>
-                      </div>
-                      <div className="plneni-bar-wrap plneni-bar-prodejna">
-                        <div className="plneni-progress-track">
-                          <div
-                            className={plneniFillClass(pctProd)}
-                            style={{ width: `${plneniBarWidthPct(pctProd)}%` }}
-                          />
-                        </div>
-                      </div>
-                      <div className="plneni-prodejna-kat">
-                        {(p.kategorie || []).map(k => {
+                      <PlneniStrom
+                        rok={vybraneMesic.rok}
+                        mesic={vybraneMesic.mesic}
+                        nadpis={p.prodejna_nazev}
+                        celkemPct={pctProd}
+                        prodejnaId={p.prodejna_id}
+                        celkemMeta={(
+                          <span className="plneni-bar-meta">
+                            {formatCastka(pdProd.skutecny_obrat || 0)}
+                            {formatBezDphParen(pdProd.skutecny_obrat || 0)}
+                            {' / '}
+                            {formatCastka(p.castka_prodejna)}
+                            {formatBezDphParen(p.castka_prodejna)}
+                            {pdProd.trend_obrat != null && (
+                              <span className={`plneni-trend-badge ${trendTrida(pdProd.trend_procent)}`}>
+                                → ~{formatCastka(pdProd.trend_obrat)}
+                              </span>
+                            )}
+                          </span>
+                        )}
+                        kategorie={(p.kategorie || []).map(k => {
                           const pdKat = pdProd.kategorie?.[k.kategorie_kod] || {};
-                          const pctKat = pdKat.plneni_procent ?? 0;
-                          return (
-                            <div key={k.id || k.kategorie_kod} className="plneni-kat-item plneni-kat-sub">
-                              <div className="plneni-bar-label">
-                                <span>{k.kategorie_nazev || k.kategorie_kod}</span>
-                                <span className="plneni-bar-meta">
-                                  {pdKat.skutecne_kusy ?? 0} / {k.pocet_kusu != null ? k.pocet_kusu : '—'} ks
-                                  <span className="plneni-pct-badge">{pdKat.plneni_procent ?? 0} %</span>
-                                  {pdKat.trend_kusy != null && (
-                                    <span className={`plneni-trend-badge ${trendTrida(pdKat.trend_procent)}`}>
-                                      → ~{pdKat.trend_kusy} ks
-                                    </span>
-                                  )}
-                                </span>
-                              </div>
-                              <div className="plneni-progress-track">
-                                <div
-                                  className={plneniFillClass(pctKat)}
-                                  style={{ width: `${plneniBarWidthPct(pctKat)}%` }}
-                                />
-                              </div>
-                            </div>
-                          );
+                          return {
+                            kategorie_kod: k.kategorie_kod,
+                            kategorie_nazev: k.kategorie_nazev,
+                            plan_kusy: k.pocet_kusu,
+                            skutecne_kusy: pdKat.skutecne_kusy,
+                            plneni_procent: pdKat.plneni_procent,
+                            trend_kusy: pdKat.trend_kusy,
+                            trend_procent: pdKat.trend_procent,
+                          };
                         })}
-                      </div>
+                        plneniFillClass={plneniFillClass}
+                        plneniBarWidthPct={plneniBarWidthPct}
+                        trendTrida={trendTrida}
+                      />
                     </div>
                   );
                 })}
@@ -839,68 +900,41 @@ export default function PlansModule() {
                 <div className="plneni-empty">Žádní prodejci nemají nastavený plán pro tento měsíc.</div>
               ) : (
                 plneniProdejciData.map(prod => {
-                  const pctProd = prod.plneni_procent_kusy ?? 0;
+                  const pctProd = prod.plneni_procent_kusy ?? prod.plneni_procent_hlavni ?? 0;
                   return (
-                    <div key={prod.prodejce_id} className="plneni-prodejna">
-                      <div className="plneni-prodejna-header">
-                        <span className="plneni-prodejna-nazev">
-                          {prod.jmeno} {prod.prijmeni}
-                          {prod.prodejna_nazev && (
-                            <span className="plneni-prodejna-meta"> ({prod.prodejna_nazev})</span>
-                          )}
-                        </span>
-                        <span className="plneni-bar-meta">
-                          {prod.skutecne_kusy ?? 0} / {prod.plan_kusy ?? 0} ks
-                          <span className="plneni-pct-badge">{pctProd} %</span>
-                          {prod.trend_kusy != null && (
-                            <span className={`plneni-trend-badge ${trendTrida(prod.trend_procent_kusy)}`}>
-                              → ~{prod.trend_kusy} ks
-                            </span>
-                          )}
-                        </span>
+                    <div key={prod.prodejce_id} className="plneni-prodejna plneni-prodejce-karta">
+                      <div className="plneni-prodejce-karta-top">
+                        <PlneniHistorieMini historie={prod.historie_3m} />
                       </div>
-                      <div className="plneni-bar-wrap plneni-bar-prodejna">
-                        <div className="plneni-progress-track">
-                          <div
-                            className={plneniFillClass(pctProd)}
-                            style={{ width: `${plneniBarWidthPct(pctProd)}%` }}
-                          />
-                        </div>
-                      </div>
-                      <div className="plneni-prodejna-kat">
-                        {(prod.kategorie || []).map(k => {
-                          const pctKat = k.plneni_procent ?? 0;
-                          const odchylka = (k.skutecne_kusy ?? 0) - (k.plan_kusy ?? 0);
-                          const odchylkaClass = odchylka >= 0 ? 'plneni-trend-ok' : 'plneni-trend-chyba';
-                          return (
-                            <div key={k.kategorie_kod} className="plneni-kat-item plneni-kat-sub">
-                              <div className="plneni-bar-label">
-                                <span>{k.kategorie_nazev || k.kategorie_kod}</span>
-                                <span className="plneni-bar-meta">
-                                  {k.skutecne_kusy ?? 0} / {k.plan_kusy ?? 0} ks
-                                  <span className="plneni-pct-badge">{pctKat} %</span>
-                                  {k.plan_kusy != null && (
-                                    <span className={`plneni-trend-badge ${odchylkaClass}`}>
-                                      → {odchylka >= 0 ? '+' : ''}{odchylka} ks
-                                    </span>
-                                  )}
-                                  {k.trend_kusy != null && (
-                                    <span className={`plneni-trend-badge ${trendTrida(k.trend_procent)}`}>
-                                      trend ~{k.trend_kusy} ks
-                                    </span>
-                                  )}
-                                </span>
-                              </div>
-                              <div className="plneni-progress-track">
-                                <div
-                                  className={plneniFillClass(pctKat)}
-                                  style={{ width: `${plneniBarWidthPct(pctKat)}%` }}
-                                />
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
+                      <PlneniStrom
+                        rok={vybraneMesic.rok}
+                        mesic={vybraneMesic.mesic}
+                        nadpis={`${prod.jmeno} ${prod.prijmeni}`}
+                        celkemPct={pctProd}
+                        prodejceId={prod.prodejce_id}
+                        metaExtra={prod.prodejna_nazev ? (
+                          <span className="plneni-prodejna-meta"> ({prod.prodejna_nazev})</span>
+                        ) : null}
+                        celkemMeta={(
+                          <span className="plneni-bar-meta">
+                            {prod.skutecne_kusy ?? 0} / {prod.plan_kusy ?? 0} ks
+                            {prod.trend_kusy != null && (
+                              <span className={`plneni-trend-badge ${trendTrida(prod.trend_procent_kusy)}`}>
+                                → ~{prod.trend_kusy} ks
+                              </span>
+                            )}
+                            {prod.historie_3m?.prumer_plneni_3m != null && (
+                              <span className="plneni-trend-badge" title="Průměr 3 měsíců">
+                                ø {prod.historie_3m.prumer_plneni_3m} %
+                              </span>
+                            )}
+                          </span>
+                        )}
+                        kategorie={prod.kategorie || []}
+                        plneniFillClass={plneniFillClass}
+                        plneniBarWidthPct={plneniBarWidthPct}
+                        trendTrida={trendTrida}
+                      />
                     </div>
                   );
                 })
@@ -1040,10 +1074,17 @@ export default function PlansModule() {
               <span className="plans-input-suffix">%</span>
               <button
                 className="plans-btn plans-btn-secondary"
+                onClick={vytvorPlanZ3Mesicu}
+                disabled={loading}
+              >
+                Vytvořit z 3 měsíců + růst
+              </button>
+              <button
+                className="plans-btn plans-btn-ghost"
                 onClick={vytvorPlanZHistorie}
                 disabled={loading}
               >
-                Vytvořit z minulého roku + růst
+                YoY minulý rok
               </button>
             </span>
           </div>

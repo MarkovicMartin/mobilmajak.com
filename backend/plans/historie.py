@@ -98,15 +98,27 @@ def vypocitej_plan_z_historie(rok, mesic, rust_procent):
             'Pro minulý rok neexistují data. Použijte rovnoměrný plán nebo kopii z předchozího měsíce.'
         )
 
-    castka_celkem = (obrat_ly * (1 + Decimal(str(rust_procent)) / 100)).quantize(
+    prodejny_data = plneni_prodejny(ref_rok, ref_mesic)
+    firma_kategorie = plneni_firma(ref_rok, ref_mesic)
+    return vypocitej_plan_z_baseline(obrat_ly, prodejny_data, firma_kategorie, rust_procent)
+
+
+def vypocitej_plan_z_baseline(obrat_baseline, prodejny_data, firma_kategorie, rust_procent):
+    """
+    Sestaví strukturu plánu z obratu (nebo průměrného měsíčního obratu) a rozpadů prodejen/kategorií.
+    """
+    if obrat_baseline is None or obrat_baseline <= 0:
+        raise ChybejiciDataError(
+            'Chybí historická data pro výpočet plánu. Použijte rovnoměrný plán nebo kopii z předchozího měsíce.'
+        )
+
+    castka_celkem = (obrat_baseline * (1 + Decimal(str(rust_procent)) / 100)).quantize(
         Decimal('0.01'), rounding=ROUND_HALF_UP
     )
 
-    prodejny_data = plneni_prodejny(ref_rok, ref_mesic)
-    firma_kategorie = plneni_firma(ref_rok, ref_mesic)
     aktivni_prodejny = list(Prodejna.get_aktivni_prodejny())
     aktivni_ids = {p.id for p in aktivni_prodejny}
-    obrat_firma = obrat_ly
+    obrat_firma = obrat_baseline
 
     # Jen prodejny s daty, které jsou stále aktivní
     prodejny_s_daty = {

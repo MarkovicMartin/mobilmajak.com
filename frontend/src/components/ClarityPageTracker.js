@@ -1,18 +1,24 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { initClarity, trackClarityPage } from '../utils/clarity';
+import { useAuth } from '../context/AuthContext';
+import { initClarity, trackClarityPage, trackClarityUser } from '../utils/clarity';
 
-/** Načte Clarity (pokud je REACT_APP_CLARITY_PROJECT_ID) a při změně routy posílá tagy route/screen. */
+/** Clarity: init + tagy obrazovky při každé změně React Router cesty. */
 const ClarityPageTracker = () => {
     const { pathname } = useLocation();
+    const { user } = useAuth();
 
     useEffect(() => {
         initClarity();
     }, []);
 
     useEffect(() => {
-        trackClarityPage(pathname);
-    }, [pathname]);
+        trackClarityUser(user);
+    }, [user]);
+
+    useEffect(() => {
+        trackClarityPage(pathname, user);
+    }, [pathname, user]);
 
     return null;
 };

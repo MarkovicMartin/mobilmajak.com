@@ -1,10 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, LayoutGroup } from 'framer-motion';
 import AdminDropdown from './AdminDropdown';
 import BugButton from './BugButton';
+import { showAppToast } from './AppToast';
+import { taskAPI } from '../services/api';
+import { useUnreadPoll } from '../hooks/useUnreadPoll';
 import { springHover } from '../constants/motion';
 import './DockNavbar.css';
+import '../modules/tasks/TasksModule.css';
 
 export const NAV_ITEMS = [
     { sectionKey: 'main', label: 'Domů', path: '/', adminOnly: false, icon: 'fa-home' },
@@ -31,6 +35,25 @@ const DockNavbar = ({
     const navigate = useNavigate();
     const location = useLocation();
     const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+    const fetchTaskNotifications = useCallback(async () => {
+        if (!user) return 0;
+        const res = await taskAPI.getNotificationsSummary();
+        if (!res.success) return 0;
+        return (res.tasks_unread || 0) + (res.overdue_count || 0);
+    }, [user]);
+
+    const notifyTasks = useCallback((delta) => {
+        const word = delta === 1 ? 'nový úkol' : `${delta} nových úkolů`;
+        showAppToast(`📋 Máte ${word} k vyřízení`);
+    }, []);
+
+    const { count: profileTaskBadge } = useUnreadPoll({
+        enabled: !!user,
+        fetchCount: fetchTaskNotifications,
+        onNotify: notifyTasks,
+        refreshEventName: 'tasks-notifications-refresh',
+    });
 
     const closeMobileNav = () => setMobileNavOpen(false);
 
@@ -183,7 +206,7 @@ const DockNavbar = ({
                             </motion.div>
 
                             <motion.div
-                                className={location.pathname === '/profile' ? 'dock-nav-item-wrap--expanded' : ''}
+                                className={`dock-profile-btn-wrap ${location.pathname === '/profile' ? 'dock-nav-item-wrap--expanded' : ''}`}
                                 whileHover={
                                     location.pathname === '/profile'
                                         ? { scale: 1.04 }
@@ -201,6 +224,11 @@ const DockNavbar = ({
                                     transition={springHover}
                                 >
                                     <i className="fas fa-user" />
+                                    {profileTaskBadge > 0 && (
+                                        <span className="dock-profile-badge" aria-label={`${profileTaskBadge} upozornění`}>
+                                            {profileTaskBadge > 99 ? '99+' : profileTaskBadge}
+                                        </span>
+                                    )}
                                     {location.pathname === '/profile' && (
                                         <motion.span
                                             className="dock-nav-label"

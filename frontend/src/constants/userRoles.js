@@ -1,6 +1,7 @@
 /** Systémové role WebUser – popisky pro UI. */
 export const USER_ROLE_OPTIONS = [
     { value: 'PRODEJCE', label: 'Prodejce' },
+    { value: 'VEDOUCI', label: 'Vedoucí' },
     { value: 'BRIGADNIK', label: 'Brigádník' },
     { value: 'ADMIN', label: 'Administrátor' },
 ];

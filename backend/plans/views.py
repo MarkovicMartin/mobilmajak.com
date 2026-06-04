@@ -11,6 +11,10 @@ from users.models import WebUser
 from .models import PlanMonth, PlanStore, PlanCategory, PlanProdejce, PlanProdejceKategorie, KATEGORIE_CHOICES
 from .helpers import vypocti_prumerne_ceny
 from .historie import vypocitej_plan_z_historie, historie_nahled, ChybejiciDataError
+from .historie_3m import historie_3m_nahled, vypocitej_plan_z_3_mesicu
+from .prodejci_auto import prirad_prodejce_automaticky
+from .plneni import plneni_polozky
+from .plneni_kontext import historie_plneni_prodejce
 from .rozpocet import rozpoctij
 
 MIN_CASTKA_FIRMA = Decimal('500000')
@@ -100,6 +104,47 @@ def _rovnomerne_rozlozeni(castka_celkem, prodejny_qs):
     return result
 
 
+def _vytvor_plan_z_prodejny_data(rok, mesic, castka_celkem, prodejny_data, user, auto_prodejci=False):
+    """Vytvoří PlanMonth + prodejny + kategorie; volitelně auto přiřadí prodejce."""
+    posledni = PlanMonth.objects.filter(rok=rok, mesic=mesic).order_by('-cislo_verze').first()
+    nove_cislo_verze = (posledni.cislo_verze + 1) if posledni else 1
+    prumerne_ceny = vypocti_prumerne_ceny(rok, mesic)
+    with transaction.atomic():
+        PlanMonth.objects.filter(rok=rok, mesic=mesic, je_aktualni=True).update(je_aktualni=False)
+        novy_plan = PlanMonth.objects.create(
+            rok=rok, mesic=mesic, cislo_verze=nove_cislo_verze,
+            je_aktualni=True, castka_celkem=castka_celkem,
+            vytvoril=user,
+        )
+        for item in prodejny_data:
+            prodej = (item['castka_prodejna'] * Decimal('0.7')).quantize(Decimal('0.01'))
+            servis = item['castka_prodejna'] - prodej
+            ps = PlanStore.objects.create(
+                plan_mesic=novy_plan,
+                prodejna=item['prodejna'],
+                podil_procenta=item['podil_procenta'],
+                castka_prodejna=item['castka_prodejna'],
+                castka_prodej=prodej,
+                castka_servis=servis,
+            )
+            for kat in item['kategorie']:
+                PlanCategory.objects.create(
+                    plan_prodejna=ps,
+                    kategorie_kod=kat['kod'],
+                    podil_procenta=kat['podil_procenta'],
+                    castka_kategorie=kat['castka_kategorie'],
+                    prumerna_cena_za_kus=prumerne_ceny.get(kat['kod']),
+                )
+        auto_warnings = []
+        if auto_prodejci:
+            res = prirad_prodejce_automaticky(novy_plan)
+            auto_warnings = res.get('warnings', [])
+    out = serialize_plan(novy_plan)
+    if auto_prodejci:
+        out['auto_prodejci_warnings'] = auto_warnings
+    return novy_plan, out
+
+
 def _vychozi_kategorie(castka_prodejna):
     """Vrátí defaultní kategorie s rovnoměrným rozložením."""
     n = len(VYCHOZI_KATEGORIE)
@@ -148,50 +193,34 @@ def plan_mesic(request, rok, mesic):
     data = request.data
     copy_from_previous = data.get('copy_from_previous', False)
     create_from_history = data.get('create_from_history', False)
+    create_from_3m = data.get('create_from_3m', False)
+    auto_prodejci = bool(data.get('auto_prodejci', create_from_3m))
     castka_celkem_raw = data.get('castka_celkem')
 
-    # create_from_history – plán z historie + růst (castka_celkem se ignoruje)
-    if create_from_history:
+    try:
+        rust_procent = float(data.get('rust_procent', 10))
+    except (TypeError, ValueError):
+        rust_procent = 10
+
+    if create_from_3m:
         try:
-            rust_procent = float(data.get('rust_procent', 10))
-        except (TypeError, ValueError):
-            rust_procent = 10
+            castka_celkem, prodejny_data = vypocitej_plan_z_3_mesicu(rok, mesic, rust_procent)
+        except ChybejiciDataError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        _, out = _vytvor_plan_z_prodejny_data(
+            rok, mesic, castka_celkem, prodejny_data, request.user, auto_prodejci=auto_prodejci
+        )
+        return Response(out, status=status.HTTP_201_CREATED)
+
+    if create_from_history:
         try:
             castka_celkem, prodejny_data = vypocitej_plan_z_historie(rok, mesic, rust_procent)
         except ChybejiciDataError as e:
-            return Response(
-                {'error': str(e)},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        posledni = PlanMonth.objects.filter(rok=rok, mesic=mesic).order_by('-cislo_verze').first()
-        nove_cislo_verze = (posledni.cislo_verze + 1) if posledni else 1
-        prumerne_ceny = vypocti_prumerne_ceny(rok, mesic)
-        with transaction.atomic():
-            novy_plan = PlanMonth.objects.create(
-                rok=rok, mesic=mesic, cislo_verze=nove_cislo_verze,
-                je_aktualni=True, castka_celkem=castka_celkem,
-                vytvoril=request.user
-            )
-            for item in prodejny_data:
-                prodej = (item['castka_prodejna'] * Decimal('0.7')).quantize(Decimal('0.01'))
-                servis = item['castka_prodejna'] - prodej
-                ps = PlanStore.objects.create(
-                    plan_mesic=novy_plan,
-                    prodejna=item['prodejna'],
-                    podil_procenta=item['podil_procenta'],
-                    castka_prodejna=item['castka_prodejna'],
-                    castka_prodej=prodej,
-                    castka_servis=servis,
-                )
-                for kat in item['kategorie']:
-                    PlanCategory.objects.create(
-                        plan_prodejna=ps,
-                        kategorie_kod=kat['kod'],
-                        podil_procenta=kat['podil_procenta'],
-                        castka_kategorie=kat['castka_kategorie'],
-                        prumerna_cena_za_kus=prumerne_ceny.get(kat['kod']),
-                    )
-        return Response(serialize_plan(novy_plan), status=status.HTTP_201_CREATED)
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        _, out = _vytvor_plan_z_prodejny_data(
+            rok, mesic, castka_celkem, prodejny_data, request.user, auto_prodejci=auto_prodejci
+        )
+        return Response(out, status=status.HTTP_201_CREATED)
 
     if not castka_celkem_raw:
         return Response({'error': 'Chybí castka_celkem.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -273,6 +302,43 @@ def plan_historie_nahled(request, rok, mesic):
 
     nahled = historie_nahled(rok, mesic, rust_procent)
     return Response(nahled)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def plan_historie_3m_nahled(request, rok, mesic):
+    """GET – Náhled plánu z průměru posledních 3 měsíců."""
+    if request.user.role != 'ADMIN':
+        return Response({'error': 'Přístup pouze pro administrátory.'}, status=status.HTTP_403_FORBIDDEN)
+    try:
+        rust_procent = float(request.query_params.get('rust_procent', 10))
+    except (TypeError, ValueError):
+        rust_procent = 10
+    try:
+        nahled = historie_3m_nahled(rok, mesic, rust_procent)
+    except ChybejiciDataError as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    return Response(nahled)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def plan_plneni_polozky(request, rok, mesic):
+    """GET – Položky v kategorii (drill-down). Query: kategorie_kod, prodejna_id?, prodejce_id?"""
+    if request.user.role != 'ADMIN':
+        return Response({'error': 'Přístup pouze pro administrátory.'}, status=status.HTTP_403_FORBIDDEN)
+    kategorie_kod = request.query_params.get('kategorie_kod')
+    if not kategorie_kod:
+        return Response({'error': 'Chybí kategorie_kod.'}, status=status.HTTP_400_BAD_REQUEST)
+    prodejna_id = request.query_params.get('prodejna_id')
+    prodejce_id = request.query_params.get('prodejce_id')
+    try:
+        prodejna_id = int(prodejna_id) if prodejna_id else None
+        prodejce_id = int(prodejce_id) if prodejce_id else None
+    except (TypeError, ValueError):
+        return Response({'error': 'Neplatné id.'}, status=status.HTTP_400_BAD_REQUEST)
+    polozky = plneni_polozky(rok, mesic, kategorie_kod, prodejna_id, prodejce_id)
+    return Response({'polozky': polozky, 'kategorie_kod': kategorie_kod})
 
 
 def _kopiruj_strukturu(novy_plan, zdrojovy_plan, nova_castka_celkem):
@@ -567,9 +633,29 @@ def plan_ulozit(request, rok, mesic):
                             castka=castka,
                         )
 
+    if data.get('auto_prodejci'):
+        res = prirad_prodejce_automaticky(plan)
+        warnings_list.extend(res.get('warnings', []))
+
     response = serialize_plan(plan)
     response['warnings'] = warnings_list
     return Response(response)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def plan_prodejci_auto(request, plan_prodejna_id):
+    """POST – Přepočítá plány prodejců na prodejně podle směn (hlavní prodejce 100 %)."""
+    if request.user.role != 'ADMIN':
+        return Response({'error': 'Přístup pouze pro administrátory.'}, status=status.HTTP_403_FORBIDDEN)
+    from django.shortcuts import get_object_or_404
+    ps = get_object_or_404(PlanStore.objects.select_related('plan_mesic'), id=plan_prodejna_id)
+    res = prirad_prodejce_automaticky(ps.plan_mesic, plan_prodejna_id=ps.id)
+    return Response({
+        'message': 'Plány prodejců byly přepočítány.',
+        'warnings': res.get('warnings', []),
+        'plan_prodejna_id': plan_prodejna_id,
+    })
 
 
 @api_view(['POST'])
@@ -1170,6 +1256,8 @@ def plan_plneni_prodejci(request, rok, mesic):
         trend_kusy_celkem = round(sum(trend_kategorie.values())) if trend_kategorie else None
         trend_procent_kusy = round((trend_kusy_celkem / plan_kusy_celkem * 100), 1) if plan_kusy_celkem and trend_kusy_celkem is not None else None
 
+        historie = historie_plneni_prodejce(uid, rok, mesic)
+
         result.append({
             'prodejce_id': uid,
             'jmeno': data['uzivatel'].jmeno,
@@ -1181,11 +1269,13 @@ def plan_plneni_prodejci(request, rok, mesic):
             'skutecne_kusy': skut_kusy_celkem,
             'plneni_procent': round(pct_obrat, 1),
             'plneni_procent_kusy': pct_kusy,
+            'plneni_procent_hlavni': pct_kusy,
             'trend_obrat': trend_obrat,
             'trend_procent': trend_procent,
             'trend_kusy': trend_kusy_celkem,
             'trend_procent_kusy': trend_procent_kusy,
             'kategorie': kategorie_list,
+            'historie_3m': historie,
         })
 
     # Seřadit podle příjmení, jména

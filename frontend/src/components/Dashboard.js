@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import DockNavbar from './DockNavbar';
 import AppToast from './AppToast';
+import UxFrictionMonitor from './UxFrictionMonitor';
 import ProfileModule from '../modules/profile/ProfileModule';
 import './Dashboard.css';
 
@@ -20,6 +21,7 @@ const LeaderboardModule = lazy(() => import('../modules/leaderboard/LeaderboardM
 const OrdersModule = lazy(() => import('../modules/orders/OrdersModule'));
 const PlansModule = lazy(() => import('../modules/plans/PlansModule'));
 const TicketsModule = lazy(() => import('../modules/tickets/TicketsModule'));
+const TasksManageModule = lazy(() => import('../modules/tasks/TasksManageModule'));
 
 const RouteFallback = () => (
     <div className="dashboard-loading" role="status" aria-live="polite">
@@ -28,12 +30,13 @@ const RouteFallback = () => (
 );
 
 const Dashboard = () => {
-    const { user, logout, isAdmin } = useAuth();
+    const { user, logout, isAdmin, canManageTasks } = useAuth();
     const { isDarkMode, toggleTheme } = useTheme();
 
     return (
         <div className="dashboard">
             <AppToast />
+            <UxFrictionMonitor />
             <DockNavbar
                 user={user}
                 isAdmin={isAdmin}
@@ -59,6 +62,10 @@ const Dashboard = () => {
                         <Route path="/plans" element={isAdmin() ? <PlansModule /> : <Navigate to="/" />} />
                         <Route path="/leaderboard" element={<LeaderboardModule />} />
                         <Route path="/profile" element={<ProfileModule />} />
+                        <Route
+                            path="/tasks"
+                            element={canManageTasks() ? <TasksManageModule /> : <Navigate to="/" />}
+                        />
 
                         <Route path="/my-tickets" element={<TicketsModule />} />
                         <Route path="/tickets" element={<Navigate to="/my-tickets" replace />} />

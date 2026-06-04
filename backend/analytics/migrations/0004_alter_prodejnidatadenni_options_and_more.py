@@ -4,6 +4,7 @@ import analytics.models
 import datetime
 from django.db import migrations, models
 import django.db.models.deletion
+from django.utils import timezone
 
 
 class Migration(migrations.Migration):
@@ -72,7 +73,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='prodejnidatadenni',
             name='datum_vytvoreni',
-            field=models.DateTimeField(auto_now_add=True, default=1, verbose_name='Datum vytvoření'),
+            field=models.DateTimeField(auto_now_add=True, default=timezone.now, verbose_name='Datum vytvoření'),
             preserve_default=False,
         ),
         migrations.AddField(
@@ -98,7 +99,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='prodejnidatamesicni',
             name='datum_vytvoreni',
-            field=models.DateTimeField(auto_now_add=True, default=1, verbose_name='Datum vytvoření'),
+            field=models.DateTimeField(auto_now_add=True, default=timezone.now, verbose_name='Datum vytvoření'),
             preserve_default=False,
         ),
         migrations.AddField(

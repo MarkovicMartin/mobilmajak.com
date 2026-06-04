@@ -155,3 +155,6 @@ ZADÁNÍ.md
 zadání.md
 ZADANI.md
 
+
+# Django local test DB (settings.py)
+backend/test_db.sqlite3

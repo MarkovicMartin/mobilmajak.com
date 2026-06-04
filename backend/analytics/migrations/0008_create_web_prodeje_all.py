@@ -82,34 +82,4 @@ class Migration(migrations.Migration):
                 'ordering': ['-datum_vlozeni', '-id'],
             },
         ),
-        
-        # Přidání indexů pro optimalizaci výkonu
-        migrations.RunSQL(
-            sql=[
-                "CREATE INDEX idx_prodeje_all_typ ON WEB_PRODEJE_ALL (Vystaveno);",
-                "CREATE INDEX idx_prodeje_all_prodejce ON WEB_PRODEJE_ALL (ID_PRODEJCE);",
-                "CREATE INDEX idx_prodeje_all_prodejny ON WEB_PRODEJE_ALL (ID_PRODEJNY);",
-                "CREATE INDEX idx_prodeje_all_kanal ON WEB_PRODEJE_ALL (Marketingovy_kanal);",
-                "CREATE INDEX idx_prodeje_all_kategorie ON WEB_PRODEJE_ALL (KATEGORIE);",
-                "CREATE INDEX idx_prodeje_all_stredisko ON WEB_PRODEJE_ALL (Stredisko);",
-                "CREATE INDEX idx_prodeje_all_nad_100 ON WEB_PRODEJE_ALL (je_nad_100_kc);",
-                "CREATE INDEX idx_prodeje_all_servis ON WEB_PRODEJE_ALL (je_servisni_sluzba);",
-                "CREATE INDEX idx_prodeje_all_eshop ON WEB_PRODEJE_ALL (je_eshop_prodej);",
-                "CREATE INDEX idx_prodeje_all_mesic_rok ON WEB_PRODEJE_ALL (rok, mesic);",
-                "CREATE INDEX idx_prodeje_all_import ON WEB_PRODEJE_ALL (importovano_z_web_prodeje);",
-            ],
-            reverse_sql=[
-                "DROP INDEX idx_prodeje_all_typ ON WEB_PRODEJE_ALL;",
-                "DROP INDEX idx_prodeje_all_prodejce ON WEB_PRODEJE_ALL;",
-                "DROP INDEX idx_prodeje_all_prodejny ON WEB_PRODEJE_ALL;",
-                "DROP INDEX idx_prodeje_all_kanal ON WEB_PRODEJE_ALL;",
-                "DROP INDEX idx_prodeje_all_kategorie ON WEB_PRODEJE_ALL;",
-                "DROP INDEX idx_prodeje_all_stredisko ON WEB_PRODEJE_ALL;",
-                "DROP INDEX idx_prodeje_all_nad_100 ON WEB_PRODEJE_ALL;",
-                "DROP INDEX idx_prodeje_all_servis ON WEB_PRODEJE_ALL;",
-                "DROP INDEX idx_prodeje_all_eshop ON WEB_PRODEJE_ALL;",
-                "DROP INDEX idx_prodeje_all_mesic_rok ON WEB_PRODEJE_ALL;",
-                "DROP INDEX idx_prodeje_all_import ON WEB_PRODEJE_ALL;",
-            ],
-        ),
     ]

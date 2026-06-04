@@ -5,6 +5,10 @@ from django.db import transaction
 
 from users.models import WebUser
 from users.mzda_utils import normalize_mzda_doplnky
+from users.vedouci_utils import (
+    ensure_vedouci_role_for_store_assignment,
+    maybe_demote_vedouci_role_after_store_removal,
+)
 
 from .models import Prodejna
 
@@ -44,6 +48,7 @@ def assign_vedouci_prodejny(prodejna_id, user_id, castka=None):
             try:
                 old_user = WebUser.objects.get(pk=old_user_id)
                 _remove_vedouci_doplnek(old_user)
+                maybe_demote_vedouci_role_after_store_removal(old_user)
             except WebUser.DoesNotExist:
                 pass
         prodejna.vedouci_user_id = None
@@ -57,6 +62,7 @@ def assign_vedouci_prodejny(prodejna_id, user_id, castka=None):
         try:
             old_user = WebUser.objects.get(pk=old_user_id)
             _remove_vedouci_doplnek(old_user)
+            maybe_demote_vedouci_role_after_store_removal(old_user)
         except WebUser.DoesNotExist:
             pass
 
@@ -68,6 +74,7 @@ def assign_vedouci_prodejny(prodejna_id, user_id, castka=None):
     prodejna.vedouci_user_id = user_id
     prodejna.save(update_fields=['vedouci_user_id'])
     _add_vedouci_doplnek(new_user, castka=castka)
+    ensure_vedouci_role_for_store_assignment(new_user)
     return prodejna
 
 

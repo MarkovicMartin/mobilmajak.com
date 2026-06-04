@@ -6,6 +6,8 @@ from rest_framework.response import Response
 from django.utils import timezone
 from django.db.models import Exists, OuterRef, Q, Subquery, F
 from django.db.models.functions import Coalesce
+from datetime import timedelta
+import hashlib
 from .models import Ticket, TicketImage, TicketComment, TicketUserReadState
 from .serializers import TicketSerializer, TicketListSerializer, TicketCommentSerializer
 from .webhooks import notify_ticket_created, notify_comment_added
@@ -53,6 +55,78 @@ def _unread_ticket_count_for_manager(user_id):
     )
 
     return qs.filter(Q(upraveno__gt=F('baseline')) | unread_comment).count()
+
+
+UX_FRICTION_LABELS = {
+    'rage_click': 'Rozzlobené opakované klikání',
+    'dead_click': 'Klik na neinteraktivní prvek',
+    'api_error': 'Chyba API',
+    'js_error': 'Chyba JavaScriptu',
+    'slow_action': 'Pomalá odezva aplikace',
+}
+
+UX_FRICTION_DEDUP_HOURS = 6
+
+
+def _ux_fingerprint(user_id, kind, route, element, detail):
+    raw = f'{user_id}|{kind}|{route}|{element}|{detail}'[:500]
+    return hashlib.sha256(raw.encode('utf-8')).hexdigest()[:20]
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def ux_friction_report(request):
+    """Automatické hlášení UX záseků → ticket (s deduplikací)."""
+    kind = (request.data.get('kind') or '').strip()
+    if kind not in UX_FRICTION_LABELS:
+        return Response(
+            {'success': False, 'error': 'Neplatný typ události.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    route = (request.data.get('route') or '').strip()[:200]
+    screen = (request.data.get('screen') or '').strip()[:100]
+    element = (request.data.get('element') or '').strip()[:300]
+    detail = (request.data.get('detail') or '').strip()[:1000]
+    url = (request.data.get('url') or '').strip()[:500]
+
+    fingerprint = _ux_fingerprint(request.user.id, kind, route, element, detail)
+    since = timezone.now() - timedelta(hours=UX_FRICTION_DEDUP_HOURS)
+    if Ticket.objects.filter(popis__contains=f'fp:{fingerprint}', vytvoreno__gte=since).exists():
+        return Response({'success': True, 'skipped': True, 'reason': 'duplicate'})
+
+    screen_label = screen or route or 'neznámá obrazovka'
+    nazev = f'[UX] {UX_FRICTION_LABELS[kind]} – {screen_label}'[:200]
+    popis_lines = [
+        f'fp:{fingerprint}',
+        f'Typ: {UX_FRICTION_LABELS[kind]} ({kind})',
+        f'Obrazovka: {screen_label}',
+        f'Cesta: {route or "—"}',
+    ]
+    if element:
+        popis_lines.append(f'Prvek: {element}')
+    if detail:
+        popis_lines.append(f'Detail: {detail}')
+    popis_lines.append('')
+    popis_lines.append('Automaticky vytvořeno z chování v aplikaci (UX monitor).')
+
+    jmeno = f"{getattr(request.user, 'jmeno', '')} {getattr(request.user, 'prijmeni', '')}".strip()
+    ticket = Ticket.objects.create(
+        nazev=nazev,
+        popis='\n'.join(popis_lines),
+        url=url,
+        autor_id=request.user.id,
+        autor_jmeno=jmeno or str(request.user.id),
+    )
+    notify_ticket_created(ticket)
+
+    TicketUserReadState.objects.update_or_create(
+        user_id=request.user.id,
+        ticket=ticket,
+        defaults={'last_seen_at': timezone.now()},
+    )
+
+    return Response({'success': True, 'ticket_id': ticket.id}, status=status.HTTP_201_CREATED)
 
 
 @api_view(['GET', 'POST'])

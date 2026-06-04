@@ -479,13 +479,10 @@ const UserManagement = () => {
                                         {USER_ROLE_OPTIONS.map((opt) => (
                                             <option key={opt.value} value={opt.value}>{opt.label}</option>
                                         ))}
-                                        {formData.role === 'VEDOUCI' && (
-                                            <option value="VEDOUCI">Vedoucí (systémová role)</option>
-                                        )}
                                     </select>
                                     <small className="field-hint">
-                                        <strong>Vedoucí (role):</strong> může v modulu Směny zadávat a upravovat směny ostatních.
-                                        Pro odměnu za vedení pobočky použijte níže „Vedoucí prodejny“ (+2000 bodů v doplňcích), role Prodejce stačí.
+                                        <strong>Role Vedoucí:</strong> směny ostatních, správa úkolů na pobočce (s výběrem prodejny níže).
+                                        <strong> Vedoucí prodejny:</strong> přiřadí pobočku, doplněk 2000 bodů a automaticky nastaví roli Vedoucí (lze i jen role bez pobočky).
                                     </small>
                                 </div>
                             </div>
@@ -521,7 +518,7 @@ const UserManagement = () => {
                                     ))}
                                 </select>
                                 <small className="field-hint">
-                                    Přiřazení synchronizuje doplněk „vedoucí pobočky“ (2000 bodů). Částku lze upravit níže v doplňcích.
+                                    Přiřazení synchronizuje doplněk „vedoucí pobočky“ (2000 bodů) a roli Vedoucí. Odebrání pobočky u uživatele s rolí Vedoucí vrátí roli Prodejce, pokud nevede jinou pobočku.
                                 </small>
                             </div>
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import api, { plansAPI } from '../../services/api';
+import { plansAPI } from '../../services/api';
 
 export default function PlanProdejcuPanel({ planProdejnaId }) {
   const [data, setData] = useState(null);
@@ -12,7 +12,7 @@ export default function PlanProdejcuPanel({ planProdejnaId }) {
   const [vybranyProdejce, setVybranyProdejce] = useState(null); // { id, jmeno, prijmeni }
   const [formKusy, setFormKusy] = useState({}); // { kategorie_kod: pocet }
   const [editujProdejceId, setEditujProdejceId] = useState(null); // při úpravě existujícího
-  const [pridatPodleSmenLoading, setPridatPodleSmenLoading] = useState(false);
+  const [autoSmenyLoading, setAutoSmenyLoading] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -136,36 +136,22 @@ export default function PlanProdejcuPanel({ planProdejnaId }) {
     setEditujProdejceId(null);
   };
 
-  const pridatPodleSmen = async () => {
-    const uzivatelId = editujProdejceId ?? vybranyProdejce?.id;
-    if (!uzivatelId || !data?.prodejna_id || data?.rok == null || data?.mesic == null) return;
-
-    setPridatPodleSmenLoading(true);
+  const prepocitatPodleSmen = async () => {
+    if (!planProdejnaId) return;
+    setAutoSmenyLoading(true);
     setChyba(null);
+    setUspech(null);
     try {
-      const mesicStr = `${data.rok}-${String(data.mesic).padStart(2, '0')}`;
-      const res = await api.get('/shifts/count/', {
-        params: { user_id: uzivatelId, prodejna_id: data.prodejna_id, mesic: mesicStr },
-      });
-      const pocetSmen = res.data.pocet_smen ?? 0;
-
-      if (pocetSmen === 0) {
-        setChyba('Prodejce nemá nastavené směny');
-        return;
+      const res = await plansAPI.prodejciAuto(planProdejnaId);
+      await load();
+      setUspech(res.message || 'Plán prodejců přepočítán (hlavní prodejce = 100 % plánu).');
+      if (res.warnings?.length) {
+        setChyba(res.warnings.join(' '));
       }
-
-      const dni = new Date(data.rok, data.mesic, 0).getDate();
-      const noveKusy = {};
-      for (const k of aktivniKategorie) {
-        const plan = k.pocet_kusu_plan || 0;
-        const val = Math.ceil((plan / dni) * pocetSmen);
-        noveKusy[k.kategorie_kod] = val;
-      }
-      setFormKusy(prev => ({ ...prev, ...noveKusy }));
-    } catch {
-      setChyba('Nepodařilo se načíst počet směn.');
+    } catch (e) {
+      setChyba(e.response?.data?.error || 'Nepodařilo se přepočítat podle směn.');
     } finally {
-      setPridatPodleSmenLoading(false);
+      setAutoSmenyLoading(false);
     }
   };
 
@@ -182,6 +168,15 @@ export default function PlanProdejcuPanel({ planProdejnaId }) {
     <div className="pp-panel">
       <div className="pp-panel-header">
         <span className="pp-panel-title">👥 Plán prodejců</span>
+        <button
+          type="button"
+          className="plans-btn plans-btn-secondary plans-btn-xs"
+          onClick={prepocitatPodleSmen}
+          disabled={saving || autoSmenyLoading || aktivniKategorie.length === 0}
+          title="Hlavní prodejce (nejvíc směn) dostane 100 % kusů; brigádník bez cílů"
+        >
+          {autoSmenyLoading ? 'Počítám…' : 'Přepočítat podle směn'}
+        </button>
       </div>
 
       {chyba && <div className="plans-alert plans-alert-error">{chyba}</div>}
@@ -268,15 +263,7 @@ export default function PlanProdejcuPanel({ planProdejnaId }) {
                   : `Vybráno: ${vybranyProdejce?.jmeno} ${vybranyProdejce?.prijmeni}`}
               </div>
               <div className="pp-form-kusy-label">
-                Plánované kusy po kategoriích
-                <button
-                  type="button"
-                  className="plans-btn plans-btn-ghost plans-btn-xs pp-btn-pridělit pp-btn-podle-smen"
-                  onClick={pridatPodleSmen}
-                  disabled={saving || pridatPodleSmenLoading}
-                >
-                  {pridatPodleSmenLoading ? 'Načítám…' : 'Přidělit podle směn'}
-                </button>
+                Plánované kusy po kategoriích (ruční úprava)
               </div>
               <table className="pp-form-tabulka">
                 <thead>

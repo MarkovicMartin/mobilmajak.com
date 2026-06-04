@@ -8,18 +8,20 @@ from .mzda_utils import (
 )
 from stores.models import Prodejna
 from tickets.permissions import can_manage_tickets
+from users.vedouci_utils import is_task_manager
 
 class WebUserSerializer(serializers.ModelSerializer):
     """Serializer pro zobrazení uživatelů (bez hesla)"""
     prodejna = serializers.SerializerMethodField()
     vedouci_prodejna_id = serializers.SerializerMethodField()
     can_manage_tickets = serializers.SerializerMethodField()
-    
+    can_manage_tasks = serializers.SerializerMethodField()
+
     class Meta:
         model = WebUser
         fields = ['id', 'uzivatelske_jmeno', 'jmeno', 'prijmeni', 'role', 'aktivni', 'moduly', 'datum_vytvoreni',
                  'telefon', 'email', 'adresa', 'poznamka', 'prodejna_id', 'prodejna', 'technik_id',
-                 'mzda_zaklad', 'mzda_doplnky', 'vedouci_prodejna_id', 'can_manage_tickets']
+                 'mzda_zaklad', 'mzda_doplnky', 'vedouci_prodejna_id', 'can_manage_tickets', 'can_manage_tasks']
         read_only_fields = ['datum_vytvoreni']
     
     def to_representation(self, instance):
@@ -53,6 +55,9 @@ class WebUserSerializer(serializers.ModelSerializer):
 
     def get_can_manage_tickets(self, obj):
         return can_manage_tickets(obj)
+
+    def get_can_manage_tasks(self, obj):
+        return is_task_manager(obj)
 
 
 class WebUserProfileSerializer(serializers.ModelSerializer):

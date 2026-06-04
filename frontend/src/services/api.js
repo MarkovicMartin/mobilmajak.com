@@ -31,6 +31,16 @@ api.interceptors.request.use((config) => {
     return config;
 });
 
+api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        import('../utils/uxFrictionMonitor').then(({ reportApiUxError }) => {
+            reportApiUxError(error);
+        });
+        return Promise.reject(error);
+    }
+);
+
 
 
 // API funkce pro uživatele
@@ -235,8 +245,33 @@ export const taskAPI = {
         const response = await api.get('/tasks/unread-summary/');
         return response.data;
     },
-    list: async (stav = 'vse') => {
-        const response = await api.get('/tasks/', { params: { stav } });
+    getNotificationsSummary: async () => {
+        const response = await api.get('/tasks/notifications-summary/');
+        return response.data;
+    },
+    list: async (params = {}) => {
+        const query = typeof params === 'string' ? { stav: params } : params;
+        const response = await api.get('/tasks/', { params: query });
+        return response.data;
+    },
+    getCalendar: async (mesic) => {
+        const response = await api.get('/tasks/calendar/', { params: { mesic } });
+        return response.data;
+    },
+    getAssignees: async (prodejnaId) => {
+        const response = await api.get('/tasks/assignees/', { params: { prodejna_id: prodejnaId } });
+        return response.data;
+    },
+    listComments: async (taskId) => {
+        const response = await api.get(`/tasks/${taskId}/comments/`);
+        return response.data;
+    },
+    addComment: async (taskId, text) => {
+        const response = await api.post(`/tasks/${taskId}/comments/`, { text });
+        return response.data;
+    },
+    markRead: async (id) => {
+        const response = await api.post(`/tasks/${id}/mark-read/`);
         return response.data;
     },
     create: async (payload) => {
@@ -245,6 +280,10 @@ export const taskAPI = {
     },
     update: async (id, payload) => {
         const response = await api.put(`/tasks/${id}/`, payload);
+        return response.data;
+    },
+    delete: async (id) => {
+        const response = await api.delete(`/tasks/${id}/`);
         return response.data;
     },
 };
@@ -282,9 +321,21 @@ export const leaderboardAPI = {
 export const plansAPI = {
     getPlneni: async (rok, mesic) => (await api.get(`/plans/${rok}/${mesic}/plneni/`)).data,
     getPlneniProdejci: async (rok, mesic) => (await api.get(`/plans/${rok}/${mesic}/plneni-prodejci/`)).data,
+    getPlneniPolozky: async (rok, mesic, params) => (
+        await api.get(`/plans/${rok}/${mesic}/plneni-polozky/`, { params })
+    ).data,
+    getHistorie3mNahled: async (rok, mesic, rustProcent = 10) => (
+        await api.get(`/plans/${rok}/${mesic}/historie-3m-nahled/`, { params: { rust_procent: rustProcent } })
+    ).data,
+    getHistorieNahled: async (rok, mesic, rustProcent = 10) => (
+        await api.get(`/plans/${rok}/${mesic}/historie-nahled/`, { params: { rust_procent: rustProcent } })
+    ).data,
     getPlan: async (rok, mesic) => (await api.get(`/plans/${rok}/${mesic}/`)).data,
     getVerze: async (verzeId) => (await api.get(`/plans/verze/${verzeId}/`)).data,
     createPlan: async (rok, mesic, payload) => (await api.post(`/plans/${rok}/${mesic}/`, payload)).data,
+    prodejciAuto: async (planProdejnaId) => (
+        await api.post(`/plans/prodejna/${planProdejnaId}/prodejci/auto/`)
+    ).data,
     prepocet: async (rok, mesic, payload) => (await api.post(`/plans/${rok}/${mesic}/prepocet/`, payload)).data,
     ulozit: async (rok, mesic, payload) => (await api.put(`/plans/${rok}/${mesic}/ulozit/`, payload)).data,
     setAktualniVerze: async (verzeId) => (await api.post(`/plans/verze/${verzeId}/set-aktualni/`)).data,

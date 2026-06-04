@@ -28,9 +28,9 @@ function App() {
   return (
     <Router>
       <ScrollToTop />
-      <ClarityPageTracker />
       <ThemeProvider>
         <AuthProvider>
+          <ClarityPageTracker />
           <div className="App">
             <AppContent />
           </div>

@@ -71,6 +71,12 @@ export const AuthProvider = ({ children }) => {
 
     const isAdmin = () => user?.role === 'ADMIN';
 
+    const canManageTasks = () => {
+        if (!user) return false;
+        if (user.can_manage_tasks === true) return true;
+        return user.role === 'ADMIN' || user.role === 'VEDOUCI' || !!user.vedouci_prodejna_id;
+    };
+
     const canManageTickets = () => {
         if (!user) return false;
         if (user.role === 'ADMIN') return true;
@@ -85,6 +91,7 @@ export const AuthProvider = ({ children }) => {
         login,
         logout,
         isAdmin,
+        canManageTasks,
         canManageTickets,
     };
 
