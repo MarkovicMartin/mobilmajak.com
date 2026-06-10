@@ -6,7 +6,43 @@ import { AnalyticsDateInput } from '../../components/AnalyticsDateRange';
 import { useTasks } from '../../hooks/useTasks';
 import TaskDetailPanel from './TaskDetailPanel';
 import TaskUrgencyBadge from './TaskUrgencyBadge';
+import TaskStatusIcon from '../../components/TaskStatusIcon';
 import './TasksModule.css';
+
+const ASSIGNEE_GROUPS = [
+    { key: 'domaci', label: 'Domácí' },
+    { key: 'brigadnik', label: 'Brigádníci' },
+    { key: 'ostatni', label: 'Ostatní' },
+];
+
+function groupAssignees(assignees) {
+    const grouped = { domaci: [], brigadnik: [], ostatni: [] };
+    for (const a of assignees) {
+        const key = grouped[a.skupina] ? a.skupina : 'ostatni';
+        grouped[key].push(a);
+    }
+    return grouped;
+}
+
+function AssigneeOptions({ assignees, placeholder }) {
+    const grouped = useMemo(() => groupAssignees(assignees), [assignees]);
+    return (
+        <>
+            <option value="">{placeholder}</option>
+            {ASSIGNEE_GROUPS.map(({ key, label }) =>
+                grouped[key].length > 0 ? (
+                    <optgroup key={key} label={label}>
+                        {grouped[key].map((a) => (
+                            <option key={a.id} value={a.id}>
+                                {a.jmeno_plne}
+                            </option>
+                        ))}
+                    </optgroup>
+                ) : null
+            )}
+        </>
+    );
+}
 
 const TasksManageModule = () => {
     const { user, isAdmin } = useAuth();
@@ -133,7 +169,7 @@ const TasksManageModule = () => {
             <div className="tasks-module-header">
                 <h2>Správa úkolů</h2>
                 <div className="tasks-filters">
-                    <select value={filterStav} onChange={(e) => setFilterStav(e.target.value)}>
+                    <select className="task-select" value={filterStav} onChange={(e) => setFilterStav(e.target.value)}>
                         <option value="vse">Všechny stavy</option>
                         <option value="novy">Nové</option>
                         <option value="v_procesu">V procesu</option>
@@ -141,6 +177,7 @@ const TasksManageModule = () => {
                     </select>
                     {isAdmin() && (
                         <select
+                            className="task-select"
                             value={filterStore}
                             onChange={(e) => setFilterStore(e.target.value)}
                         >
@@ -154,6 +191,7 @@ const TasksManageModule = () => {
                     )}
                     {!isAdmin() && vedouciStores.length > 1 && (
                         <select
+                            className="task-select"
                             value={filterStore}
                             onChange={(e) => setFilterStore(e.target.value)}
                         >
@@ -166,15 +204,11 @@ const TasksManageModule = () => {
                         </select>
                     )}
                     <select
+                        className="task-select"
                         value={filterAssignee}
                         onChange={(e) => setFilterAssignee(e.target.value)}
                     >
-                        <option value="">Všichni zaměstnanci</option>
-                        {assignees.map((a) => (
-                            <option key={a.id} value={a.id}>
-                                {a.jmeno_plne}
-                            </option>
-                        ))}
+                        <AssigneeOptions assignees={assignees} placeholder="Všichni zaměstnanci" />
                     </select>
                 </div>
             </div>
@@ -183,55 +217,60 @@ const TasksManageModule = () => {
                 <h3>Nový úkol</h3>
                 <form className="task-form-grid" onSubmit={handleCreate}>
                     <input
-                        className="input"
+                        className="task-control task-control--text"
                         placeholder="Text úkolu…"
                         value={form.ukol}
                         onChange={(e) => setForm({ ...form, ukol: e.target.value })}
                     />
-                    <select
-                        value={form.id_prodejny}
-                        disabled={storeLocked}
-                        onChange={(e) => setForm({ ...form, id_prodejny: e.target.value, id_prodejce_ukol: '' })}
-                    >
-                        <option value="">Pobočka…</option>
-                        {(isAdmin() ? stores : vedouciStores).map((s) => (
-                            <option key={s.id} value={s.id}>
-                                {s.nazev_kratkiy || s.nazev}
-                            </option>
-                        ))}
-                    </select>
-                    <select
-                        value={form.id_prodejce_ukol}
-                        onChange={(e) => setForm({ ...form, id_prodejce_ukol: e.target.value })}
-                        disabled={!form.id_prodejny}
-                    >
-                        <option value="">Přiřadit…</option>
-                        {assignees.map((a) => (
-                            <option key={a.id} value={a.id}>
-                                {a.jmeno_plne}
-                            </option>
-                        ))}
-                    </select>
-                    <select
-                        value={form.priorita}
-                        onChange={(e) => setForm({ ...form, priorita: e.target.value })}
-                    >
-                        <option value="nizka">Nízká</option>
-                        <option value="stredni">Střední</option>
-                        <option value="vysoka">Vysoká</option>
-                    </select>
-                    <AnalyticsDateInput
-                        value={form.deadline}
-                        onApply={(deadline) => setForm((f) => ({ ...f, deadline }))}
-                        showError={false}
-                    />
-                    <input
-                        type="time"
-                        className="input"
-                        value={form.deadline_cas}
-                        onChange={(e) => setForm({ ...form, deadline_cas: e.target.value })}
-                    />
-                    <button type="submit" className="btn-primary">Vytvořit úkol</button>
+                    <div className="task-form-row task-form-row--meta">
+                        <select
+                            className="task-select"
+                            value={form.id_prodejny}
+                            disabled={storeLocked}
+                            onChange={(e) => setForm({ ...form, id_prodejny: e.target.value, id_prodejce_ukol: '' })}
+                        >
+                            <option value="">Pobočka…</option>
+                            {(isAdmin() ? stores : vedouciStores).map((s) => (
+                                <option key={s.id} value={s.id}>
+                                    {s.nazev_kratkiy || s.nazev}
+                                </option>
+                            ))}
+                        </select>
+                        <select
+                            className="task-select"
+                            value={form.id_prodejce_ukol}
+                            onChange={(e) => setForm({ ...form, id_prodejce_ukol: e.target.value })}
+                            disabled={!form.id_prodejny}
+                        >
+                            <AssigneeOptions assignees={assignees} placeholder="Přiřadit…" />
+                        </select>
+                        <select
+                            className="task-select task-select--prio"
+                            value={form.priorita}
+                            onChange={(e) => setForm({ ...form, priorita: e.target.value })}
+                        >
+                            <option value="nizka">Nízká</option>
+                            <option value="stredni">Střední</option>
+                            <option value="vysoka">Vysoká</option>
+                        </select>
+                    </div>
+                    <div className="task-form-row task-form-row--deadline">
+                        <div className="task-date-field">
+                            <AnalyticsDateInput
+                                value={form.deadline}
+                                onApply={(deadline) => setForm((f) => ({ ...f, deadline }))}
+                                showError={false}
+                                inputClassName="task-control task-control--date"
+                            />
+                        </div>
+                        <input
+                            type="time"
+                            className="task-control task-control--time"
+                            value={form.deadline_cas}
+                            onChange={(e) => setForm({ ...form, deadline_cas: e.target.value })}
+                        />
+                        <button type="submit" className="task-submit-btn">Vytvořit úkol</button>
+                    </div>
                 </form>
             </div>
 
@@ -248,7 +287,8 @@ const TasksManageModule = () => {
                             role="button"
                             tabIndex={0}
                         >
-                            <div>
+                            <TaskStatusIcon task={t} size="sm" />
+                            <div className="tasks-list-item-body">
                                 <div className="task-title">{t.ukol}</div>
                                 <div className="metric-sub">
                                     {t.assignee?.jmeno_plne || '—'}
@@ -258,7 +298,9 @@ const TasksManageModule = () => {
                                         : ''}
                                 </div>
                             </div>
-                            <TaskUrgencyBadge task={t} />
+                            <div className="tasks-list-item-badges">
+                                <TaskUrgencyBadge task={t} />
+                            </div>
                         </div>
                     ))}
                 </div>

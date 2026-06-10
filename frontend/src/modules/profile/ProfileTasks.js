@@ -4,6 +4,7 @@ import { useLocation } from 'react-router-dom';
 import { useTasks } from '../../hooks/useTasks';
 import TaskDetailPanel from '../tasks/TaskDetailPanel';
 import TaskUrgencyBadge from '../tasks/TaskUrgencyBadge';
+import TaskStatusIcon from '../../components/TaskStatusIcon';
 import { urgencyForTask, URGENCY_OVERDUE } from '../../utils/taskUrgency';
 import '../tasks/TasksModule.css';
 
@@ -107,11 +108,9 @@ const ProfileTasks = ({ initialTaskId }) => {
                             tabIndex={0}
                             onKeyDown={(e) => e.key === 'Enter' && setSelected(t)}
                         >
-                            <div>
-                                <div className="task-title">
-                                    {t.typ === 'prirazeny' ? '📋 ' : ''}
-                                    {t.ukol}
-                                </div>
+                            <TaskStatusIcon task={t} size="sm" />
+                            <div className="tasks-list-item-body">
+                                <div className="task-title">{t.ukol}</div>
                                 <div className="metric-sub">
                                     {t.typ === 'prirazeny' ? 'Od vedoucího' : 'Osobní'}
                                     {t.deadline
@@ -119,7 +118,9 @@ const ProfileTasks = ({ initialTaskId }) => {
                                         : ''}
                                 </div>
                             </div>
-                            <TaskUrgencyBadge task={t} />
+                            <div className="tasks-list-item-badges">
+                                <TaskUrgencyBadge task={t} />
+                            </div>
                         </div>
                     ))}
                 </div>

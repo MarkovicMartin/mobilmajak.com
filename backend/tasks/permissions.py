@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from django.db.models import Q
 
+from users.exclusions import get_excluded_report_user_ids, real_sales_staff_queryset
 from users.models import WebUser
 from users.vedouci_utils import is_task_manager, vedouci_store_ids
 
@@ -36,15 +37,18 @@ def user_can_edit_task(user, task: Ukol) -> bool:
     )
 
 
-def _user_display(u: WebUser | None) -> dict | None:
+def _user_display(u: WebUser | None, skupina: str | None = None) -> dict | None:
     if not u:
         return None
-    return {
+    out = {
         "id": u.id,
         "jmeno": u.jmeno,
         "prijmeni": u.prijmeni,
         "jmeno_plne": f"{u.jmeno} {u.prijmeni}".strip(),
     }
+    if skupina:
+        out["skupina"] = skupina
+    return out
 
 
 def validate_task_create(user, data: dict) -> str | None:
@@ -91,10 +95,12 @@ def validate_task_create(user, data: dict) -> str | None:
     return None
 
 
-def _assignee_allowed_on_store(assignee: WebUser, store_id: int) -> bool:
-    if assignee.role == "BRIGADNIK":
-        return True
-    return assignee.prodejna_id == store_id
+def _assignee_allowed_on_store(assignee: WebUser, _store_id: int) -> bool:
+    if not assignee.aktivni:
+        return False
+    if assignee.role not in ("PRODEJCE", "VEDOUCI", "BRIGADNIK"):
+        return False
+    return assignee.id not in get_excluded_report_user_ids()
 
 
 def assignees_for_store(store_id: int, user) -> list[dict]:
@@ -105,17 +111,38 @@ def assignees_for_store(store_id: int, user) -> list[dict]:
     if not is_task_manager(user):
         return []
 
-    domovska = WebUser.objects.filter(prodejna_id=store_id, aktivni=True).order_by(
-        "jmeno", "prijmeni"
+    excluded = get_excluded_report_user_ids()
+    domovska = (
+        WebUser.objects.filter(prodejna_id=store_id, aktivni=True)
+        .exclude(id__in=excluded)
+        .order_by("jmeno", "prijmeni")
     )
-    brigadnici = WebUser.objects.filter(role="BRIGADNIK", aktivni=True).order_by(
-        "jmeno", "prijmeni"
+    brigadnici = (
+        WebUser.objects.filter(role="BRIGADNIK", aktivni=True)
+        .exclude(id__in=excluded)
+        .order_by("jmeno", "prijmeni")
+    )
+    ostatni = (
+        real_sales_staff_queryset()
+        .exclude(prodejna_id=store_id)
+        .exclude(role="BRIGADNIK")
+        .order_by("jmeno", "prijmeni")
     )
     seen = set()
     result = []
-    for u in list(domovska) + list(brigadnici):
+    for u in domovska:
         if u.id in seen:
             continue
         seen.add(u.id)
-        result.append(_user_display(u))
+        result.append(_user_display(u, "domaci"))
+    for u in brigadnici:
+        if u.id in seen:
+            continue
+        seen.add(u.id)
+        result.append(_user_display(u, "brigadnik"))
+    for u in ostatni:
+        if u.id in seen:
+            continue
+        seen.add(u.id)
+        result.append(_user_display(u, "ostatni"))
     return result

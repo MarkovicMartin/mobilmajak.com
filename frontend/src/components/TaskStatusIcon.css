@@ -1,0 +1,35 @@
+.task-status-icon {
+    object-fit: contain;
+    flex-shrink: 0;
+    display: block;
+}
+
+.task-status-icon--sm {
+    width: 32px;
+    height: auto;
+    max-height: 48px;
+}
+
+.task-status-icon--md {
+    width: 40px;
+    height: auto;
+    max-height: 56px;
+}
+
+.task-status-icon--lg {
+    width: 52px;
+    height: auto;
+    max-height: 72px;
+}
+
+.task-status-icon--hotovo {
+    opacity: 0.95;
+}
+
+.task-status-icon--activity {
+    opacity: 1;
+}
+
+.task-status-icon--neutral {
+    opacity: 0.88;
+}

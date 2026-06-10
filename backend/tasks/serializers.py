@@ -48,6 +48,7 @@ class UkolSerializer(serializers.ModelSerializer):
     prodejna = serializers.SerializerMethodField()
     urgency = serializers.SerializerMethodField()
     is_unread = serializers.SerializerMethodField()
+    komentare_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Ukol
@@ -71,6 +72,7 @@ class UkolSerializer(serializers.ModelSerializer):
             "prodejna",
             "urgency",
             "is_unread",
+            "komentare_count",
         ]
         read_only_fields = ["vytvoreno", "upraveno", "dokonceno_v", "precteno_v"]
 
@@ -118,6 +120,11 @@ class UkolSerializer(serializers.ModelSerializer):
         from .urgency import is_task_unread
 
         return is_task_unread(obj, request.user)
+
+    def get_komentare_count(self, obj):
+        if hasattr(obj, 'komentare_count'):
+            return obj.komentare_count
+        return obj.komentare.count()
 
     def validate_priorita(self, value):
         if value not in dict(Ukol.PRIORITY):

@@ -208,6 +208,40 @@ class TasksApiTests(TestCase):
         self.assertGreaterEqual(count_all, 2)
         self.assertEqual(count_mine, 1)
 
+    def test_assignees_lists_home_brigadnik_then_others(self):
+        prodejce_b = _make_user(9012, "PRODEJCE", prodejna_id=102)
+        self._auth(self.vedouci_a)
+        res = self.client.get("/api/tasks/assignees/", {"prodejna_id": self.store_a.id})
+        self.assertEqual(res.status_code, 200)
+        assignees = res.data["assignees"]
+        ids = [a["id"] for a in assignees]
+        skupiny = [a.get("skupina") for a in assignees]
+        self.assertIn(self.prodejce.id, ids)
+        self.assertIn(self.brigadnik.id, ids)
+        self.assertIn(prodejce_b.id, ids)
+        self.assertEqual(skupiny[ids.index(self.prodejce.id)], "domaci")
+        self.assertEqual(skupiny[ids.index(self.brigadnik.id)], "brigadnik")
+        self.assertEqual(skupiny[ids.index(prodejce_b.id)], "ostatni")
+        self.assertLess(ids.index(self.prodejce.id), ids.index(prodejce_b.id))
+        self.assertLess(ids.index(self.brigadnik.id), ids.index(prodejce_b.id))
+
+    def test_assignee_from_other_store_can_receive_task(self):
+        prodejce_b = _make_user(9013, "PRODEJCE", prodejna_id=102)
+        self._auth(self.vedouci_a)
+        res = self.client.post(
+            "/api/tasks/",
+            {
+                "ukol": "Výpomoc na A",
+                "priorita": "stredni",
+                "typ": "prirazeny",
+                "id_prodejce_ukol": prodejce_b.id,
+                "id_prodejny": self.store_a.id,
+            },
+            format="json",
+        )
+        self.assertEqual(res.status_code, 201)
+        self.assertEqual(res.data["id_prodejce_ukol"], prodejce_b.id)
+
     def test_dokonceno_v_set_on_hotovo(self):
         task = Ukol.objects.create(
             ukol="Dokončit",

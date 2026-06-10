@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 
-from django.db.models import Q
+from django.db.models import Count, Q
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -73,6 +73,7 @@ def _filter_tasks_queryset(qs, request):
 def tasks_list_create(request):
     if request.method == "GET":
         qs = _filter_tasks_queryset(tasks_queryset_for_user(request.user), request)
+        qs = qs.annotate(komentare_count=Count('komentare'))
         limit = min(int(request.GET.get("limit", 200)), 500)
         tasks = list(qs.order_by("-vytvoreno")[:limit])
         return Response(serialize_tasks_list(tasks, request))

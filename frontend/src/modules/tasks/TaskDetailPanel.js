@@ -4,6 +4,7 @@ import { cs } from 'date-fns/locale';
 import { taskAPI } from '../../services/api';
 import TaskUrgencyBadge from './TaskUrgencyBadge';
 import TaskComments from './TaskComments';
+import TaskStatusIcon from '../../components/TaskStatusIcon';
 
 const STAV_LABELS = {
     novy: 'Nový',
@@ -53,6 +54,7 @@ const TaskDetailPanel = ({
     return (
         <div className="task-detail-panel">
             <div className="task-detail-header">
+                <TaskStatusIcon task={task} size="lg" className="task-detail-icon" />
                 <h3>{task.ukol}</h3>
                 {onClose && (
                     <button type="button" className="btn-icon" onClick={onClose} aria-label="Zavřít detail">
@@ -90,7 +92,13 @@ const TaskDetailPanel = ({
                     </button>
                 </div>
             )}
-            <TaskComments taskId={task.id} />
+            <TaskComments
+                taskId={task.id}
+                onCommentAdded={() => onUpdate?.({
+                    ...task,
+                    komentare_count: (task.komentare_count || 0) + 1,
+                })}
+            />
         </div>
     );
 };
