@@ -3,8 +3,13 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Modal from '../../../components/Modal';
 import AnalyticsSectionWrapper from '../AnalyticsSectionWrapper';
 import CustomDropdown from '../../../components/CustomDropdown';
-import DateFilterBar from '../../../components/DateFilterBar';
-import { detectQuickRangePreset } from '../../../utils/analyticsQuickRange';
+import AnalyticsDateRange from '../../../components/AnalyticsDateRange';
+import PeriodSegmentBar from '../../../components/PeriodSegmentBar';
+import {
+    QUICK_RANGE_PRESETS,
+    computeQuickRange,
+    detectQuickRangePreset,
+} from '../../../utils/analyticsQuickRange';
 import { formatISODate } from '../../../utils/analyticsDateRange';
 import { buildAnalyticsMonthFilterOptions } from '../../../utils/analyticsMonthOptions';
 import {
@@ -577,6 +582,13 @@ const CelkovaCislaView = ({ isComparison = false, paneRole = 'single', filtersFr
         setQuickKey(preset || detectQuickRangePreset(start_date, end_date));
     };
 
+    const handleQuickPreset = (id) => {
+        const range = computeQuickRange(id);
+        if (!range) return;
+        setDateError('');
+        applyDateRange({ ...range, preset: id });
+    };
+
     // ===== Helpers pro datumy =====
     const monthStep = (ym, step) => {
         const [y, m] = ym.split('-').map(Number);
@@ -920,22 +932,24 @@ const CelkovaCislaView = ({ isComparison = false, paneRole = 'single', filtersFr
 
             {/* Filtry */}
             <div className="celkova-cisla-filters">
-                <div className="filter-row">
-                    {/* Období – custom dropdown s měsíci */}
+                <div className="filter-row filter-row--primary">
                     <div className="filter-group">
                         <label>Období:</label>
                         {(() => {
-                                const opts = buildAnalyticsMonthFilterOptions();
-
-                                const currentValue = filters.period === 'monthly_select' ? `month:${filters.selected_month}` : 'custom';
+                            const opts = buildAnalyticsMonthFilterOptions();
+                            const currentValue = filters.period === 'monthly_select'
+                                ? `month:${filters.selected_month}`
+                                : 'custom';
                             return (
                                 <CustomDropdown
                                     options={opts}
                                     value={currentValue}
                                     placeholder="Vyberte období"
-                                        onChange={(selectedValue) => {
-                                            if (selectedValue === 'custom') {
-                                            handleFilterChange('period', 'custom');
+                                    onChange={(selectedValue) => {
+                                        if (selectedValue === 'custom') {
+                                            setFilters(prev => ({ ...prev, period: 'custom' }));
+                                            setQuickKey('custom');
+                                            setDateError('');
                                         } else if (selectedValue.startsWith('month:')) {
                                             const ym = selectedValue.split(':')[1];
                                             setFilters(prev => ({
@@ -953,24 +967,20 @@ const CelkovaCislaView = ({ isComparison = false, paneRole = 'single', filtersFr
                         })()}
                     </div>
 
-                    {/* Vybraný měsíc – výběr je přímo v hlavním rolovátku */}
-
                     {filters.period === 'custom' && (
-                        <div className="filter-group filter-group--date-bar">
-                            <DateFilterBar
+                        <div className="filter-group filter-group--date-range">
+                            <label>Datum:</label>
+                            <AnalyticsDateRange
                                 startDate={filters.start_date}
                                 endDate={filters.end_date}
-                                preset={quickKey}
-                                onRangeChange={applyDateRange}
-                                onDateErrorChange={setDateError}
-                                onRefresh={fetchData}
-                                refreshDisabled={loading || !!dateError}
-                                refreshLoading={loading}
+                                onApply={(range) => applyDateRange({ ...range, preset: 'custom' })}
+                                onErrorChange={setDateError}
+                                showError={false}
+                                variant="inline"
                             />
                         </div>
                     )}
 
-                    {/* Prodejní kanál */}
                     <div className="filter-group">
                         <label>Kanál:</label>
                         <select
@@ -985,19 +995,31 @@ const CelkovaCislaView = ({ isComparison = false, paneRole = 'single', filtersFr
                         </select>
                     </div>
 
-                    {filters.period !== 'custom' && (
-                        <div className="filter-group refresh-group">
-                            <button
-                                className="refresh-btn main-refresh"
-                                onClick={fetchData}
-                                disabled={loading || !!dateError}
-                            >
-                                {loading ? '🔄' : '🔄'} Obnovit
-                            </button>
-                        </div>
-                    )}
+                    <div className="filter-group refresh-group">
+                        <label aria-hidden="true">&nbsp;</label>
+                        <button
+                            type="button"
+                            className="refresh-btn main-refresh"
+                            onClick={fetchData}
+                            disabled={loading || !!dateError}
+                        >
+                            {loading ? '🔄' : '🔄'} Obnovit
+                        </button>
+                    </div>
                 </div>
-                {dateError && <div className="celkova-cisla-error" style={{ marginTop: 8 }}>{dateError}</div>}
+
+                {filters.period === 'custom' && (
+                    <div className="filter-row filter-row--presets">
+                        <PeriodSegmentBar
+                            options={QUICK_RANGE_PRESETS}
+                            value={quickKey === 'custom' ? null : quickKey}
+                            onChange={handleQuickPreset}
+                            ariaLabel="Rychlé volby období"
+                        />
+                    </div>
+                )}
+
+                {dateError && <div className="celkova-cisla-error celkova-cisla-filters__error">{dateError}</div>}
             </div>
 
             {/* Loading state */}

@@ -39,6 +39,37 @@
     flex-wrap: wrap;
 }
 
+.celkova-cisla-filters .filter-row--primary {
+    align-items: flex-end;
+}
+
+.celkova-cisla-filters .filter-row--presets {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border-subtle, #e8ecef);
+}
+
+.celkova-cisla-filters .filter-row--presets .period-segment-bar {
+    width: 100%;
+}
+
+.celkova-cisla-filters .filter-group--date-range {
+    flex: 1 1 280px;
+    min-width: 220px;
+}
+
+.celkova-cisla-filters .filter-group--date-range .analytics-date-range--inline {
+    margin-top: 0;
+}
+
+.celkova-cisla-filters .refresh-group {
+    margin-left: auto;
+}
+
+.celkova-cisla-filters__error {
+    margin-top: 8px;
+}
+
 .filter-group {
     display: flex;
     flex-direction: column;
