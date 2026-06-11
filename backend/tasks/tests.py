@@ -247,12 +247,14 @@ class TasksApiTests(TestCase):
         self._auth(self.admin)
         res_list = self.client.get("/api/tasks/assignees/", {"prodejna_id": self.store_a.id})
         self.assertEqual(res_list.status_code, 200)
-        ids = [a["id"] for a in res_list.data["assignees"]]
+        assignees = res_list.data["assignees"]
+        ids = [a["id"] for a in assignees]
         self.assertIn(admin_b.id, ids)
-        self.assertEqual(
-            res_list.data["assignees"][ids.index(admin_b.id)]["skupina"],
-            "admini",
-        )
+        self.assertEqual(assignees[ids.index(admin_b.id)]["skupina"], "admini")
+        admin_indices = [i for i, a in enumerate(assignees) if a.get("skupina") == "admini"]
+        non_admin_indices = [i for i, a in enumerate(assignees) if a.get("skupina") != "admini"]
+        if admin_indices and non_admin_indices:
+            self.assertGreater(min(admin_indices), max(non_admin_indices))
 
         res = self.client.post(
             "/api/tasks/",
@@ -267,6 +269,18 @@ class TasksApiTests(TestCase):
         )
         self.assertEqual(res.status_code, 201)
         self.assertEqual(res.data["id_prodejce_ukol"], admin_b.id)
+
+    def test_assignees_hide_system_and_named_accounts(self):
+        system_admin = _make_user(9020, "ADMIN", jmeno="Administrátor", prijmeni="Systémový")
+        _make_user(9021, "PRODEJCE", prodejna_id=101, jmeno="Prodejce", prijmeni="Prodejce")
+        petr = _make_user(9022, "PRODEJCE", prodejna_id=101, jmeno="Petr", prijmeni="Valenta")
+        self._auth(self.admin)
+        res = self.client.get("/api/tasks/assignees/", {"prodejna_id": self.store_a.id})
+        self.assertEqual(res.status_code, 200)
+        ids = {a["id"] for a in res.data["assignees"]}
+        self.assertNotIn(system_admin.id, ids)
+        self.assertNotIn(9021, ids)
+        self.assertNotIn(petr.id, ids)
 
     def test_vedouci_assignees_exclude_admins(self):
         _make_user(9015, "ADMIN", jmeno="Admin", prijmeni="Skryty")

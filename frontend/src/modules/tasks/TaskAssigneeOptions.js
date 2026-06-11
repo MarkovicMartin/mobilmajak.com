@@ -1,10 +1,10 @@
 import React, { useMemo } from 'react';
 
 const ASSIGNEE_GROUPS = [
-    { key: 'admini', label: 'Administrátoři' },
     { key: 'domaci', label: 'Domácí' },
     { key: 'brigadnik', label: 'Brigádníci' },
     { key: 'ostatni', label: 'Ostatní' },
+    { key: 'admini', label: 'Administrátoři' },
 ];
 
 function groupAssignees(assignees) {

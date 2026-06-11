@@ -8,6 +8,26 @@ from users.vedouci_utils import is_task_manager, vedouci_store_ids
 
 from .models import Ukol
 
+# Účty nezobrazovat v seznamu přiřazení úkolů (case-insensitive jméno + příjmení).
+_TASK_ASSIGNEE_EXCLUDED_NAME_PAIRS = frozenset({
+    ('prodejce', 'prodejce'),
+    ('administrátor', 'systémový'),
+    ('administrator', 'systemovy'),
+    ('administrátor', 'systemovy'),
+    ('petr', 'valenta'),
+})
+
+
+def _normalize_name_pair(jmeno, prijmeni) -> tuple[str, str]:
+    return (
+        (jmeno or '').strip().lower(),
+        (prijmeni or '').strip().lower(),
+    )
+
+
+def is_excluded_task_assignee(user: WebUser) -> bool:
+    return _normalize_name_pair(user.jmeno, user.prijmeni) in _TASK_ASSIGNEE_EXCLUDED_NAME_PAIRS
+
 
 def tasks_queryset_for_user(user):
     role = getattr(user, "role", None)
@@ -120,6 +140,8 @@ def validate_task_create(user, data: dict) -> str | None:
 def _assignee_allowed_on_store(assignee: WebUser, _store_id: int) -> bool:
     if not assignee.aktivni:
         return False
+    if is_excluded_task_assignee(assignee):
+        return False
     if assignee.role == "ADMIN":
         return True
     if assignee.role not in ("PRODEJCE", "VEDOUCI", "BRIGADNIK"):
@@ -154,27 +176,23 @@ def assignees_for_store(store_id: int, user) -> list[dict]:
     )
     seen = set()
     result = []
+
+    def _append_user(u: WebUser, skupina: str) -> None:
+        if u.id in seen or is_excluded_task_assignee(u):
+            return
+        seen.add(u.id)
+        display = _user_display(u, skupina)
+        if display:
+            result.append(display)
+
+    for u in domovska:
+        _append_user(u, "domaci")
+    for u in brigadnici:
+        _append_user(u, "brigadnik")
+    for u in ostatni:
+        _append_user(u, "ostatni")
     if role == "ADMIN":
-        # Admini jsou v reportech vynechaní (exclusions), ale do úkolů se přiřazovat musí.
         admini = WebUser.objects.filter(role="ADMIN", aktivni=True).order_by("jmeno", "prijmeni")
         for u in admini:
-            if u.id in seen:
-                continue
-            seen.add(u.id)
-            result.append(_user_display(u, "admini"))
-    for u in domovska:
-        if u.id in seen:
-            continue
-        seen.add(u.id)
-        result.append(_user_display(u, "domaci"))
-    for u in brigadnici:
-        if u.id in seen:
-            continue
-        seen.add(u.id)
-        result.append(_user_display(u, "brigadnik"))
-    for u in ostatni:
-        if u.id in seen:
-            continue
-        seen.add(u.id)
-        result.append(_user_display(u, "ostatni"))
+            _append_user(u, "admini")
     return result
