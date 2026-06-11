@@ -162,7 +162,7 @@
 
 .shift-form-datetime-row {
     display: grid;
-    grid-template-columns: 1.2fr 1fr 1fr;
+    grid-template-columns: 1fr 1fr;
     gap: 10px;
     margin-bottom: 14px;
 }
@@ -279,13 +279,13 @@
     color-scheme: dark;
 }
 
+.shift-form-overlay .react-datepicker-popper {
+    z-index: 1500 !important;
+}
+
 @media (max-width: 560px) {
     .shift-form-datetime-row {
-        grid-template-columns: 1fr 1fr;
-    }
-
-    .shift-form-date-group {
-        grid-column: 1 / -1;
+        grid-template-columns: 1fr;
     }
 
     .shift-form-actions {

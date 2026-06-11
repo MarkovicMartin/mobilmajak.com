@@ -322,8 +322,8 @@ def build_today_work_board(now=None):
         row['camera'] = {
             'in_pilot': bool(motion.get('in_pilot')),
             'active': motion.get('status') == 'active',
+            'label': motion.get('label'),
         }
-        row.pop('recent_events', None)
 
     return {
         'checked_at': now.isoformat(),

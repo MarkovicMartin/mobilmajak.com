@@ -466,12 +466,26 @@
   border-radius: 8px;
   padding: 10px 12px;
   background: #fff;
-  cursor: pointer;
   transition: box-shadow 0.15s ease;
 }
 
-.work-tile:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+.work-tile-store-btn {
+  border: 0;
+  background: none;
+  padding: 0;
+  margin: 0;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #374151;
+  cursor: pointer;
+  text-align: left;
+}
+
+.work-tile-store-btn:hover {
+  color: #1d4ed8;
+  text-decoration: underline;
 }
 
 .work-tile--ok { background: #f0fdf4; border-color: #bbf7d0; }
@@ -480,10 +494,14 @@
 
 .work-tile-head {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 6px;
   margin-bottom: 8px;
+}
+
+.work-tile-head .camera-motion-details {
+  max-width: 55%;
 }
 
 .work-tile-store {

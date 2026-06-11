@@ -107,6 +107,7 @@ NVR_ACCESS_GUIDE = {
 def camera_module_status():
     """Stav integrace kamer pro API."""
     from .camera_motion import (
+        MOTION_ACTIVE_MINUTES,
         MOTION_WINDOW_MINUTES,
         hikvision_webhook_url,
         load_motion_secrets,
@@ -138,6 +139,7 @@ def camera_module_status():
             )
         ),
         'motion_window_minutes': MOTION_WINDOW_MINUTES,
+        'motion_active_minutes': MOTION_ACTIVE_MINUTES,
         'webhook_urls': webhook_urls,
         'setup_script': 'scripts/camera_motion_setup_nvr_http.py',
         'nvr_access': NVR_ACCESS_GUIDE,

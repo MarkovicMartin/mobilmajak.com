@@ -1,15 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import CameraBeacon from '../../components/CameraBeacon';
-import { formatPragueClock, formatPragueEventAt } from '../../utils/pragueDateTime';
+import CameraMotionDetails from '../../components/CameraMotionDetails';
+import { formatPragueClock } from '../../utils/pragueDateTime';
 import './AbsentStoresPanel.css';
-
-function motionToCamera(motion) {
-    if (!motion?.in_pilot) return null;
-    return {
-        in_pilot: true,
-        active: motion.status === 'active',
-    };
-}
 
 function AbsentStoresPanel() {
     const [data, setData] = useState(null);
@@ -40,41 +32,6 @@ function AbsentStoresPanel() {
     }, [load]);
 
     const formatCheckedAt = (iso) => formatPragueClock(iso);
-
-    const motionBeacon = (motion) => {
-        const camera = motionToCamera(motion);
-        if (!camera) return null;
-        const lastAt = motion.last_event_at ? formatPragueEventAt(motion.last_event_at) : '';
-        const title = lastAt ? `Poslední signál: ${lastAt}` : undefined;
-        return (
-            <span className="store-motion-row">
-                <CameraBeacon camera={camera} title={title} />
-                <span
-                    className={`motion-label motion-label--${motion.status || 'unknown'}`}
-                >
-                    {motion.label}
-                </span>
-            </span>
-        );
-    };
-
-    const renderCameraEvents = (store) => {
-        if (!store.motion?.in_pilot) return null;
-        const events = store.recent_events || [];
-        if (events.length === 0) {
-            return <p className="store-camera-empty">Zatím žádné signály z brány.</p>;
-        }
-        return (
-            <ul className="store-camera-events">
-                {events.map((ev) => (
-                    <li key={ev.id}>
-                        {formatPragueEventAt(ev.cas)} — {ev.pohyb ? 'pohyb' : 'klid'}
-                        {ev.zdroj ? ` (${ev.zdroj})` : ''}
-                    </li>
-                ))}
-            </ul>
-        );
-    };
 
     if (loading && !data) {
         return <div className="absent-stores loading">Načítám přehled…</div>;
@@ -169,9 +126,10 @@ function AbsentStoresPanel() {
                 <div className={`camera-planned-card${camera.enabled ? ' camera-pilot-active' : ''}`}>
                     <strong>{camera.label}</strong>
                     <p>{camera.hint}</p>
-                    {camera.enabled && camera.motion_window_minutes && (
+                    {camera.enabled && camera.motion_active_minutes && (
                         <p className="camera-pilot-window">
-                            Pohyb = událost za posledních {camera.motion_window_minutes} min (bez obrazu na serveru).
+                            Pohyb = signál za posledních {camera.motion_active_minutes} min.
+                            Klik na majáček = log období bez pohybu.
                         </p>
                     )}
                     {camera.nvr_access && (
@@ -224,16 +182,17 @@ function AbsentStoresPanel() {
                                     </span>
                                 </div>
 
-                                {motionBeacon(store.motion)}
-
-                                {renderShiftRoster(store)}
-
                                 {store.motion?.in_pilot && (
-                                    <div className="store-camera-block">
-                                        <strong className="store-camera-label">📷 Kamera</strong>
-                                        {renderCameraEvents(store)}
+                                    <div className="store-motion-wrap">
+                                        <CameraMotionDetails
+                                            motion={store.motion}
+                                            detail={store.motion_detail}
+                                            compact
+                                        />
                                     </div>
                                 )}
+
+                                {renderShiftRoster(store)}
                             </div>
                         );
                     })}
@@ -248,9 +207,12 @@ function AbsentStoresPanel() {
                             <li key={store.prodejna_id} className="camera-pilot-item">
                                 <div className="camera-pilot-head">
                                     <strong>{store.prodejna_nazev}</strong>
-                                    {motionBeacon(store.motion)}
+                                    <CameraMotionDetails
+                                        motion={store.motion}
+                                        detail={store.motion_detail}
+                                        compact
+                                    />
                                 </div>
-                                {renderCameraEvents(store)}
                             </li>
                         ))}
                     </ul>

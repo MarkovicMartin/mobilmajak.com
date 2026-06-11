@@ -26,6 +26,7 @@ from .vacation_service import (
 )
 from users.models import WebUser
 from stores.models import Prodejna
+from .czech_holidays import get_ceske_svatky, get_nazev_svatku
 from .shift_helpers import (
     apply_calendar_prodejna_filter,
     find_existing_shift,
@@ -441,9 +442,14 @@ def _shift_calendar_payload(smena):
 
 def _format_smena_info(smena, include_store=False):
     cas = f"{smena.cas_od.strftime('%H:%M')}-{smena.cas_do.strftime('%H:%M')}"
+    if is_absence_shift(smena.typ_smeny):
+        label = 'Dovolená' if smena.typ_smeny == 'dovolena' else 'Nemoc'
+        return f"{smena.user.prijmeni} ({label}, {cas})"
     if include_store:
-        store = (smena.prodejna.nazev_kratkiy or smena.prodejna.nazev or '').strip()
-        return f"{store}: {smena.user.prijmeni} ({cas})"
+        if smena.prodejna_id:
+            store = (smena.prodejna.nazev_kratkiy or smena.prodejna.nazev or '').strip()
+            return f"{store}: {smena.user.prijmeni} ({cas})"
+        return f"{smena.user.prijmeni} ({cas})"
     return f"{smena.user.prijmeni} ({cas})"
 
 

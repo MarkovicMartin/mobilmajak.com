@@ -17,6 +17,7 @@ from stores.models import Prodejna
 from .models import ProdejnaPohybUdalost
 
 MOTION_WINDOW_MINUTES = int(os.getenv('CAMERA_MOTION_WINDOW_MINUTES', '15'))
+MOTION_ACTIVE_MINUTES = int(os.getenv('CAMERA_MOTION_ACTIVE_MINUTES', '5'))
 EVENT_RETENTION_DAYS = int(os.getenv('CAMERA_MOTION_RETENTION_DAYS', '7'))
 SIGNATURE_MAX_AGE_SECONDS = int(os.getenv('CAMERA_MOTION_SIGNATURE_MAX_AGE', '300'))
 
@@ -130,75 +131,146 @@ def _prune_old_events(prodejna_id):
 def motion_status_for_prodejna(prodejna_id, now=None):
     """
     Vrací dict: status (active|quiet|unknown), last_motion_at, last_event_at, in_pilot.
+    Pohyb = detekce za posledních MOTION_ACTIVE_MINUTES (výchozí 5 min).
     """
     now = now or timezone.now()
     in_pilot = prodejna_id in motion_pilot_prodejna_ids()
-    since = now - timedelta(minutes=MOTION_WINDOW_MINUTES)
+    active_since = now - timedelta(minutes=MOTION_ACTIVE_MINUTES)
 
-    recent = list(
-        ProdejnaPohybUdalost.objects.filter(
-            prodejna_id=prodejna_id,
-            cas__gte=since,
-        ).order_by('-cas')[:50]
+    last_event = (
+        ProdejnaPohybUdalost.objects.filter(prodejna_id=prodejna_id)
+        .order_by('-cas')
+        .first()
     )
 
-    if not recent:
+    if not last_event:
         return {
             'status': 'unknown',
             'label': 'Kamera nehlásí',
             'in_pilot': in_pilot,
             'last_motion_at': None,
             'last_event_at': None,
+            'quiet_minutes': None,
+            'active_minutes': MOTION_ACTIVE_MINUTES,
             'window_minutes': MOTION_WINDOW_MINUTES,
         }
 
-    last = recent[0]
-    has_motion = any(e.pohyb for e in recent)
-    last_motion = next((e for e in recent if e.pohyb), None)
+    last_motion_recent = (
+        ProdejnaPohybUdalost.objects.filter(
+            prodejna_id=prodejna_id,
+            pohyb=True,
+            cas__gte=active_since,
+        )
+        .order_by('-cas')
+        .first()
+    )
 
-    if has_motion:
+    if last_motion_recent:
         return {
             'status': 'active',
             'label': 'Pohyb',
             'in_pilot': in_pilot,
-            'last_motion_at': last_motion.cas.isoformat() if last_motion else None,
-            'last_event_at': last.cas.isoformat(),
+            'last_motion_at': last_motion_recent.cas.isoformat(),
+            'last_event_at': last_event.cas.isoformat(),
+            'quiet_minutes': None,
+            'active_minutes': MOTION_ACTIVE_MINUTES,
             'window_minutes': MOTION_WINDOW_MINUTES,
         }
 
+    last_motion = (
+        ProdejnaPohybUdalost.objects.filter(prodejna_id=prodejna_id, pohyb=True)
+        .order_by('-cas')
+        .first()
+    )
+
+    quiet_minutes = None
+    if last_motion:
+        quiet_minutes = max(0, int((now - last_motion.cas).total_seconds() // 60))
+        label = f'Bez pohybu {quiet_minutes} min' if quiet_minutes >= MOTION_ACTIVE_MINUTES else 'Bez pohybu'
+    else:
+        label = 'Bez pohybu'
+
     return {
         'status': 'quiet',
-        'label': 'Bez pohybu',
+        'label': label,
         'in_pilot': in_pilot,
-        'last_motion_at': None,
-        'last_event_at': last.cas.isoformat(),
+        'last_motion_at': last_motion.cas.isoformat() if last_motion else None,
+        'last_event_at': last_event.cas.isoformat(),
+        'quiet_minutes': quiet_minutes,
+        'active_minutes': MOTION_ACTIVE_MINUTES,
         'window_minutes': MOTION_WINDOW_MINUTES,
     }
 
 
+def motion_detail_for_prodejna(prodejna_id, now=None, lookback_hours=16):
+    """Období klidu (bez pohybu) pro rozbalovací log – zaměřeno na trvání klidu."""
+    now = now or timezone.now()
+    since = now - timedelta(hours=lookback_hours)
+    events = list(
+        ProdejnaPohybUdalost.objects.filter(
+            prodejna_id=prodejna_id,
+            cas__gte=since,
+        ).order_by('cas')
+    )
+
+    last_motion = next((e for e in reversed(events) if e.pohyb), None)
+    current_quiet_minutes = None
+    if last_motion:
+        mins = int((now - last_motion.cas).total_seconds() // 60)
+        if mins >= MOTION_ACTIVE_MINUTES:
+            current_quiet_minutes = mins
+
+    quiet_periods = []
+    klid_events = [e for e in events if not e.pohyb]
+    for ke in klid_events:
+        next_motion = next((e for e in events if e.pohyb and e.cas > ke.cas), None)
+        end = next_motion.cas if next_motion else now
+        minutes = int((end - ke.cas).total_seconds() // 60)
+        if minutes >= MOTION_ACTIVE_MINUTES or (next_motion is None and minutes > 0):
+            quiet_periods.append({
+                'from': ke.cas.isoformat(),
+                'to': end.isoformat() if next_motion else None,
+                'minutes': minutes,
+                'ongoing': next_motion is None,
+            })
+
+    if current_quiet_minutes is not None and not any(p.get('ongoing') for p in quiet_periods):
+        if last_motion:
+            quiet_periods.append({
+                'from': last_motion.cas.isoformat(),
+                'to': None,
+                'minutes': current_quiet_minutes,
+                'ongoing': True,
+            })
+    elif current_quiet_minutes is not None and not klid_events and last_motion:
+        quiet_periods.append({
+            'from': last_motion.cas.isoformat(),
+            'to': None,
+            'minutes': current_quiet_minutes,
+            'ongoing': True,
+        })
+
+    quiet_periods.sort(key=lambda p: p['from'], reverse=True)
+
+    return {
+        'quiet_periods': quiet_periods[:12],
+        'current_quiet_minutes': current_quiet_minutes,
+        'active_minutes': MOTION_ACTIVE_MINUTES,
+    }
+
+
 def attach_motion_to_stores(store_rows, now=None):
-    """Doplní motion a recent_events do slov prodejen v přehledu absent/ok."""
+    """Doplní motion a motion_detail do slov prodejen."""
     now = now or timezone.now()
     pilot_ids = set(motion_pilot_prodejna_ids())
     for row in store_rows:
         pid = row['prodejna_id']
         row['motion'] = motion_status_for_prodejna(pid, now)
         if pid in pilot_ids:
-            recent_qs = (
-                ProdejnaPohybUdalost.objects.filter(prodejna_id=pid)
-                .order_by('-cas')[:5]
-            )
-            row['recent_events'] = [
-                {
-                    'id': e.id,
-                    'pohyb': e.pohyb,
-                    'cas': e.cas.isoformat(),
-                    'zdroj': e.zdroj,
-                }
-                for e in recent_qs
-            ]
+            row['motion_detail'] = motion_detail_for_prodejna(pid, now)
         else:
-            row['recent_events'] = []
+            row['motion_detail'] = None
+        row.pop('recent_events', None)
 
 
 def build_pilot_motion_report(now=None):
@@ -210,24 +282,11 @@ def build_pilot_motion_report(now=None):
             prodejna = Prodejna.objects.get(pk=pid, aktivni=True)
         except Prodejna.DoesNotExist:
             continue
-        recent_qs = (
-            ProdejnaPohybUdalost.objects.filter(prodejna_id=pid)
-            .order_by('-cas')[:10]
-        )
-        recent_events = [
-            {
-                'id': e.id,
-                'pohyb': e.pohyb,
-                'cas': e.cas.isoformat(),
-                'zdroj': e.zdroj,
-            }
-            for e in recent_qs
-        ]
         rows.append({
             'prodejna_id': pid,
             'prodejna_nazev': prodejna.nazev_kratkiy or prodejna.nazev,
             'prodejna_barva': prodejna.barva or '#0066cc',
             'motion': motion_status_for_prodejna(pid, now),
-            'recent_events': recent_events,
+            'motion_detail': motion_detail_for_prodejna(pid, now),
         })
     return rows

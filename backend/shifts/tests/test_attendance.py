@@ -139,3 +139,21 @@ class AttendanceApiTests(TestCase):
         self.assertEqual(res.status_code, 200)
         user_ids = {row['user_id'] for row in res.data}
         self.assertEqual(user_ids, {self.prodejce_a.id, self.prodejce_b.id})
+
+    def test_calendar_with_absence_today_returns_200(self):
+        Smena.objects.create(
+            user=self.prodejce_a,
+            prodejna=None,
+            datum=self.today,
+            cas_od=time(8, 0),
+            cas_do=time(16, 0),
+            typ_smeny='dovolena',
+            aktivni=True,
+        )
+        client = APIClient()
+        client.force_authenticate(user=self.admin)
+        mesic = f'{self.today.year}-{self.today.month:02d}'
+        res = client.get(f'/api/shifts/calendar/?mesic={mesic}&prodejna=vse')
+        self.assertEqual(res.status_code, 200)
+        self.assertIn('dnes_smeny', res.data)
+        self.assertTrue(any('Dovolená' in row for row in res.data['dnes_smeny']))

@@ -152,6 +152,8 @@ function ShiftForm({ user, onClose, onSuccess, initialDatum = '' }) {
     const selectedUser = users.find((u) => u.id === formData.user_id) || user;
     const isAbsence = formData.typ_smeny === 'dovolena' || formData.typ_smeny === 'nemoc';
     const isBrigadnikShift = selectedUser?.role === 'BRIGADNIK' && formData.typ_smeny === 'prace';
+    const selectedStoreName = stores.find((s) => s.id === formData.prodejna)?.nazev || '';
+    const isSenimo = selectedStoreName === 'Senimo';
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -254,66 +256,75 @@ function ShiftForm({ user, onClose, onSuccess, initialDatum = '' }) {
                             </select>
                         </div>
                     )}
-                    <div className="form-group shift-form-date-group">
-                        <AnalyticsDateInput
-                            label="Datum:"
-                            value={formData.datum}
-                            onApply={(datum) => setFormData(prev => ({ ...prev, datum }))}
-                            wrapperClassName="form-group shift-form-date-group"
-                            showError={false}
-                            required
-                        />
-                    </div>
 
-                    {!isAbsence && (
-                    <>
                     <div className="form-group">
-                        <label>Prodejna:</label>
+                        <label>Typ směny:</label>
                         <select
-                            value={formData.prodejna || ''}
-                            onChange={(e) => setFormData({...formData, prodejna: Number(e.target.value)})}
+                            value={formData.typ_smeny}
+                            onChange={(e) => setFormData({ ...formData, typ_smeny: e.target.value })}
                         >
-                            {stores.map(s => (
-                                <option key={s.id} value={s.id}>
-                                    {s.nazev}
-                                </option>
-                            ))}
+                            <option value="prace">💼 Práce</option>
+                            <option value="dovolena">🏖️ Dovolená</option>
+                            <option value="nemoc">🏥 Nemocenská</option>
                         </select>
                     </div>
 
-                    <div className="shift-form-datetime-row">
-                        <div className="form-group">
-                            <label>Od:</label>
-                            <input
-                                type="time"
-                                value={formData.cas_od}
-                                onChange={(e) => setFormData({...formData, cas_od: e.target.value})}
-                                required
-                            />
-                        </div>
-                        <div className="form-group">
-                            <label>Do:</label>
-                            <input
-                                type="time"
-                                value={formData.cas_do}
-                                onChange={(e) => setFormData({...formData, cas_do: e.target.value})}
-                                required
-                            />
-                        </div>
-                    </div>
+                    <AnalyticsDateInput
+                        label="Datum:"
+                        value={formData.datum}
+                        onApply={(datum) => setFormData(prev => ({ ...prev, datum }))}
+                        wrapperClassName="form-group"
+                        showError={false}
+                        required
+                    />
 
-                    {formData.prodejna === 'Senimo' && (
-                        <div className="time-info">
-                            ℹ️ Senimo: Po-Pá 9:00-18:00, So 9:00-12:00
-                        </div>
-                    )}
-                    
-                    {formData.prodejna !== 'Senimo' && (
-                        <div className="time-info">
-                            ℹ️ Standardní směna: 8:00-20:00
-                        </div>
-                    )}
-                    </>
+                    {!isAbsence && (
+                        <>
+                            <div className="form-group">
+                                <label>Prodejna:</label>
+                                <select
+                                    value={formData.prodejna || ''}
+                                    onChange={(e) => setFormData({ ...formData, prodejna: Number(e.target.value) })}
+                                >
+                                    {stores.map(s => (
+                                        <option key={s.id} value={s.id}>
+                                            {s.nazev}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="shift-form-datetime-row">
+                                <div className="form-group">
+                                    <label>Od:</label>
+                                    <input
+                                        type="time"
+                                        value={formData.cas_od}
+                                        onChange={(e) => setFormData({ ...formData, cas_od: e.target.value })}
+                                        required
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label>Do:</label>
+                                    <input
+                                        type="time"
+                                        value={formData.cas_do}
+                                        onChange={(e) => setFormData({ ...formData, cas_do: e.target.value })}
+                                        required
+                                    />
+                                </div>
+                            </div>
+
+                            {isSenimo ? (
+                                <div className="time-info">
+                                    ℹ️ Senimo: Po-Pá 9:00-18:00, So 9:00-12:00
+                                </div>
+                            ) : (
+                                <div className="time-info">
+                                    ℹ️ Standardní směna: 8:00-20:00
+                                </div>
+                            )}
+                        </>
                     )}
 
                     {isAbsence && (
@@ -321,18 +332,6 @@ function ShiftForm({ user, onClose, onSuccess, initialDatum = '' }) {
                             ℹ️ Dovolená a nemoc nejsou vázané na prodejnu – v kalendáři se zobrazí kompaktně.
                         </div>
                     )}
-
-                    <div className="form-group">
-                        <label>Typ směny:</label>
-                        <select
-                            value={formData.typ_smeny}
-                            onChange={(e) => setFormData({...formData, typ_smeny: e.target.value})}
-                        >
-                            <option value="prace">💼 Práce</option>
-                            <option value="dovolena">🏖️ Dovolená</option>
-                            <option value="nemoc">🏥 Nemocenská</option>
-                        </select>
-                    </div>
 
                     {isBrigadnikShift && (
                         <div className="form-group">

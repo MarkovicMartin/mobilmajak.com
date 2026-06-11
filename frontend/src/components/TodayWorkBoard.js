@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { cs } from 'date-fns/locale';
 import { shiftsAPI } from '../services/api';
-import CameraBeacon from './CameraBeacon';
+import CameraMotionDetails from './CameraMotionDetails';
 import { formatPragueClock } from '../utils/pragueDateTime';
 
 const STATUS_CLASS = {
@@ -108,16 +108,26 @@ export default function TodayWorkBoard({ today = new Date() }) {
             ) : (
                 <div className="work-board-grid">
                     {stores.map((store) => (
-                        <button
+                        <div
                             key={store.prodejna_id}
-                            type="button"
                             className={`work-tile ${STATUS_CLASS[store.status] || ''}`}
                             style={{ borderLeftColor: store.prodejna_barva }}
-                            onClick={openAbsentStores}
                         >
                             <div className="work-tile-head">
-                                <span className="work-tile-store">{store.prodejna_nazev}</span>
-                                <CameraBeacon camera={store.camera} />
+                                <button
+                                    type="button"
+                                    className="work-tile-store-btn"
+                                    onClick={openAbsentStores}
+                                >
+                                    {store.prodejna_nazev}
+                                </button>
+                                {store.motion?.in_pilot && (
+                                    <CameraMotionDetails
+                                        motion={store.motion}
+                                        detail={store.motion_detail}
+                                        compact
+                                    />
+                                )}
                             </div>
                             {store.people.length === 0 ? (
                                 <p className="work-tile-empty-msg">
@@ -138,7 +148,7 @@ export default function TodayWorkBoard({ today = new Date() }) {
                                     })}
                                 </ul>
                             )}
-                        </button>
+                        </div>
                     ))}
                 </div>
             )}

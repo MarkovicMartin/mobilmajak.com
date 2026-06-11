@@ -115,6 +115,14 @@
     margin: 4px 0 8px;
 }
 
+.store-motion-wrap {
+    margin-bottom: 8px;
+}
+
+.store-motion-wrap .camera-motion-details-summary {
+    justify-content: flex-start;
+}
+
 .store-motion-row .camera-beacon-icon {
     width: 32px;
     height: 32px;
