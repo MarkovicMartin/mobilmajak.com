@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('analytics', '0014_leaderboard_month_points_cache'),
+        ('analytics', '0015_leaderboard_cache_points_by_prodejna'),
     ]
 
     operations = [

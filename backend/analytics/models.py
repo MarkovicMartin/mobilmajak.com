@@ -583,6 +583,12 @@ class LeaderboardMonthPointsCache(models.Model):
         verbose_name='Body podle id_prodejce',
         help_text='Mapa {"123": 450, ...} – klíče jako řetězce kvůli JSON.',
     )
+    points_by_prodejna = models.JSONField(
+        default=dict,
+        blank=True,
+        verbose_name='Body podle id_prodejny',
+        help_text='Mapa {"7": 12345, ...} – klíče jako řetězce kvůli JSON.',
+    )
     computed_at = models.DateTimeField(auto_now=True, verbose_name='Naposledy spočítáno')
 
     class Meta:
