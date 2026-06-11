@@ -285,6 +285,38 @@
     margin-bottom: 1rem;
 }
 
+.task-edit-form {
+    background: var(--bg-card, #fff);
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 1rem;
+}
+
+.task-edit-title {
+    margin: 0 0 0.75rem;
+    font-size: 0.95rem;
+}
+
+.task-edit-text {
+    width: 100%;
+    min-height: 4.5rem;
+    resize: vertical;
+    margin-bottom: 0.75rem;
+}
+
+.task-edit-error {
+    color: #b91c1c;
+    font-size: 0.85rem;
+    margin: 0.5rem 0 0;
+}
+
+.task-edit-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+
 .task-detail-actions {
     display: flex;
     flex-wrap: wrap;

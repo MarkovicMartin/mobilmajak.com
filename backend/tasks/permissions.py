@@ -26,6 +26,28 @@ def user_can_access_task(user, task: Ukol) -> bool:
     return tasks_queryset_for_user(user).filter(pk=task.pk).exists()
 
 
+def user_can_edit_task_details(user, task: Ukol) -> bool:
+    """Úprava textu, termínu, přiřazení – admin nebo vedoucí zadavatel."""
+    role = getattr(user, "role", None)
+    if role == "ADMIN":
+        return True
+    if not is_task_manager(user):
+        return False
+    if task.typ == "prirazeny" and task.id_prodejny and task.id_prodejny in vedouci_store_ids(user):
+        return True
+    return task.typ == "osobni" and task.id_prodejce_zadal == user.id
+
+
+def validate_task_update(user, task: Ukol, data: dict) -> str | None:
+    merged = {
+        "typ": data.get("typ", task.typ),
+        "id_prodejny": data.get("id_prodejny", task.id_prodejny),
+        "id_prodejce_ukol": data.get("id_prodejce_ukol", task.id_prodejce_ukol),
+        "priorita": data.get("priorita", task.priorita),
+    }
+    return validate_task_create(user, merged)
+
+
 def user_can_edit_task(user, task: Ukol) -> bool:
     role = getattr(user, "role", None)
     if role == "ADMIN":

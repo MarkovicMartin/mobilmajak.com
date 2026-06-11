@@ -16,7 +16,9 @@ from .permissions import (
     tasks_queryset_for_user,
     user_can_access_task,
     user_can_edit_task,
+    user_can_edit_task_details,
     validate_task_create,
+    validate_task_update,
     vedouci_store_ids,
 )
 from .serializers import UkolKomentarSerializer, UkolSerializer, serialize_tasks_list
@@ -141,10 +143,33 @@ def task_detail(request, task_id: int):
         task.delete()
         return Response({"message": "Úkol smazán"})
 
-    serializer = UkolSerializer(task, data=request.data, partial=True, context={"request": request})
+    data = request.data.copy()
+    detail_fields = {
+        "ukol", "priorita", "deadline", "deadline_cas",
+        "id_prodejce_ukol", "id_prodejny", "typ",
+    }
+    if detail_fields & set(data.keys()):
+        if not user_can_edit_task_details(request.user, task):
+            return Response(
+                {"error": "Nemáte oprávnění k úpravě úkolu"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        err = validate_task_update(request.user, task, data)
+        if err:
+            return Response({"error": err}, status=status.HTTP_400_BAD_REQUEST)
+
+    serializer = UkolSerializer(task, data=data, partial=True, context={"request": request})
     if serializer.is_valid():
-        serializer.save()
-        return Response(serializer.data)
+        old_assignee = task.id_prodejce_ukol
+        updated = serializer.save()
+        if (
+            updated.typ == "prirazeny"
+            and "id_prodejce_ukol" in data
+            and updated.id_prodejce_ukol != old_assignee
+        ):
+            updated.precteno_v = None
+            updated.save(update_fields=["precteno_v", "upraveno"])
+        return Response(UkolSerializer(updated, context={"request": request}).data)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 

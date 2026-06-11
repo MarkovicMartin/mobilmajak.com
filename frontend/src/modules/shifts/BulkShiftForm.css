@@ -9,7 +9,7 @@
     background: rgba(0, 0, 0, 0.6);
     display: flex;
     justify-content: center;
-    z-index: 1000;
+    z-index: 1300;
     backdrop-filter: blur(4px);
     padding: 16px; /* bezpečný okraj, aby modal neřezal okraje v Safari */
 }

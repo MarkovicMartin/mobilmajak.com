@@ -20,6 +20,13 @@ def local_now():
     return timezone.localtime(timezone.now())
 
 
+def format_local_hm(dt):
+    """Čas příchodu/odchodu v Europe/Prague pro API."""
+    if not dt:
+        return None
+    return timezone.localtime(dt).strftime('%H:%M')
+
+
 def auto_close_cutoff(datum):
     """Čas automatického odchodu pro daný den směny (lokální TZ)."""
     loc = timezone.get_current_timezone()
@@ -183,7 +190,7 @@ def build_absent_stores_report(now=None):
             'plan_od': smena.cas_od.strftime('%H:%M'),
             'plan_do': smena.cas_do.strftime('%H:%M'),
             'stav': stav,
-            'prichod': prichod.cas.strftime('%H:%M') if prichod else None,
+            'prichod': format_local_hm(prichod.cas) if prichod else None,
         }
         stores[pid]['active_shifts'].append(entry)
         if stav in ('otevreno', 'pauza'):
@@ -225,9 +232,9 @@ def person_attendance_status(smena, history, now=None):
     plan_start, _plan_end = shift_window(smena)
 
     if stav in ('otevreno', 'pauza'):
-        return 'present', prichod.cas.strftime('%H:%M') if prichod else None
+        return 'present', format_local_hm(prichod.cas) if prichod else None
     if stav == 'uzavreno':
-        left_at = odchod.cas.strftime('%H:%M') if odchod else None
+        left_at = format_local_hm(odchod.cas) if odchod else None
         return 'left', left_at
     if now < plan_start:
         return 'upcoming', None

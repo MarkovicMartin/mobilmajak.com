@@ -4,6 +4,7 @@ import { format } from 'date-fns';
 import { cs } from 'date-fns/locale';
 import { shiftsAPI } from '../services/api';
 import CameraBeacon from './CameraBeacon';
+import { formatPragueClock } from '../utils/pragueDateTime';
 
 const STATUS_CLASS = {
     ok: 'work-tile--ok',
@@ -70,13 +71,7 @@ export default function TodayWorkBoard({ today = new Date() }) {
         navigate('/shifts', { state: { view: 'absent-stores' } });
     };
 
-    const formatCheckedAt = (iso) => {
-        if (!iso) return '';
-        return new Date(iso).toLocaleTimeString('cs-CZ', {
-            hour: '2-digit',
-            minute: '2-digit',
-        });
-    };
+    const formatCheckedAt = (iso) => formatPragueClock(iso);
 
     return (
         <section className="work-board-section" aria-labelledby="work-board-heading">

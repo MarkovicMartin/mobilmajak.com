@@ -199,22 +199,32 @@ function ShiftForm({ user, onClose, onSuccess, initialDatum = '' }) {
 
     return (
         <div className="modal-overlay" onClick={handleClose}>
-            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                <h3>➕ Přidat novou směnu</h3>
+            <div className="modal-content shift-form-modal" onClick={(e) => e.stopPropagation()}>
+                <div className="modal-header shift-form-header">
+                    <h3>➕ Přidat novou směnu</h3>
+                    <button
+                        type="button"
+                        className="modal-close"
+                        onClick={handleClose}
+                        aria-label="Zavřít"
+                    >
+                        ✕
+                    </button>
+                </div>
 
-                {vacationBalance?.eligible && (
-                    <div className="vacation-balance-banner">
-                        🏖️ Dovolená {vacationBalance.rok}: zbývá{' '}
-                        <strong>{vacationBalance.zbyva_h} h</strong>
-                        {' '}(čerpáno {vacationBalance.cerpano_h} / fond {vacationBalance.fond_h} h
-                        {vacationBalance.odeceno_deficit_h > 0
-                            ? `, vč. ${vacationBalance.odeceno_deficit_h} h deficit fondu`
-                            : ''}
-                        {vacationBalance.prevod_h > 0 ? `, převod ${vacationBalance.prevod_h} h` : ''})
-                    </div>
-                )}
-
-                <form ref={shiftFormRef} onSubmit={handleSubmit}>
+                <form ref={shiftFormRef} className="shift-form-shell" onSubmit={handleSubmit}>
+                    <div className="modal-body shift-form-body">
+                        {vacationBalance?.eligible && (
+                            <div className="vacation-balance-banner">
+                                🏖️ Dovolená {vacationBalance.rok}: zbývá{' '}
+                                <strong>{vacationBalance.zbyva_h} h</strong>
+                                {' '}(čerpáno {vacationBalance.cerpano_h} / fond {vacationBalance.fond_h} h
+                                {vacationBalance.odeceno_deficit_h > 0
+                                    ? `, vč. ${vacationBalance.odeceno_deficit_h} h deficit fondu`
+                                    : ''}
+                                {vacationBalance.prevod_h > 0 ? `, převod ${vacationBalance.prevod_h} h` : ''})
+                            </div>
+                        )}
                     {(user && ['ADMIN', 'VEDOUCI'].includes(user.role)) && (
                         <div className="form-group">
                             <label>Uživatel:</label>
@@ -324,21 +334,22 @@ function ShiftForm({ user, onClose, onSuccess, initialDatum = '' }) {
                         />
                     </div>
 
-                    {error && (
-                        <div className="error-message">
-                            <div>{error}</div>
-                            {existingShiftInfo && (
-                                <div className="existing-shift-info">
-                                    <strong>Stávající směna:</strong><br/>
-                                    📅 {existingShiftInfo.cas_od}-{existingShiftInfo.cas_do}<br/>
-                                    📋 {existingShiftInfo.typ_smeny === 'prace' ? 'Práce' : 
-                                        existingShiftInfo.typ_smeny === 'dovolena' ? 'Dovolená' : 'Nemoc'}
-                                </div>
-                            )}
-                        </div>
-                    )}
+                        {error && (
+                            <div className="error-message">
+                                <div>{error}</div>
+                                {existingShiftInfo && (
+                                    <div className="existing-shift-info">
+                                        <strong>Stávající směna:</strong><br/>
+                                        📅 {existingShiftInfo.cas_od}-{existingShiftInfo.cas_do}<br/>
+                                        📋 {existingShiftInfo.typ_smeny === 'prace' ? 'Práce' : 
+                                            existingShiftInfo.typ_smeny === 'dovolena' ? 'Dovolená' : 'Nemoc'}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
 
-                    <div className="form-actions">
+                    <div className="shift-form-actions">
                         <button type="button" onClick={handleClose} className="btn-cancel">
                             Zrušit
                         </button>

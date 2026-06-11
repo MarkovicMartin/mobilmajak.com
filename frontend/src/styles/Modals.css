@@ -36,7 +36,7 @@
     background: rgba(0, 0, 0, 0.4);
     display: flex;
     justify-content: center;
-    z-index: 1000;
+    z-index: 1300;
 }
 
 .modal-overlay > .modal-content:has(.modal-body) {
@@ -140,4 +140,11 @@
 .access-form-overlay > .access-form-modal,
 .ticket-form-overlay > .ticket-form-modal {
     margin-top: max(var(--dock-clearance, 7.5rem), calc(env(safe-area-inset-top, 0px) + 12px));
+    margin-bottom: 1rem;
+}
+
+.modal-overlay > .modal-content.shift-form-modal {
+    display: flex;
+    flex-direction: column;
+    max-height: min(85vh, calc(100dvh - var(--dock-clearance, 7.5rem) - 2rem));
 }

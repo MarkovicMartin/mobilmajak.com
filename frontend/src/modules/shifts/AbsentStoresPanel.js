@@ -1,5 +1,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import CameraBeacon from '../../components/CameraBeacon';
+import { formatPragueClock, formatPragueEventAt } from '../../utils/pragueDateTime';
 import './AbsentStoresPanel.css';
+
+function motionToCamera(motion) {
+    if (!motion?.in_pilot) return null;
+    return {
+        in_pilot: true,
+        active: motion.status === 'active',
+    };
+}
 
 function AbsentStoresPanel() {
     const [data, setData] = useState(null);
@@ -29,38 +39,21 @@ function AbsentStoresPanel() {
         return () => clearInterval(id);
     }, [load]);
 
-    const formatCheckedAt = (iso) => {
-        if (!iso) return '';
-        return new Date(iso).toLocaleString('cs-CZ', {
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-        });
-    };
+    const formatCheckedAt = (iso) => formatPragueClock(iso);
 
-    const formatEventAt = (iso) => {
-        if (!iso) return '';
-        return new Date(iso).toLocaleString('cs-CZ', {
-            day: '2-digit',
-            month: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-        });
-    };
-
-    const motionBadge = (motion) => {
-        if (!motion?.in_pilot) return null;
-        const cls =
-            motion.status === 'active'
-                ? 'motion-badge motion-active'
-                : motion.status === 'quiet'
-                    ? 'motion-badge motion-quiet'
-                    : 'motion-badge motion-unknown';
-        const icon = motion.status === 'active' ? '🟢' : motion.status === 'quiet' ? '⚪' : '❓';
+    const motionBeacon = (motion) => {
+        const camera = motionToCamera(motion);
+        if (!camera) return null;
+        const lastAt = motion.last_event_at ? formatPragueEventAt(motion.last_event_at) : '';
+        const title = lastAt ? `Poslední signál: ${lastAt}` : undefined;
         return (
-            <span className={cls} title={motion.last_event_at ? `Poslední signál: ${motion.last_event_at}` : ''}>
-                {icon} {motion.label}
+            <span className="store-motion-row">
+                <CameraBeacon camera={camera} title={title} />
+                <span
+                    className={`motion-label motion-label--${motion.status || 'unknown'}`}
+                >
+                    {motion.label}
+                </span>
             </span>
         );
     };
@@ -75,7 +68,7 @@ function AbsentStoresPanel() {
             <ul className="store-camera-events">
                 {events.map((ev) => (
                     <li key={ev.id}>
-                        {formatEventAt(ev.cas)} — {ev.pohyb ? '🟢 pohyb' : '⚪ klid'}
+                        {formatPragueEventAt(ev.cas)} — {ev.pohyb ? 'pohyb' : 'klid'}
                         {ev.zdroj ? ` (${ev.zdroj})` : ''}
                     </li>
                 ))}
@@ -231,7 +224,7 @@ function AbsentStoresPanel() {
                                     </span>
                                 </div>
 
-                                {motionBadge(store.motion)}
+                                {motionBeacon(store.motion)}
 
                                 {renderShiftRoster(store)}
 
@@ -255,7 +248,7 @@ function AbsentStoresPanel() {
                             <li key={store.prodejna_id} className="camera-pilot-item">
                                 <div className="camera-pilot-head">
                                     <strong>{store.prodejna_nazev}</strong>
-                                    {motionBadge(store.motion)}
+                                    {motionBeacon(store.motion)}
                                 </div>
                                 {renderCameraEvents(store)}
                             </li>

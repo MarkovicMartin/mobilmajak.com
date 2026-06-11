@@ -1,108 +1,193 @@
-.modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.6);
-    display: flex;
-    justify-content: center;
-    z-index: 1000;
+/* Jednotlivá směna – modal nad dockem (z-index v Modals.css) */
+
+.shift-form-modal {
+    width: min(480px, 92vw);
+    max-width: 480px;
+    padding: 0;
+    overflow: hidden;
 }
 
-.modal-content {
-    background: var(--bg-card);
-    border-radius: 12px;
-    padding: 30px;
-    max-width: 500px;
-    width: 90%;
-    max-height: min(90vh, calc(100dvh - 24px));
-    overflow-y: auto;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+.shift-form-header {
+    padding: 14px 18px;
+    background: linear-gradient(135deg, var(--brand-navy, #1e40af) 0%, var(--brand-navy-hover, #2563eb) 100%);
+    border-bottom: none;
+    color: #fff;
 }
 
-.modal-content h3 {
-    margin: 0 0 20px 0;
-    color: #333;
-    font-size: 20px;
-}
-
-.form-group {
-    margin-bottom: 20px;
-}
-
-.form-group label {
-    display: block;
-    margin-bottom: 8px;
+.shift-form-header h3 {
+    margin: 0;
+    font-size: 1.05rem;
     font-weight: 600;
-    color: #333;
+    color: #fff;
 }
 
-.form-group input,
-.form-group select,
-.form-group textarea {
-    width: 100%;
-    padding: 10px 15px;
-    border: 2px solid #ddd;
+.shift-form-header .modal-close {
+    color: #fff;
+    opacity: 0.85;
+    width: 32px;
+    height: 32px;
     border-radius: 8px;
-    font-size: 14px;
-    transition: border-color 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.form-group input:focus,
-.form-group select:focus,
-.form-group textarea:focus {
+.shift-form-header .modal-close:hover {
+    opacity: 1;
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.shift-form-shell {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.shift-form-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 16px 18px;
+}
+
+.shift-form-body .form-group {
+    margin-bottom: 14px;
+}
+
+.shift-form-body .form-group:last-child {
+    margin-bottom: 0;
+}
+
+.shift-form-body .form-group label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 600;
+    font-size: 0.88rem;
+    color: var(--text-label, var(--text-primary));
+}
+
+.shift-form-body .form-group input,
+.shift-form-body .form-group select,
+.shift-form-body .form-group textarea {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border-input, #e2e8f0);
+    border-radius: 10px;
+    background: var(--bg-input, #fff);
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 0.9rem;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.shift-form-body .form-group select {
+    appearance: none;
+    -webkit-appearance: none;
+    padding-right: 2rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.65rem center;
+    background-size: 1rem;
+    cursor: pointer;
+}
+
+.shift-form-body .form-group input:focus,
+.shift-form-body .form-group select:focus,
+.shift-form-body .form-group textarea:focus {
     outline: none;
-    border-color: #007bff;
-    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+    border-color: var(--brand-navy, #2563eb);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-navy, #2563eb) 14%, transparent);
 }
 
-.form-group textarea {
-    min-height: 80px;
+.shift-form-body .form-group textarea {
+    min-height: 72px;
     resize: vertical;
+}
+
+.shift-form-body .form-group .react-datepicker-wrapper {
+    display: block;
+    width: 100%;
+}
+
+.shift-form-body .analytics-date-picker-input {
+    width: 100%;
+    max-width: none;
+    box-sizing: border-box;
+    height: 42px;
+    padding: 0 12px;
+    border: 1px solid var(--border-input, #e2e8f0);
+    border-radius: 10px;
+    font-size: 0.9rem;
+}
+
+.shift-form-body input[type="time"] {
+    height: 42px;
+    color-scheme: light;
 }
 
 .form-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 15px;
+    gap: 12px;
 }
 
-.form-actions {
+.form-row .form-group {
+    margin-bottom: 0;
+}
+
+.shift-form-actions {
     display: flex;
-    gap: 15px;
+    gap: 10px;
     justify-content: flex-end;
-    margin-top: 30px;
+    flex-shrink: 0;
+    padding: 14px 18px;
+    background: var(--bg-inset, #f8fafc);
+    border-top: 1px solid var(--border-subtle, #e5e7eb);
+}
+
+.vacation-balance-banner {
+    margin-bottom: 14px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--brand-navy, #2563eb) 10%, var(--bg-card));
+    border: 1px solid color-mix(in srgb, var(--brand-navy, #2563eb) 22%, transparent);
+    font-size: 0.85rem;
+    line-height: 1.45;
+    color: var(--text-primary);
 }
 
 .btn-cancel,
 .btn-submit {
-    padding: 10px 20px;
+    padding: 10px 18px;
     border: none;
-    border-radius: 8px;
+    border-radius: 10px;
     cursor: pointer;
-    font-size: 14px;
+    font-size: 0.9rem;
     font-weight: 600;
-    transition: all 0.3s ease;
+    transition: opacity 0.15s ease, transform 0.1s ease;
 }
 
 .btn-cancel {
-    background: #6c757d;
-    color: white;
+    background: var(--bg-card, #fff);
+    color: var(--text-primary);
+    border: 1px solid var(--border-input, #e2e8f0);
 }
 
 .btn-cancel:hover {
-    background: #545b62;
+    background: var(--bg-inset, #f1f5f9);
 }
 
 .btn-submit {
-    background: linear-gradient(135deg, #007bff, #0056b3);
-    color: white;
+    background: linear-gradient(135deg, var(--brand-navy, #1e40af) 0%, var(--brand-navy-hover, #2563eb) 100%);
+    color: #fff;
 }
 
 .btn-submit:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(0, 123, 255, 0.4);
+    opacity: 0.92;
 }
 
 .btn-submit:disabled {
@@ -111,22 +196,33 @@
 }
 
 .error-message {
-    color: #dc3545;
-    background: #f8d7da;
-    padding: 10px 15px;
-    border-radius: 6px;
-    margin-bottom: 15px;
-    font-size: 14px;
+    color: var(--accent-danger, #dc3545);
+    background: color-mix(in srgb, var(--accent-danger, #dc3545) 10%, var(--bg-card));
+    padding: 10px 12px;
+    border-radius: 10px;
+    margin-top: 12px;
+    font-size: 0.88rem;
 }
 
 .existing-shift-info {
-    margin-top: 12px;
+    margin-top: 10px;
     padding: 10px;
-    background: rgba(255, 255, 255, 0.8);
-    border-radius: 6px;
-    border: 1px solid #dc3545;
-    font-size: 13px;
+    background: var(--bg-card);
+    border-radius: 8px;
+    border: 1px solid color-mix(in srgb, var(--accent-danger, #dc3545) 35%, transparent);
+    font-size: 0.85rem;
     line-height: 1.4;
+}
+
+.time-info {
+    background: color-mix(in srgb, var(--brand-navy, #2563eb) 8%, var(--bg-card));
+    color: var(--brand-navy, #1e40af);
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-size: 0.8rem;
+    margin-bottom: 14px;
+    text-align: center;
+    border: 1px solid color-mix(in srgb, var(--brand-navy, #2563eb) 18%, transparent);
 }
 
 .attendance-panel {
@@ -141,13 +237,28 @@
     margin-top: 20px;
 }
 
-.time-info {
-    background: linear-gradient(135deg, #e3f2fd, #bbdefb);
-    color: #1565c0;
-    padding: 8px 12px;
-    border-radius: 6px;
-    font-size: 12px;
-    margin-bottom: 15px;
-    text-align: center;
-    border: 1px solid #90caf9;
-} 
+.dark-mode .shift-form-body input[type="time"] {
+    color-scheme: dark;
+}
+
+@media (max-width: 520px) {
+    .form-row {
+        grid-template-columns: 1fr;
+        gap: 14px;
+    }
+
+    .form-row .form-group {
+        margin-bottom: 0;
+    }
+
+    .shift-form-actions {
+        flex-direction: column-reverse;
+    }
+
+    .shift-form-actions .btn-cancel,
+    .shift-form-actions .btn-submit {
+        width: 100%;
+        min-height: 44px;
+        font-size: 16px;
+    }
+}

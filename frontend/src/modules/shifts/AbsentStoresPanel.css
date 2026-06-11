@@ -108,6 +108,36 @@
     color: #94a3b8;
 }
 
+.store-motion-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin: 4px 0 8px;
+}
+
+.store-motion-row .camera-beacon-icon {
+    width: 32px;
+    height: 32px;
+}
+
+.motion-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #475569;
+}
+
+.motion-label--active {
+    color: #166534;
+}
+
+.motion-label--quiet {
+    color: #64748b;
+}
+
+.motion-label--unknown {
+    color: #92400e;
+}
+
 .motion-badge {
     display: inline-block;
     margin-left: 8px;

@@ -5,53 +5,21 @@ import { taskAPI, storeAPI } from '../../services/api';
 import { AnalyticsDateInput } from '../../components/AnalyticsDateRange';
 import { useTasks } from '../../hooks/useTasks';
 import TaskDetailPanel from './TaskDetailPanel';
+import TaskEditForm from './TaskEditForm';
 import TaskUrgencyBadge from './TaskUrgencyBadge';
 import TaskStatusIcon from '../../components/TaskStatusIcon';
+import { TaskAssigneeOptions } from './TaskAssigneeOptions';
 import './TasksModule.css';
 
-const ASSIGNEE_GROUPS = [
-    { key: 'domaci', label: 'Domácí' },
-    { key: 'brigadnik', label: 'Brigádníci' },
-    { key: 'ostatni', label: 'Ostatní' },
-];
-
-function groupAssignees(assignees) {
-    const grouped = { domaci: [], brigadnik: [], ostatni: [] };
-    for (const a of assignees) {
-        const key = grouped[a.skupina] ? a.skupina : 'ostatni';
-        grouped[key].push(a);
-    }
-    return grouped;
-}
-
-function AssigneeOptions({ assignees, placeholder }) {
-    const grouped = useMemo(() => groupAssignees(assignees), [assignees]);
-    return (
-        <>
-            <option value="">{placeholder}</option>
-            {ASSIGNEE_GROUPS.map(({ key, label }) =>
-                grouped[key].length > 0 ? (
-                    <optgroup key={key} label={label}>
-                        {grouped[key].map((a) => (
-                            <option key={a.id} value={a.id}>
-                                {a.jmeno_plne}
-                            </option>
-                        ))}
-                    </optgroup>
-                ) : null
-            )}
-        </>
-    );
-}
-
 const TasksManageModule = () => {
-    const { user, isAdmin } = useAuth();
+    const { user, isAdmin, canManageTasks } = useAuth();
     const [stores, setStores] = useState([]);
     const [assignees, setAssignees] = useState([]);
     const [filterStav, setFilterStav] = useState('vse');
     const [filterStore, setFilterStore] = useState('');
     const [filterAssignee, setFilterAssignee] = useState('');
     const [selected, setSelected] = useState(null);
+    const [editing, setEditing] = useState(false);
     const [form, setForm] = useState({
         ukol: '',
         priorita: 'stredni',
@@ -208,7 +176,7 @@ const TasksManageModule = () => {
                         value={filterAssignee}
                         onChange={(e) => setFilterAssignee(e.target.value)}
                     >
-                        <AssigneeOptions assignees={assignees} placeholder="Všichni zaměstnanci" />
+                        <TaskAssigneeOptions assignees={assignees} placeholder="Všichni zaměstnanci" />
                     </select>
                 </div>
             </div>
@@ -242,7 +210,7 @@ const TasksManageModule = () => {
                             onChange={(e) => setForm({ ...form, id_prodejce_ukol: e.target.value })}
                             disabled={!form.id_prodejny}
                         >
-                            <AssigneeOptions assignees={assignees} placeholder="Přiřadit…" />
+                            <TaskAssigneeOptions assignees={assignees} placeholder="Přiřadit…" />
                         </select>
                         <select
                             className="task-select task-select--prio"
@@ -282,8 +250,8 @@ const TasksManageModule = () => {
                         <div
                             key={t.id}
                             className={`tasks-list-item ${selected?.id === t.id ? 'selected' : ''}`}
-                            onClick={() => setSelected(t)}
-                            onKeyDown={(e) => e.key === 'Enter' && setSelected(t)}
+                            onClick={() => { setSelected(t); setEditing(false); }}
+                            onKeyDown={(e) => e.key === 'Enter' && (setSelected(t), setEditing(false))}
                             role="button"
                             tabIndex={0}
                         >
@@ -305,16 +273,41 @@ const TasksManageModule = () => {
                     ))}
                 </div>
                 <div>
-                    <TaskDetailPanel
-                        task={selected}
-                        canEdit
-                        showMarkRead={false}
-                        onUpdate={(u) => {
-                            setSelected(u);
-                            update(u.id, u, { merge: true });
-                        }}
-                    />
-                    {selected && (
+                    {selected && editing && canManageTasks() ? (
+                        <TaskEditForm
+                            task={selected}
+                            storeOptions={isAdmin() ? stores : vedouciStores}
+                            storeLocked={storeLocked}
+                            onSaved={(u) => {
+                                setSelected(u);
+                                setEditing(false);
+                                update(u.id, u, { merge: true });
+                                load(listParams);
+                            }}
+                            onCancel={() => setEditing(false)}
+                        />
+                    ) : (
+                        <TaskDetailPanel
+                            task={selected}
+                            canEdit
+                            showMarkRead={false}
+                            onUpdate={(u) => {
+                                setSelected(u);
+                                update(u.id, u, { merge: true });
+                            }}
+                        />
+                    )}
+                    {selected && canManageTasks() && !editing && (
+                        <button
+                            type="button"
+                            className="btn-outline"
+                            style={{ marginTop: '0.75rem', marginRight: '0.5rem' }}
+                            onClick={() => setEditing(true)}
+                        >
+                            Upravit úkol
+                        </button>
+                    )}
+                    {selected && !editing && (
                         <button
                             type="button"
                             className="btn-outline"
