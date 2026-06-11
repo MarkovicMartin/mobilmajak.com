@@ -21,10 +21,17 @@ def local_now():
 
 
 def format_local_hm(dt):
-    """Čas příchodu/odchodu v Europe/Prague pro API."""
+    """Čas příchodu/odchodu v Europe/Prague pro API (HH:MM)."""
     if not dt:
         return None
     return timezone.localtime(dt).strftime('%H:%M')
+
+
+def format_local_iso(dt):
+    """ISO čas v Europe/Prague pro API (s offsetem)."""
+    if not dt:
+        return None
+    return timezone.localtime(dt).isoformat()
 
 
 def auto_close_cutoff(datum):

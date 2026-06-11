@@ -1,12 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { profileAPI } from '../../services/api';
+import { PageHeader, Tabs } from '../../components/ui';
 import './ProfileModule.css';
 import ProfileInfo from './ProfileInfo';
 import ProfileAnalytics from './ProfileAnalytics';
 import ProfileCalendar from './ProfileCalendar';
 import ProfileTasks from './ProfileTasks';
+
+const PROFILE_TABS = [
+    { id: 'calendar', label: 'Můj kalendář', icon: <i className="fas fa-calendar" aria-hidden="true" /> },
+    { id: 'tasks', label: 'Moje úkoly', icon: <i className="fas fa-clipboard-list" aria-hidden="true" /> },
+    { id: 'analytics', label: 'Moje výsledky', icon: <i className="fas fa-chart-line" aria-hidden="true" /> },
+    { id: 'info', label: 'Osobní údaje', icon: <i className="fas fa-user" aria-hidden="true" /> },
+];
 
 const ProfileModule = () => {
     const { user: authUser } = useAuth();
@@ -17,6 +25,8 @@ const ProfileModule = () => {
     const [profileUser, setProfileUser] = useState(null);
     const [profileLoading, setProfileLoading] = useState(true);
     const [profileError, setProfileError] = useState(false);
+
+    const tabs = useMemo(() => PROFILE_TABS, []);
 
     useEffect(() => {
         if (location.state?.profileTab) {
@@ -59,48 +69,15 @@ const ProfileModule = () => {
 
     return (
         <div className="profile-module">
-            <div className="profile-tabs" role="tablist" aria-label="Sekce profilu">
-                <button
-                    type="button"
-                    role="tab"
-                    aria-selected={activeTab === 'calendar'}
-                    className={`tab-button ${activeTab === 'calendar' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('calendar')}
-                >
-                    <i className="fas fa-calendar" aria-hidden="true" />
-                    Můj kalendář
-                </button>
-                <button
-                    type="button"
-                    role="tab"
-                    aria-selected={activeTab === 'tasks'}
-                    className={`tab-button ${activeTab === 'tasks' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('tasks')}
-                >
-                    <i className="fas fa-clipboard-list" aria-hidden="true" />
-                    Moje úkoly
-                </button>
-                <button
-                    type="button"
-                    role="tab"
-                    aria-selected={activeTab === 'analytics'}
-                    className={`tab-button ${activeTab === 'analytics' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('analytics')}
-                >
-                    <i className="fas fa-chart-line" aria-hidden="true" />
-                    Moje výsledky
-                </button>
-                <button
-                    type="button"
-                    role="tab"
-                    aria-selected={activeTab === 'info'}
-                    className={`tab-button ${activeTab === 'info' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('info')}
-                >
-                    <i className="fas fa-user" aria-hidden="true" />
-                    Osobní údaje
-                </button>
-            </div>
+            <PageHeader title="Můj profil" />
+
+            <Tabs
+                tabs={tabs}
+                activeId={activeTab}
+                onTabChange={setActiveTab}
+                ariaLabel="Sekce profilu"
+                className="profile-module-tabs"
+            />
 
             <div className="profile-content">
                 {activeTab === 'calendar' && <ProfileCalendar />}

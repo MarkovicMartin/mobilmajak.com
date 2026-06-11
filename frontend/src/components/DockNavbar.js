@@ -8,23 +8,11 @@ import { taskAPI } from '../services/api';
 import { useUnreadPoll } from '../hooks/useUnreadPoll';
 import { springHover } from '../constants/motion';
 import './DockNavbar.css';
-import '../modules/tasks/TasksModule.css';
 
-export const NAV_ITEMS = [
-    { sectionKey: 'main', label: 'Domů', path: '/', adminOnly: false, icon: 'fa-home' },
-    { sectionKey: 'news', label: 'Novinky', path: '/news', adminOnly: false, icon: 'fa-newspaper' },
-    { sectionKey: 'analytics', label: 'Analytika', path: '/analytics', adminOnly: true, icon: 'fa-chart-bar' },
-    { sectionKey: 'plans', label: 'Plány', path: '/plans', adminOnly: true, icon: 'fa-tasks' },
-    { sectionKey: 'coaching', label: 'Výkony', path: '/coaching', managerOnly: true, icon: 'fa-user-check' },
-    { sectionKey: 'shifts', label: 'Směny', path: '/shifts', adminOnly: false, icon: 'fa-calendar-alt' },
-    { sectionKey: 'leaderboard', label: 'Žebříček', path: '/leaderboard', adminOnly: false, icon: 'fa-trophy' },
-    { sectionKey: 'access', label: 'Přístupy', path: '/access', adminOnly: false, icon: 'fa-key' },
-];
+import { NAV_ITEMS, isNavActive } from '../config/navigation';
 
-export const isNavActive = (path, locationPath) => {
-    if (path === '/') return locationPath === '/';
-    return locationPath === path || locationPath.startsWith(path + '/');
-};
+/** @deprecated Použij config/navigation.js – ponecháno pro zpětnou kompatibilitu. */
+export { NAV_ITEMS, isNavActive };
 
 const DockNavbar = ({
     user,

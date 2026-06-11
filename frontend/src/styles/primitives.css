@@ -1,0 +1,138 @@
+/**
+ * V2 UI primitiva – tlačítka, vstupy, karty, badge.
+ */
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-4);
+    font-family: var(--font-family-base);
+    font-size: var(--text-sm);
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--line-height-normal);
+    border-radius: var(--radius-md);
+    border: 1px solid transparent;
+    cursor: pointer;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background-color var(--transition-base),
+        color var(--transition-base),
+        border-color var(--transition-base),
+        box-shadow var(--transition-base),
+        transform var(--transition-fast);
+}
+
+.btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.btn--primary {
+    background: var(--brand-pink);
+    color: var(--text-inverse);
+    border-color: var(--brand-pink);
+}
+
+.btn--primary:hover:not(:disabled) {
+    background: var(--brand-pink-hover);
+    border-color: var(--brand-pink-hover);
+}
+
+.btn--secondary {
+    background: var(--brand-navy);
+    color: var(--text-inverse);
+    border-color: var(--brand-navy);
+}
+
+.btn--secondary:hover:not(:disabled) {
+    background: var(--brand-navy-hover);
+    border-color: var(--brand-navy-hover);
+}
+
+.btn--ghost {
+    background: transparent;
+    color: var(--text-primary);
+    border-color: var(--border-primary);
+}
+
+.btn--ghost:hover:not(:disabled) {
+    background: var(--bg-tertiary);
+}
+
+.btn--sm {
+    padding: var(--space-1) var(--space-3);
+    font-size: var(--text-xs);
+}
+
+.btn--lg {
+    padding: var(--space-3) var(--space-5);
+    font-size: var(--text-base);
+}
+
+.input,
+.label {
+    font-family: var(--font-family-base);
+}
+
+.label {
+    display: block;
+    margin-bottom: var(--space-1);
+    font-size: var(--text-sm);
+    font-weight: var(--font-weight-medium);
+    color: var(--text-label);
+}
+
+.input {
+    width: 100%;
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--text-sm);
+    line-height: var(--line-height-normal);
+    color: var(--text-primary);
+    background: var(--bg-input);
+    border: 1px solid var(--border-input);
+    border-radius: var(--radius-md);
+}
+
+.input:focus {
+    outline: none;
+    border-color: var(--border-focus);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--border-focus) 20%, transparent);
+}
+
+.input::placeholder {
+    color: var(--text-muted);
+}
+
+.card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
+    padding: var(--space-5);
+}
+
+.badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.25rem;
+    padding: 0 var(--space-2);
+    font-size: var(--text-xs);
+    font-weight: var(--font-weight-bold);
+    line-height: 1.4;
+    border-radius: 999px;
+    background: var(--brand-pink);
+    color: var(--text-inverse);
+}
+
+.badge--muted {
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+}
+
+.badge--navy {
+    background: var(--brand-navy);
+    color: var(--text-inverse);
+}

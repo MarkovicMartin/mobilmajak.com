@@ -1,0 +1,31 @@
+/* V2 doplněk k Modals.css – tokeny místo hardcoded hodnot tam, kde je to snadné */
+.ui-modal__content {
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-secondary);
+}
+
+.ui-modal__header {
+    background: linear-gradient(135deg, var(--brand-navy) 0%, var(--brand-navy-hover) 100%);
+}
+
+.ui-modal__title {
+    color: var(--text-inverse);
+}
+
+.ui-modal__close {
+    color: var(--text-inverse);
+}
+
+.ui-modal__close:hover {
+    background: color-mix(in srgb, var(--text-inverse) 15%, transparent);
+}
+
+.ui-modal__body {
+    background: var(--bg-card);
+    color: var(--text-primary);
+}
+
+.ui-modal__footer {
+    background: var(--bg-inset);
+    border-top: 1px solid var(--border-secondary);
+}

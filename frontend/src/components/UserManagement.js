@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Modal from './Modal';
+import { PageHeader } from './ui';
 import { useAuth } from '../context/AuthContext';
 import { userAPI, storeAPI } from '../services/api';
 import { prepareUserSubmitData, formatUserApiError, estimateNextUserId } from '../utils/userForm';
@@ -352,18 +353,21 @@ const UserManagement = () => {
 
     return (
         <div className="user-management-container">
-            <div className="user-management-header">
-                <h1>Správa uživatelů</h1>
-                <button
-                    className="add-user-btn"
-                    onClick={() => {
-                        setFormError(null);
-                        setShowAddForm(true);
-                    }}
-                >
-                    + Přidat uživatele
-                </button>
-            </div>
+            <PageHeader
+                title="Správa uživatelů"
+                actions={(
+                    <button
+                        type="button"
+                        className="btn btn--primary add-user-btn"
+                        onClick={() => {
+                            setFormError(null);
+                            setShowAddForm(true);
+                        }}
+                    >
+                        Přidat uživatele
+                    </button>
+                )}
+            />
 
             {error && (
                 <div className="error-message">

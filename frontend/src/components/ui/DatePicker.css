@@ -1,0 +1,27 @@
+.ui-date-picker__input {
+    max-width: 12.5rem;
+    min-width: 8.5rem;
+}
+
+.ui-date-picker__popper {
+    z-index: 1500 !important;
+}
+
+.react-datepicker__day.ui-date-picker__day-has-data:not(.react-datepicker__day--selected):not(
+        .react-datepicker__day--keyboard-selected
+    ) {
+    background-color: color-mix(in srgb, var(--accent-success) 22%, transparent);
+    color: var(--accent-success);
+    border-radius: var(--radius-sm);
+    font-weight: var(--font-weight-semibold);
+}
+
+.react-datepicker__day.ui-date-picker__day-has-data:hover {
+    background-color: color-mix(in srgb, var(--accent-success) 32%, transparent);
+}
+
+.react-datepicker__day--selected.ui-date-picker__day-has-data,
+.react-datepicker__day--keyboard-selected.ui-date-picker__day-has-data {
+    background-color: var(--brand-navy);
+    color: var(--text-inverse);
+}

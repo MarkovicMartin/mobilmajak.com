@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { categoryAPI } from '../services/api';
+import { PageHeader } from './ui';
 import './CategoryManager.css';
 
 /** Světlý text na tmavém štítku, navy na světlém (žlutá, světle růžová…). */
@@ -97,15 +98,18 @@ const CategoryManager = () => {
 
     return (
         <div className="category-manager">
-            <div className="category-manager-header">
-                <h2>Správa kategorií</h2>
-                <button 
-                    className="add-category-btn"
-                    onClick={() => setShowForm(!showForm)}
-                >
-                    {showForm ? 'Zrušit' : '+ Přidat kategorii'}
-                </button>
-            </div>
+            <PageHeader
+                title="Správa kategorií"
+                actions={(
+                    <button
+                        type="button"
+                        className={`btn ${showForm ? 'btn--secondary' : 'btn--primary'} add-category-btn`}
+                        onClick={() => setShowForm(!showForm)}
+                    >
+                        {showForm ? 'Zrušit' : 'Přidat kategorii'}
+                    </button>
+                )}
+            />
 
             {showForm && (
                 <form className="category-form" onSubmit={handleSubmit}>

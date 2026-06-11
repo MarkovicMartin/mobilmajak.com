@@ -90,7 +90,12 @@ function Ensure-PythonVenv {
         if (-not $py) { throw 'Python not in PATH. Install Python 3.10+.' }
 
         if ($py.Name -eq 'py') {
-            & py -3 -m venv $VenvDir
+            $py312 = & py -3.12 -c "import sys; print(sys.version_info >= (3,12))" 2>$null
+            if ($py312 -eq 'True') {
+                & py -3.12 -m venv $VenvDir
+            } else {
+                & py -3 -m venv $VenvDir
+            }
         } else {
             & python -m venv $VenvDir
         }

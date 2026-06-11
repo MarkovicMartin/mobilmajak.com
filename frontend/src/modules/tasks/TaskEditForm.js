@@ -1,7 +1,20 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { taskAPI } from '../../services/api';
 import { AnalyticsDateInput } from '../../components/AnalyticsDateRange';
-import { TaskAssigneeOptions } from './TaskAssigneeOptions';
+import { Select } from '../../components/ui';
+import { buildAssigneeSelectOptions } from './TaskAssigneeOptions';
+
+const PRIORITY_OPTIONS = [
+    { value: 'nizka', label: 'Nízká' },
+    { value: 'stredni', label: 'Střední' },
+    { value: 'vysoka', label: 'Vysoká' },
+];
+
+const STATUS_OPTIONS = [
+    { value: 'novy', label: 'Nový' },
+    { value: 'v_procesu', label: 'V procesu' },
+    { value: 'hotovo', label: 'Hotovo' },
+];
 
 function deadlineToInput(deadline) {
     if (!deadline) return '';
@@ -33,6 +46,22 @@ const TaskEditForm = ({
     const [assignees, setAssignees] = useState([]);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
+
+    const storeSelectOptions = useMemo(
+        () => [
+            { value: '', label: 'Pobočka…' },
+            ...storeOptions.map((s) => ({
+                value: String(s.id),
+                label: s.nazev_kratkiy || s.nazev,
+            })),
+        ],
+        [storeOptions],
+    );
+
+    const assigneeSelectOptions = useMemo(
+        () => buildAssigneeSelectOptions(assignees, 'Přiřadit…'),
+        [assignees],
+    );
 
     useEffect(() => {
         setForm({
@@ -107,52 +136,43 @@ const TaskEditForm = ({
             />
             {isPrirazeny && (
                 <div className="task-form-row task-form-row--meta">
-                    <select
+                    <Select
                         className="task-select"
+                        options={storeSelectOptions}
                         value={form.id_prodejny}
                         disabled={storeLocked}
-                        onChange={(e) => setForm({
+                        onChange={(id_prodejny) => setForm({
                             ...form,
-                            id_prodejny: e.target.value,
+                            id_prodejny,
                             id_prodejce_ukol: '',
                         })}
-                    >
-                        <option value="">Pobočka…</option>
-                        {storeOptions.map((s) => (
-                            <option key={s.id} value={s.id}>
-                                {s.nazev_kratkiy || s.nazev}
-                            </option>
-                        ))}
-                    </select>
-                    <select
+                        placeholder="Pobočka…"
+                    />
+                    <Select
                         className="task-select"
+                        options={assigneeSelectOptions}
                         value={form.id_prodejce_ukol}
                         disabled={!form.id_prodejny}
-                        onChange={(e) => setForm({ ...form, id_prodejce_ukol: e.target.value })}
-                    >
-                        <TaskAssigneeOptions assignees={assignees} placeholder="Přiřadit…" />
-                    </select>
+                        onChange={(id_prodejce_ukol) => setForm({ ...form, id_prodejce_ukol })}
+                        placeholder="Přiřadit…"
+                    />
                 </div>
             )}
             <div className="task-form-row task-form-row--meta">
-                <select
+                <Select
                     className="task-select task-select--prio"
+                    options={PRIORITY_OPTIONS}
                     value={form.priorita}
-                    onChange={(e) => setForm({ ...form, priorita: e.target.value })}
-                >
-                    <option value="nizka">Nízká</option>
-                    <option value="stredni">Střední</option>
-                    <option value="vysoka">Vysoká</option>
-                </select>
-                <select
+                    onChange={(priorita) => setForm({ ...form, priorita })}
+                    placeholder="Priorita"
+                />
+                <Select
                     className="task-select"
+                    options={STATUS_OPTIONS}
                     value={form.stav}
-                    onChange={(e) => setForm({ ...form, stav: e.target.value })}
-                >
-                    <option value="novy">Nový</option>
-                    <option value="v_procesu">V procesu</option>
-                    <option value="hotovo">Hotovo</option>
-                </select>
+                    onChange={(stav) => setForm({ ...form, stav })}
+                    placeholder="Stav"
+                />
             </div>
             <div className="task-form-row task-form-row--deadline">
                 <div className="task-date-field">
@@ -172,10 +192,10 @@ const TaskEditForm = ({
             </div>
             {error && <p className="task-edit-error">{error}</p>}
             <div className="task-edit-actions">
-                <button type="submit" className="btn-primary" disabled={saving}>
+                <button type="submit" className="btn btn--primary" disabled={saving}>
                     {saving ? 'Ukládám…' : 'Uložit změny'}
                 </button>
-                <button type="button" className="btn-outline" onClick={onCancel} disabled={saving}>
+                <button type="button" className="btn btn--ghost" onClick={onCancel} disabled={saving}>
                     Zrušit
                 </button>
             </div>

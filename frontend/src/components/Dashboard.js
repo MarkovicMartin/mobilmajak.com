@@ -2,7 +2,7 @@ import React, { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import DockNavbar from './DockNavbar';
+import AppShell from './shell/AppShell';
 import AppToast from './AppToast';
 import UxFrictionMonitor from './UxFrictionMonitor';
 import ProfileModule from '../modules/profile/ProfileModule';
@@ -35,19 +35,18 @@ const Dashboard = () => {
     const { isDarkMode, toggleTheme } = useTheme();
 
     return (
-        <div className="dashboard">
+        <>
             <AppToast />
             <UxFrictionMonitor />
-            <DockNavbar
+            <AppShell
                 user={user}
                 isAdmin={isAdmin}
                 canManageTasks={canManageTasks}
+                canAccessCoaching={canAccessCoaching}
                 logout={logout}
                 isDarkMode={isDarkMode}
                 toggleTheme={toggleTheme}
-            />
-
-            <main className="dashboard-main">
+            >
                 <Suspense fallback={<RouteFallback />}>
                     <Routes>
                         <Route path="/" element={ user?.role === 'ADMIN' ? (
@@ -61,7 +60,7 @@ const Dashboard = () => {
                         <Route path="/shifts" element={<ShiftsModule />} />
                         <Route path="/access" element={<AccessModule />} />
                         <Route path="/orders" element={<OrdersModule />} />
-                        <Route path="/plans" element={isAdmin() ? <PlansModule /> : <Navigate to="/" />} />
+                        <Route path="/plans/*" element={isAdmin() ? <PlansModule /> : <Navigate to="/" />} />
                         <Route path="/leaderboard" element={<LeaderboardModule />} />
                         <Route path="/profile" element={<ProfileModule />} />
                         <Route
@@ -85,8 +84,8 @@ const Dashboard = () => {
                         )}
                     </Routes>
                 </Suspense>
-            </main>
-        </div>
+            </AppShell>
+        </>
     );
 };
 

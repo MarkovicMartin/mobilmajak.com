@@ -10,6 +10,7 @@ import {
 } from 'recharts';
 import { coachingAPI } from '../../../services/api';
 import { formatMonthKeyLabel } from '../../analytics/sections/celkovaPeriodUtils';
+import { getChartTheme } from '../../../utils/chartTheme';
 
 const CategoryChart = ({ userId, kategorieKod, nazev, mesic, kanal = 'all' }) => {
     const [points, setPoints] = useState([]);
@@ -41,6 +42,7 @@ const CategoryChart = ({ userId, kategorieKod, nazev, mesic, kanal = 'all' }) =>
     }, [userId, kategorieKod, mesic, kanal]);
 
     if (!kategorieKod) return null;
+    const chartTheme = getChartTheme();
     const data = points.map((pt) => ({
         label: formatMonthKeyLabel(pt.month),
         value: Number(pt.value) || 0,
@@ -52,11 +54,17 @@ const CategoryChart = ({ userId, kategorieKod, nazev, mesic, kanal = 'all' }) =>
             {loading ? <p className="coaching-muted">Načítám…</p> : (
                 <ResponsiveContainer width="100%" height={220}>
                     <BarChart data={data}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="label" fontSize={11} />
-                        <YAxis fontSize={11} />
-                        <Tooltip />
-                        <Bar dataKey="value" fill="var(--accent, #2563eb)" radius={[4, 4, 0, 0]} />
+                        <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
+                        <XAxis dataKey="label" fontSize={11} tick={{ fill: chartTheme.tick }} />
+                        <YAxis fontSize={11} tick={{ fill: chartTheme.tick }} />
+                        <Tooltip
+                            contentStyle={{
+                                background: chartTheme.tooltip.background,
+                                border: `1px solid ${chartTheme.tooltip.border}`,
+                                color: chartTheme.tooltip.color,
+                            }}
+                        />
+                        <Bar dataKey="value" fill={chartTheme.colors[0]} radius={[4, 4, 0, 0]} />
                     </BarChart>
                 </ResponsiveContainer>
             )}

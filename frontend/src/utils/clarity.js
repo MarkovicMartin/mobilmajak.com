@@ -4,6 +4,7 @@
  */
 
 import { getAnalyticsSection } from '../modules/analytics/analyticsSections';
+import { PLANS_SECTIONS } from '../modules/plans/plansSections';
 
 const PROJECT_ID = (process.env.REACT_APP_CLARITY_PROJECT_ID || '').trim();
 const VISITOR_KEY = 'mm_clarity_vid';
@@ -15,6 +16,8 @@ const ROUTE_SCREEN = {
     '/news': 'news',
     '/access': 'access',
     '/plans': 'plans',
+    '/analytics': 'analytics',
+    '/coaching': 'coaching',
     '/leaderboard': 'leaderboard',
     '/profile': 'profile',
     '/tasks': 'tasks',
@@ -32,10 +35,12 @@ const ROUTE_LABEL = {
     '/news': 'Novinky',
     '/access': 'Přístupy',
     '/plans': 'Plány',
+    '/analytics': 'Analytika',
+    '/coaching': 'Výkony',
     '/leaderboard': 'Žebříček',
     '/profile': 'Profil',
-    '/tasks': 'Správa úkolů',
-    '/my-tickets': 'Moje tickety',
+    '/tasks': 'Úkoly',
+    '/my-tickets': 'Tickety',
     '/users': 'Uživatelé',
     '/categories': 'Kategorie',
     '/stores': 'Prodejny',
@@ -98,6 +103,10 @@ export function routeToScreen(pathname) {
         const section = pathname.replace(/^\/analytics\/?/, '').split('/')[0];
         return section ? `analytics:${section}` : 'analytics';
     }
+    if (pathname.startsWith('/coaching')) {
+        const section = pathname.replace(/^\/coaching\/?/, '').split('/')[0];
+        return section ? `coaching:${section}` : 'coaching';
+    }
     const base = pathname.split('/').filter(Boolean)[0];
     return ROUTE_SCREEN[`/${base}`] || base || 'unknown';
 }
@@ -110,6 +119,14 @@ export function routeToLabel(pathname) {
         const section = pathname.replace(/^\/analytics\/?/, '').split('/')[0];
         const meta = section ? getAnalyticsSection(section) : null;
         return meta?.label || (section ? `Analytika – ${section}` : 'Analytika');
+    }
+    if (pathname.startsWith('/coaching')) {
+        return ROUTE_LABEL['/coaching'];
+    }
+    if (pathname.startsWith('/plans')) {
+        const segment = pathname.replace(/^\/plans\/?/, '').split('/')[0];
+        const section = PLANS_SECTIONS.find((s) => s.path === segment);
+        return section ? `Plány – ${section.tabLabel}` : ROUTE_LABEL['/plans'];
     }
     const base = `/${pathname.split('/').filter(Boolean)[0]}`;
     return ROUTE_LABEL[base] || base.replace(/^\//, '');

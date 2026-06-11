@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import AccessList from './AccessList';
 import AccessForm from './AccessForm';
 import AccessFilter from './AccessFilter';
+import { PageHeader } from '../../components/ui';
 import { copyToClipboard, showCopySuccess, showCopyError } from '../../utils/clipboard';
 import './AccessModule.css';
 
@@ -296,20 +297,19 @@ const AccessModule = () => {
 
     return (
         <div className="access-module">
-            <div className="access-header">
-                <h2>🔐 Přístupy</h2>
-                <p className="access-description">
-                    Správa přístupů k webovým službám pro všechny prodejny
-                </p>
-                {canEdit && (
-                    <button 
-                        className="btn-primary"
+            <PageHeader
+                title="Přístupy"
+                subtitle="Správa přístupů k webovým službám pro všechny prodejny"
+                actions={canEdit ? (
+                    <button
+                        type="button"
+                        className="btn btn--primary"
                         onClick={handleCreateAccess}
                     >
-                        ➕ Přidat přístup
+                        Přidat přístup
                     </button>
-                )}
-            </div>
+                ) : null}
+            />
 
             {error && (
                 <div className="error-message">

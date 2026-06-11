@@ -213,7 +213,8 @@ def motion_detail_for_prodejna(prodejna_id, now=None, lookback_hours=16):
         ).order_by('cas')
     )
 
-    last_motion = next((e for e in reversed(events) if e.pohyb), None)
+    motion_events = [e for e in events if e.pohyb]
+    last_motion = motion_events[-1] if motion_events else None
     current_quiet_minutes = None
     if last_motion:
         mins = int((now - last_motion.cas).total_seconds() // 60)
@@ -221,34 +222,23 @@ def motion_detail_for_prodejna(prodejna_id, now=None, lookback_hours=16):
             current_quiet_minutes = mins
 
     quiet_periods = []
-    klid_events = [e for e in events if not e.pohyb]
-    for ke in klid_events:
-        next_motion = next((e for e in events if e.pohyb and e.cas > ke.cas), None)
-        end = next_motion.cas if next_motion else now
-        minutes = int((end - ke.cas).total_seconds() // 60)
-        if minutes >= MOTION_ACTIVE_MINUTES or (next_motion is None and minutes > 0):
-            quiet_periods.append({
-                'from': ke.cas.isoformat(),
-                'to': end.isoformat() if next_motion else None,
-                'minutes': minutes,
-                'ongoing': next_motion is None,
-            })
+    for i, me in enumerate(motion_events):
+        start = me.cas
+        if i + 1 < len(motion_events):
+            end = motion_events[i + 1].cas
+            ongoing = False
+        else:
+            end = now
+            ongoing = current_quiet_minutes is not None
 
-    if current_quiet_minutes is not None and not any(p.get('ongoing') for p in quiet_periods):
-        if last_motion:
+        minutes = int((end - start).total_seconds() // 60)
+        if minutes >= MOTION_ACTIVE_MINUTES:
             quiet_periods.append({
-                'from': last_motion.cas.isoformat(),
-                'to': None,
-                'minutes': current_quiet_minutes,
-                'ongoing': True,
+                'from': start.isoformat(),
+                'to': end.isoformat() if not ongoing else None,
+                'minutes': minutes,
+                'ongoing': ongoing,
             })
-    elif current_quiet_minutes is not None and not klid_events and last_motion:
-        quiet_periods.append({
-            'from': last_motion.cas.isoformat(),
-            'to': None,
-            'minutes': current_quiet_minutes,
-            'ongoing': True,
-        })
 
     quiet_periods.sort(key=lambda p: p['from'], reverse=True)
 

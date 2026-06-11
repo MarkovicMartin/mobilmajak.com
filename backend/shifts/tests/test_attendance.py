@@ -5,13 +5,21 @@ from django.test import TestCase
 from django.utils import timezone
 from rest_framework.test import APIClient
 
-from shifts.attendance_service import attendance_state_from_history, work_hours_from_history
+from shifts.attendance_service import (
+    attendance_state_from_history,
+    format_local_hm,
+    work_hours_from_history,
+)
 from shifts.models import Smena, SmenaDochazka
 from stores.models import Prodejna
 from users.models import WebUser
 
 
 class AttendanceServiceTests(TestCase):
+    def test_format_local_hm_from_utc(self):
+        dt = timezone.make_aware(datetime(2026, 6, 11, 8, 25))
+        self.assertEqual(format_local_hm(dt), '10:25')
+
     def test_compute_hours_closed_shift(self):
         base = timezone.make_aware(datetime(2026, 6, 9, 8, 0))
         history = [

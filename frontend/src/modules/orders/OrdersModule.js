@@ -1,10 +1,22 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import api from '../../services/api';
+import { PageHeader, Select, DateRangePicker } from '../../components/ui';
 import KanbanBoard from './KanbanBoard';
 import OrderForm from './OrderForm';
 import OrderDetail from './OrderDetail';
-import AnalyticsDateRange from '../../components/AnalyticsDateRange';
 import './OrdersModule.css';
+
+const STATUS_OPTIONS = [
+    { value: '', label: 'Všechny stavy' },
+    { value: 'nove', label: 'Nové' },
+    { value: 'objednano', label: 'Objednáno' },
+    { value: 'v_kosiku', label: 'V košíku' },
+    { value: 'predobjednano', label: 'Předobjednáno' },
+    { value: 'neni_skladem', label: 'Není skladem' },
+    { value: 'storno', label: 'Storno' },
+    { value: 'dorazilo_ceka', label: 'Dorazilo čeká na zákazníka' },
+    { value: 'hotovo', label: 'Hotovo' },
+];
 
 const OrdersModule = () => {
     const [kanbanData, setKanbanData] = useState({});
@@ -20,9 +32,23 @@ const OrdersModule = () => {
     });
     const [dashboardStats, setDashboardStats] = useState({});
 
-    const applyOrderDateRange = ({ start_date, end_date }) => {
-        setFilters(prev => ({ ...prev, date_from: start_date, date_to: end_date }));
-    };
+    const applyOrderDateRange = useCallback(({ start_date, end_date }) => {
+        setFilters((prev) => ({ ...prev, date_from: start_date, date_to: end_date }));
+    }, []);
+
+    const statsSummary = useMemo(() => (
+        <div className="orders-stats-summary">
+            <span className="orders-stat">
+                Celkem: <strong>{dashboardStats.total_orders || 0}</strong>
+            </span>
+            <span className="orders-stat">
+                Dnes: <strong>{dashboardStats.today_orders || 0}</strong>
+            </span>
+            <span className="orders-stat">
+                Týden: <strong>{dashboardStats.week_orders || 0}</strong>
+            </span>
+        </div>
+    ), [dashboardStats]);
 
     // Načtení dat pro kanban board
     const loadKanbanData = useCallback(async () => {
@@ -160,92 +186,72 @@ const OrdersModule = () => {
 
     return (
         <div className="orders-module">
-            {/* Header s tlačítky a statistikami */}
-            <div className="orders-header">
-                <div className="header-left">
-                    <h1>📦 Objednávky</h1>
-                    <div className="stats-summary">
-                        <span className="stat">
-                            📊 Celkem: <strong>{dashboardStats.total_orders || 0}</strong>
-                        </span>
-                        <span className="stat">
-                            🆕 Dnes: <strong>{dashboardStats.today_orders || 0}</strong>
-                        </span>
-                        <span className="stat">
-                            📅 Týden: <strong>{dashboardStats.week_orders || 0}</strong>
-                        </span>
-                    </div>
-                </div>
-                
-                <div className="header-right">
-                    <button 
-                        className="btn btn-primary"
-                        onClick={() => setShowForm(true)}
-                    >
-                        ➕ Nová objednávka
-                    </button>
-                    <button 
-                        className="btn btn-secondary"
-                        onClick={() => {
-                            loadKanbanData();
-                            loadDashboardStats();
-                        }}
-                        disabled={loading}
-                    >
-                        🔄 Obnovit
-                    </button>
-                </div>
-            </div>
+            <PageHeader
+                title="Objednávky"
+                actions={(
+                    <>
+                        <button
+                            type="button"
+                            className="btn btn--primary"
+                            onClick={() => setShowForm(true)}
+                        >
+                            Nová objednávka
+                        </button>
+                        <button
+                            type="button"
+                            className="btn btn--secondary"
+                            onClick={() => {
+                                loadKanbanData();
+                                loadDashboardStats();
+                            }}
+                            disabled={loading}
+                        >
+                            Obnovit
+                        </button>
+                    </>
+                )}
+            />
 
-            {/* Filtry */}
+            {statsSummary}
+
             <div className="filters-section">
                 <div className="filters">
                     <input
                         type="text"
-                        placeholder="🔍 Hledat podle jména, telefonu, telefonu..."
+                        placeholder="Hledat podle jména, telefonu, e-mailu…"
                         value={filters.search}
                         onChange={(e) => handleFilterChange('search', e.target.value)}
-                        className="filter-input"
+                        className="filter-input input"
                     />
-                    
-                    <select
+
+                    <Select
+                        options={STATUS_OPTIONS}
                         value={filters.status}
-                        onChange={(e) => handleFilterChange('status', e.target.value)}
-                        className="filter-select"
-                    >
-                        <option value="">Všechny stavy</option>
-                        <option value="nove">Nové</option>
-                        <option value="objednano">Objednáno</option>
-                        <option value="v_kosiku">V košíku</option>
-                        <option value="predobjednano">Předobjednáno</option>
-                        <option value="neni_skladem">Není skladem</option>
-                        <option value="storno">Storno</option>
-                        <option value="dorazilo_ceka">Dorazilo čeká na zákazníka</option>
-                        <option value="hotovo">Hotovo</option>
-                    </select>
-                    
-                    <AnalyticsDateRange
-                        variant="bare"
+                        onChange={(v) => handleFilterChange('status', v)}
+                        aria-label="Filtr stavu objednávky"
+                    />
+
+                    <DateRangePicker
+                        variant="inline"
                         startDate={filters.date_from}
                         endDate={filters.date_to}
                         onApply={applyOrderDateRange}
-                        inputClassName="filter-input"
                         showError={false}
                     />
-                    
-                    <button 
-                        className="btn btn-clear"
+
+                    <button
+                        type="button"
+                        className="btn btn--ghost btn--sm"
                         onClick={clearFilters}
                     >
-                        ✨ Vymazat filtry
+                        Vymazat filtry
                     </button>
                 </div>
             </div>
 
-            {/* Chybová hláška */}
             {error && (
                 <div className="error-message">
-                    ❌ {error}
+                    {error}
                 </div>
             )}
 

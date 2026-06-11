@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { storeAPI } from '../../services/api';
+import { PageHeader, Tabs, Select } from '../../components/ui';
 import ShiftCalendar from './ShiftCalendar';
 import ShiftForm from './ShiftForm';
 import BulkShiftForm from './BulkShiftForm';
@@ -10,7 +11,6 @@ import AttendancePanel from './AttendancePanel';
 import PayrollPanel from './PayrollPanel';
 import AttendanceLogPanel from './AttendanceLogPanel';
 import AbsentStoresPanel from './AbsentStoresPanel';
-import ModuleSubnav from '../../components/ModuleSubnav';
 import { SHIFTS_SECTIONS } from './shiftsSections';
 import './ShiftsModule.css';
 
@@ -158,36 +158,43 @@ function ShiftsModule() {
             icon: section.icon,
         }));
 
+    const storeSelectOptions = useMemo(() => [
+        {
+            value: ALL_PRODEJNY,
+            label: isShiftCalendarAdmin ? 'Všechny prodejny' : 'Moje směny (všechny prodejny)',
+        },
+        ...stores.map((store) => ({
+            value: String(store.id),
+            label: storeLabel(store),
+        })),
+    ], [stores, isShiftCalendarAdmin, user?.prodejna_id]);
+
     return (
         <div className="shifts-module">
-            <ModuleSubnav
+            <PageHeader title="Směny" />
+
+            <Tabs
                 tabs={shiftTabs}
                 activeId={activeView}
                 onTabChange={setActiveView}
                 accent="pink"
                 ariaLabel="Sekce směn"
                 className="shifts-subnav"
+                legacy
             />
 
             <div className="shifts-controls">
                 {activeView === 'calendar' && (
                     <div className="shifts-controls__calendar-row">
                         <div className="prodejna-selector">
-                            <label htmlFor="shifts-prodejna-select">Prodejna:</label>
-                            <select
+                            <label htmlFor="shifts-prodejna-select">Prodejna</label>
+                            <Select
                                 id="shifts-prodejna-select"
+                                options={storeSelectOptions}
                                 value={selectedProdejna}
-                                onChange={(e) => setSelectedProdejna(e.target.value)}
-                            >
-                                <option value={ALL_PRODEJNY}>
-                                    {isShiftCalendarAdmin ? 'Všechny prodejny' : 'Moje směny (všechny prodejny)'}
-                                </option>
-                                {stores.map((store) => (
-                                    <option key={store.id} value={store.id}>
-                                        {storeLabel(store)}
-                                    </option>
-                                ))}
-                            </select>
+                                onChange={setSelectedProdejna}
+                                aria-label="Filtr prodejny"
+                            />
                         </div>
 
                         <div className="month-navigation">

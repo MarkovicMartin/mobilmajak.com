@@ -8,34 +8,6 @@
     min-height: 100vh;
 }
 
-.access-header {
-    background: linear-gradient(135deg, var(--brand-navy) 0%, var(--brand-navy-hover) 100%);
-    color: white;
-    padding: 30px;
-    border-radius: 16px;
-    margin-bottom: 30px;
-    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 20px;
-}
-
-.access-header h2 {
-    margin: 0;
-    font-size: 2.5rem;
-    font-weight: 700;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.access-description {
-    margin: 10px 0 0 0;
-    font-size: 1.1rem;
-    opacity: 0.9;
-    line-height: 1.4;
-}
-
 .btn-primary {
     background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
     border: none;
@@ -172,16 +144,6 @@
         padding: 15px;
     }
     
-    .access-header {
-        flex-direction: column;
-        text-align: center;
-        padding: 20px;
-    }
-    
-    .access-header h2 {
-        font-size: 2rem;
-    }
-    
     .access-stats {
         grid-template-columns: 1fr;
     }
@@ -196,13 +158,6 @@
         padding: 10px;
     }
     
-    .access-header h2 {
-        font-size: 1.8rem;
-    }
-    
-    .access-description {
-        font-size: 1rem;
-    }
 }
 
 /* Home Store Info Styles */

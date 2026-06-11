@@ -1,11 +1,14 @@
-import React from 'react';
-import ModuleSubnav from '../../components/ModuleSubnav';
+import React, { useMemo } from 'react';
+import { Tabs, Select, SegmentControl } from '../../components/ui';
 import { PLANS_SECTIONS } from './plansSections';
 import './PlansNav.css';
 
+const REZIM_OPTIONS = [
+  { id: 'top_down', label: 'Top-down', title: 'Celková částka a rozpočet na prodejny' },
+  { id: 'bottom_up', label: 'Bottom-up', title: 'Kč cíle prodejen, celek se sečte' },
+];
+
 const PlansNav = ({
-  viewMode,
-  onSwitch,
   showMonth,
   monthValue,
   monthOptions,
@@ -19,59 +22,52 @@ const PlansNav = ({
     id: section.id,
     label: section.tabLabel,
     icon: section.icon,
+    to: `/plans/${section.path}`,
+    end: section.path === 'vyhled',
   }));
+
+  const monthSelectOptions = useMemo(
+    () => monthOptions.map((o) => ({
+      value: `${o.rok}-${o.mesic}`,
+      label: `${monthLabels[o.mesic - 1]} ${o.rok}`,
+    })),
+    [monthOptions, monthLabels],
+  );
 
   const meta = (
     <>
       {showPlanRezim && (
-        <div className="plans-nav-rezim" role="group" aria-label="Režim plánování">
-          <button
-            type="button"
-            className={`plans-nav-rezim-btn${planovaciRezim === 'top_down' ? ' plans-nav-rezim-btn--active' : ''}`}
-            onClick={() => onPlanovaciRezimChange('top_down')}
-            title="Celková částka a rozpočet na prodejny"
-          >
-            Top-down
-          </button>
-          <button
-            type="button"
-            className={`plans-nav-rezim-btn${planovaciRezim === 'bottom_up' ? ' plans-nav-rezim-btn--active' : ''}`}
-            onClick={() => onPlanovaciRezimChange('bottom_up')}
-            title="Kč cíle prodejen, celek se sečte"
-          >
-            Bottom-up
-          </button>
-        </div>
+        <SegmentControl
+          options={REZIM_OPTIONS}
+          value={planovaciRezim}
+          onChange={onPlanovaciRezimChange}
+          ariaLabel="Režim plánování"
+          className="plans-nav-rezim-segment"
+        />
       )}
       {showMonth && (
         <label className="plans-nav-month">
           <span className="plans-nav-month-label">Měsíc</span>
-          <select
-            className="plans-nav-month-select"
+          <Select
+            options={monthSelectOptions}
             value={monthValue}
-            onChange={(e) => onMonthChange(e.target.value)}
+            onChange={onMonthChange}
             aria-label="Vybraný měsíc"
-          >
-            {monthOptions.map((o) => (
-              <option key={`${o.rok}-${o.mesic}`} value={`${o.rok}-${o.mesic}`}>
-                {monthLabels[o.mesic - 1]} {o.rok}
-              </option>
-            ))}
-          </select>
+            className="plans-nav-month-select"
+          />
         </label>
       )}
     </>
   );
 
   return (
-    <ModuleSubnav
+    <Tabs
       tabs={tabs}
-      activeId={viewMode}
-      onTabChange={onSwitch}
       meta={meta}
       accent="blue"
       ariaLabel="Sekce plánů"
       className="plans-nav"
+      legacy
     />
   );
 };

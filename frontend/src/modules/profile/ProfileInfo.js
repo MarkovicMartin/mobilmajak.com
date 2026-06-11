@@ -142,7 +142,7 @@ const ProfileInfo = ({ user, onProfileUpdate, onImageUpdate }) => {
             )}
 
             <div className="profile-info-top">
-                <ProfileImage user={user} onImageUpdate={onImageUpdate} embedded />
+                <ProfileImage user={user} onImageUpdate={onImageUpdate} />
                 {!isEditing && (
                     <button
                         type="button"

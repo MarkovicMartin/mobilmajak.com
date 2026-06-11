@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom';
 import { plansAPI } from '../../services/api';
 import { castkaBezDphZCelkem } from '../../utils/dph';
+import { PageHeader } from '../../components/ui';
 import './PlansModule.css';
 import ProdejnaKarta from './ProdejnaKarta';
 import DraftNumberInput from './DraftNumberInput';
@@ -9,6 +10,11 @@ import PlneniStrom, { PlneniHistorieMini } from './PlneniStrom';
 import AuditZbytekPanel from './AuditZbytekPanel';
 import VyhledFilterMenu from './VyhledFilterMenu';
 import PlansNav from './PlansNav';
+import {
+  plansIdFromPath,
+  plansIdFromHash,
+  plansPathForId,
+} from './plansSections';
 
 const NAZVY_MESICU = [
   'Leden','Únor','Březen','Duben','Květen','Červen',
@@ -49,21 +55,6 @@ const dnesniMesic = () => {
 const jeMesicAktualniNeboBudouci = (rok, mesic) => {
   const d = dnesniMesic();
   return rok > d.rok || (rok === d.rok && mesic >= d.mesic);
-};
-
-const viewModeFromHash = (hash) => {
-  const h = hash || '';
-  if (h === '#plneni-prodejny') return 'prodejny';
-  if (h === '#plneni-prodejci') return 'prodejci';
-  if (h === '#plan') return 'plan';
-  return 'vyhled';
-};
-
-const hashForViewMode = (mode) => {
-  if (mode === 'prodejny') return 'plneni-prodejny';
-  if (mode === 'prodejci') return 'plneni-prodejci';
-  if (mode === 'plan') return 'plan';
-  return '';
 };
 
 const GRAF_ROKY_BARVY = ['#1d4ed8', '#16a34a', '#d97706', '#7c3aed', '#db2777', '#475569'];
@@ -220,6 +211,7 @@ const normalizeLockMode = (lm, zamknuto) => {
 export default function PlansModule() {
   const location = useLocation();
   const navigate = useNavigate();
+  const viewMode = plansIdFromPath(location.pathname);
   const [vybraneMesic, setVybraneMesic] = useState(dnesniMesic());
   const [planData, setPlanData] = useState(null); // eslint-disable-line no-unused-vars
   const [aktivniPlan, setAktivniPlan] = useState(null);
@@ -241,10 +233,6 @@ export default function PlansModule() {
     try { return window.localStorage.getItem(ONBOARDING_KEY) === '1'; } catch (_) { return false; }
   });
 
-  const [viewMode, setViewMode] = useState(() => {
-    if (typeof window === 'undefined') return 'vyhled';
-    return viewModeFromHash(window.location.hash);
-  });
   const [plneniData, setPlneniData] = useState(null);
   const [plneniProdejciData, setPlneniProdejciData] = useState(null);
   const [plneniLoading, setPlneniLoading] = useState(false);
@@ -315,33 +303,33 @@ export default function PlansModule() {
   }, [viewMode, aktivniPlan, vybraneMesic, loadPlneniProdejci]);
 
   useEffect(() => {
-    setViewMode(viewModeFromHash(location.hash));
-  }, [location.hash]);
-
-  const switchViewMode = useCallback((mode) => {
-    setViewMode(mode);
-    const hash = hashForViewMode(mode);
-    navigate(
-      { pathname: location.pathname, search: location.search, hash },
-      { replace: true },
-    );
-  }, [location.pathname, location.search, navigate]);
+    const base = location.pathname.replace(/\/$/, '');
+    if (base === '/plans') {
+      navigate('/plans/vyhled', { replace: true });
+    }
+  }, [location.pathname, navigate]);
 
   useEffect(() => {
-    if (location.hash !== '#plneni-prodejny' || viewMode !== 'prodejny' || !plneniData) return;
+    if (!location.hash) return;
+    const target = plansPathForId(plansIdFromHash(location.hash));
+    navigate(target, { replace: true });
+  }, [location.hash, navigate]);
+
+  useEffect(() => {
+    if (viewMode !== 'prodejny' || !plneniData) return;
     const id = window.requestAnimationFrame(() => {
       document.getElementById('plans-anc-prodejny')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
     return () => window.cancelAnimationFrame(id);
-  }, [location.hash, viewMode, plneniData]);
+  }, [viewMode, plneniData]);
 
   useEffect(() => {
-    if (location.hash !== '#plneni-prodejci' || viewMode !== 'prodejci' || plneniProdejciData == null) return;
+    if (viewMode !== 'prodejci' || plneniProdejciData == null) return;
     const id = window.requestAnimationFrame(() => {
       document.getElementById('plans-anc-prodejci')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
     return () => window.cancelAnimationFrame(id);
-  }, [location.hash, viewMode, plneniProdejciData]);
+  }, [viewMode, plneniProdejciData]);
 
   const nactiVerziDoPlaneru = useCallback((plan) => {
     setCastkaFirma(String(Math.round(Number(plan.castka_celkem))));
@@ -611,7 +599,7 @@ export default function PlansModule() {
         }
         setUspech(txt);
         setVybraneMesic({ rok: forecastRok, mesic: res.vytvoreno[0]?.mesic || 1 });
-        setViewMode('plan');
+        navigate('/plans/plan');
         loadForecast();
       } else if (res.info || res.pocet_jiz_existovalo === 12) {
         setUspech(res.info || `Rok ${forecastRok}: všechny měsíce už mají plán.`);
@@ -922,9 +910,8 @@ export default function PlansModule() {
 
   return (
     <div className="plans-module">
+      <PageHeader title="Plány" />
       <PlansNav
-        viewMode={viewMode}
-        onSwitch={switchViewMode}
         showMonth={viewMode !== 'vyhled'}
         monthValue={`${vybraneMesic.rok}-${vybraneMesic.mesic}`}
         monthOptions={mesiceOptions}
@@ -1070,7 +1057,7 @@ export default function PlansModule() {
           {!forecastLoading && forecastPred && (
             <>
               <div className="plans-vyhled-toolbar">
-                <div className="plans-vyhled-toolbar-filters">
+                <div className="ui-filter-bar plans-vyhled-toolbar-filters">
                   <VyhledFilterMenu
                     open={prodejnyMenuOpen}
                     onClose={closeProdejnyMenu}

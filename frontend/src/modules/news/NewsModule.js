@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
+import { PageHeader } from '../../components/ui';
 import PostForm from './PostForm';
 import PostList from './PostList';
 import './NewsModule.css';
@@ -219,15 +220,18 @@ const NewsModule = () => {
 
     return (
         <div className="news-module">
-            <div className="news-header">
-                <h2>Novinky</h2>
-                <button 
-                    className="new-post-btn"
-                    onClick={() => setShowPostForm(true)}
-                >
-                    + Nový příspěvek
-                </button>
-            </div>
+            <PageHeader
+                title="Novinky"
+                actions={(
+                    <button
+                        type="button"
+                        className="btn btn--primary new-post-btn"
+                        onClick={() => setShowPostForm(true)}
+                    >
+                        Nový příspěvek
+                    </button>
+                )}
+            />
 
             {error && (
                 <div className="error-message">

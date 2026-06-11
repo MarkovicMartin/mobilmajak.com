@@ -299,16 +299,6 @@
     color: var(--text-primary) !important;
 }
 
-.dark-mode .profile-tabs button:not(.active) {
-    color: var(--text-secondary) !important;
-    border-color: var(--border-primary) !important;
-}
-
-.dark-mode .profile-tabs button.active {
-    background: var(--bg-card) !important;
-    color: var(--text-heading) !important;
-}
-
 /* --- Novinky --- */
 .dark-mode .news-module {
     color: var(--text-primary);

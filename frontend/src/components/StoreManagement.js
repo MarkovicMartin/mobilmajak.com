@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Modal from './Modal';
+import { PageHeader } from './ui';
 import { useAuth } from '../context/AuthContext';
 import { storeAPI, userAPI } from '../services/api';
 import {
@@ -315,15 +316,18 @@ const StoreManagement = () => {
 
     return (
         <div className="store-management-container">
-            <div className="store-management-header">
-                <h1>🏪 Správa prodejen</h1>
-                <button 
-                    className="add-store-btn"
-                    onClick={() => setShowAddForm(true)}
-                >
-                    + Přidat prodejnu
-                </button>
-            </div>
+            <PageHeader
+                title="Správa prodejen"
+                actions={(
+                    <button
+                        type="button"
+                        className="btn btn--primary add-store-btn"
+                        onClick={() => setShowAddForm(true)}
+                    >
+                        Přidat prodejnu
+                    </button>
+                )}
+            />
 
             {error && (
                 <div className="error-message">

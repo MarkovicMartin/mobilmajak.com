@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { coachingAPI } from '../../../services/api';
+import { Tabs, Select } from '../../../components/ui';
 import BenchmarkBadge from '../components/BenchmarkBadge';
 import SignalsChips from '../components/SignalsChips';
 import CoachingTimelineChart from '../components/CoachingTimelineChart';
@@ -15,11 +16,11 @@ const TABS = [
     { id: 'poznamky', label: 'Poznámky a cíle' },
 ];
 
-const METRICS = [
-    { key: 'polozky_nad_100', label: 'Položky nad 100 Kč' },
-    { key: 'sluzby_celkem', label: 'Služby' },
-    { key: 'celkovy_obrat', label: 'Obrat' },
-    { key: 'unikatni_doklady', label: 'Účtenky' },
+const METRIC_OPTIONS = [
+    { value: 'polozky_nad_100', label: 'Položky nad 100 Kč' },
+    { value: 'sluzby_celkem', label: 'Služby' },
+    { value: 'celkovy_obrat', label: 'Obrat' },
+    { value: 'unikatni_doklady', label: 'Účtenky' },
 ];
 
 const COMPARE_OPTS = [
@@ -110,6 +111,20 @@ const SellerProfile = ({ staffUsers = [], mesic, onMesicChange }) => {
         [peers, comparePeer],
     );
 
+    const peerOptions = useMemo(() => {
+        const seller = profile?.prodejce;
+        return [
+            {
+                value: '',
+                label: seller ? `Jen ${seller.jmeno} ${seller.prijmeni}`.trim() : 'Jen prodejce',
+            },
+            ...peers.map((u) => ({
+                value: String(u.id),
+                label: `${u.jmeno} ${u.prijmeni}`,
+            })),
+        ];
+    }, [peers, profile?.prodejce]);
+
     if (loading && !profile) return <p className="coaching-muted">Načítám profil…</p>;
     if (!profile) return <p className="coaching-muted">Prodejce nenalezen</p>;
 
@@ -133,20 +148,13 @@ const SellerProfile = ({ staffUsers = [], mesic, onMesicChange }) => {
                 </div>
             </header>
 
-            <div className="coaching-profile-tabs" role="tablist">
-                {TABS.map((t) => (
-                    <button
-                        key={t.id}
-                        type="button"
-                        role="tab"
-                        aria-selected={tab === t.id}
-                        className={`coaching-profile-tab${tab === t.id ? ' coaching-profile-tab--active' : ''}`}
-                        onClick={() => setTab(t.id)}
-                    >
-                        {t.label}
-                    </button>
-                ))}
-            </div>
+            <Tabs
+                tabs={TABS}
+                activeId={tab}
+                onTabChange={setTab}
+                ariaLabel="Sekce profilu prodejce"
+                className="coaching-profile-tabs"
+            />
 
             {tab === 'vykon' && (
                 <section className="coaching-panel">
@@ -157,12 +165,18 @@ const SellerProfile = ({ staffUsers = [], mesic, onMesicChange }) => {
                         <div className="coaching-kpi"><span>Účtenky</span><strong>{fmtNum(prodej.unikatni_doklady)}</strong></div>
                     </div>
                     <div className="coaching-chart-controls">
-                        <select value={chartMetric} onChange={(e) => setChartMetric(e.target.value)}>
-                            {METRICS.map((m) => <option key={m.key} value={m.key}>{m.label}</option>)}
-                        </select>
-                        <select value={compare} onChange={(e) => setCompare(e.target.value)}>
-                            {COMPARE_OPTS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                        </select>
+                        <Select
+                            options={METRIC_OPTIONS}
+                            value={chartMetric}
+                            onChange={setChartMetric}
+                            aria-label="Metrika grafu"
+                        />
+                        <Select
+                            options={COMPARE_OPTS}
+                            value={compare}
+                            onChange={setCompare}
+                            aria-label="Srovnání období"
+                        />
                     </div>
                     <CoachingTimelineChart
                         userId={userId}
@@ -241,20 +255,26 @@ const SellerProfile = ({ staffUsers = [], mesic, onMesicChange }) => {
                 <section className="coaching-panel">
                     <label className="coaching-nav-filter">
                         <span>Porovnat s (volitelně)</span>
-                        <select value={comparePeer} onChange={(e) => setComparePeer(e.target.value)}>
-                            <option value="">Jen {p.jmeno} {p.prijmeni}</option>
-                            {peers.map((u) => (
-                                <option key={u.id} value={u.id}>{u.jmeno} {u.prijmeni}</option>
-                            ))}
-                        </select>
+                        <Select
+                            options={peerOptions}
+                            value={comparePeer}
+                            onChange={setComparePeer}
+                            aria-label="Porovnat s prodejcem"
+                        />
                     </label>
                     <div className="coaching-chart-controls">
-                        <select value={chartMetric} onChange={(e) => setChartMetric(e.target.value)}>
-                            {METRICS.map((m) => <option key={m.key} value={m.key}>{m.label}</option>)}
-                        </select>
-                        <select value={compare} onChange={(e) => setCompare(e.target.value)}>
-                            {COMPARE_OPTS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                        </select>
+                        <Select
+                            options={METRIC_OPTIONS}
+                            value={chartMetric}
+                            onChange={setChartMetric}
+                            aria-label="Metrika grafu"
+                        />
+                        <Select
+                            options={COMPARE_OPTS}
+                            value={compare}
+                            onChange={setCompare}
+                            aria-label="Srovnání období"
+                        />
                     </div>
                     <CoachingTimelineChart
                         userId={userId}

@@ -7,7 +7,6 @@ import UnifiedCalendar from '../shifts/UnifiedCalendar';
 import ProfileDayPanel from './ProfileDayPanel';
 import { urgencyClassName, urgencyForTask } from '../../utils/taskUrgency';
 import '../shifts/ShiftCalendar.css';
-import '../tasks/TasksModule.css';
 import './ProfileModule.css';
 
 const formatShiftTime = (t) => (t || '').substring(0, 5);

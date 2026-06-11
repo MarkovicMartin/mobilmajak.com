@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { getApiEndpoints } from '../../config/apiConfig';
 import { leaderboardAPI } from '../../services/api';
-import PeriodSegmentBar from '../../components/PeriodSegmentBar';
+import { PageHeader, SegmentControl } from '../../components/ui';
 import PointsLeaderboard from './PointsLeaderboard';
 import StoresLeaderboard from './StoresLeaderboard';
 import './LeaderboardModule.css';
@@ -118,6 +118,8 @@ const LeaderboardModule = () => {
 
     return (
         <div className="leaderboard-module">
+            <PageHeader title="Žebříček" />
+
             {error && (
                 <div className="error-message">
                     <span>⚠️ {error}</span>
@@ -125,7 +127,7 @@ const LeaderboardModule = () => {
                 </div>
             )}
 
-            <PeriodSegmentBar
+            <SegmentControl
                 className="leaderboard-period-bar"
                 options={LEADERBOARD_PERIOD_OPTIONS}
                 value={pointsSubTab}

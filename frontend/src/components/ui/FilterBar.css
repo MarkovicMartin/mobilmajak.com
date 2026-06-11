@@ -1,0 +1,33 @@
+.ui-filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+    width: 100%;
+}
+
+.ui-filter-bar .ui-segment-control {
+    flex: 1 1 17.5rem;
+    min-width: 0;
+}
+
+.ui-filter-bar .ui-date-range--inline {
+    flex: 0 1 auto;
+}
+
+.ui-filter-bar__refresh {
+    white-space: nowrap;
+}
+
+.analytics-module .ui-filter-bar {
+    margin-top: var(--space-1);
+}
+
+.analytics-module .ui-filter-bar .ui-segment-control__item {
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--text-xs);
+}
+
+.analytics-module .ui-filter-bar .ui-segment-control__item--active {
+    padding: var(--space-2) var(--space-3);
+}

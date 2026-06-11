@@ -14,6 +14,7 @@ from .models import Smena, SmenaDochazka, SmenaStatistiky
 from .attendance_service import (
     attendance_state_from_history,
     ensure_auto_close_open_shifts,
+    format_local_hm,
     work_hours_from_history,
 )
 from .vacation_service import (
@@ -675,9 +676,9 @@ def _smena_detail_row(smena):
     stav, prichod, odchod = attendance_state_from_history(history)
     row['stav_dochazky'] = stav
     if prichod:
-        row['dochazka_od'] = prichod.cas.strftime('%H:%M')
+        row['dochazka_od'] = format_local_hm(prichod.cas)
     if odchod:
-        row['dochazka_do'] = odchod.cas.strftime('%H:%M')
+        row['dochazka_do'] = format_local_hm(odchod.cas)
     elif stav == 'otevreno':
         row['dochazka_do'] = 'otevřeno'
     row['hodiny_z_dochozky'] = work_hours_from_history(history, now=dj_timezone.now())

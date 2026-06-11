@@ -2,14 +2,27 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { format } from 'date-fns';
 import { useAuth } from '../../context/AuthContext';
 import { taskAPI, storeAPI } from '../../services/api';
-import { AnalyticsDateInput } from '../../components/AnalyticsDateRange';
+import { PageHeader, Select, DatePicker } from '../../components/ui';
 import { useTasks } from '../../hooks/useTasks';
 import TaskDetailPanel from './TaskDetailPanel';
 import TaskEditForm from './TaskEditForm';
 import TaskUrgencyBadge from './TaskUrgencyBadge';
 import TaskStatusIcon from '../../components/TaskStatusIcon';
-import { TaskAssigneeOptions } from './TaskAssigneeOptions';
+import { buildAssigneeSelectOptions } from './TaskAssigneeOptions';
 import './TasksModule.css';
+
+const STAV_OPTIONS = [
+    { value: 'vse', label: 'Všechny stavy' },
+    { value: 'novy', label: 'Nové' },
+    { value: 'v_procesu', label: 'V procesu' },
+    { value: 'hotovo', label: 'Hotové' },
+];
+
+const PRIORITA_OPTIONS = [
+    { value: 'nizka', label: 'Nízká' },
+    { value: 'stredni', label: 'Střední' },
+    { value: 'vysoka', label: 'Vysoká' },
+];
 
 const TasksManageModule = () => {
     const { user, isAdmin, canManageTasks } = useAuth();
@@ -49,6 +62,44 @@ const TasksManageModule = () => {
         }
         return [];
     }, [stores, user, isAdmin]);
+
+    const storeOptionsForForm = useMemo(
+        () => (isAdmin() ? stores : vedouciStores),
+        [isAdmin, stores, vedouciStores],
+    );
+
+    const filterStoreOptions = useMemo(() => {
+        const list = isAdmin() ? stores : vedouciStores;
+        const placeholder = isAdmin() ? 'Všechny pobočky' : 'Všechny moje pobočky';
+        return [
+            { value: '', label: placeholder },
+            ...list.map((s) => ({
+                value: String(s.id),
+                label: s.nazev_kratkiy || s.nazev,
+            })),
+        ];
+    }, [isAdmin, stores, vedouciStores]);
+
+    const formStoreOptions = useMemo(
+        () => [
+            { value: '', label: 'Pobočka…' },
+            ...storeOptionsForForm.map((s) => ({
+                value: String(s.id),
+                label: s.nazev_kratkiy || s.nazev,
+            })),
+        ],
+        [storeOptionsForForm],
+    );
+
+    const assigneeFilterOptions = useMemo(
+        () => buildAssigneeSelectOptions(assignees, 'Všichni zaměstnanci'),
+        [assignees],
+    );
+
+    const assigneeFormOptions = useMemo(
+        () => buildAssigneeSelectOptions(assignees, 'Přiřadit…'),
+        [assignees],
+    );
 
     useEffect(() => {
         const fetchStores = async () => {
@@ -131,55 +182,37 @@ const TasksManageModule = () => {
     };
 
     const storeLocked = user?.role === 'VEDOUCI' && vedouciStores.length <= 1;
+    const showFilterStore = isAdmin() || vedouciStores.length > 1;
 
     return (
         <div className="tasks-module">
-            <div className="tasks-module-header">
-                <h2>Správa úkolů</h2>
-                <div className="tasks-filters">
-                    <select className="task-select" value={filterStav} onChange={(e) => setFilterStav(e.target.value)}>
-                        <option value="vse">Všechny stavy</option>
-                        <option value="novy">Nové</option>
-                        <option value="v_procesu">V procesu</option>
-                        <option value="hotovo">Hotové</option>
-                    </select>
-                    {isAdmin() && (
-                        <select
-                            className="task-select"
-                            value={filterStore}
-                            onChange={(e) => setFilterStore(e.target.value)}
-                        >
-                            <option value="">Všechny pobočky</option>
-                            {stores.map((s) => (
-                                <option key={s.id} value={s.id}>
-                                    {s.nazev_kratkiy || s.nazev}
-                                </option>
-                            ))}
-                        </select>
-                    )}
-                    {!isAdmin() && vedouciStores.length > 1 && (
-                        <select
-                            className="task-select"
-                            value={filterStore}
-                            onChange={(e) => setFilterStore(e.target.value)}
-                        >
-                            <option value="">Všechny moje pobočky</option>
-                            {vedouciStores.map((s) => (
-                                <option key={s.id} value={s.id}>
-                                    {s.nazev_kratkiy || s.nazev}
-                                </option>
-                            ))}
-                        </select>
-                    )}
-                    <select
-                        className="task-select"
-                        value={filterAssignee}
-                        onChange={(e) => setFilterAssignee(e.target.value)}
-                    >
-                        <TaskAssigneeOptions assignees={assignees} placeholder="Všichni zaměstnanci" />
-                    </select>
-                </div>
-            </div>
+            <PageHeader
+                title="Správa úkolů"
+                actions={(
+                    <div className="tasks-filters">
+                        <Select
+                            options={STAV_OPTIONS}
+                            value={filterStav}
+                            onChange={setFilterStav}
+                            aria-label="Filtr stavu"
+                        />
+                        {showFilterStore && (
+                            <Select
+                                options={filterStoreOptions}
+                                value={filterStore}
+                                onChange={setFilterStore}
+                                aria-label="Filtr pobočky"
+                            />
+                        )}
+                        <Select
+                            options={assigneeFilterOptions}
+                            value={filterAssignee}
+                            onChange={setFilterAssignee}
+                            aria-label="Filtr zaměstnance"
+                        />
+                    </div>
+                )}
+            />
 
             <div className="task-form-card">
                 <h3>Nový úkol</h3>
@@ -191,44 +224,35 @@ const TasksManageModule = () => {
                         onChange={(e) => setForm({ ...form, ukol: e.target.value })}
                     />
                     <div className="task-form-row task-form-row--meta">
-                        <select
-                            className="task-select"
+                        <Select
+                            options={formStoreOptions}
                             value={form.id_prodejny}
                             disabled={storeLocked}
-                            onChange={(e) => setForm({ ...form, id_prodejny: e.target.value, id_prodejce_ukol: '' })}
-                        >
-                            <option value="">Pobočka…</option>
-                            {(isAdmin() ? stores : vedouciStores).map((s) => (
-                                <option key={s.id} value={s.id}>
-                                    {s.nazev_kratkiy || s.nazev}
-                                </option>
-                            ))}
-                        </select>
-                        <select
-                            className="task-select"
+                            onChange={(v) => setForm({ ...form, id_prodejny: v, id_prodejce_ukol: '' })}
+                            aria-label="Pobočka"
+                        />
+                        <Select
+                            options={assigneeFormOptions}
                             value={form.id_prodejce_ukol}
-                            onChange={(e) => setForm({ ...form, id_prodejce_ukol: e.target.value })}
+                            onChange={(v) => setForm({ ...form, id_prodejce_ukol: v })}
                             disabled={!form.id_prodejny}
-                        >
-                            <TaskAssigneeOptions assignees={assignees} placeholder="Přiřadit…" />
-                        </select>
-                        <select
-                            className="task-select task-select--prio"
+                            aria-label="Přiřadit zaměstnance"
+                        />
+                        <Select
+                            className="task-select--prio"
+                            options={PRIORITA_OPTIONS}
                             value={form.priorita}
-                            onChange={(e) => setForm({ ...form, priorita: e.target.value })}
-                        >
-                            <option value="nizka">Nízká</option>
-                            <option value="stredni">Střední</option>
-                            <option value="vysoka">Vysoká</option>
-                        </select>
+                            onChange={(v) => setForm({ ...form, priorita: v })}
+                            aria-label="Priorita"
+                        />
                     </div>
                     <div className="task-form-row task-form-row--deadline">
                         <div className="task-date-field">
-                            <AnalyticsDateInput
+                            <DatePicker
                                 value={form.deadline}
                                 onApply={(deadline) => setForm((f) => ({ ...f, deadline }))}
                                 showError={false}
-                                inputClassName="task-control task-control--date"
+                                wrapperClassName="task-date-field"
                             />
                         </div>
                         <input
@@ -237,7 +261,9 @@ const TasksManageModule = () => {
                             value={form.deadline_cas}
                             onChange={(e) => setForm({ ...form, deadline_cas: e.target.value })}
                         />
-                        <button type="submit" className="task-submit-btn">Vytvořit úkol</button>
+                        <button type="submit" className="btn btn--primary task-submit-btn">
+                            Vytvořit úkol
+                        </button>
                     </div>
                 </form>
             </div>
@@ -300,8 +326,7 @@ const TasksManageModule = () => {
                     {selected && canManageTasks() && !editing && (
                         <button
                             type="button"
-                            className="btn-outline"
-                            style={{ marginTop: '0.75rem', marginRight: '0.5rem' }}
+                            className="btn btn--secondary tasks-action-btn"
                             onClick={() => setEditing(true)}
                         >
                             Upravit úkol
@@ -310,8 +335,7 @@ const TasksManageModule = () => {
                     {selected && !editing && (
                         <button
                             type="button"
-                            className="btn-outline"
-                            style={{ marginTop: '0.75rem' }}
+                            className="btn btn--secondary tasks-action-btn"
                             onClick={handleDelete}
                         >
                             Smazat úkol

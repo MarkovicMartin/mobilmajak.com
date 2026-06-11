@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { ticketAPI } from '../../services/api';
+import { PageHeader, Select } from '../../components/ui';
 import TicketCommentRow from './TicketCommentRow';
 import './TicketsModule.css';
 import './MyTickets.css';
@@ -230,29 +231,33 @@ const TicketsModule = () => {
     if (error) return <div className="tickets-error">{error}</div>;
 
     const filterEmptyLabel = FILTER_OPTIONS.find((o) => o.value === filterStav)?.label?.toLowerCase() || '';
+    const filterSelectOptions = FILTER_OPTIONS.map((opt) => ({
+        value: opt.value,
+        label: `${opt.label} (${countForFilter(opt.value)})`,
+    }));
+    const avgSubtitle = isTicketManager && avgMs !== null
+        ? `Průměrná doba vyřešení: ${formatDuration(avgMs)} (${resolvedMs.length} ${resolvedMs.length === 1 ? 'ticket' : resolvedMs.length < 5 ? 'tickety' : 'ticketů'})`
+        : undefined;
 
     return (
         <div className={`tickets-module${isTicketManager ? '' : ' my-tickets'}`}>
-            <div className="tickets-header">
-                <h2>{isTicketManager ? '🎫 Správa ticketů' : '🐛 Moje tickety'}</h2>
-                {isTicketManager && avgMs !== null && (
-                    <div className="tickets-avg">
-                        ⏱ Průměrná doba vyřešení: <strong>{formatDuration(avgMs)}</strong>
-                        <span className="tickets-avg-count">({resolvedMs.length} {resolvedMs.length === 1 ? 'ticket' : resolvedMs.length < 5 ? 'tickety' : 'ticketů'})</span>
+            <PageHeader
+                title={isTicketManager ? 'Správa ticketů' : 'Moje tickety'}
+                subtitle={avgSubtitle}
+                actions={(
+                    <div className="tickets-filter">
+                        <Select
+                            value={filterStav}
+                            onChange={setFilterStav}
+                            options={filterSelectOptions}
+                            aria-label="Filtrovat tickety podle stavu"
+                        />
+                        <button type="button" className="btn btn--secondary btn--sm btn-refresh" onClick={loadTickets}>
+                            Obnovit
+                        </button>
                     </div>
                 )}
-            <div className="tickets-filter">
-                    <label>Filtr:</label>
-                    <select value={filterStav} onChange={e => setFilterStav(e.target.value)}>
-                        {FILTER_OPTIONS.map((opt) => (
-                            <option key={opt.value} value={opt.value}>
-                                {opt.label} ({countForFilter(opt.value)})
-                            </option>
-                        ))}
-                    </select>
-                    <button className="btn-refresh" onClick={loadTickets}>↻ Obnovit</button>
-                </div>
-            </div>
+            />
 
             {filtered.length === 0 && (
                 <div className="tickets-empty">

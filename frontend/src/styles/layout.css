@@ -1,0 +1,122 @@
+/**
+ * V2 layout – app shell, stránky, responzivní grid.
+ */
+
+.app-shell {
+    display: flex;
+    min-height: 100vh;
+    background: var(--bg-secondary);
+}
+
+.app-shell__body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.app-main {
+    flex: 1;
+    width: 100%;
+    max-width: var(--content-max-width);
+    margin: 0 auto;
+    padding: var(--space-5) var(--space-6) var(--space-7);
+    position: relative;
+    z-index: 1;
+}
+
+.app-main:has(.seller-dashboard) {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+.app-main:has(.analytics-module) {
+    max-width: var(--content-max-width);
+    padding: var(--space-4) var(--space-5) var(--space-6);
+}
+
+@media (min-width: 769px) {
+    .app-shell__body {
+        margin-left: var(--sidebar-width);
+    }
+
+    .app-topbar {
+        display: none;
+    }
+
+    .app-main {
+        padding-top: var(--space-6);
+    }
+}
+
+@media (max-width: 768px) {
+    .app-shell__body {
+        padding-top: var(--header-height);
+    }
+
+    .app-main {
+        padding: var(--space-4);
+    }
+}
+
+/* Stránka modulu (Fáze 3+) */
+.page {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+    width: 100%;
+}
+
+.page-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-4);
+}
+
+.page-header__titles {
+    min-width: 0;
+}
+
+.page-header__title {
+    margin: 0;
+    font-size: var(--text-2xl);
+    font-weight: var(--font-weight-bold);
+    line-height: var(--line-height-tight);
+    color: var(--text-heading);
+}
+
+.page-header__subtitle {
+    margin: var(--space-1) 0 0;
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    line-height: var(--line-height-normal);
+}
+
+.page-header__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.page-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+    width: 100%;
+}
+
+.page-grid {
+    display: grid;
+    gap: var(--space-5);
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+}
+
+.table-scroll {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}

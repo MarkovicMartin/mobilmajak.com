@@ -1,0 +1,92 @@
+.ui-segment-control {
+    display: flex;
+    gap: var(--space-2);
+    align-items: stretch;
+    flex-wrap: wrap;
+}
+
+.ui-segment-control__item {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-3);
+    border: 2px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: var(--space-2) var(--space-4);
+    font-size: var(--text-sm);
+    font-weight: var(--font-weight-semibold);
+    cursor: pointer;
+    transition: flex var(--transition-base), background var(--transition-base),
+        border-color var(--transition-base), color var(--transition-base);
+    color: var(--text-secondary);
+    background: var(--bg-card);
+    flex: 0 1 auto;
+    min-width: 0;
+    text-align: center;
+    font-family: inherit;
+    appearance: none;
+}
+
+.ui-segment-control__item:hover:not(.ui-segment-control__item--active) {
+    border-color: var(--border-primary);
+    background: var(--bg-inset);
+    color: var(--text-primary);
+}
+
+.ui-segment-control__item--active {
+    flex: 1 1 0;
+    justify-content: flex-start;
+    text-align: left;
+    background: linear-gradient(135deg, var(--brand-navy) 0%, var(--brand-navy-hover) 100%);
+    border-color: var(--brand-navy);
+    color: var(--text-inverse);
+    box-shadow: var(--shadow-secondary);
+    padding: var(--space-2) var(--space-3);
+}
+
+.ui-segment-control__label {
+    white-space: nowrap;
+    line-height: var(--line-height-tight);
+}
+
+.ui-segment-control__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 1.625rem;
+    height: 1.625rem;
+    border-radius: var(--radius-md);
+    background: color-mix(in srgb, var(--text-inverse) 20%, transparent);
+    font-size: var(--text-sm);
+}
+
+.ui-segment-control__title {
+    font-size: var(--text-sm);
+    font-weight: var(--font-weight-bold);
+    line-height: var(--line-height-tight);
+    white-space: nowrap;
+    color: var(--text-inverse);
+}
+
+@media (max-width: 640px) {
+    .ui-segment-control {
+        flex-direction: column;
+    }
+
+    .ui-segment-control__item--active {
+        flex: none;
+        width: 100%;
+    }
+}
+
+.dark-mode .ui-segment-control__item {
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    border-color: var(--border-subtle);
+}
+
+.dark-mode .ui-segment-control__item:hover:not(.ui-segment-control__item--active) {
+    background: var(--bg-inset);
+    border-color: var(--border-primary);
+}

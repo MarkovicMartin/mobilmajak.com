@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { analyticsAPI } from '../../services/api';
-import ModuleSubnav from '../../components/ModuleSubnav';
+import { Tabs } from '../../components/ui';
 import { ANALYTICS_SECTIONS } from './analyticsSections';
 import './AnalyticsNav.css';
 
@@ -100,12 +100,13 @@ const AnalyticsNav = () => {
     );
 
     return (
-        <ModuleSubnav
+        <Tabs
             tabs={tabs}
             meta={meta}
             accent="pink"
             ariaLabel="Navigace analytiky"
             className="analytics-nav"
+            legacy
         />
     );
 };

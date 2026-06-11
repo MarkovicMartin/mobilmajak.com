@@ -7,22 +7,6 @@
     box-shadow: var(--shadow-card);
 }
 
-.news-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 30px;
-    padding-bottom: 20px;
-    border-bottom: 2px solid var(--border-secondary);
-}
-
-.news-header h2 {
-    margin: 0;
-    color: var(--text-heading);
-    font-size: 28px;
-    font-weight: 700;
-}
-
 .new-post-btn {
     background: linear-gradient(135deg, var(--brand-pink), var(--brand-pink-hover));
     color: white;
@@ -130,16 +114,6 @@
         margin: 0;
         border-radius: 0;
         padding: 15px;
-    }
-    
-    .news-header {
-        flex-direction: column;
-        gap: 15px;
-        text-align: center;
-    }
-    
-    .news-header h2 {
-        font-size: 24px;
     }
     
     .new-post-btn {

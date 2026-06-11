@@ -9,7 +9,7 @@ const LoginForm = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        
+
         if (!username || !password) {
             return;
         }
@@ -19,17 +19,14 @@ const LoginForm = () => {
 
     return (
         <div className="login-container">
-            <div className="login-header">
-                <h1>Přihlášení do systému</h1>
-                <p>Zadejte své přihlašovací údaje pro přístup k datům a statistikám.</p>
-            </div>
-            
             <div className="login-card">
-                <div className="login-card-header">
-                    <span className="lock-icon">🔒</span>
-                    <h2>Přihlášení</h2>
-                </div>
-                
+                <header className="login-card__header">
+                    <h1 className="login-card__title">Přihlášení</h1>
+                    <p className="login-card__subtitle">
+                        Zadejte své přihlašovací údaje pro přístup k datům a statistikám.
+                    </p>
+                </header>
+
                 <form onSubmit={handleSubmit} className="login-form">
                     <div className="form-group">
                         <label htmlFor="username">Uživatelské jméno</label>
@@ -42,7 +39,7 @@ const LoginForm = () => {
                             required
                         />
                     </div>
-                    
+
                     <div className="form-group">
                         <label htmlFor="password">Heslo</label>
                         <input
@@ -54,20 +51,20 @@ const LoginForm = () => {
                             required
                         />
                     </div>
-                    
+
                     {error && (
                         <div className="error-message">
                             {error}
                         </div>
                     )}
-                    
-                    <button 
-                        type="submit" 
+
+                    <button
+                        type="submit"
                         className="login-button"
                         disabled={loading}
                     >
                         {loading ? 'Přihlašování...' : 'Přihlásit se'}
-                        <span className="arrow-icon">→</span>
+                        <span className="arrow-icon" aria-hidden="true">→</span>
                     </button>
                 </form>
             </div>
@@ -75,4 +72,4 @@ const LoginForm = () => {
     );
 };
 
-export default LoginForm; 
+export default LoginForm;

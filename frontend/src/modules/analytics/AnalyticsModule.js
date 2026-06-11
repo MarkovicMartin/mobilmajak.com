@@ -1,5 +1,6 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { PageHeader } from '../../components/ui';
 import AnalyticsNav from './AnalyticsNav';
 import { DEFAULT_ANALYTICS_SECTION } from './analyticsSections';
 import ProdejnyPolozky from './sections/ProdejnyPolozky';
@@ -14,6 +15,7 @@ import './AnalyticsDensity.css';
 const AnalyticsModule = ({ currentUser }) => {
     return (
         <div className="analytics-module">
+            <PageHeader title="Analytika" />
             <AnalyticsNav />
             <div className="analytics-content">
                 <Routes>

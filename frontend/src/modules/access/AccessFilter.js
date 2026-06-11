@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useMemo } from 'react';
+import { Select } from '../../components/ui';
 import './AccessFilter.css';
 
 const AccessFilter = ({ filters, onFiltersChange, stores, categories }) => {
@@ -19,17 +20,34 @@ const AccessFilter = ({ filters, onFiltersChange, stores, categories }) => {
 
     const hasActiveFilters = filters.store || filters.category || filters.search;
 
+    const storeOptions = useMemo(() => [
+        { value: '', label: 'Všechny prodejny' },
+        ...stores.map((store) => ({
+            value: store.store,
+            label: `${store.store} (${store.count})`,
+        })),
+    ], [stores]);
+
+    const categoryOptions = useMemo(() => [
+        { value: '', label: 'Všechny kategorie' },
+        ...categories.map((category) => ({
+            value: category,
+            label: category,
+        })),
+    ], [categories]);
+
     return (
         <div className="access-filter">
             <div className="filter-header">
-                <h4>🔍 Filtrování a vyhledávání</h4>
+                <h4>Filtrování a vyhledávání</h4>
                 {hasActiveFilters && (
-                    <button 
-                        className="btn-clear-filters"
+                    <button
+                        type="button"
+                        className="btn btn--ghost btn--sm btn-clear-filters"
                         onClick={clearFilters}
                         title="Vymazat všechny filtry"
                     >
-                        🗑️ Vymazat filtry
+                        Vymazat filtry
                     </button>
                 )}
             </div>
@@ -37,7 +55,7 @@ const AccessFilter = ({ filters, onFiltersChange, stores, categories }) => {
             <div className="filter-controls">
                 <div className="filter-group">
                     <label htmlFor="search-input">
-                        🔎 Vyhledávání
+                        Vyhledávání
                     </label>
                     <input
                         id="search-input"
@@ -51,40 +69,30 @@ const AccessFilter = ({ filters, onFiltersChange, stores, categories }) => {
 
                 <div className="filter-group">
                     <label htmlFor="store-filter">
-                        🏪 Prodejna
+                        Prodejna
                     </label>
-                    <select
+                    <Select
                         id="store-filter"
                         value={filters.store}
-                        onChange={(e) => handleFilterChange('store', e.target.value)}
-                        className="filter-select"
-                    >
-                        <option value="">Všechny prodejny</option>
-                        {stores.map(store => (
-                            <option key={store.store} value={store.store}>
-                                {store.store} ({store.count})
-                            </option>
-                        ))}
-                    </select>
+                        onChange={(value) => handleFilterChange('store', value)}
+                        options={storeOptions}
+                        placeholder="Všechny prodejny"
+                        aria-label="Filtrovat podle prodejny"
+                    />
                 </div>
 
                 <div className="filter-group">
                     <label htmlFor="category-filter">
-                        📁 Kategorie
+                        Kategorie
                     </label>
-                    <select
+                    <Select
                         id="category-filter"
                         value={filters.category}
-                        onChange={(e) => handleFilterChange('category', e.target.value)}
-                        className="filter-select"
-                    >
-                        <option value="">Všechny kategorie</option>
-                        {categories.map(category => (
-                            <option key={category} value={category}>
-                                {category}
-                            </option>
-                        ))}
-                    </select>
+                        onChange={(value) => handleFilterChange('category', value)}
+                        options={categoryOptions}
+                        placeholder="Všechny kategorie"
+                        aria-label="Filtrovat podle kategorie"
+                    />
                 </div>
             </div>
 
@@ -94,7 +102,7 @@ const AccessFilter = ({ filters, onFiltersChange, stores, categories }) => {
                     <div className="filter-tags">
                         {filters.search && (
                             <div className="filter-tag">
-                                🔎 "{filters.search}"
+                                Vyhledávání: "{filters.search}"
                                 <button 
                                     onClick={() => handleFilterChange('search', '')}
                                     className="remove-filter"
@@ -105,7 +113,7 @@ const AccessFilter = ({ filters, onFiltersChange, stores, categories }) => {
                         )}
                         {filters.store && (
                             <div className="filter-tag">
-                                🏪 {filters.store}
+                                Prodejna: {filters.store}
                                 <button 
                                     onClick={() => handleFilterChange('store', '')}
                                     className="remove-filter"
@@ -116,7 +124,7 @@ const AccessFilter = ({ filters, onFiltersChange, stores, categories }) => {
                         )}
                         {filters.category && (
                             <div className="filter-tag">
-                                📁 {filters.category}
+                                Kategorie: {filters.category}
                                 <button 
                                     onClick={() => handleFilterChange('category', '')}
                                     className="remove-filter"

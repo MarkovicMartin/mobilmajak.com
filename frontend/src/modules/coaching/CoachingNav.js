@@ -1,5 +1,5 @@
-import React from 'react';
-import ModuleSubnav from '../../components/ModuleSubnav';
+import React, { useMemo } from 'react';
+import { Tabs, Select } from '../../components/ui';
 import { COACHING_SECTIONS } from './coachingSections';
 import './CoachingNav.css';
 
@@ -19,45 +19,49 @@ const CoachingNav = ({
         end: !section.path,
     }));
 
+    const storeOptions = useMemo(
+        () => [
+            { value: '', label: 'Vše' },
+            ...(prodejny || []).map((p) => ({ value: String(p.id), label: p.nazev })),
+        ],
+        [prodejny],
+    );
+
     const meta = (
-        <>
+        <div className="coaching-nav-meta">
             {prodejny?.length > 1 && (
                 <label className="coaching-nav-filter">
                     <span className="coaching-nav-filter-label">Prodejna</span>
-                    <select
-                        className="coaching-nav-select"
+                    <Select
+                        options={storeOptions}
                         value={prodejnaId}
-                        onChange={(e) => onProdejnaChange(e.target.value)}
-                    >
-                        <option value="">Vše</option>
-                        {prodejny.map((p) => (
-                            <option key={p.id} value={p.id}>{p.nazev}</option>
-                        ))}
-                    </select>
+                        onChange={onProdejnaChange}
+                        aria-label="Filtr prodejny"
+                        className="coaching-nav-select"
+                    />
                 </label>
             )}
             <label className="coaching-nav-filter">
                 <span className="coaching-nav-filter-label">Měsíc</span>
-                <select
-                    className="coaching-nav-select"
+                <Select
+                    options={monthOptions}
                     value={monthValue}
-                    onChange={(e) => onMonthChange(e.target.value)}
-                >
-                    {monthOptions.map((opt) => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                    ))}
-                </select>
+                    onChange={onMonthChange}
+                    aria-label="Filtr měsíce"
+                    className="coaching-nav-select"
+                />
             </label>
-        </>
+        </div>
     );
 
     return (
-        <ModuleSubnav
+        <Tabs
             tabs={tabs}
             meta={meta}
             accent="pink"
             ariaLabel="Navigace výkonů"
             className="coaching-nav"
+            legacy
         />
     );
 };

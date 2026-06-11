@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import { coachingAPI } from '../../services/api';
+import { PageHeader } from '../../components/ui';
 import CoachingNav from './CoachingNav';
 import TeamRoster from './sections/TeamRoster';
 import SellerProfile from './sections/SellerProfile';
@@ -77,6 +78,7 @@ const CoachingModule = () => {
 
     return (
         <div className="coaching-module">
+            <PageHeader title="Výkony" />
             <CoachingNav
                 monthValue={mesic}
                 monthOptions={monthOptions}

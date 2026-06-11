@@ -4,6 +4,8 @@ import { formatNewsAge } from '../utils/formatNewsAge';
 import { plansAPI, newsAPI, shiftsAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useSalespersonMetrics } from '../hooks/useSalespersonMetrics';
+import { PageHeader, Select, SegmentControl } from './ui';
+import DashboardModuleHub from './DashboardModuleHub';
 import './SellerDashboard.css';
 import AttendancePanel from '../modules/shifts/AttendancePanel';
 
@@ -124,33 +126,57 @@ export default function SellerDashboard({ user }) {
   const avgToday = number(today?.prumer_polozek_uctu ?? today?.pol_dok ?? 0);
   const avgMonth = number(month?.prumer_polozek_uctu ?? month?.pol_dok ?? 0);
 
+  const roleLabel = user?.role === 'VEDOUCI' ? 'Vedoucí'
+    : user?.role === 'BRIGADNIK' ? 'Brigádník'
+    : user?.role === 'ADMIN' ? 'Administrátor'
+    : 'Prodejce';
+
+  const monthSelectOptions = useMemo(() => {
+    const opts = [];
+    const ref = new Date();
+    for (let i = -2; i <= 2; i++) {
+      const d = new Date(ref.getFullYear(), ref.getMonth() + i, 1);
+      const rok = d.getFullYear();
+      const mesic = d.getMonth() + 1;
+      opts.push({
+        value: `${rok}-${mesic}`,
+        label: d.toLocaleDateString('cs-CZ', { month: 'long', year: 'numeric' }),
+      });
+    }
+    return opts;
+  }, []);
+
+  const monthSelectValue = mujPlanMesic
+    ? `${mujPlanMesic.rok}-${mujPlanMesic.mesic}`
+    : `${new Date().getFullYear()}-${new Date().getMonth() + 1}`;
+
   return (
     <div className="seller-dashboard">
-      <div className="seller-head">
-        <div>
-          <div className="seller-head-title">Vítej zpět, {user?.jmeno} 👋</div>
-          <div className="seller-head-sub">Role: {
-            user?.role === 'VEDOUCI' ? 'Vedoucí'
-              : user?.role === 'BRIGADNIK' ? 'Brigádník'
-              : user?.role === 'ADMIN' ? 'Administrátor'
-              : 'Prodejce'
-          } • Dnes je {new Date().toLocaleDateString('cs-CZ')}</div>
-        </div>
-        <div className="seller-head-actions">
-          <button
-            className="btn-rounded"
-            onClick={() => navigate('/profile', { state: { profileTab: 'tasks' } })}
-          >
-            Moje úkoly v profilu
-          </button>
-          {canManageTasks() && (
-            <button className="btn-rounded" onClick={() => navigate('/tasks')}>
-              Správa úkolů
+      <PageHeader
+        title={`Vítej zpět, ${user?.jmeno || ''}`}
+        subtitle={`${roleLabel} · Dnes je ${new Date().toLocaleDateString('cs-CZ')}`}
+        actions={(
+          <>
+            <button
+              type="button"
+              className="btn btn--secondary"
+              onClick={() => navigate('/profile', { state: { profileTab: 'tasks' } })}
+            >
+              Moje úkoly
             </button>
-          )}
-          <button className="btn-rounded" onClick={() => navigate('/shifts')}>Plán směn</button>
-        </div>
-      </div>
+            {canManageTasks() && (
+              <button type="button" className="btn btn--secondary" onClick={() => navigate('/tasks')}>
+                Správa úkolů
+              </button>
+            )}
+            <button type="button" className="btn btn--primary" onClick={() => navigate('/shifts')}>
+              Plán směn
+            </button>
+          </>
+        )}
+      />
+
+      <DashboardModuleHub />
 
       <div className="seller-metrics">
         <MetricCard title="Dnešní skóre" value={`${pointsTodayVal} b.`} delta={deltaTodayPoints} sub={todayPoints?.source && `zdroj: ${todayPoints.source}`} />
@@ -165,44 +191,27 @@ export default function SellerDashboard({ user }) {
             <div className="muj-plan-header">
               <h3 className="chart-title big">Můj plán</h3>
               <div className="muj-plan-header-right">
-                <div className="pill-toggle">
-                  <button
-                    className={mujPlanView === 'denni' ? 'active' : ''}
-                    onClick={() => setMujPlanView('denni')}
-                  >
-                    Denní
-                  </button>
-                  <button
-                    className={mujPlanView === 'mesicni' ? 'active' : ''}
-                    onClick={() => setMujPlanView('mesicni')}
-                  >
-                    Měsíční
-                  </button>
-                </div>
-                <select
-                className="muj-plan-select"
-                value={mujPlanMesic ? `${mujPlanMesic.rok}-${mujPlanMesic.mesic}` : `${new Date().getFullYear()}-${new Date().getMonth() + 1}`}
-                onChange={(e) => {
-                  const [r, m] = e.target.value.split('-').map(Number);
-                  loadMujPlan(r, m);
-                }}
-              >
-                {(() => {
-                  const opts = [];
-                  const today = new Date();
-                  for (let i = -2; i <= 2; i++) {
-                    const d = new Date(today.getFullYear(), today.getMonth() + i, 1);
-                    const rok = d.getFullYear();
-                    const mesic = d.getMonth() + 1;
-                    opts.push(
-                      <option key={`${rok}-${mesic}`} value={`${rok}-${mesic}`}>
-                        {d.toLocaleDateString('cs-CZ', { month: 'long', year: 'numeric' })}
-                      </option>
-                    );
-                  }
-                  return opts;
-                })()}
-                </select>
+                <SegmentControl
+                  options={[
+                    { id: 'denni', label: 'Denní' },
+                    { id: 'mesicni', label: 'Měsíční' },
+                  ]}
+                  value={mujPlanView}
+                  onChange={setMujPlanView}
+                  expanded={false}
+                  ariaLabel="Zobrazení plánu"
+                  className="muj-plan-segment"
+                />
+                <Select
+                  className="muj-plan-select"
+                  options={monthSelectOptions}
+                  value={monthSelectValue}
+                  onChange={(v) => {
+                    const [r, m] = v.split('-').map(Number);
+                    loadMujPlan(r, m);
+                  }}
+                  aria-label="Měsíc plánu"
+                />
               </div>
             </div>
 

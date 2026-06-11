@@ -83,11 +83,11 @@ const TaskDetailPanel = ({
             {canEdit && task.stav !== 'hotovo' && (
                 <div className="task-detail-actions">
                     {task.stav === 'novy' && (
-                        <button type="button" className="btn-outline" onClick={() => setStav('v_procesu')}>
+                        <button type="button" className="btn btn--ghost" onClick={() => setStav('v_procesu')}>
                             Začít řešit
                         </button>
                     )}
-                    <button type="button" className="btn-primary" onClick={() => setStav('hotovo')}>
+                    <button type="button" className="btn btn--primary" onClick={() => setStav('hotovo')}>
                         Označit hotovo
                     </button>
                 </div>

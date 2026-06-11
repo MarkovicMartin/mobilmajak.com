@@ -16,6 +16,8 @@ from .attendance_service import (
     ensure_auto_close_open_shifts,
     build_absent_stores_report,
     build_today_work_board,
+    format_local_hm,
+    format_local_iso,
     shift_window,
     work_hours_from_history,
 )
@@ -184,11 +186,11 @@ def attendance_log(request):
             problem_duvod = 'zadna_dochazka'
 
         if prichod:
-            konec_od = prichod.cas.strftime('%H:%M')
+            konec_od = format_local_hm(prichod.cas)
         else:
             konec_od = plan_od.strftime('%H:%M')
         if odchod:
-            konec_do = odchod.cas.strftime('%H:%M')
+            konec_do = format_local_hm(odchod.cas)
         else:
             konec_do = 'otevřeno' if stav == 'otevreno' else plan_do.strftime('%H:%M')
 
@@ -209,7 +211,7 @@ def attendance_log(request):
             'akce': [
                 {
                     'typ_akce': d.typ_akce,
-                    'cas': d.cas.isoformat(),
+                    'cas': format_local_iso(d.cas),
                 }
                 for d in sorted(history, key=lambda x: x.cas)
             ],
@@ -247,7 +249,7 @@ def attendance_open(request):
             'jmeno': f'{smena.user.jmeno} {smena.user.prijmeni}'.strip(),
             'datum': smena.datum.isoformat(),
             'prodejna': smena.prodejna.nazev,
-            'prichod': prichod.cas.isoformat() if prichod else None,
+            'prichod': format_local_hm(prichod.cas) if prichod else None,
             'plan_do': smena.cas_do.strftime('%H:%M'),
         })
     return Response({'open': open_list})

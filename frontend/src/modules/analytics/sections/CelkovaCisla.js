@@ -20,6 +20,7 @@ import {
     periodToMonthKey,
     buildLastMonthKeys,
 } from './celkovaPeriodUtils';
+import { getChartColors, getChartTheme } from '../../../utils/chartTheme';
 import './CelkovaCisla.css';
 
 const TIMESERIES_MONTHS = 12;
@@ -69,6 +70,8 @@ const CategoryTimeseries = ({ filters, defaultGroupBy, defaultSelected }) => {
     }, [defaultGroupBy]);
 
     const fmt = new Intl.NumberFormat('cs-CZ');
+    const chartTheme = getChartTheme();
+    const palette = getChartColors(6);
     if (loading) return <div className="celkova-cisla-top"><h3>📅 Prodeje v čase</h3><div>Načítám…</div></div>;
     if (error) return <div className="celkova-cisla-top"><h3>📅 Prodeje v čase</h3><div className="celkova-cisla-error">{error}</div></div>;
     if (!data) return null;
@@ -145,7 +148,6 @@ const CategoryTimeseries = ({ filters, defaultGroupBy, defaultSelected }) => {
                         const yMax = nice * pow;
                         const py = (v) => bottom - (h * (v / yMax));
                         const groupW = dates.length ? w / dates.length : w;
-                        const palette = ['#1B2848', '#E40B4D', '#4a6fa5', '#7b8fb8', '#27ae60', '#c9d4e8'];
                         const barGap = 3;
                         const barW = Math.max(6, Math.min(22, (groupW - 6) / Math.max(1, series.length) - barGap));
                         return (
@@ -155,15 +157,15 @@ const CategoryTimeseries = ({ filters, defaultGroupBy, defaultSelected }) => {
                                     const y = py(val);
                                     return (
                                         <g key={i}>
-                                            <line x1={left} y1={y} x2={right} y2={y} stroke="#eef1f5" />
-                                            <text x={left - 8} y={y + 4} fontSize="10" textAnchor="end" fill="#7f8c8d">
+                                            <line x1={left} y1={y} x2={right} y2={y} stroke={chartTheme.grid} />
+                                            <text x={left - 8} y={y + 4} fontSize="10" textAnchor="end" fill={chartTheme.tick}>
                                                 {fmt.format(Math.round(val))}
                                             </text>
                                         </g>
                                     );
                                 })}
-                                <line x1={left} y1={bottom} x2={right} y2={bottom} stroke="#cbd3da" />
-                                <line x1={left} y1={top} x2={left} y2={bottom} stroke="#cbd3da" />
+                                <line x1={left} y1={bottom} x2={right} y2={bottom} stroke={chartTheme.axis} />
+                                <line x1={left} y1={top} x2={left} y2={bottom} stroke={chartTheme.axis} />
                                 {dates.map((d, i) => {
                                     const x = left + groupW * (i + 0.5);
                                     return (
@@ -172,7 +174,7 @@ const CategoryTimeseries = ({ filters, defaultGroupBy, defaultSelected }) => {
                                             transform={`translate(${x}, ${bottom + 18}) rotate(-35)`}
                                             fontSize="10"
                                             textAnchor="end"
-                                            fill="#7f8c8d"
+                                            fill={chartTheme.tick}
                                         >
                                             {formatMonthKeyLabel(d)}
                                         </text>
@@ -220,7 +222,7 @@ const CategoryTimeseries = ({ filters, defaultGroupBy, defaultSelected }) => {
                                                 );
                                             })}
                                             <rect x={left} y={top - 22 + si * 14} width="8" height="8" fill={color} rx="2" />
-                                            <text x={left + 12} y={top - 14 + si * 14} fontSize="11" fill="#2c3e50">
+                                            <text x={left + 12} y={top - 14 + si * 14} fontSize="11" fill={chartTheme.label}>
                                                 {s.key || 'Nezařazeno'}
                                             </text>
                                         </g>
@@ -228,8 +230,8 @@ const CategoryTimeseries = ({ filters, defaultGroupBy, defaultSelected }) => {
                                 })}
                                 {tip.visible && (
                                     <g pointerEvents="none" transform={`translate(${tip.x}, ${tip.y})`}>
-                                        <rect x={-80} y={-28} width={160} height={22} rx="4" fill="#fff" stroke="#cbd3da" />
-                                        <text y={-12} textAnchor="middle" fontSize="11" fill="#2c3e50">
+                                        <rect x={-80} y={-28} width={160} height={22} rx="4" fill={chartTheme.tooltip.background} stroke={chartTheme.tooltip.border} />
+                                        <text y={-12} textAnchor="middle" fontSize="11" fill={chartTheme.tooltip.color}>
                                             {tip.text}
                                         </text>
                                     </g>

@@ -5,8 +5,10 @@ import { format, getDaysInMonth } from 'date-fns';
 import { useAuth } from '../context/AuthContext';
 import api, { analyticsAPI, newsAPI, shiftsAPI, plansAPI } from '../services/api';
 import { castkaBezDphZCelkem } from '../utils/dph';
+import { PageHeader } from './ui';
 import TodayWorkBoard from './TodayWorkBoard';
 import DashboardTasksSnapshot from './DashboardTasksSnapshot';
+import DashboardModuleHub from './DashboardModuleHub';
 import './AdminDashboard.css';
 
 const currency = (num) =>
@@ -183,8 +185,8 @@ export default function AdminDashboard() {
         };
     }, [planDashboardBundle, todayStats, today, planProdejciList]);
 
-    const goPlansProdejny = () => navigate({ pathname: '/plans', hash: 'plneni-prodejny' });
-    const goPlansProdejci = () => navigate({ pathname: '/plans', hash: 'plneni-prodejci' });
+    const goPlansProdejny = () => navigate('/plans/plneni-prodejny');
+    const goPlansProdejci = () => navigate('/plans/plneni-prodejci');
     const goAnalyticsCelkova = () => navigate('/analytics/celkova-cisla');
 
     const openShiftsSection = () => {
@@ -198,7 +200,7 @@ export default function AdminDashboard() {
         }
     };
 
-    const goTasks = () => navigate('/tasks');
+    const goOrders = () => navigate('/orders');
 
     if (!isAdmin()) return null;
 
@@ -209,6 +211,8 @@ export default function AdminDashboard() {
     return (
         <div className="admin-dashboard">
             <div className="container">
+                <PageHeader title="Přehled" />
+                <DashboardModuleHub />
                 {planMetrics && (
                     <div className="plan-tiles-row">
                         <div
@@ -360,14 +364,14 @@ export default function AdminDashboard() {
                     className="tile tile--clickable"
                     role="button"
                     tabIndex={0}
-                    onClick={goTasks}
-                    onKeyDown={tileKeyActivate(goTasks)}
+                    onClick={goOrders}
+                    onKeyDown={tileKeyActivate(goOrders)}
                 >
-                    <div className="tile-title">Správa úkolů</div>
+                    <div className="tile-title">Objednávky</div>
                     <div className="tile-value">
-                        <i className="fas fa-clipboard-list" aria-hidden="true" />
+                        <i className="fas fa-shopping-cart" aria-hidden="true" />
                     </div>
-                    <div className="tile-sub">Přiřazení a přehled úkolů →</div>
+                    <div className="tile-sub">Kanban a správa objednávek →</div>
                 </div>
                 </div>
 

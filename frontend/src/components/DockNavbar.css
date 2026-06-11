@@ -339,3 +339,23 @@
         display: flex;
     }
 }
+
+.dock-profile-btn-wrap {
+    position: relative;
+}
+
+.dock-profile-badge {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 16px;
+    text-align: center;
+    border-radius: 8px;
+    background: var(--accent-danger);
+    color: var(--text-inverse);
+}
