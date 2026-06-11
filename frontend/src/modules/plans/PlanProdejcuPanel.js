@@ -173,7 +173,7 @@ export default function PlanProdejcuPanel({ planProdejnaId }) {
           className="plans-btn plans-btn-secondary plans-btn-xs"
           onClick={prepocitatPodleSmen}
           disabled={saving || autoSmenyLoading || aktivniKategorie.length === 0}
-          title="Rozdělí kusy podle odpracovaných hodin na směnách v měsíci (např. 50 % / 40 % / 10 %)"
+          title="Rozdělí kusy podle směn: prodej = hodiny pozice prodej; SERVIS = efektivní servisní hodiny (Globus: víkend/okraj 40 %, souběž prodej+technik 20 %, zaškolení 20 % váhy)"
         >
           {autoSmenyLoading ? 'Počítám…' : 'Rozdělit podle hodin na směnách'}
         </button>

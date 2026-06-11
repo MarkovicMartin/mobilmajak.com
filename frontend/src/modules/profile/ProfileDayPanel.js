@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
+import Modal from '../../components/Modal';
 import { format, parse } from 'date-fns';
 import { cs } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
@@ -102,21 +102,14 @@ const ProfileDayPanel = ({
         onRefresh?.();
     };
 
-    return createPortal(
-        <div className="modal-overlay profile-day-overlay" onClick={onClose}>
-            <div
-                className="modal-content profile-day-panel"
-                onClick={(e) => e.stopPropagation()}
-                role="dialog"
-                aria-labelledby="profile-day-title"
-            >
-                <div className="modal-header">
-                    <h2 id="profile-day-title">{dateLabel}</h2>
-                    <button type="button" className="modal-close" onClick={onClose} aria-label="Zavřít">
-                        ×
-                    </button>
-                </div>
-                <div className="modal-body profile-day-body">
+    return (
+        <Modal
+            title={dateLabel}
+            titleId="profile-day-title"
+            onClose={onClose}
+            size="sm"
+            bodyClassName="profile-day-body"
+        >
                     <section className="profile-day-section">
                         <h3>Směny</h3>
                         {shifts.length === 0 ? (
@@ -235,10 +228,7 @@ const ProfileDayPanel = ({
                             </button>
                         </form>
                     </section>
-                </div>
-            </div>
-        </div>,
-        document.body,
+        </Modal>
     );
 };
 

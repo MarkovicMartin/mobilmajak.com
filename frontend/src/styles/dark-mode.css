@@ -188,15 +188,14 @@
     color: var(--text-primary);
 }
 
-/* --- Navigace analytiky --- */
-.dark-mode .analytics-nav-tab--active,
-.dark-mode .analytics-nav-tab.active {
+/* --- Navigace modulů (ModuleSubnav) --- */
+.dark-mode .module-subnav-tab--active {
     color: var(--text-primary) !important;
-    background: var(--brand-pink-soft) !important;
 }
 
-.dark-mode .analytics-nav-tab {
-    color: var(--text-secondary);
+.dark-mode .analytics-nav .module-subnav-tab--active,
+.dark-mode .coaching-nav .module-subnav-tab--active {
+    background: var(--brand-pink-soft) !important;
 }
 
 .dark-mode .analytics-nav .actor-status {
@@ -347,9 +346,21 @@
 .dark-mode .analytics-module .charts-section,
 .dark-mode .analytics-module .chart-container,
 .dark-mode .analytics-module .analysis-section,
-.dark-mode .analytics-module .modal-content {
+.dark-mode .modal-content {
     background: var(--bg-card) !important;
     color: var(--text-primary);
+}
+
+.dark-mode .confirm-details {
+    background: var(--bg-inset);
+}
+
+.dark-mode .confirm-details p {
+    color: var(--text-secondary);
+}
+
+.dark-mode .confirm-details strong {
+    color: var(--text-heading);
 }
 
 .dark-mode .analytics-module .charts-section h4,

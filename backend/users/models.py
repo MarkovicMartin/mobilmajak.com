@@ -8,6 +8,12 @@ class WebUser(models.Model):
         ('PRODEJCE', 'Prodejce'),
         ('BRIGADNIK', 'Brigádník'),
     ]
+
+    SERVIS_UROVEN = [
+        ('zadna', 'Nedělá servis'),
+        ('zauceni', 'V zaškolení'),
+        ('plny', 'Schopný servisu'),
+    ]
     
     # Primární klíč - ručně zadaný ID
     id = models.IntegerField(primary_key=True)
@@ -24,6 +30,12 @@ class WebUser(models.Model):
     # prodejna = models.ForeignKey('stores.Prodejna', on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Prodejna", related_name='uzivatele')
     prodejna_id = models.IntegerField(null=True, blank=True, verbose_name="ID domovské prodejny")
     technik_id = models.IntegerField(null=True, blank=True, verbose_name="ID technika (EDA/Pohoda)")
+    servis_uroven = models.CharField(
+        max_length=20,
+        choices=SERVIS_UROVEN,
+        default='zadna',
+        verbose_name='Úroveň servisu',
+    )
     telefon = models.CharField(max_length=20, verbose_name="Telefonní číslo", blank=True, null=True)
     email = models.EmailField(verbose_name="E-mail", blank=True, null=True)
     adresa = models.TextField(verbose_name="Adresa", blank=True, null=True)

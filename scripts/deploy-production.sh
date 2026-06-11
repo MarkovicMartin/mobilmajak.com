@@ -34,17 +34,18 @@ echo "=== Production deploy -> https://mobilmajak.com ==="
 echo "SSH key: $SSH_KEY"
 echo ""
 
-echo "[1/4] Backend..."
+echo "[1/5] Backend..."
 rm -f "$BACKEND_ARCHIVE"
 tar -czf "$BACKEND_ARCHIVE" -C "$REPO_ROOT/backend" \
   --exclude=venv --exclude=__pycache__ --exclude='*.pyc' \
-  --exclude=logs --exclude=media --exclude=staticfiles .
+  --exclude=logs --exclude=media --exclude=staticfiles \
+  --exclude=.env .
 scp_cmd "$BACKEND_ARCHIVE" "${TARGET}:/tmp/production-backend.tar.gz"
 ssh_cmd "cd $PROD_PATH && tar -xzf /tmp/production-backend.tar.gz && rm -f /tmp/production-backend.tar.gz && chown -R webmajak:webmajak $PROD_PATH"
 rm -f "$BACKEND_ARCHIVE"
 echo "  OK backend"
 
-echo "[2/4] Frontend sources..."
+echo "[2/5] Frontend sources..."
 rm -f "$FRONTEND_ARCHIVE"
 tar -czf "$FRONTEND_ARCHIVE" -C "$REPO_ROOT/frontend" --exclude=node_modules --exclude=build .
 scp_cmd "$FRONTEND_ARCHIVE" "${TARGET}:/tmp/production-frontend-src.tar.gz"
@@ -53,17 +54,18 @@ rm -f "$FRONTEND_ARCHIVE"
 echo "  OK frontend sources"
 
 if [ "$SKIP_BUILD" = true ]; then
-  echo "[3/4] Skip frontend build (--skip-build)"
+  echo "[3/5] Skip frontend build (--skip-build)"
 else
-  echo "[3/4] npm ci && build on server..."
-  ssh_cmd "sudo -u webmajak bash -lc 'set -e; cd ${PROD_PATH}/frontend; npm ci --prefer-offline --no-audit; CI=false npm run build'"
+  echo "[3/5] npm ci && build on server..."
+  scp_cmd "$REPO_ROOT/scripts/frontend-build-vps.sh" "${TARGET}:/tmp/frontend-build-vps.sh"
+  ssh_cmd "sed -i 's/\r$//' /tmp/frontend-build-vps.sh; sudo -u webmajak bash /tmp/frontend-build-vps.sh ${PROD_PATH}/frontend; rm -f /tmp/frontend-build-vps.sh"
 fi
 
-echo "[4/4] Post-deploy..."
+echo "[4/5] Post-deploy..."
 scp_cmd "$REPO_ROOT/scripts/production-post-deploy.sh" "${TARGET}:/tmp/production-post-deploy.sh"
 ssh_cmd "sed -i 's/\r$//' /tmp/production-post-deploy.sh; bash /tmp/production-post-deploy.sh; rm -f /tmp/production-post-deploy.sh; chmod -R a+rX ${PROD_PATH}/frontend/build/static 2>/dev/null || true; systemctl reload nginx"
 
-HEALTH=$(curl -s -o /dev/null -w "%{http_code}" "https://mobilmajak.com/health/" || echo "000")
+echo "[5/5] Smoke test..."
+"$REPO_ROOT/scripts/post-deploy-smoke.sh" production
 echo ""
-echo "Done. health HTTP $HEALTH"
-echo "https://mobilmajak.com/"
+echo "Done. https://mobilmajak.com/"

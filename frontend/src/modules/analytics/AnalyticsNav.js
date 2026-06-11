@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { NavLink } from 'react-router-dom';
 import { analyticsAPI } from '../../services/api';
+import ModuleSubnav from '../../components/ModuleSubnav';
 import { ANALYTICS_SECTIONS } from './analyticsSections';
 import './AnalyticsNav.css';
 
@@ -73,43 +73,41 @@ const AnalyticsNav = () => {
         return () => window.clearInterval(intervalId);
     }, [fetchActorStatus]);
 
+    const tabs = ANALYTICS_SECTIONS.map((section) => ({
+        id: section.id,
+        label: section.tabLabel,
+        icon: section.icon,
+        to: `/analytics/${section.id}`,
+    }));
+
+    const meta = (
+        <>
+            <div
+                className={`actor-status actor-${actorStatus.level}`}
+                title={actorStatus.title || 'Stav automatického importu'}
+            >
+                <span className="actor-dot" />
+                <span className="actor-text">{actorStatus.text}</span>
+            </div>
+            <button
+                type="button"
+                className="analytics-nav-refresh"
+                onClick={fetchActorStatus}
+                title="Obnovit stav importu"
+            >
+                🔄
+            </button>
+        </>
+    );
+
     return (
-        <header className="analytics-nav" aria-label="Navigace analytiky">
-            <div className="analytics-nav-tabs" role="tablist">
-                {ANALYTICS_SECTIONS.map((section) => (
-                    <NavLink
-                        key={section.id}
-                        to={`/analytics/${section.id}`}
-                        role="tab"
-                        className={({ isActive }) =>
-                            `analytics-nav-tab${isActive ? ' analytics-nav-tab--active' : ''}`
-                        }
-                    >
-                        <span className="analytics-nav-tab-icon" aria-hidden="true">
-                            {section.icon}
-                        </span>
-                        <span className="analytics-nav-tab-label">{section.tabLabel}</span>
-                    </NavLink>
-                ))}
-            </div>
-            <div className="analytics-nav-meta">
-                <div
-                    className={`actor-status actor-${actorStatus.level}`}
-                    title={actorStatus.title || 'Stav automatického importu'}
-                >
-                    <span className="actor-dot" />
-                    <span className="actor-text">{actorStatus.text}</span>
-                </div>
-                <button
-                    type="button"
-                    className="analytics-nav-refresh"
-                    onClick={fetchActorStatus}
-                    title="Obnovit stav importu"
-                >
-                    🔄
-                </button>
-            </div>
-        </header>
+        <ModuleSubnav
+            tabs={tabs}
+            meta={meta}
+            accent="pink"
+            ariaLabel="Navigace analytiky"
+            className="analytics-nav"
+        />
     );
 };
 

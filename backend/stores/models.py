@@ -35,6 +35,10 @@ class Prodejna(models.Model):
     )
     
     # Nastavení
+    povolena_pozice_servis = models.BooleanField(
+        default=False,
+        verbose_name='Povolena pozice servisní technik',
+    )
     aktivni = models.BooleanField(default=True, verbose_name="Aktivní")
     barva = models.CharField(max_length=7, default="#0066cc", verbose_name="Barva (hex kód)", help_text="Pro rozlišení v grafech a UI")
     poradi = models.IntegerField(default=0, verbose_name="Pořadí", help_text="Pro řazení v seznamech")

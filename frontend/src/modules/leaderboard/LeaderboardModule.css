@@ -78,86 +78,9 @@
     }
 }
 
-.period-tab {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    border: 2px solid var(--border-subtle);
-    border-radius: 12px;
-    padding: 10px 16px;
-    font-size: 0.85rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: flex 0.25s ease, background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
-    color: var(--text-secondary);
-    background: var(--bg-card);
-    flex: 0 1 auto;
-    min-width: 0;
-    text-align: center;
-    font-family: inherit;
-    appearance: none;
-}
-
-.period-tab:hover:not(.period-tab--expanded) {
-    border-color: var(--border-primary);
-    background: var(--bg-inset);
-    color: var(--text-primary);
-}
-
-.period-tab--expanded {
-    flex: 1 1 0;
-    justify-content: flex-start;
-    text-align: left;
-    background: linear-gradient(135deg, var(--brand-navy) 0%, var(--brand-navy-hover) 100%);
-    border-color: var(--brand-navy);
-    color: white;
-    box-shadow: 0 4px 14px rgba(102, 126, 234, 0.28);
-    padding: 10px 14px;
-}
-
-.period-tab--expanded .period-tab-title {
-    color: white;
-}
-
-.period-tab-label {
-    white-space: nowrap;
-    line-height: 1.2;
-}
-
-.period-tab-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    width: 28px;
-    height: 28px;
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.2);
-    font-size: 0.95rem;
-}
-
-.period-tab-title {
-    font-size: 0.95rem;
-    font-weight: 700;
-    line-height: 1.2;
-    white-space: nowrap;
-}
-
 @media (max-width: 768px) {
     .leaderboard-period-bar {
         margin-top: 10px;
-    }
-}
-
-@media (max-width: 640px) {
-    .leaderboard-period-bar {
-        flex-direction: column;
-    }
-
-    .period-tab--expanded {
-        flex: none;
-        width: 100%;
     }
 }
 

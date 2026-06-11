@@ -1,165 +1,3 @@
-/* Portál na document.body – nad .dock-navbar (1100–1200) */
-.shift-form-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 1400;
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
-    padding: max(calc(var(--dock-clearance, 5.5rem) + 0.5rem), calc(env(safe-area-inset-top, 0px) + 0.75rem))
-        max(12px, env(safe-area-inset-right, 0px))
-        max(12px, env(safe-area-inset-bottom, 0px))
-        max(12px, env(safe-area-inset-left, 0px));
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
-    background: rgba(0, 0, 0, 0.5);
-    box-sizing: border-box;
-}
-
-.shift-form-modal {
-    width: min(520px, 100%);
-    max-width: 520px;
-    margin: 0 auto 1rem;
-    padding: 0;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    max-height: min(88dvh, calc(100dvh - var(--dock-clearance, 5.5rem) - 1.5rem));
-    background: var(--bg-card, #fff);
-    color: var(--text-primary);
-    border-radius: 14px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
-    flex-shrink: 0;
-}
-
-.shift-form-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-shrink: 0;
-    padding: 14px 18px;
-    background: linear-gradient(135deg, var(--brand-navy, #1e40af) 0%, var(--brand-navy-hover, #2563eb) 100%);
-    border-bottom: none;
-    color: #fff;
-}
-
-.shift-form-header h3 {
-    margin: 0;
-    font-size: 1.05rem;
-    font-weight: 600;
-    color: #fff;
-}
-
-.shift-form-header .modal-close {
-    color: #fff;
-    opacity: 0.85;
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.shift-form-header .modal-close:hover {
-    opacity: 1;
-    background: rgba(255, 255, 255, 0.15);
-}
-
-.shift-form-shell {
-    display: flex;
-    flex-direction: column;
-    flex: 1 1 auto;
-    min-height: 0;
-    overflow: hidden;
-}
-
-.shift-form-body {
-    flex: 1 1 auto;
-    min-height: 0;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    padding: 16px 18px;
-}
-
-.shift-form-body .form-group {
-    margin-bottom: 14px;
-}
-
-.shift-form-body .form-group:last-child {
-    margin-bottom: 0;
-}
-
-.shift-form-body .form-group label {
-    display: block;
-    margin-bottom: 6px;
-    font-weight: 600;
-    font-size: 0.88rem;
-    color: var(--text-label, var(--text-primary));
-}
-
-.shift-form-body .form-group input,
-.shift-form-body .form-group select,
-.shift-form-body .form-group textarea {
-    box-sizing: border-box;
-    width: 100%;
-    padding: 10px 12px;
-    border: 1px solid var(--border-input, #e2e8f0);
-    border-radius: 10px;
-    background: var(--bg-input, #fff);
-    color: var(--text-primary);
-    font-family: inherit;
-    font-size: 0.9rem;
-    transition: border-color 0.15s ease, box-shadow 0.15s ease;
-}
-
-.shift-form-body .form-group select {
-    appearance: none;
-    -webkit-appearance: none;
-    padding-right: 2rem;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 0.65rem center;
-    background-size: 1rem;
-    cursor: pointer;
-}
-
-.shift-form-body .form-group input:focus,
-.shift-form-body .form-group select:focus,
-.shift-form-body .form-group textarea:focus {
-    outline: none;
-    border-color: var(--brand-navy, #2563eb);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-navy, #2563eb) 14%, transparent);
-}
-
-.shift-form-body .form-group textarea {
-    min-height: 72px;
-    resize: vertical;
-}
-
-.shift-form-body .form-group .react-datepicker-wrapper {
-    display: block;
-    width: 100%;
-}
-
-.shift-form-body .analytics-date-picker-input {
-    width: 100%;
-    max-width: none;
-    box-sizing: border-box;
-    height: 42px;
-    padding: 0 12px;
-    border: 1px solid var(--border-input, #e2e8f0);
-    border-radius: 10px;
-    font-size: 0.9rem;
-}
-
-.shift-form-body input[type="time"] {
-    height: 42px;
-    color-scheme: light;
-}
-
 .shift-form-datetime-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -177,14 +15,20 @@
     width: 100%;
 }
 
-.shift-form-actions {
-    display: flex;
-    gap: 10px;
-    justify-content: flex-end;
-    flex-shrink: 0;
-    padding: 14px 18px;
-    background: var(--bg-inset, #f8fafc);
-    border-top: 1px solid var(--border-subtle, #e5e7eb);
+.modal-body .analytics-date-picker-input {
+    width: 100%;
+    max-width: none;
+    box-sizing: border-box;
+    height: 42px;
+    padding: 0 12px;
+    border: 1px solid var(--border-input, #e2e8f0);
+    border-radius: 10px;
+    font-size: 0.9rem;
+}
+
+.modal-body input[type="time"] {
+    height: 42px;
+    color-scheme: light;
 }
 
 .vacation-balance-banner {
@@ -196,41 +40,6 @@
     font-size: 0.85rem;
     line-height: 1.45;
     color: var(--text-primary);
-}
-
-.btn-cancel,
-.btn-submit {
-    padding: 10px 18px;
-    border: none;
-    border-radius: 10px;
-    cursor: pointer;
-    font-size: 0.9rem;
-    font-weight: 600;
-    transition: opacity 0.15s ease, transform 0.1s ease;
-}
-
-.btn-cancel {
-    background: var(--bg-card, #fff);
-    color: var(--text-primary);
-    border: 1px solid var(--border-input, #e2e8f0);
-}
-
-.btn-cancel:hover {
-    background: var(--bg-inset, #f1f5f9);
-}
-
-.btn-submit {
-    background: linear-gradient(135deg, var(--brand-navy, #1e40af) 0%, var(--brand-navy-hover, #2563eb) 100%);
-    color: #fff;
-}
-
-.btn-submit:hover:not(:disabled) {
-    opacity: 0.92;
-}
-
-.btn-submit:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
 }
 
 .error-message {
@@ -275,27 +84,12 @@
     margin-top: 20px;
 }
 
-.dark-mode .shift-form-body input[type="time"] {
+.dark-mode .modal-body input[type="time"] {
     color-scheme: dark;
-}
-
-.shift-form-overlay .react-datepicker-popper {
-    z-index: 1500 !important;
 }
 
 @media (max-width: 560px) {
     .shift-form-datetime-row {
         grid-template-columns: 1fr;
-    }
-
-    .shift-form-actions {
-        flex-direction: column-reverse;
-    }
-
-    .shift-form-actions .btn-cancel,
-    .shift-form-actions .btn-submit {
-        width: 100%;
-        min-height: 44px;
-        font-size: 16px;
     }
 }

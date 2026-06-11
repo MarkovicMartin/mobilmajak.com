@@ -1,11 +1,12 @@
 """
 Testy modulu plánů – 3m průměr, rozdělení prodejců podle hodin.
 """
-from datetime import date
+from datetime import date, time
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
 from django.test import TestCase
+from shifts.models import Smena
 
 from plans.plneni import mesice_pred_planem, _prev_month
 from plans.historie_3m import historie_3m_nahled, vypocitej_plan_z_3_mesicu
@@ -16,9 +17,14 @@ from plans.prodejci_prepocet import mesice_pro_denni_prepocet
 from plans.forecast import predikce_rok, vypocitej_plan_z_projekce, vyhled_forecast
 from plans.prodejci_auto import (
     VYCHODIL_USER_ID,
+    VIKEND_PRODEJ_SERVIS_VAHA,
+    _efektivni_servis_hodin_mesic,
+    _globus_segment_contributions,
+    _legacy_podily_servis,
     _rozdel_kusy,
     _podily_z_hodin,
     _prirad_prodejce_prodejna,
+    _servis_interval_contributions_globus,
     prirad_prodejce_automaticky,
 )
 from plans.models import PlanMonth, PlanStore, PlanCategory, PlanProdejce, PlanProdejceKategorie
@@ -378,3 +384,152 @@ class ForecastTests(TestCase):
         souhrn = ensure_plans_bulk([(2030, 2), (2030, 3)], admin, prepocet_prodejci=True)
         mock_prepocet.assert_called_once_with([(2030, 2), (2030, 3)])
         self.assertEqual(souhrn['pocet_vytvoreno'], 2)
+
+
+class PoziceServisAutoTests(TestCase):
+    """Testy pozice směny servis + servis_uroven + Globus intervaly."""
+
+    def setUp(self):
+        self.globus = Prodejna.objects.create(
+            nazev='Globus',
+            nazev_kratkiy='GL',
+            barva='#0000aa',
+            aktivni=True,
+            povolena_pozice_servis=True,
+        )
+        self.jina = Prodejna.objects.create(
+            nazev='Jina Plans Test',
+            nazev_kratkiy='JP',
+            barva='#aaaa00',
+            aktivni=True,
+            povolena_pozice_servis=False,
+        )
+        pid_g = self.globus.id
+        for uid, jmeno, role, uroven, technik in [
+            (301, 'Technik', 'PRODEJCE', 'plny', 501),
+            (302, 'Prodejce', 'PRODEJCE', 'plny', 0),
+            (303, 'Zadny', 'PRODEJCE', 'zadna', 0),
+            (304, 'Zauceny', 'PRODEJCE', 'zauceni', 0),
+        ]:
+            u = WebUser.objects.create(
+                id=uid,
+                uzivatelske_jmeno=f'ps{uid}',
+                jmeno=jmeno,
+                prijmeni='T',
+                role=role,
+                prodejna_id=pid_g,
+                aktivni=True,
+                servis_uroven=uroven,
+                technik_id=technik if technik else None,
+            )
+            u.set_heslo('x')
+            u.save()
+
+        self.plan = PlanMonth.objects.create(
+            rok=2026, mesic=8, cislo_verze=1, castka_celkem=Decimal('100000'),
+        )
+        self.ps_globus = PlanStore.objects.create(
+            plan_mesic=self.plan,
+            prodejna=self.globus,
+            podil_procenta=Decimal('100'),
+            castka_prodejna=Decimal('100000'),
+            castka_prodej=Decimal('70000'),
+            castka_servis=Decimal('30000'),
+        )
+        for kod, castka in [('NOVE_TELEFONY', '70000'), ('SERVIS', '30000')]:
+            PlanCategory.objects.create(
+                plan_prodejna=self.ps_globus,
+                kategorie_kod=kod,
+                podil_procenta=Decimal('50'),
+                castka_kategorie=Decimal(castka),
+                prumerna_cena_za_kus=Decimal('5000') if kod != 'SERVIS' else Decimal('1000'),
+            )
+
+    def _smena(self, user_id, datum, cas_od, cas_do, pozice='prodej', prodejna=None):
+        return Smena.objects.create(
+            user_id=user_id,
+            prodejna=prodejna or self.globus,
+            datum=datum,
+            cas_od=cas_od,
+            cas_do=cas_do,
+            typ_smeny='prace',
+            pozice_smeny=pozice,
+        )
+
+    def test_legacy_bez_servis_smen(self):
+        self._smena(301, date(2026, 8, 4), time(8, 0), time(16, 0), pozice='prodej')
+        self._smena(302, date(2026, 8, 4), time(8, 0), time(16, 0), pozice='prodej')
+        hodiny = {301: 8.0, 302: 8.0}
+        legacy = _legacy_podily_servis(hodiny)
+        self.assertEqual(legacy, {301: 1.0})
+        efektivni, _ = _efektivni_servis_hodin_mesic(2026, 8, self.globus)
+        self.assertIsNone(efektivni)
+
+    def test_globus_servis_jen_technikovi(self):
+        self._smena(301, date(2026, 8, 4), time(8, 0), time(16, 0), pozice='servis')
+        self._smena(302, date(2026, 8, 4), time(8, 0), time(16, 0), pozice='prodej')
+        prirazeno, _ = _prirad_prodejce_prodejna(self.ps_globus, 2026, 8)
+        self.assertGreaterEqual(prirazeno, 2)
+        servis_t = PlanProdejceKategorie.objects.filter(
+            plan_prodejce__uzivatel_id=301, kategorie_kod='SERVIS',
+        ).first()
+        servis_p = PlanProdejceKategorie.objects.filter(
+            plan_prodejce__uzivatel_id=302, kategorie_kod='SERVIS',
+        ).first()
+        self.assertIsNotNone(servis_t)
+        self.assertTrue(servis_t.pocet_kusu > 0)
+        self.assertTrue(servis_p is None or servis_p.pocet_kusu == 0)
+
+    def test_vikend_prodejce_schopny_ma_vahu(self):
+        # sobota 2026-08-01 – víkendový pool jen prodej + schopný
+        self._smena(301, date(2026, 8, 1), time(8, 0), time(12, 0), pozice='servis')
+        self._smena(302, date(2026, 8, 1), time(8, 0), time(12, 0), pozice='prodej')
+        self._smena(303, date(2026, 8, 1), time(8, 0), time(12, 0), pozice='prodej')
+        efektivni, _ = _efektivni_servis_hodin_mesic(2026, 8, self.globus)
+        self.assertIn(302, efektivni)
+        self.assertNotIn(303, efektivni)
+        self.assertNotIn(301, efektivni)
+        self.assertAlmostEqual(efektivni[302], 4.0)
+
+    def test_zauceni_prekryv_s_plnym(self):
+        datum = date(2026, 8, 5)  # středa
+        sm_t = self._smena(301, datum, time(8, 0), time(12, 0), pozice='servis')
+        sm_z = self._smena(304, datum, time(8, 0), time(12, 0), pozice='servis')
+        contrib, unc = _globus_segment_contributions(datum, [sm_t, sm_z])
+        self.assertFalse(unc)
+        self.assertAlmostEqual(contrib[301], 1.0 / 1.2, places=3)
+        self.assertAlmostEqual(contrib[304], 0.2 / 1.2, places=3)
+
+    def test_solo_edge_prodejce_globus(self):
+        datum = date(2026, 8, 6)
+        sm = self._smena(302, datum, time(8, 0), time(12, 0), pozice='prodej')
+        contrib, unc = _globus_segment_contributions(datum, [sm])
+        self.assertFalse(unc)
+        self.assertEqual(contrib[302], 1.0)
+        day_h, _ = _servis_interval_contributions_globus(datum, [sm])
+        self.assertAlmostEqual(day_h[302], 4.0)
+
+    def test_vychodil_mimo_prodejni_pool_s_pozici(self):
+        u = WebUser.objects.create(
+            id=VYCHODIL_USER_ID,
+            uzivatelske_jmeno='vych',
+            jmeno='František',
+            prijmeni='Vychodil',
+            role='PRODEJCE',
+            prodejna_id=self.globus.id,
+            aktivni=True,
+            servis_uroven='zadna',
+        )
+        u.set_heslo('x')
+        u.save()
+        self._smena(VYCHODIL_USER_ID, date(2026, 8, 7), time(8, 0), time(16, 0), pozice='prodej')
+        self._smena(301, date(2026, 8, 7), time(8, 0), time(16, 0), pozice='servis')
+        self._smena(302, date(2026, 8, 7), time(8, 0), time(16, 0), pozice='prodej')
+        prirazeno, _ = _prirad_prodejce_prodejna(self.ps_globus, 2026, 8)
+        self.assertGreater(prirazeno, 0)
+        self.assertFalse(
+            PlanProdejceKategorie.objects.filter(
+                plan_prodejce__uzivatel_id=VYCHODIL_USER_ID,
+                kategorie_kod='NOVE_TELEFONY',
+            ).exists()
+        )

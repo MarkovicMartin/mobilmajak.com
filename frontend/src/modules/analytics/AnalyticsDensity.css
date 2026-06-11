@@ -204,7 +204,8 @@
     padding: 0.55rem 0.75rem;
 }
 
-.analytics-module .analytics-nav-tab {
+.analytics-module .analytics-nav .module-subnav-tab,
+.analytics-module .coaching-nav .module-subnav-tab {
     padding: 0.4rem 0.7rem;
     font-size: 0.82rem;
 }
@@ -217,32 +218,9 @@
     gap: 0.35rem 0.65rem;
 }
 
-.analytics-module .filter-group--quick {
+.analytics-module .filter-group--date-bar {
+    flex: 1 1 100%;
     min-width: 0;
-}
-
-.analytics-module .analytics-quick-btns {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.35rem;
-}
-
-.analytics-module .analytics-quick-btn {
-    padding: 0.3rem 0.55rem;
-    font-size: 0.78rem;
-    font-weight: 500;
-    border: 1px solid #dee2e6;
-    border-radius: 6px;
-    background: var(--bg-card);
-    color: var(--text-secondary);
-    cursor: pointer;
-    font-family: inherit;
-}
-
-.analytics-module .analytics-quick-btn:hover {
-    border-color: var(--brand-pink);
-    background: var(--brand-pink-soft);
-    color: var(--brand-navy);
 }
 
 .analytics-module .prodejni-analytika .metrics-overview--dense {

@@ -14,6 +14,11 @@ class Smena(models.Model):
         ('prodejce', 'Jako prodejce'),
         ('vypomoc', 'Výpomoc'),
     ]
+
+    POZICE_SMENY = [
+        ('prodej', 'Prodej'),
+        ('servis', 'Servisní technik'),
+    ]
     
     user = models.ForeignKey(WebUser, on_delete=models.CASCADE, related_name='smeny')
     prodejna = models.ForeignKey(
@@ -35,6 +40,13 @@ class Smena(models.Model):
         blank=True,
         verbose_name='Režim brigádníka',
         help_text='Výpomoc: 150 bodů/h bez provize. Jako prodejce: sazba z profilu + provize.',
+    )
+    pozice_smeny = models.CharField(
+        max_length=20,
+        choices=POZICE_SMENY,
+        default='prodej',
+        blank=True,
+        verbose_name='Pozice na směně',
     )
     poznamka = models.TextField(blank=True, null=True)
     aktivni = models.BooleanField(default=True)

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import Modal from '../../components/Modal';
 import {
     PRODUCT_COMMISSIONS,
     SERVIS_BREAKDOWN_KEY,
@@ -7,7 +8,6 @@ import {
 } from '../../constants/productCommissions';
 import { formatPoints, formatNumber } from '../../utils/formatBody';
 import { manualNumberInputClass, preventNumberInputWheel } from '../../utils/manualNumberInput';
-import { useModalKeyboard } from '../../utils/useModalKeyboard';
 import './PayrollPanel.css';
 
 const MONTH_NAMES = [
@@ -63,9 +63,6 @@ function PayrollPanel({ month, onMonthChange, onExport }) {
         setShowPenalizaceModal(false);
         setPenalizaceForm({ user_id: '', duvod: '' });
     }, []);
-
-    useModalKeyboard(showOdmenaModal, { onClose: closeOdmenaModal, formRef: odmenaFormRef });
-    useModalKeyboard(showPenalizaceModal, { onClose: closePenalizaceModal, formRef: penalizaceFormRef });
 
     const monthOptions = useMemo(() => buildMonthOptions(48), []);
 
@@ -634,14 +631,27 @@ function PayrollPanel({ month, onMonthChange, onExport }) {
             </div>
 
             {showPenalizaceModal && (
-                <div className="payroll-modal-overlay" onClick={closePenalizaceModal}>
-                    <div className="payroll-modal" onClick={(e) => e.stopPropagation()}>
-                        <h3>Penalizace −10 % z provize</h3>
+                <Modal
+                    title="Penalizace −10 % z provize"
+                    onClose={closePenalizaceModal}
+                    size="sm"
+                    onSubmit={savePenalizace}
+                    formRef={penalizaceFormRef}
+                    footer={(
+                        <>
+                            <button type="button" className="btn-cancel" onClick={closePenalizaceModal}>
+                                Zrušit
+                            </button>
+                            <button type="submit" className="btn-submit" disabled={savingPenalizace}>
+                                {savingPenalizace ? 'Ukládám…' : 'Přidat penalizaci'}
+                            </button>
+                        </>
+                    )}
+                >
                         <p className="modal-hint">
                             Každá penalizace sníží provizi o dalších 10 % (3× = −30 %). Základ, cestovné
                             a bonusy se nemění. Měsíc: {formatMonthName(month)}.
                         </p>
-                        <form ref={penalizaceFormRef} onSubmit={savePenalizace}>
                             <label>
                                 Zaměstnanec
                                 <select
@@ -664,27 +674,30 @@ function PayrollPanel({ month, onMonthChange, onExport }) {
                                     required
                                 />
                             </label>
-                            <div className="modal-actions">
-                                <button type="button" className="btn-cancel" onClick={closePenalizaceModal}>
-                                    Zrušit
-                                </button>
-                                <button type="submit" className="btn-primary" disabled={savingPenalizace}>
-                                    {savingPenalizace ? 'Ukládám…' : 'Přidat penalizaci'}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
+                </Modal>
             )}
 
             {showOdmenaModal && (
-                <div className="payroll-modal-overlay" onClick={closeOdmenaModal}>
-                    <div className="payroll-modal" onClick={(e) => e.stopPropagation()}>
-                        <h3>Přidej odměnu</h3>
+                <Modal
+                    title="Přidej odměnu"
+                    onClose={closeOdmenaModal}
+                    size="sm"
+                    onSubmit={saveOdmena}
+                    formRef={odmenaFormRef}
+                    footer={(
+                        <>
+                            <button type="button" className="btn-cancel" onClick={closeOdmenaModal}>
+                                Zrušit
+                            </button>
+                            <button type="submit" className="btn-submit" disabled={savingOdmena}>
+                                {savingOdmena ? 'Ukládám…' : 'Přidat'}
+                            </button>
+                        </>
+                    )}
+                >
                         <p className="modal-hint">
                             Body se přičtou k měsíční odměně za {formatMonthName(month)}.
                         </p>
-                        <form ref={odmenaFormRef} onSubmit={saveOdmena}>
                             <label>
                                 Zaměstnanec
                                 <select
@@ -719,17 +732,7 @@ function PayrollPanel({ month, onMonthChange, onExport }) {
                                     onChange={(e) => setOdmenaForm((f) => ({ ...f, poznamka: e.target.value }))}
                                 />
                             </label>
-                            <div className="modal-actions">
-                                <button type="button" className="btn-cancel" onClick={closeOdmenaModal}>
-                                    Zrušit
-                                </button>
-                                <button type="submit" className="btn-primary" disabled={savingOdmena}>
-                                    {savingOdmena ? 'Ukládám…' : 'Přidat'}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
+                </Modal>
             )}
         </div>
     );

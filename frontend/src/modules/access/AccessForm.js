@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import Modal from '../../components/Modal';
 import './AccessForm.css';
 
 const AccessForm = ({ access, stores, categories, onSubmit, onCancel }) => {
@@ -113,22 +114,26 @@ const AccessForm = ({ access, stores, categories, onSubmit, onCancel }) => {
     };
 
     return (
-        <div className="access-form-overlay">
-            <div className="access-form-modal">
-                <div className="form-header">
-                    <h3>
-                        {access ? '✏️ Upravit přístup' : '➕ Přidat nový přístup'}
-                    </h3>
-                    <button 
-                        className="btn-close"
-                        onClick={onCancel}
-                        type="button"
-                    >
-                        ✕
+        <Modal
+            title={access ? '✏️ Upravit přístup' : '➕ Přidat nový přístup'}
+            onClose={onCancel}
+            size="md"
+            contentClassName="access-form-modal"
+            onSubmit={handleSubmit}
+            bodyClassName="access-form"
+            footer={(
+                <>
+                    <button type="button" className="btn-cancel" onClick={onCancel} disabled={loading}>
+                        Zrušit
                     </button>
-                </div>
-
-                <form onSubmit={handleSubmit} className="access-form">
+                    <button type="submit" className="btn-submit" disabled={loading}>
+                        {loading ? 'Ukládám...' : (
+                            access ? 'Uložit změny' : 'Přidat přístup'
+                        )}
+                    </button>
+                </>
+            )}
+        >
                     <div className="form-grid">
                         <div className="form-group">
                             <label htmlFor="company_name">
@@ -287,34 +292,7 @@ const AccessForm = ({ access, stores, categories, onSubmit, onCancel }) => {
                             placeholder="Dodatečné poznámky, instrukce nebo důležité informace..."
                         />
                     </div>
-
-                    <div className="form-actions">
-                        <button
-                            type="button"
-                            className="btn-secondary"
-                            onClick={onCancel}
-                            disabled={loading}
-                        >
-                            Zrušit
-                        </button>
-                        <button
-                            type="submit"
-                            className="btn-primary"
-                            disabled={loading}
-                        >
-                            {loading ? (
-                                <>
-                                    <span className="spinner-small"></span>
-                                    Ukládám...
-                                </>
-                            ) : (
-                                access ? 'Uložit změny' : 'Přidat přístup'
-                            )}
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
+        </Modal>
     );
 };
 

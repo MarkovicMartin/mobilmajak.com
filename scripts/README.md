@@ -6,10 +6,12 @@ Přehled – co je provozní, co plánované rozšíření. Nepřidávejte jedno
 
 | Skript | Účel |
 |--------|------|
-| `deploy-staging.sh` | Hlavní deploy na staging (backend + FE build na VPS) |
+| `deploy-staging.sh` | Staging deploy + smoke (krok 1) |
 | `deploy-staging.ps1` | Totéž pro Windows |
+| `frontend-build-vps.sh` | `npm ci` + aktualizace browserslist + build (volá deploy) |
+| `post-deploy-smoke.sh` | Health + `manage.py check` + shifts import (volá deploy) |
 | `staging-post-deploy.sh` | Migrace, collectstatic, restart (volá deploy) |
-| `deploy-production.sh` / `.ps1` | Produkce |
+| `deploy-production.sh` / `.ps1` | Produkce (až po OK stagingu) |
 | `production-post-deploy.sh` | Post-deploy produkce |
 | `merge-to-production.sh` | Merge větev → produkce |
 | `grant-staging-tickets-admin.sh` | Oprávnění ticketů na staging |

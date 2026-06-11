@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import Modal from './Modal';
 import { useAuth } from '../context/AuthContext';
 import { storeAPI, userAPI } from '../services/api';
 import {
@@ -7,7 +8,6 @@ import {
     effectiveDenHours,
     normalizeOteviraciDoba,
 } from '../constants/oteviraciDoba';
-import { useModalKeyboard } from '../utils/useModalKeyboard';
 import './StoreManagement.css';
 
 const StoreManagement = () => {
@@ -163,8 +163,6 @@ const StoreManagement = () => {
         setEditingStore(null);
         setShowAddForm(false);
     };
-
-    useModalKeyboard(showAddForm, { onClose: resetForm, formRef: storeFormRef });
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -384,14 +382,24 @@ const StoreManagement = () => {
             )}
 
             {showAddForm && (
-                <div className="store-form-overlay">
-                    <div className="store-form">
-                        <div className="form-header">
-                            <h2>{editingStore ? 'Upravit prodejnu' : 'Přidat novou prodejnu'}</h2>
-                            <button className="close-btn" onClick={resetForm}>×</button>
-                        </div>
-                        
-                        <form ref={storeFormRef} onSubmit={handleSubmit}>
+                <Modal
+                    title={editingStore ? 'Upravit prodejnu' : 'Přidat novou prodejnu'}
+                    onClose={resetForm}
+                    size="md"
+                    onSubmit={handleSubmit}
+                    formRef={storeFormRef}
+                    bodyClassName="store-form"
+                    footer={(
+                        <>
+                            <button type="button" onClick={resetForm} className="btn-cancel">
+                                Zrušit
+                            </button>
+                            <button type="submit" className="btn-submit">
+                                {editingStore ? 'Uložit změny' : 'Vytvořit prodejnu'}
+                            </button>
+                        </>
+                    )}
+                >
                             <div className="form-row">
                                 <div className="form-group">
                                     <label>Název prodejny *</label>
@@ -615,17 +623,7 @@ const StoreManagement = () => {
                                 />
                             </div>
 
-                            <div className="form-actions">
-                                <button type="button" onClick={resetForm} className="cancel-btn">
-                                    Zrušit
-                                </button>
-                                <button type="submit" className="save-btn">
-                                    {editingStore ? 'Uložit změny' : 'Vytvořit prodejnu'}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
+                </Modal>
             )}
 
             <div className="stores-table">

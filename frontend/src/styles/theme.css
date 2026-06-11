@@ -179,7 +179,7 @@ html.dock-scrolled {
 }
 
 html {
-    scroll-padding-top: calc(var(--dock-clearance) + 3.5rem);
+    scroll-padding-top: var(--dock-clearance);
 }
 
 body {

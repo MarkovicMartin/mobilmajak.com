@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import Modal from '../../components/Modal';
 import api from '../../services/api';
 import './OrderDetail.css';
 
@@ -78,14 +79,22 @@ const OrderDetail = ({ order, onClose, onDelete, onStatusChange }) => {
     const currentStatusConfig = statusOptions.find(s => s.value === order.status);
 
     return (
-        <div className="modal-overlay" onClick={onClose}>
-            <div className="order-detail-modal" onClick={(e) => e.stopPropagation()}>
-                <div className="modal-header">
-                    <h2>📦 Detail objednávky #{order.id}</h2>
-                    <button className="close-btn" onClick={onClose}>✕</button>
-                </div>
-
-                <div className="order-detail-content">
+        <Modal
+            title={`📦 Detail objednávky #${order.id}`}
+            onClose={onClose}
+            size="md"
+            bodyClassName="order-detail-content"
+            footer={(
+                <>
+                    <button type="button" className="btn-delete" onClick={() => onDelete(order.id)}>
+                        🗑️ Smazat objednávku
+                    </button>
+                    <button type="button" className="btn-cancel" onClick={onClose}>
+                        Zavřít
+                    </button>
+                </>
+            )}
+        >
                     {/* Základní informace */}
                     <div className="detail-section">
                         <h3>ℹ️ Základní informace</h3>
@@ -251,25 +260,7 @@ const OrderDetail = ({ order, onClose, onDelete, onStatusChange }) => {
                             )}
                         </div>
                     </div>
-
-                    {/* Akce */}
-                    <div className="detail-actions">
-                        <button 
-                            className="btn btn-danger"
-                            onClick={() => onDelete(order.id)}
-                        >
-                            🗑️ Smazat objednávku
-                        </button>
-                        <button 
-                            className="btn btn-secondary"
-                            onClick={onClose}
-                        >
-                            Zavřít
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
+        </Modal>
     );
 };
 

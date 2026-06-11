@@ -1,5 +1,6 @@
 import { analyticsGet } from '../../../utils/analyticsRequest';
 import React, { useState, useEffect } from 'react';
+import Modal from '../../../components/Modal';
 import {
     ComposedChart,
     Bar,
@@ -16,7 +17,8 @@ import {
 } from 'recharts';
 import AnalyticsSectionWrapper from '../AnalyticsSectionWrapper';
 import CustomDropdown from '../../../components/CustomDropdown';
-import AnalyticsDateRange from '../../../components/AnalyticsDateRange';
+import DateFilterBar from '../../../components/DateFilterBar';
+import { detectQuickRangePreset } from '../../../utils/analyticsQuickRange';
 import { buildAnalyticsMonthFilterOptions } from '../../../utils/analyticsMonthOptions';
 import './SectionStyles.css';
 
@@ -102,13 +104,12 @@ const SalespersonBreakdown = ({ filters }) => {
             </div>
 
             {open && (
-                <div className="modal-overlay" onClick={()=> setOpen(null)}>
-                    <div className="modal-content" onClick={(e)=> e.stopPropagation()}>
-                        <div className="modal-header">
-                            <h4>Doklady prodejce {open.prodejce_id} — {open.kind==='without'?'jen telefon':'s příslušenstvím'}</h4>
-                            <button className="modal-close" onClick={()=> setOpen(null)}>✕</button>
-                        </div>
-                        <div className="modal-body">
+                <Modal
+                    title={`Doklady prodejce ${open.prodejce_id} — ${open.kind === 'without' ? 'jen telefon' : 's příslušenstvím'}`}
+                    titleAs="h4"
+                    size="lg"
+                    onClose={() => setOpen(null)}
+                >
                             {open.loading && <div>Načítám…</div>}
                             {open.error && <div className="error-container">{open.error}</div>}
                             {!open.loading && !open.error && (
@@ -118,9 +119,7 @@ const SalespersonBreakdown = ({ filters }) => {
                                     ))}
                                 </ul>
                             )}
-                        </div>
-                    </div>
-                </div>
+                </Modal>
             )}
         </div>
     );
@@ -209,9 +208,10 @@ const ProdejniAnalytika = ({ currentUser }) => {
         }));
     };
 
-    const applyDateRange = ({ start_date, end_date }) => {
+    const applyDateRange = ({ start_date, end_date, preset }) => {
+        setDateError('');
         setFilters(prev => ({ ...prev, period: 'custom', start_date, end_date }));
-        setQuickKey('custom');
+        setQuickKey(preset || detectQuickRangePreset(start_date, end_date));
     };
 
     const formatCurrency = (amount) => {
@@ -321,34 +321,18 @@ const ProdejniAnalytika = ({ currentUser }) => {
                 </div>
 
                 {filters.period === 'custom' && (
-                    <>
-                        <AnalyticsDateRange
+                    <div className="filter-group filter-group--date-bar">
+                        <DateFilterBar
                             startDate={filters.start_date}
                             endDate={filters.end_date}
-                            onApply={applyDateRange}
-                            onErrorChange={setDateError}
-                            showError={false}
+                            preset={quickKey}
+                            onRangeChange={applyDateRange}
+                            onDateErrorChange={setDateError}
+                            onRefresh={fetchData}
+                            refreshDisabled={loading || !!dateError}
+                            refreshLoading={loading}
                         />
-                        <div className="filter-group filter-group--quick">
-                            <label>Rychlé volby</label>
-                            <div className="analytics-quick-btns">
-                                {['today','yesterday','thisWeek','thisMonth','prevMonth'].map(key=> (
-                                    <button key={key} type="button" className="analytics-quick-btn" onClick={()=>{
-                                        const now=new Date();
-                                        const iso=(d)=> `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-                                        let from,to; if(key==='today'){from=to=new Date(now.getFullYear(),now.getMonth(),now.getDate());}
-                                        else if(key==='yesterday'){const y=new Date(now); y.setDate(now.getDate()-1); from=to=new Date(y.getFullYear(),y.getMonth(),y.getDate());}
-                                        else if(key==='thisWeek'){const day=(now.getDay()+6)%7; from=new Date(now.getFullYear(),now.getMonth(),now.getDate()-day); to=new Date(now.getFullYear(),now.getMonth(),now.getDate());}
-                                        else if(key==='thisMonth'){from=new Date(now.getFullYear(),now.getMonth(),1); to=new Date(now.getFullYear(),now.getMonth()+1,0);} 
-                                        else if(key==='prevMonth'){from=new Date(now.getFullYear(),now.getMonth()-1,1); to=new Date(now.getFullYear(),now.getMonth(),0);} 
-                                        setFilters(prev=>({...prev, start_date: iso(from), end_date: iso(to)})); setQuickKey(key);
-                                    }}>{
-                                        key==='today'?'Dnešek': key==='yesterday'?'Včerejšek': key==='thisWeek'?'Tento týden': key==='thisMonth'?'Tento měsíc':'Minulý měsíc'
-                                    }</button>
-                                ))}
-                            </div>
-                        </div>
-                    </>
+                    </div>
                 )}
                 {dateError && <div className="error-container">{dateError}</div>}
 

@@ -1,0 +1,27 @@
+---
+description: Deploy MOBILMAJAK – staging-first, smoke test, produkce až na žádost
+alwaysApply: true
+---
+
+# Deploy
+
+## Kroky (v tomto pořadí)
+
+1. Lokálně: `cd backend && python manage.py check` (+ `python manage.py test <dotčené>` pokud backend)
+2. `./scripts/deploy-staging.sh`
+3. `./scripts/post-deploy-smoke.sh staging` → **FAIL = STOP**
+4. Uživatel ověří UI na stagingu
+5. `./scripts/deploy-production.sh` **jen na výslovnou žádost**, až po OK kroku 3 **ve stejné relaci**
+6. `./scripts/post-deploy-smoke.sh production`
+
+## Zakázáno
+
+- Produkce bez staging + smoke ve stejné relaci (výjimka: explicitní hotfix + varování)
+- Deploy bez upozornění, pokud jde z necommitnutého working tree
+- Deploy nesmí přepsat serverové `.env` (v tar je `--exclude=.env`)
+- Při úpravě importů: **nahrazovat** řádek – vždy **přidat** vedle stávajícího
+
+## Po deployi napsat
+
+- výsledek smoke (health + check + shifts import)
+- co ručně zkontrolovat ve staging UI

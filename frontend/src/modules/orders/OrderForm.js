@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Modal from '../../components/Modal';
 import './OrderForm.css';
 
 const OrderForm = ({ onClose, onSubmit }) => {
@@ -125,14 +126,23 @@ const OrderForm = ({ onClose, onSubmit }) => {
     };
 
     return (
-        <div className="modal-overlay" onClick={onClose}>
-            <div className="order-form-modal" onClick={(e) => e.stopPropagation()}>
-                <div className="modal-header">
-                    <h2>➕ Nová objednávka</h2>
-                    <button className="close-btn" onClick={onClose}>✕</button>
-                </div>
-
-                <form onSubmit={handleSubmit} className="order-form">
+        <Modal
+            title="➕ Nová objednávka"
+            onClose={onClose}
+            size="md"
+            onSubmit={handleSubmit}
+            bodyClassName="order-form"
+            footer={(
+                <>
+                    <button type="button" className="btn-cancel" onClick={onClose}>
+                        Zrušit
+                    </button>
+                    <button type="submit" className="btn-submit" disabled={isSubmitting}>
+                        {isSubmitting ? 'Vytváření...' : '✅ Vytvořit objednávku'}
+                    </button>
+                </>
+            )}
+        >
                     {/* Informace o zákazníkovi */}
                     <div className="form-section">
                         <h3>👤 Zákazník</h3>
@@ -314,35 +324,7 @@ const OrderForm = ({ onClose, onSubmit }) => {
                             />
                         </div>
                     </div>
-
-                    {/* Tlačítka */}
-                    <div className="form-actions">
-                        <button 
-                            type="button" 
-                            className="btn btn-secondary"
-                            onClick={onClose}
-                            disabled={isSubmitting}
-                        >
-                            Zrušit
-                        </button>
-                        <button 
-                            type="submit" 
-                            className="btn btn-primary"
-                            disabled={isSubmitting}
-                        >
-                            {isSubmitting ? (
-                                <>
-                                    <span className="spinner-small"></span>
-                                    Vytváření...
-                                </>
-                            ) : (
-                                '✅ Vytvořit objednávku'
-                            )}
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
+        </Modal>
     );
 };
 

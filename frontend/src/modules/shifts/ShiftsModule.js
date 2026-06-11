@@ -10,6 +10,8 @@ import AttendancePanel from './AttendancePanel';
 import PayrollPanel from './PayrollPanel';
 import AttendanceLogPanel from './AttendanceLogPanel';
 import AbsentStoresPanel from './AbsentStoresPanel';
+import ModuleSubnav from '../../components/ModuleSubnav';
+import { SHIFTS_SECTIONS } from './shiftsSections';
 import './ShiftsModule.css';
 
 const ALL_PRODEJNY = 'vse';
@@ -148,60 +150,24 @@ function ShiftsModule() {
         return name;
     };
 
+    const shiftTabs = SHIFTS_SECTIONS
+        .filter((section) => !section.adminOnly || user?.role === 'ADMIN')
+        .map((section) => ({
+            id: section.id,
+            label: section.tabLabel,
+            icon: section.icon,
+        }));
+
     return (
         <div className="shifts-module">
-            <div className="shifts-header">
-                <h2>📅 Správa směn</h2>
-
-                <div className="view-tabs">
-                    <button
-                        type="button"
-                        className={activeView === 'calendar' ? 'active' : ''}
-                        onClick={() => setActiveView('calendar')}
-                    >
-                        📅 Kalendář
-                    </button>
-                    <button
-                        type="button"
-                        className={activeView === 'overview' ? 'active' : ''}
-                        onClick={() => setActiveView('overview')}
-                    >
-                        📊 Přehled hodin
-                    </button>
-                    <button
-                        type="button"
-                        className={activeView === 'attendance' ? 'active' : ''}
-                        onClick={() => setActiveView('attendance')}
-                    >
-                        ⏰ Docházka
-                    </button>
-                    {user?.role === 'ADMIN' && (
-                        <>
-                            <button
-                                type="button"
-                                className={activeView === 'payroll' ? 'active' : ''}
-                                onClick={() => setActiveView('payroll')}
-                            >
-                                💰 Výplata
-                            </button>
-                            <button
-                                type="button"
-                                className={activeView === 'absent-stores' ? 'active' : ''}
-                                onClick={() => setActiveView('absent-stores')}
-                            >
-                                🚨 Není v práci
-                            </button>
-                            <button
-                                type="button"
-                                className={activeView === 'attendance-log' ? 'active' : ''}
-                                onClick={() => setActiveView('attendance-log')}
-                            >
-                                📋 Docházka log
-                            </button>
-                        </>
-                    )}
-                </div>
-            </div>
+            <ModuleSubnav
+                tabs={shiftTabs}
+                activeId={activeView}
+                onTabChange={setActiveView}
+                accent="pink"
+                ariaLabel="Sekce směn"
+                className="shifts-subnav"
+            />
 
             <div className="shifts-controls">
                 {activeView === 'calendar' && (

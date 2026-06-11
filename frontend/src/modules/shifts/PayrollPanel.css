@@ -306,15 +306,6 @@
     color: #495057;
 }
 
-.payroll-modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.45);
-    display: flex;
-    justify-content: center;
-    z-index: 15000;
-}
-
 .payroll-modal {
     background: var(--bg-card);
     border-radius: 12px;

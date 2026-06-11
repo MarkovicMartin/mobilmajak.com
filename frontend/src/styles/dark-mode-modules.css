@@ -103,16 +103,6 @@
     color: var(--text-secondary) !important;
 }
 
-.dark-mode .leaderboard-module .period-tab {
-    background: var(--bg-card) !important;
-    color: var(--text-secondary) !important;
-    border-color: var(--border-subtle) !important;
-}
-
-.dark-mode .leaderboard-module .period-tab:hover:not(.period-tab--expanded) {
-    background: var(--bg-inset) !important;
-    border-color: var(--border-primary) !important;
-}
 
 .dark-mode .leaderboard-module .leaderboard-updated {
     color: var(--text-secondary) !important;

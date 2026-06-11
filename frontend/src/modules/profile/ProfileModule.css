@@ -64,20 +64,6 @@
     filter: brightness(0.95);
 }
 
-.profile-day-overlay > .profile-day-panel {
-    display: flex;
-    flex-direction: column;
-    background: var(--bg-card);
-    color: var(--text-primary);
-    width: min(520px, 92vw);
-    max-height: min(90vh, calc(100dvh - 24px));
-    margin: 0 auto;
-    flex-shrink: 0;
-    border-radius: 12px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-    overflow: hidden;
-}
-
 .profile-day-body {
     display: flex;
     flex-direction: column;

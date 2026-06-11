@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import Modal from '../../components/Modal';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import './PostForm.css';
@@ -112,14 +113,27 @@ const PostForm = ({ onSubmit, onCancel }) => {
     };
 
     return (
-        <div className="post-form-overlay">
-            <div className="post-form">
-                <div className="post-form-header">
-                    <h3>Nový příspěvek</h3>
-                    <button className="close-btn" onClick={onCancel}>✕</button>
-                </div>
-
-                <form onSubmit={handleSubmit}>
+        <Modal
+            title="Nový příspěvek"
+            onClose={onCancel}
+            size="md"
+            onSubmit={handleSubmit}
+            bodyClassName="post-form-body"
+            footer={(
+                <>
+                    <button type="button" className="btn-cancel" onClick={onCancel} disabled={isSubmitting}>
+                        Zrušit
+                    </button>
+                    <button
+                        type="submit"
+                        className="btn-submit"
+                        disabled={isSubmitting || (!content.trim() && files.length === 0)}
+                    >
+                        {isSubmitting ? 'Vytvářím...' : 'Publikovat'}
+                    </button>
+                </>
+            )}
+        >
                     <div className="post-author">
                         <div className="author-avatar">
                             {user?.inicialy || 'U'}
@@ -204,27 +218,8 @@ const PostForm = ({ onSubmit, onCancel }) => {
                             />
                         </div>
 
-                        <div className="form-buttons">
-                            <button 
-                                type="button" 
-                                className="cancel-btn"
-                                onClick={onCancel}
-                                disabled={isSubmitting}
-                            >
-                                Zrušit
-                            </button>
-                            <button 
-                                type="submit" 
-                                className="submit-btn"
-                                disabled={isSubmitting || (!content.trim() && files.length === 0)}
-                            >
-                                {isSubmitting ? 'Vytvářím...' : 'Publikovat'}
-                            </button>
-                        </div>
                     </div>
-                </form>
-            </div>
-        </div>
+        </Modal>
     );
 };
 

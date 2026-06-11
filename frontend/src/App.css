@@ -37,15 +37,7 @@
 }
 
 /* Horní dock panel má z-index 1100 – modály musí být nad ním */
-.modal-overlay,
-.user-form-overlay,
-.store-form-overlay,
-.post-form-overlay,
-.access-form-overlay,
-.ticket-form-overlay,
-.payroll-modal-overlay,
-.confirm-overlay,
-.bulk-shift-overlay {
+.modal-overlay {
   z-index: 15000 !important;
 }
 

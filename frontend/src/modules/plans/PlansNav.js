@@ -1,4 +1,5 @@
 import React from 'react';
+import ModuleSubnav from '../../components/ModuleSubnav';
 import { PLANS_SECTIONS } from './plansSections';
 import './PlansNav.css';
 
@@ -13,26 +14,15 @@ const PlansNav = ({
   showPlanRezim,
   planovaciRezim,
   onPlanovaciRezimChange,
-}) => (
-  <header className="plans-nav" aria-label="Sekce plánů">
-    <div className="plans-nav-tabs" role="tablist">
-      {PLANS_SECTIONS.map((section) => (
-        <button
-          key={section.id}
-          type="button"
-          role="tab"
-          aria-selected={viewMode === section.id}
-          className={`plans-nav-tab${viewMode === section.id ? ' plans-nav-tab--active' : ''}`}
-          onClick={() => onSwitch(section.id)}
-        >
-          <span className="plans-nav-tab-icon" aria-hidden="true">
-            {section.icon}
-          </span>
-          <span className="plans-nav-tab-label">{section.tabLabel}</span>
-        </button>
-      ))}
-    </div>
-    <div className="plans-nav-meta">
+}) => {
+  const tabs = PLANS_SECTIONS.map((section) => ({
+    id: section.id,
+    label: section.tabLabel,
+    icon: section.icon,
+  }));
+
+  const meta = (
+    <>
       {showPlanRezim && (
         <div className="plans-nav-rezim" role="group" aria-label="Režim plánování">
           <button
@@ -70,8 +60,20 @@ const PlansNav = ({
           </select>
         </label>
       )}
-    </div>
-  </header>
-);
+    </>
+  );
+
+  return (
+    <ModuleSubnav
+      tabs={tabs}
+      activeId={viewMode}
+      onTabChange={onSwitch}
+      meta={meta}
+      accent="blue"
+      ariaLabel="Sekce plánů"
+      className="plans-nav"
+    />
+  );
+};
 
 export default PlansNav;

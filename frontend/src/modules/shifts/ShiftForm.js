@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { createPortal } from 'react-dom';
+import Modal from '../../components/Modal';
 import { AnalyticsDateInput } from '../../components/AnalyticsDateRange';
 import { userAPI, storeAPI } from '../../services/api';
-import { useModalKeyboard } from '../../utils/useModalKeyboard';
 import './ShiftForm.css';
 
 function ShiftForm({ user, onClose, onSuccess, initialDatum = '' }) {
@@ -13,6 +12,7 @@ function ShiftForm({ user, onClose, onSuccess, initialDatum = '' }) {
         cas_do: '20:00',
         typ_smeny: 'prace',
         brigadnik_rezim: 'prodejce',
+        pozice_smeny: 'prodej',
         poznamka: '',
         // user_id pouze pro ADMIN/VEDOUCI (jinak necháváme nevyplněné)
         user_id: (user && ['ADMIN', 'VEDOUCI'].includes(user.role)) ? user.id : undefined,
@@ -24,8 +24,6 @@ function ShiftForm({ user, onClose, onSuccess, initialDatum = '' }) {
     const [existingShiftInfo, setExistingShiftInfo] = useState(null);
     const [vacationBalance, setVacationBalance] = useState(null);
     const shiftFormRef = useRef(null);
-
-    useModalKeyboard(true, { onClose, formRef: shiftFormRef });
 
     // Načtení prodejen z DB (choices)
     useEffect(() => {
@@ -152,8 +150,11 @@ function ShiftForm({ user, onClose, onSuccess, initialDatum = '' }) {
     const selectedUser = users.find((u) => u.id === formData.user_id) || user;
     const isAbsence = formData.typ_smeny === 'dovolena' || formData.typ_smeny === 'nemoc';
     const isBrigadnikShift = selectedUser?.role === 'BRIGADNIK' && formData.typ_smeny === 'prace';
-    const selectedStoreName = stores.find((s) => s.id === formData.prodejna)?.nazev || '';
+    const selectedStore = stores.find((s) => s.id === formData.prodejna);
+    const selectedStoreName = selectedStore?.nazev || '';
     const isSenimo = selectedStoreName === 'Senimo';
+    const servisPoziceEnabled = Boolean(selectedStore?.povolena_pozice_servis);
+    const selectedUserObj = users.find((u) => u.id === formData.user_id) || user;
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -165,6 +166,9 @@ function ShiftForm({ user, onClose, onSuccess, initialDatum = '' }) {
             const payload = { ...formData };
             if (!isBrigadnikShift) {
                 delete payload.brigadnik_rezim;
+            }
+            if (!servisPoziceEnabled || formData.typ_smeny !== 'prace') {
+                delete payload.pozice_smeny;
             }
             if (isAbsence) {
                 delete payload.prodejna;
@@ -204,28 +208,25 @@ function ShiftForm({ user, onClose, onSuccess, initialDatum = '' }) {
         }
     };
 
-    return createPortal(
-        <div className="shift-form-overlay" onClick={handleClose}>
-            <div
-                className="shift-form-modal"
-                onClick={(e) => e.stopPropagation()}
-                role="dialog"
-                aria-labelledby="shift-form-title"
-            >
-                <div className="shift-form-header">
-                    <h3 id="shift-form-title">➕ Přidat novou směnu</h3>
-                    <button
-                        type="button"
-                        className="modal-close"
-                        onClick={handleClose}
-                        aria-label="Zavřít"
-                    >
-                        ✕
+    return (
+        <Modal
+            title="➕ Přidat novou směnu"
+            titleId="shift-form-title"
+            onClose={handleClose}
+            size="sm"
+            onSubmit={handleSubmit}
+            formRef={shiftFormRef}
+            footer={(
+                <>
+                    <button type="button" onClick={handleClose} className="btn-cancel">
+                        Zrušit
                     </button>
-                </div>
-
-                <form ref={shiftFormRef} className="shift-form-shell" onSubmit={handleSubmit}>
-                    <div className="shift-form-body">
+                    <button type="submit" disabled={loading} className="btn-submit">
+                        {loading ? 'Ukládání...' : 'Uložit směnu'}
+                    </button>
+                </>
+            )}
+        >
                         {vacationBalance?.eligible && (
                             <div className="vacation-balance-banner">
                                 🏖️ Dovolená {vacationBalance.rok}: zbývá{' '}
@@ -333,6 +334,24 @@ function ShiftForm({ user, onClose, onSuccess, initialDatum = '' }) {
                         </div>
                     )}
 
+                    {servisPoziceEnabled && formData.typ_smeny === 'prace' && (
+                        <div className="form-group">
+                            <label>Pozice na směně:</label>
+                            <select
+                                value={formData.pozice_smeny}
+                                onChange={(e) => setFormData({ ...formData, pozice_smeny: e.target.value })}
+                            >
+                                <option value="prodej">Prodej</option>
+                                <option value="servis">Servisní technik</option>
+                            </select>
+                            {selectedUserObj?.servis_uroven === 'zauceni' && formData.pozice_smeny === 'servis' && (
+                                <div className="time-info">
+                                    Uživatel je v zaškolení – plnění v EDA může chybět.
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {isBrigadnikShift && (
                         <div className="form-group">
                             <label>Režim brigádníka:</label>
@@ -368,20 +387,7 @@ function ShiftForm({ user, onClose, onSuccess, initialDatum = '' }) {
                                 )}
                             </div>
                         )}
-                    </div>
-
-                    <div className="shift-form-actions">
-                        <button type="button" onClick={handleClose} className="btn-cancel">
-                            Zrušit
-                        </button>
-                        <button type="submit" disabled={loading} className="btn-submit">
-                            {loading ? 'Ukládání...' : 'Uložit směnu'}
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>,
-        document.body
+        </Modal>
     );
 }
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { createPortal } from 'react-dom';
+import ConfirmModal from '../../components/ConfirmModal';
 import './ShiftCalendar.css';
 import UnifiedCalendar from './UnifiedCalendar';
 import { format, parse, startOfMonth, endOfMonth, eachDayOfInterval, isBefore } from 'date-fns';
@@ -388,9 +388,13 @@ function ShiftCalendar({
                                                 ? 'foreign-store'
                                                 : '',
                                         ].filter(Boolean).join(' ');
+                                        const servisBadge = shift.pozice_smeny === 'servis'
+                                            ? (shift.servis_uroven === 'zauceni' ? 'Servis (zašk.)' : 'Servis')
+                                            : null;
                                         const titleParts = [
                                             allStores && shift.prodejna_nazev ? shift.prodejna_nazev : null,
                                             shift.user_jmeno,
+                                            servisBadge,
                                             `${formatTime(shift.cas_od)}-${formatTime(shift.cas_do)}`,
                                         ].filter(Boolean);
                                         return (
@@ -410,6 +414,9 @@ function ShiftCalendar({
                                                     <div className="shift-time">
                                                         {formatTime(shift.cas_od)}-{formatTime(shift.cas_do)}
                                                     </div>
+                                                    {servisBadge && (
+                                                        <div className="shift-servis-badge">{servisBadge}</div>
+                                                    )}
                                                 </div>
                                                 {!allStores && !shift.je_domaci_prodejna && user?.id === shift.user_id && (
                                                     <div className="foreign-indicator">📍</div>
@@ -463,33 +470,26 @@ function ShiftCalendar({
                 </div>
             )}
 
-            {showConfirm && shiftToDelete && createPortal(
-                <div className="confirm-overlay" onClick={handleCancelDelete}>
-                    <div className="confirm-dialog" onClick={(e) => e.stopPropagation()}>
-                        <h3>Smazat směnu</h3>
-                        <div className="shift-details">
-                            <p><strong>Prodejce:</strong> {shiftToDelete.user_jmeno}</p>
-                            <p><strong>Datum:</strong> {formatShiftDate(shiftToDelete)}</p>
-                            <p><strong>Typ:</strong> {shiftToDelete.typ_smeny === 'dovolena' ? 'Dovolená' : shiftToDelete.typ_smeny === 'nemoc' ? 'Nemoc' : 'Práce'}</p>
-                            {!isAbsenceShift(shiftToDelete) && (
-                                <>
-                                    <p><strong>Čas:</strong> {formatTime(shiftToDelete.cas_od)}-{formatTime(shiftToDelete.cas_do)}</p>
-                                    <p><strong>Prodejna:</strong> {shiftToDelete.prodejna_nazev || shiftToDelete.prodejna || prodejna}</p>
-                                </>
-                            )}
-                        </div>
-                        <p className="confirm-question">Opravdu chcete tuto směnu smazat?</p>
-                        <div className="confirm-buttons">
-                            <button type="button" className="btn-cancel" onClick={handleCancelDelete}>
-                                Zrušit
-                            </button>
-                            <button type="button" className="btn-delete" onClick={handleConfirmDelete}>
-                                Smazat
-                            </button>
-                        </div>
+            {showConfirm && shiftToDelete && (
+                <ConfirmModal
+                    title="Smazat směnu"
+                    onClose={handleCancelDelete}
+                    onConfirm={handleConfirmDelete}
+                    confirmLabel="Smazat"
+                >
+                    <div className="confirm-details">
+                        <p><strong>Prodejce:</strong> {shiftToDelete.user_jmeno}</p>
+                        <p><strong>Datum:</strong> {formatShiftDate(shiftToDelete)}</p>
+                        <p><strong>Typ:</strong> {shiftToDelete.typ_smeny === 'dovolena' ? 'Dovolená' : shiftToDelete.typ_smeny === 'nemoc' ? 'Nemoc' : 'Práce'}</p>
+                        {!isAbsenceShift(shiftToDelete) && (
+                            <>
+                                <p><strong>Čas:</strong> {formatTime(shiftToDelete.cas_od)}-{formatTime(shiftToDelete.cas_do)}</p>
+                                <p><strong>Prodejna:</strong> {shiftToDelete.prodejna_nazev || shiftToDelete.prodejna || prodejna}</p>
+                            </>
+                        )}
                     </div>
-                </div>,
-                document.body,
+                    <p className="confirm-question">Opravdu chcete tuto směnu smazat?</p>
+                </ConfirmModal>
             )}
         </div>
     );

@@ -1,6 +1,21 @@
 #!/bin/bash
 set -e
 APP=/home/webmajak/webapp
+ENV_FILE="$APP/.env"
+
+# Zachovat / doplnit pilot kamer (stejně jako staging-post-deploy.sh)
+if [ -f "$ENV_FILE" ]; then
+  cp -a "$ENV_FILE" "$ENV_FILE.bak"
+  if ! grep -q '^CAMERA_MOTION_SECRETS_FILE=' "$ENV_FILE" 2>/dev/null \
+     && ! grep -q '^CAMERA_MOTION_SECRETS=' "$ENV_FILE" 2>/dev/null \
+     && [ -f /home/webmajak/secrets/camera_motion_secrets.json ]; then
+    echo 'CAMERA_MOTION_SECRETS_FILE=/home/webmajak/secrets/camera_motion_secrets.json' >> "$ENV_FILE"
+    chown webmajak:webmajak "$ENV_FILE"
+    chmod 600 "$ENV_FILE"
+    echo "OK: doplněn CAMERA_MOTION_SECRETS_FILE do .env"
+  fi
+fi
+
 cd "$APP"
 sudo -u webmajak bash -lc 'set -e; source venv/bin/activate; export DJANGO_SETTINGS_MODULE=webapp.settings_production; python manage.py migrate --noinput || echo "WARN: migrate skipped"; python manage.py collectstatic --noinput; python manage.py check --deploy || python manage.py check'
 systemctl restart webmajak

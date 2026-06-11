@@ -43,6 +43,16 @@ def _normalize_brigadnik_rezim(user, typ_smeny, raw_rezim):
     return rezim if rezim in ('prodejce', 'vypomoc') else 'prodejce'
 
 
+def _normalize_pozice_smeny(prodejna, typ_smeny, raw_pozice):
+    """Pozice prodej/servis – jen u práce na prodejně s povoleným servisem."""
+    if typ_smeny != 'prace':
+        return 'prodej'
+    if not prodejna or not getattr(prodejna, 'povolena_pozice_servis', False):
+        return 'prodej'
+    pozice = (raw_pozice or 'prodej').strip()
+    return pozice if pozice in ('prodej', 'servis') else 'prodej'
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def smeny_count(request):
@@ -144,6 +154,8 @@ def smeny_list(request):
                 'cas_do': smena.cas_do,
                 'typ_smeny': smena.typ_smeny,
                 'brigadnik_rezim': smena.brigadnik_rezim,
+                'pozice_smeny': smena.pozice_smeny or 'prodej',
+                'servis_uroven': getattr(smena.user, 'servis_uroven', 'zadna') or 'zadna',
                 'poznamka': smena.poznamka,
                 'je_domaci_prodejna': smena.je_domaci_prodejna,
                 'delka_smeny_hodin': smena.delka_smeny_hodin,
@@ -233,6 +245,9 @@ def smeny_list(request):
                 brigadnik_rezim=_normalize_brigadnik_rezim(
                     user, typ_smeny, data.get('brigadnik_rezim'),
                 ),
+                pozice_smeny=_normalize_pozice_smeny(
+                    prodejna_obj, typ_smeny, data.get('pozice_smeny'),
+                ),
                 poznamka=data.get('poznamka', '')
             )
             
@@ -320,6 +335,9 @@ def smeny_bulk_create(request):
                     brigadnik_rezim=_normalize_brigadnik_rezim(
                         user, typ_smeny, data.get('brigadnik_rezim'),
                     ),
+                    pozice_smeny=_normalize_pozice_smeny(
+                        prodejna_obj, typ_smeny, data.get('pozice_smeny'),
+                    ),
                     poznamka=poznamka
                 )
                 uspesne += 1
@@ -402,6 +420,12 @@ def smena_detail(request, smena_id):
                     smena.typ_smeny,
                     data.get('brigadnik_rezim', smena.brigadnik_rezim),
                 )
+            if 'pozice_smeny' in data or 'typ_smeny' in data or 'prodejna' in data:
+                smena.pozice_smeny = _normalize_pozice_smeny(
+                    smena.prodejna,
+                    smena.typ_smeny,
+                    data.get('pozice_smeny', smena.pozice_smeny),
+                )
             if 'poznamka' in data:
                 smena.poznamka = data['poznamka']
 
@@ -432,6 +456,8 @@ def _shift_calendar_payload(smena):
         'cas_do': smena.cas_do.strftime('%H:%M'),
         'typ_smeny': smena.typ_smeny,
         'brigadnik_rezim': smena.brigadnik_rezim,
+        'pozice_smeny': smena.pozice_smeny or 'prodej',
+        'servis_uroven': getattr(smena.user, 'servis_uroven', 'zadna') or 'zadna',
         'je_domaci_prodejna': smena.je_domaci_prodejna,
         'prodejna_id': p.id if p else None,
         'prodejna_nazev': '' if absence else ((p.nazev_kratkiy or p.nazev or '').strip() if p else ''),
@@ -635,6 +661,7 @@ def _smena_detail_row(smena):
         'hodiny': dovolena_hodin_ze_smeny(smena) if smena.typ_smeny == 'dovolena' else smena.delka_smeny_hodin,
         'typ_smeny': smena.typ_smeny,
         'brigadnik_rezim': smena.brigadnik_rezim,
+        'pozice_smeny': smena.pozice_smeny or 'prodej',
         'je_domaci_prodejna': smena.je_domaci_prodejna,
         'dochazka_od': None,
         'dochazka_do': None,

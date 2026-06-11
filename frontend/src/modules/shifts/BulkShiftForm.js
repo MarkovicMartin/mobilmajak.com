@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
+import Modal from '../../components/Modal';
 import { userAPI, storeAPI } from '../../services/api';
 import './BulkShiftForm.css';
 import UnifiedCalendar from './UnifiedCalendar';
@@ -12,6 +12,7 @@ function BulkShiftForm({ user, onClose, onSuccess, initialDates = [], initialMon
         cas_do: '20:00',
         typ_smeny: 'prace',
         brigadnik_rezim: 'prodejce',
+        pozice_smeny: 'prodej',
         poznamka: '',
         user_id: (user && ['ADMIN', 'VEDOUCI'].includes(user.role)) ? user.id : undefined,
     });
@@ -135,6 +136,8 @@ function BulkShiftForm({ user, onClose, onSuccess, initialDates = [], initialMon
     };
 
     const selectedUser = users.find((u) => u.id === formData.user_id) || user;
+    const selectedStore = stores.find((s) => s.id === formData.prodejna);
+    const servisPoziceEnabled = Boolean(selectedStore?.povolena_pozice_servis);
     const isAbsence = formData.typ_smeny === 'dovolena' || formData.typ_smeny === 'nemoc';
     const isBrigadnikShift = selectedUser?.role === 'BRIGADNIK' && formData.typ_smeny === 'prace';
 
@@ -155,6 +158,9 @@ function BulkShiftForm({ user, onClose, onSuccess, initialDates = [], initialMon
             };
             if (!isBrigadnikShift) {
                 delete requestData.brigadnik_rezim;
+            }
+            if (!servisPoziceEnabled || formData.typ_smeny !== 'prace') {
+                delete requestData.pozice_smeny;
             }
             if (isAbsence) {
                 delete requestData.prodejna;
@@ -192,19 +198,29 @@ function BulkShiftForm({ user, onClose, onSuccess, initialDates = [], initialMon
         }
     };
 
-    return createPortal(
-        <div className="bulk-shift-overlay" onClick={onClose}>
-            <div className="bulk-shift-modal" onClick={(e) => e.stopPropagation()}>
-                {/* HLAVIČKA */}
-                <div className="bulk-shift-header">
-                    <h2 className="bulk-shift-title">
-                        📝 Hromadné vytváření směn
-                    </h2>
-                    <button className="close-button" onClick={onClose}>
-                        ✕
+    return (
+        <Modal
+            title="📝 Hromadné vytváření směn"
+            onClose={onClose}
+            size="md"
+            contentClassName="bulk-shift-modal"
+            bodyClassName="bulk-shift-body"
+            footer={(
+                <>
+                    <button type="button" className="btn-cancel" onClick={onClose}>
+                        Zrušit
                     </button>
-                </div>
-
+                    <button
+                        type="button"
+                        className="btn-submit"
+                        onClick={handleSubmit}
+                        disabled={loading || selectedDates.size === 0}
+                    >
+                        {loading ? 'Přidávám…' : `Přidat směny (${selectedDates.size})`}
+                    </button>
+                </>
+            )}
+        >
                 {vacationBalance?.eligible && (
                     <div className="vacation-balance-banner" style={{ margin: '0 1rem' }}>
                         🏖️ Dovolená {vacationBalance.rok}: zbývá{' '}
@@ -288,6 +304,20 @@ function BulkShiftForm({ user, onClose, onSuccess, initialDates = [], initialMon
                                         >
                                             <option value="prodejce">Jako prodejce (100 bodů/h + provize)</option>
                                             <option value="vypomoc">Výpomoc (150 bodů/h, bez provize)</option>
+                                        </select>
+                                    </div>
+                                )}
+
+                                {servisPoziceEnabled && formData.typ_smeny === 'prace' && (
+                                    <div className="form-group">
+                                        <label className="form-label">Pozice na směně:</label>
+                                        <select
+                                            className="form-select"
+                                            value={formData.pozice_smeny}
+                                            onChange={(e) => setFormData(prev => ({ ...prev, pozice_smeny: e.target.value }))}
+                                        >
+                                            <option value="prodej">Prodej</option>
+                                            <option value="servis">Servisní technik</option>
                                         </select>
                                     </div>
                                 )}
@@ -395,24 +425,7 @@ function BulkShiftForm({ user, onClose, onSuccess, initialDates = [], initialMon
                         )}
                     </div>
                 </div>
-
-                {/* AKČNÍ TLAČÍTKA */
-                /* Tlačítka jsou fixně viditelná (viz CSS .bulk-actions) a primární tlačítko má text 'Přidat směny' */}
-                <div className="bulk-actions">
-                    <button className="btn-cancel" onClick={onClose}>
-                        Zrušit
-                    </button>
-                    <button 
-                        className="btn-submit"
-                        onClick={handleSubmit}
-                        disabled={loading || selectedDates.size === 0}
-                    >
-                        {loading ? 'Přidávám…' : `Přidat směny (${selectedDates.size})`}
-                    </button>
-                </div>
-            </div>
-        </div>,
-        document.body
+        </Modal>
     );
 }
 

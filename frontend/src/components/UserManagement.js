@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import Modal from './Modal';
 import { useAuth } from '../context/AuthContext';
 import { userAPI, storeAPI } from '../services/api';
 import { prepareUserSubmitData, formatUserApiError, estimateNextUserId } from '../utils/userForm';
@@ -9,7 +10,6 @@ import {
 } from '../constants/mzdaDoplnkyTemplates';
 import { formatBodyCount } from '../utils/formatBody';
 import { manualNumberInputClass, preventNumberInputWheel } from '../utils/manualNumberInput';
-import { useModalKeyboard } from '../utils/useModalKeyboard';
 import {
     USER_ROLE_OPTIONS,
     BRIGADNIK_DEFAULT_BODY_ZA_HODINU,
@@ -40,6 +40,7 @@ const UserManagement = () => {
         aktivni: true,
         prodejna: '',
         technik_id: '',
+        servis_uroven: 'zadna',
         moduly: [],
         telefon: '',
         email: '',
@@ -139,6 +140,7 @@ const UserManagement = () => {
             aktivni: true,
             prodejna: '',
             technik_id: '',
+            servis_uroven: 'zadna',
             moduly: [],
             telefon: '',
             email: '',
@@ -153,8 +155,6 @@ const UserManagement = () => {
         setShowAddForm(false);
         setFormError(null);
     };
-
-    useModalKeyboard(showAddForm, { onClose: resetForm, formRef: userFormRef });
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -204,6 +204,7 @@ const UserManagement = () => {
             aktivni: user.aktivni,
             prodejna: user.prodejna_id || user.prodejna || '',
             technik_id: user.technik_id != null ? String(user.technik_id) : '',
+            servis_uroven: user.servis_uroven || 'zadna',
             moduly: user.moduly || [],
             telefon: user.telefon || '',
             email: user.email || '',
@@ -371,14 +372,28 @@ const UserManagement = () => {
             )}
 
             {showAddForm && (
-                <div className="user-form-overlay">
-                    <div className="user-form">
-                        <div className="form-header">
-                            <h2>{editingUser ? 'Upravit uživatele' : 'Přidat nového uživatele'}</h2>
-                            <button className="close-btn" onClick={resetForm}>×</button>
-                        </div>
-
-                        <form ref={userFormRef} onSubmit={handleSubmit}>
+                <Modal
+                    title={editingUser ? 'Upravit uživatele' : 'Přidat nového uživatele'}
+                    onClose={resetForm}
+                    size="md"
+                    onSubmit={handleSubmit}
+                    formRef={userFormRef}
+                    bodyClassName="user-form"
+                    footer={(
+                        <>
+                            <button type="button" onClick={resetForm} className="btn-cancel" disabled={submitting}>
+                                Zrušit
+                            </button>
+                            <button type="submit" className="btn-submit" disabled={submitting}>
+                                {submitting
+                                    ? 'Ukládám…'
+                                    : editingUser
+                                        ? 'Uložit změny'
+                                        : 'Vytvořit uživatele'}
+                            </button>
+                        </>
+                    )}
+                >
                             {formError && (
                                 <div className="form-error-message" role="alert">
                                     {formError.split('\n').map((line, i) => (
@@ -419,6 +434,18 @@ const UserManagement = () => {
                                         min="0"
                                         placeholder="např. 108"
                                     />
+                                </div>
+                                <div className="form-group">
+                                    <label>Úroveň servisu</label>
+                                    <select
+                                        name="servis_uroven"
+                                        value={formData.servis_uroven}
+                                        onChange={handleInputChange}
+                                    >
+                                        <option value="zadna">Nedělá servis</option>
+                                        <option value="zauceni">V zaškolení</option>
+                                        <option value="plny">Schopný servisu</option>
+                                    </select>
                                 </div>
                             </div>
 
@@ -652,21 +679,7 @@ const UserManagement = () => {
                                 </div>
                             </div>
 
-                            <div className="form-actions">
-                                <button type="button" onClick={resetForm} className="cancel-btn">
-                                    Zrušit
-                                </button>
-                                <button type="submit" className="save-btn" disabled={submitting}>
-                                    {submitting
-                                        ? 'Ukládám…'
-                                        : editingUser
-                                            ? 'Uložit změny'
-                                            : 'Vytvořit uživatele'}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
+                </Modal>
             )}
 
             <div className="users-table">

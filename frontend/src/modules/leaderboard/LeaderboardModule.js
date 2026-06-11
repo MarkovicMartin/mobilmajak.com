@@ -2,9 +2,16 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { getApiEndpoints } from '../../config/apiConfig';
 import { leaderboardAPI } from '../../services/api';
+import PeriodSegmentBar from '../../components/PeriodSegmentBar';
 import PointsLeaderboard from './PointsLeaderboard';
 import StoresLeaderboard from './StoresLeaderboard';
 import './LeaderboardModule.css';
+
+const LEADERBOARD_PERIOD_OPTIONS = [
+    { id: 'month', label: 'Měsíční', icon: <i className="fas fa-calendar-alt" /> },
+    { id: 'today', label: 'Dnešní žebříček', icon: <i className="fas fa-sun" /> },
+    { id: 'stores', label: 'Prodejny', icon: <i className="fas fa-store" /> },
+];
 
 /** Denní žebříček – častější obnova během směny */
 const POLL_MS_TODAY = 60 * 1000;
@@ -118,62 +125,13 @@ const LeaderboardModule = () => {
                 </div>
             )}
 
-            <div className="leaderboard-period-bar" role="tablist" aria-label="Období žebříčku">
-                <button
-                    type="button"
-                    role="tab"
-                    aria-selected={pointsSubTab === 'month'}
-                    className={`period-tab ${pointsSubTab === 'month' ? 'period-tab--expanded' : ''}`}
-                    onClick={() => setPointsSubTab('month')}
-                >
-                    {pointsSubTab === 'month' ? (
-                        <>
-                            <span className="period-tab-icon" aria-hidden="true">
-                                <i className="fas fa-calendar-alt" />
-                            </span>
-                            <span className="period-tab-title">Měsíční</span>
-                        </>
-                    ) : (
-                        <span className="period-tab-label">Měsíční</span>
-                    )}
-                </button>
-                <button
-                    type="button"
-                    role="tab"
-                    aria-selected={pointsSubTab === 'today'}
-                    className={`period-tab ${pointsSubTab === 'today' ? 'period-tab--expanded' : ''}`}
-                    onClick={() => setPointsSubTab('today')}
-                >
-                    {pointsSubTab === 'today' ? (
-                        <>
-                            <span className="period-tab-icon" aria-hidden="true">
-                                <i className="fas fa-sun" />
-                            </span>
-                            <span className="period-tab-title">Dnešní žebříček</span>
-                        </>
-                    ) : (
-                        <span className="period-tab-label">Dnešní žebříček</span>
-                    )}
-                </button>
-                <button
-                    type="button"
-                    role="tab"
-                    aria-selected={pointsSubTab === 'stores'}
-                    className={`period-tab ${pointsSubTab === 'stores' ? 'period-tab--expanded' : ''}`}
-                    onClick={() => setPointsSubTab('stores')}
-                >
-                    {pointsSubTab === 'stores' ? (
-                        <>
-                            <span className="period-tab-icon" aria-hidden="true">
-                                <i className="fas fa-store" />
-                            </span>
-                            <span className="period-tab-title">Prodejny</span>
-                        </>
-                    ) : (
-                        <span className="period-tab-label">Prodejny</span>
-                    )}
-                </button>
-            </div>
+            <PeriodSegmentBar
+                className="leaderboard-period-bar"
+                options={LEADERBOARD_PERIOD_OPTIONS}
+                value={pointsSubTab}
+                onChange={setPointsSubTab}
+                ariaLabel="Období žebříčku"
+            />
 
             {lastUpdatedLabel && (
                 <p className="leaderboard-updated" aria-live="polite">

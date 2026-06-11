@@ -250,7 +250,9 @@ function ShiftOverview({ user, month, onMonthChange }) {
                                         {smena.typ_smeny === 'dovolena' && '🏖️'}
                                         {smena.typ_smeny === 'nemoc' && '🏥'}
                                         {smena.typ_smeny === 'prace'
-                                            ? (smena.brigadnik_rezim === 'vypomoc' ? 'Výpomoc' : 'Práce')
+                                            ? (smena.pozice_smeny === 'servis'
+                                                ? 'Servis'
+                                                : (smena.brigadnik_rezim === 'vypomoc' ? 'Výpomoc' : 'Práce'))
                                             : smena.typ_smeny === 'dovolena' ? 'Dovolená' : 'Nemoc'}
                                     </span>
                                 </div>

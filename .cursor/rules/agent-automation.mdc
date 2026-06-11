@@ -38,3 +38,4 @@ Když uživatel o commit/PR požádá:
 - Preferuj sandbox a project hooks (`.cursor/hooks/`) před „Run Everything“
 - Při pochybnosti o síť nebo produkci: zastav a stručně vysvětli riziko
 - Po změnách v kódu nabídni relevantní test; nespouštěj deploy na VPS bez domluvy
+- Deploy: viz rule `deploy-procedure` – staging → smoke → produkce jen na žádost

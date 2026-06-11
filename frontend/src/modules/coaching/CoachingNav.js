@@ -1,7 +1,6 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import ModuleSubnav from '../../components/ModuleSubnav';
 import { COACHING_SECTIONS } from './coachingSections';
-import '../analytics/AnalyticsNav.css';
 import './CoachingNav.css';
 
 const CoachingNav = ({
@@ -11,25 +10,17 @@ const CoachingNav = ({
     prodejnaId,
     prodejny,
     onProdejnaChange,
-}) => (
-    <header className="analytics-nav coaching-nav" aria-label="Navigace výkonů">
-        <div className="analytics-nav-tabs" role="tablist">
-            {COACHING_SECTIONS.map((section) => (
-                <NavLink
-                    key={section.id}
-                    to={section.path ? `/coaching/${section.path}` : '/coaching'}
-                    end={!section.path}
-                    role="tab"
-                    className={({ isActive }) =>
-                        `analytics-nav-tab${isActive ? ' analytics-nav-tab--active' : ''}`
-                    }
-                >
-                    <span className="analytics-nav-tab-icon" aria-hidden="true">{section.icon}</span>
-                    <span className="analytics-nav-tab-label">{section.tabLabel}</span>
-                </NavLink>
-            ))}
-        </div>
-        <div className="analytics-nav-meta coaching-nav-meta">
+}) => {
+    const tabs = COACHING_SECTIONS.map((section) => ({
+        id: section.id,
+        label: section.tabLabel,
+        icon: section.icon,
+        to: section.path ? `/coaching/${section.path}` : '/coaching',
+        end: !section.path,
+    }));
+
+    const meta = (
+        <>
             {prodejny?.length > 1 && (
                 <label className="coaching-nav-filter">
                     <span className="coaching-nav-filter-label">Prodejna</span>
@@ -57,8 +48,18 @@ const CoachingNav = ({
                     ))}
                 </select>
             </label>
-        </div>
-    </header>
-);
+        </>
+    );
+
+    return (
+        <ModuleSubnav
+            tabs={tabs}
+            meta={meta}
+            accent="pink"
+            ariaLabel="Navigace výkonů"
+            className="coaching-nav"
+        />
+    );
+};
 
 export default CoachingNav;

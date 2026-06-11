@@ -32,7 +32,7 @@ class ProdejnaSerializer(serializers.ModelSerializer):
             'adresa', 'telefon', 'email',
             'otevreno_od', 'otevreno_do', 'oteviraci_doba',
             'vedouci_prodejny', 'vedouci_user_id', 'vedouci_jmeno',
-            'aktivni', 'barva', 'poradi', 'poznamka',
+            'aktivni', 'povolena_pozice_servis', 'barva', 'poradi', 'poznamka',
             'datum_vytvoreni', 'datum_upravy',
         ]
         read_only_fields = ['datum_vytvoreni', 'datum_upravy', 'vedouci_jmeno']
@@ -113,4 +113,4 @@ class ProdejnaChoiceSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Prodejna
-        fields = ['id', 'nazev', 'nazev_kratkiy', 'barva']
+        fields = ['id', 'nazev', 'nazev_kratkiy', 'barva', 'povolena_pozice_servis']

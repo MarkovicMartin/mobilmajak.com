@@ -1,8 +1,10 @@
 import { analyticsGet } from '../../../utils/analyticsRequest';
 import React, { useState, useEffect } from 'react';
+import Modal from '../../../components/Modal';
 import AnalyticsSectionWrapper from '../AnalyticsSectionWrapper';
 import CustomDropdown from '../../../components/CustomDropdown';
-import AnalyticsDateRange from '../../../components/AnalyticsDateRange';
+import DateFilterBar from '../../../components/DateFilterBar';
+import { detectQuickRangePreset } from '../../../utils/analyticsQuickRange';
 import { buildAnalyticsMonthFilterOptions } from '../../../utils/analyticsMonthOptions';
 import './Eshop.css';
 // Sub-component for category analytics
@@ -267,23 +269,12 @@ const Eshop = () => {
         return { period:'custom', start_date:fmt(new Date(now.getFullYear(), now.getMonth(), 1)), end_date:fmt(now), exclude_allegro:false };
     });
     const [dateError, setDateError] = useState('');
+    const [quickKey, setQuickKey] = useState('thisMonth');
 
-    const applyDateRange = ({ start_date, end_date }) => {
-        setFilters(prev => ({ ...prev, period: 'custom', start_date, end_date }));
-    };
-
-    // Rychlé volby rozsahu
-    const setQuickRange = (type) => {
-        const now = new Date();
-        const fmt=(d)=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-        let from, to;
-        if (type==='today') { from = new Date(now.getFullYear(), now.getMonth(), now.getDate()); to = new Date(now.getFullYear(), now.getMonth(), now.getDate()); }
-        else if (type==='yesterday') { const y=new Date(now); y.setDate(now.getDate()-1); from=new Date(y.getFullYear(), y.getMonth(), y.getDate()); to=new Date(y.getFullYear(), y.getMonth(), y.getDate()); }
-        else if (type==='thisWeek') { const day=(now.getDay()+6)%7; from=new Date(now.getFullYear(), now.getMonth(), now.getDate()-day); to=new Date(now.getFullYear(), now.getMonth(), now.getDate()); }
-        else if (type==='thisMonth') { from=new Date(now.getFullYear(), now.getMonth(), 1); to=new Date(now.getFullYear(), now.getMonth()+1, 0); }
-        else if (type==='prevMonth') { from=new Date(now.getFullYear(), now.getMonth()-1, 1); to=new Date(now.getFullYear(), now.getMonth(), 0); }
+    const applyDateRange = ({ start_date, end_date, preset }) => {
         setDateError('');
-        setFilters(prev=> ({...prev, period:'custom', start_date: fmt(from), end_date: fmt(to)}));
+        setFilters(prev => ({ ...prev, period: 'custom', start_date, end_date }));
+        setQuickKey(preset || detectQuickRangePreset(start_date, end_date));
     };
 
     // Načtení dat z API
@@ -466,15 +457,6 @@ const Eshop = () => {
                         })()}
                     </div>
 
-                    {/* Vlastní období */}
-                    <AnalyticsDateRange
-                        startDate={filters.start_date}
-                        endDate={filters.end_date}
-                        onApply={applyDateRange}
-                        onErrorChange={setDateError}
-                        showError={false}
-                    />
-
                     {/* Vyloučit ALLEGRO */}
                     <div className="filter-group">
                         <label>
@@ -487,27 +469,17 @@ const Eshop = () => {
                         </label>
                     </div>
 
-                    {/* Rychlé volby */}
-                    <div className="filter-group" style={{minWidth:240}}>
-                        <label>Rychlé volby:</label>
-                        <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-                            <button className="refresh-btn" onClick={()=>setQuickRange('today')}>Dnešek</button>
-                            <button className="refresh-btn" onClick={()=>setQuickRange('yesterday')}>Včerejšek</button>
-                            <button className="refresh-btn" onClick={()=>setQuickRange('thisWeek')}>Tento týden</button>
-                            <button className="refresh-btn" onClick={()=>setQuickRange('thisMonth')}>Tento měsíc</button>
-                            <button className="refresh-btn" onClick={()=>setQuickRange('prevMonth')}>Minulý měsíc</button>
-                        </div>
-                    </div>
-
-                    {/* Refresh button */}
-                    <div className="filter-group">
-                        <button 
-                            className="refresh-btn"
-                            onClick={fetchData}
-                            disabled={loading || !!dateError}
-                        >
-                            {loading ? '🔄' : '🔄'} Obnovit
-                        </button>
+                    <div className="filter-group filter-group--date-bar">
+                        <DateFilterBar
+                            startDate={filters.start_date}
+                            endDate={filters.end_date}
+                            preset={quickKey}
+                            onRangeChange={applyDateRange}
+                            onDateErrorChange={setDateError}
+                            onRefresh={fetchData}
+                            refreshDisabled={loading || !!dateError}
+                            refreshLoading={loading}
+                        />
                     </div>
                 </div>
                 {dateError && <div className="eshop-error" style={{marginTop:8}}>{dateError}</div>}
@@ -632,13 +604,12 @@ const Eshop = () => {
 
                     {/* Modal s detailem kanálu */}
                     {detailOpen && (
-                        <div className="modal-overlay" onClick={closeDetail}>
-                            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                                <div className="modal-header">
-                                    <h4>Detail kanálu: {detailChannel === 'eshop' ? 'E‑shop' : 'Allegro'}</h4>
-                                    <button className="modal-close" onClick={closeDetail}>✕</button>
-                                </div>
-                                <div className="modal-body">
+                        <Modal
+                            title={`Detail kanálu: ${detailChannel === 'eshop' ? 'E‑shop' : 'Allegro'}`}
+                            titleAs="h4"
+                            size="lg"
+                            onClose={closeDetail}
+                        >
                                     {detailLoading && <div className="modal-loading">Načítám…</div>}
                                     {detailError && <div className="modal-error">{detailError}</div>}
                                     {channelDetail && (
@@ -725,9 +696,7 @@ const Eshop = () => {
                                             </div>
                                         </div>
                                     )}
-                                </div>
-                            </div>
-                        </div>
+                        </Modal>
                     )}
                     {/* Meta informace */}
                     <div className="eshop-meta">

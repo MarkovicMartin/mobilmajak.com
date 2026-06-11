@@ -74,51 +74,15 @@
     color: var(--text-primary);
 }
 
-/* Formuláře v portálu na body (ticket, uživatel, prodejna…) */
-.dark-mode :is(
-        .ticket-form-overlay,
-        .user-form-overlay,
-        .store-form-overlay,
-        .post-form-overlay,
-        .access-form-overlay
-    )
-    .form-group
-    label {
+/* Formuláře v modálech (portál na body) */
+.dark-mode .modal-body .form-group label {
     color: var(--text-label) !important;
 }
 
-.dark-mode
-    :is(
-        .ticket-form-overlay,
-        .user-form-overlay,
-        .store-form-overlay,
-        .post-form-overlay,
-        .access-form-overlay
-    )
-    input:not([type='checkbox']):not([type='radio']):not([type='color']):not([type='file']):not([type='hidden']):not([type='submit']):not([type='button']),
-.dark-mode
-    :is(
-        .ticket-form-overlay,
-        .user-form-overlay,
-        .store-form-overlay,
-        .post-form-overlay,
-        .access-form-overlay
-    )
-    select,
-.dark-mode
-    :is(
-        .ticket-form-overlay,
-        .user-form-overlay,
-        .store-form-overlay,
-        .post-form-overlay,
-        .access-form-overlay
-    )
-    textarea {
+.dark-mode .modal-body input:not([type='checkbox']):not([type='radio']):not([type='color']):not([type='file']):not([type='hidden']):not([type='submit']):not([type='button']),
+.dark-mode .modal-body select,
+.dark-mode .modal-body textarea {
     background-color: var(--bg-input) !important;
     color: var(--text-primary) !important;
     border-color: var(--border-input) !important;
-}
-
-.dark-mode .ticket-form-modal {
-    background: var(--bg-card) !important;
 }

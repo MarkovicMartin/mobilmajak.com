@@ -1,75 +1,79 @@
 /**
- * Projektové modály – scrollování při přetečení viewportu, obsah odshora.
- * Importováno z App.js (před lazy chunky komponent).
+ * Jednotná šablona modálů – vždy přes <Modal /> na document.body.
  */
 
-/* --- Backdrop: scroll celé vrstvy, modal začíná nahoře --- */
-.modal-overlay,
-.user-form-overlay,
-.store-form-overlay,
-.post-form-overlay,
-.access-form-overlay,
-.ticket-form-overlay,
-.payroll-modal-overlay,
-.confirm-overlay,
-.bulk-shift-overlay {
-    align-items: flex-start !important;
-    overflow-y: auto !important;
-    overscroll-behavior: contain;
-    -webkit-overflow-scrolling: touch;
-    box-sizing: border-box;
-}
-
-.modal-overlay,
-.payroll-modal-overlay,
-.confirm-overlay {
-    padding: max(12px, env(safe-area-inset-top, 0px))
-        max(12px, env(safe-area-inset-right, 0px))
-        max(12px, env(safe-area-inset-bottom, 0px))
-        max(12px, env(safe-area-inset-left, 0px));
-}
-
-/* --- Analytika / servis: hlavička fixní, tělo scrolluje --- */
+/* --- Overlay --- */
 .modal-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.4);
     display: flex;
     justify-content: center;
-    z-index: 1300;
+    align-items: flex-start;
+    padding: max(calc(var(--dock-clearance, 5.5rem) + 0.5rem), calc(env(safe-area-inset-top, 0px) + 0.75rem))
+        max(12px, env(safe-area-inset-right, 0px))
+        max(12px, env(safe-area-inset-bottom, 0px))
+        max(12px, env(safe-area-inset-left, 0px));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    box-sizing: border-box;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1400;
 }
 
-.modal-overlay > .modal-content:has(.modal-body) {
+/* --- Shell --- */
+.modal-content {
     display: flex;
     flex-direction: column;
-    background: var(--bg-card);
+    background: var(--bg-card, #fff);
     color: var(--text-primary);
-    width: min(900px, 92vw);
-    max-height: min(90vh, calc(100dvh - 24px));
-    margin: 0 auto;
+    border-radius: 14px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+    overflow: hidden;
+    margin: 0 auto 1rem;
     flex-shrink: 0;
-    border-radius: 12px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    max-height: min(88dvh, calc(100dvh - var(--dock-clearance, 5.5rem) - 1.5rem));
+}
+
+.modal-content--sm {
+    width: min(520px, 100%);
+}
+
+.modal-content--md {
+    width: min(720px, 92vw);
+}
+
+.modal-content--lg {
+    width: min(900px, 92vw);
+}
+
+.modal-form {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
     overflow: hidden;
 }
 
-.modal-overlay > .modal-content:has(.modal-body) > .modal-header {
+/* --- Hlavička (vzor ze směn) --- */
+.modal-header {
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    justify-content: space-between;
+    gap: 12px;
     flex-shrink: 0;
     padding: 14px 18px;
-    background: var(--bg-inset);
-    border-bottom: 1px solid var(--border-subtle);
-    color: var(--text-primary);
+    background: linear-gradient(135deg, var(--brand-navy, #1e40af) 0%, var(--brand-navy-hover, #2563eb) 100%);
+    border-bottom: none;
+    color: #fff;
 }
 
-.modal-overlay > .modal-content:has(.modal-body) > .modal-body {
-    padding: 18px;
-    overflow-y: auto;
-    flex: 1 1 auto;
-    min-height: 0;
-    -webkit-overflow-scrolling: touch;
+.modal-title {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #fff;
+    line-height: 1.35;
 }
 
 .modal-close {
@@ -77,74 +81,196 @@
     background: transparent;
     font-size: 1.2rem;
     cursor: pointer;
+    color: #fff;
+    opacity: 0.85;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.modal-close:hover {
+    opacity: 1;
+    background: rgba(255, 255, 255, 0.15);
+}
+
+/* --- Tělo --- */
+.modal-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 16px 18px;
 }
 
 .modal-loading,
 .modal-error {
-    padding: 12px;
+    padding: 4px 0;
 }
 
-/* --- Jednopanelové modály uvnitř overlay (objednávky, profil, přístupy…) --- */
-.modal-overlay > .order-form-modal,
-.modal-overlay > .order-detail-modal,
-.modal-overlay > .user-form,
-.modal-overlay > .store-form,
-.modal-overlay > .post-form,
-.modal-overlay > .access-form-modal,
-.access-form-overlay > .access-form-modal,
-.user-form-overlay > .user-form,
-.store-form-overlay > .store-form,
-.post-form-overlay > .post-form {
-    flex-shrink: 0;
-    margin: 0 auto;
-    max-height: min(90vh, calc(100dvh - 24px)) !important;
-    overflow-y: auto !important;
-    -webkit-overflow-scrolling: touch;
+.modal-error {
+    color: var(--accent-danger, #dc3545);
 }
 
-/* Směna – jeden panel .modal-content bez .modal-body */
-.modal-overlay > .modal-content:not(:has(.modal-body)) {
-    flex-shrink: 0;
-    margin: 0 auto;
-    max-height: min(90vh, calc(100dvh - 24px));
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
+.modal-hint {
+    margin: 0 0 1rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary, #666);
+    line-height: 1.45;
 }
 
-/* Hromadné směny – overlay scroll + vnitřní scroll obsahu */
-.bulk-shift-overlay > .bulk-shift-modal {
-    flex-shrink: 0;
-    margin: 0 auto;
-    max-height: min(90svh, calc(100dvh - 24px)) !important;
-}
-
-/* Mzdový panel – malý dialog, ale scrollovatelný při zoomu */
-.payroll-modal-overlay > .payroll-modal {
-    flex-shrink: 0;
-    margin: 0 auto;
-    max-height: min(90vh, calc(100dvh - 24px));
-    overflow-y: auto;
-}
-
-.confirm-overlay > .confirm-dialog {
-    flex-shrink: 0;
-    margin: max(var(--dock-clearance, 7.5rem), calc(env(safe-area-inset-top, 0px) + 12px)) auto 1.5rem;
-}
-
-.modal-overlay > .modal-content,
-.bulk-shift-overlay > .bulk-shift-modal,
-.payroll-modal-overlay > .payroll-modal,
-.user-form-overlay > .user-form-modal,
-.store-form-overlay > .store-form-modal,
-.post-form-overlay > .post-form-modal,
-.access-form-overlay > .access-form-modal,
-.ticket-form-overlay > .ticket-form-modal {
-    margin-top: max(var(--dock-clearance, 7.5rem), calc(env(safe-area-inset-top, 0px) + 12px));
-    margin-bottom: 1rem;
-}
-
-.modal-overlay > .modal-content.shift-form-modal {
+/* --- Patička --- */
+.modal-footer {
     display: flex;
-    flex-direction: column;
-    max-height: min(85vh, calc(100dvh - var(--dock-clearance, 7.5rem) - 2rem));
+    gap: 10px;
+    justify-content: flex-end;
+    flex-shrink: 0;
+    padding: 14px 18px;
+    background: var(--bg-inset, #f8fafc);
+    border-top: 1px solid var(--border-subtle, #e5e7eb);
+}
+
+/* --- Akční tlačítka --- */
+.modal-footer .btn-cancel,
+.modal-footer .btn-submit,
+.modal-footer .btn-delete,
+.modal-body .btn-cancel,
+.modal-body .btn-submit {
+    padding: 10px 18px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: opacity 0.15s ease;
+}
+
+.btn-cancel {
+    background: var(--bg-card, #fff);
+    color: var(--text-primary);
+    border: 1px solid var(--border-input, #e2e8f0);
+}
+
+.btn-cancel:hover {
+    background: var(--bg-inset, #f1f5f9);
+}
+
+.btn-submit {
+    background: linear-gradient(135deg, var(--brand-navy, #1e40af) 0%, var(--brand-navy-hover, #2563eb) 100%);
+    color: #fff;
+}
+
+.btn-submit:hover:not(:disabled) {
+    opacity: 0.92;
+}
+
+.btn-submit:disabled,
+.btn-delete:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.btn-delete {
+    background: var(--accent-danger, #dc3545);
+    color: #fff;
+}
+
+.btn-delete:hover:not(:disabled) {
+    opacity: 0.92;
+}
+
+/* --- Potvrzovací dialog --- */
+.confirm-details {
+    background: var(--bg-inset, #f8fafc);
+    padding: 16px;
+    border-radius: 8px;
+    margin: 0 0 16px;
+    border-left: 4px solid var(--brand-navy, #2563eb);
+}
+
+.confirm-details p {
+    margin: 6px 0;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.confirm-details strong {
+    color: var(--text-heading, var(--text-primary));
+    font-weight: 500;
+}
+
+.confirm-question {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+}
+
+/* --- Formulářové prvky v modálu --- */
+.modal-body .form-group {
+    margin-bottom: 14px;
+}
+
+.modal-body .form-group:last-child {
+    margin-bottom: 0;
+}
+
+.modal-body .form-group label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 600;
+    font-size: 0.88rem;
+    color: var(--text-label, var(--text-primary));
+}
+
+.modal-body .form-group input:not([type='checkbox']):not([type='radio']):not([type='file']),
+.modal-body .form-group select,
+.modal-body .form-group textarea {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border-input, #e2e8f0);
+    border-radius: 10px;
+    background: var(--bg-input, #fff);
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 0.9rem;
+}
+
+.modal-body .form-group select {
+    appearance: none;
+    -webkit-appearance: none;
+    padding-right: 2rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.65rem center;
+    background-size: 1rem;
+    cursor: pointer;
+}
+
+.modal-body .form-group input:focus,
+.modal-body .form-group select:focus,
+.modal-body .form-group textarea:focus {
+    outline: none;
+    border-color: var(--brand-navy, #2563eb);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-navy, #2563eb) 14%, transparent);
+}
+
+.modal-overlay .react-datepicker-popper {
+    z-index: 1500 !important;
+}
+
+@media (max-width: 560px) {
+    .modal-footer {
+        flex-direction: column-reverse;
+    }
+
+    .modal-footer .btn-cancel,
+    .modal-footer .btn-submit,
+    .modal-footer .btn-delete {
+        width: 100%;
+        min-height: 44px;
+    }
 }

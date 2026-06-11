@@ -1,8 +1,10 @@
 import { analyticsGet } from '../../../utils/analyticsRequest';
 import React, { useState, useEffect } from 'react';
+import Modal from '../../../components/Modal';
 import AnalyticsSectionWrapper from '../AnalyticsSectionWrapper';
 import CustomDropdown from '../../../components/CustomDropdown';
-import AnalyticsDateRange from '../../../components/AnalyticsDateRange';
+import DateFilterBar from '../../../components/DateFilterBar';
+import { detectQuickRangePreset } from '../../../utils/analyticsQuickRange';
 import { buildAnalyticsMonthFilterOptions } from '../../../utils/analyticsMonthOptions';
 import './Servis.css';
 
@@ -29,6 +31,7 @@ const Servis = () => {
         };
     });
     const [dateError, setDateError] = useState('');
+    const [quickKey, setQuickKey] = useState('thisMonth');
 
     // Načtení dat z API
     const fetchData = async () => {
@@ -200,36 +203,12 @@ const Servis = () => {
         }));
     };
 
-    const applyDateRange = ({ start_date, end_date }) => {
+    const applyDateRange = ({ start_date, end_date, preset }) => {
+        setDateError('');
         setFilters(prev => ({ ...prev, period: 'custom', start_date, end_date }));
+        setQuickKey(preset || detectQuickRangePreset(start_date, end_date));
     };
 
-    // ===== Helpers – stejné UX jako v Celková čísla =====
-    const setQuickRange = (type) => {
-        const now = new Date();
-        const fmt = (d)=> `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-        let from, to;
-        if (type==='today') {
-            from = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-            to = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        } else if (type==='yesterday') {
-            const y = new Date(now); y.setDate(now.getDate()-1);
-            from = new Date(y.getFullYear(), y.getMonth(), y.getDate());
-            to = new Date(y.getFullYear(), y.getMonth(), y.getDate());
-        } else if (type==='thisWeek') {
-            const day = (now.getDay()+6)%7; // pondělí=0
-            from = new Date(now.getFullYear(), now.getMonth(), now.getDate()-day);
-            to = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        } else if (type==='thisMonth') {
-            from = new Date(now.getFullYear(), now.getMonth(), 1);
-            to = new Date(now.getFullYear(), now.getMonth()+1, 0);
-        } else if (type==='prevMonth') {
-            from = new Date(now.getFullYear(), now.getMonth()-1, 1);
-            to = new Date(now.getFullYear(), now.getMonth(), 0);
-        }
-        setDateError('');
-        setFilters(prev => ({...prev, period:'custom', start_date: fmt(from), end_date: fmt(to)}));
-    };
     // Formátování čísel
     const formatNumber = (num) => {
         if (num === null || num === undefined) return '0';
@@ -313,28 +292,21 @@ const Servis = () => {
                         })()}
                     </div>
 
-                    {/* Vlastní období */}
                     {filters.period === 'custom' && (
-                        <AnalyticsDateRange
-                            startDate={filters.start_date}
-                            endDate={filters.end_date}
-                            onApply={applyDateRange}
-                            onErrorChange={setDateError}
-                            showError={false}
-                        />
-                    )}
-
-                    {/* Rychlé volby */}
-                    <div className="filter-group" style={{minWidth:240}}>
-                        <label>Rychlé volby:</label>
-                        <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-                            <button className="refresh-btn" onClick={()=>setQuickRange('today')}>Dnešek</button>
-                            <button className="refresh-btn" onClick={()=>setQuickRange('yesterday')}>Včerejšek</button>
-                            <button className="refresh-btn" onClick={()=>setQuickRange('thisWeek')}>Tento týden</button>
-                            <button className="refresh-btn" onClick={()=>setQuickRange('thisMonth')}>Tento měsíc</button>
-                            <button className="refresh-btn" onClick={()=>setQuickRange('prevMonth')}>Minulý měsíc</button>
+                        <div className="filter-group filter-group--date-bar">
+                            <DateFilterBar
+                                startDate={filters.start_date}
+                                endDate={filters.end_date}
+                                preset={quickKey}
+                                onRangeChange={applyDateRange}
+                                onDateErrorChange={setDateError}
+                                onRefresh={fetchData}
+                                refreshDisabled={loading || !!dateError}
+                                refreshLoading={loading}
+                                refreshLabel="Obnovit data"
+                            />
                         </div>
-                    </div>
+                    )}
 
                     {/* Prodejna */}
                     <div className="filter-group">
@@ -352,14 +324,15 @@ const Servis = () => {
                         </select>
                     </div>
 
-                    {/* Tlačítko obnovit */}
-                    <button 
-                        onClick={fetchData} 
-                        disabled={loading || !!dateError}
-                        className="refresh-btn"
-                    >
-                        🔄 Obnovit data
-                    </button>
+                    {filters.period !== 'custom' && (
+                        <button
+                            onClick={fetchData}
+                            disabled={loading || !!dateError}
+                            className="refresh-btn"
+                        >
+                            🔄 Obnovit data
+                        </button>
+                    )}
                 </div>
                 {dateError && <div className="servis-error" style={{marginTop:8}}>{dateError}</div>}
             </div>
@@ -468,21 +441,22 @@ const Servis = () => {
 
                     {/* Modal s detailem prodejny */}
                     {detailOpen && (
-                        <div className="modal-overlay" onClick={closeDetail}>
-                            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                                <div className="modal-header">
-                                    <h4>
-                                        {detailType === 'prodejna' ? 'Rozpad prodejny' : 
-                                         detailType === 'technik' ? 'Rozpad technika' : 
-                                         'Detail typu servisu'}: {
-                                             detailType === 'prodejna' ? (selectedEntity?.stredisko || selectedEntity?.id_prodejny) : 
-                                             detailType === 'technik' ? selectedEntity?.technik :
-                                             selectedEntity?.nazev
-                                         }
-                                    </h4>
-                                    <button className="modal-close" onClick={closeDetail}>✕</button>
-                                </div>
-                                <div className="modal-body">
+                        <Modal
+                            title={(
+                                <>
+                                    {detailType === 'prodejna' ? 'Rozpad prodejny' :
+                                     detailType === 'technik' ? 'Rozpad technika' :
+                                     'Detail typu servisu'}: {
+                                        detailType === 'prodejna' ? (selectedEntity?.stredisko || selectedEntity?.id_prodejny) :
+                                        detailType === 'technik' ? selectedEntity?.technik :
+                                        selectedEntity?.nazev
+                                    }
+                                </>
+                            )}
+                            titleAs="h4"
+                            size="lg"
+                            onClose={closeDetail}
+                        >
                                     {detailLoading && <div className="modal-loading">Načítám…</div>}
                                     {detailError && <div className="modal-error">{detailError}</div>}
                                     {prodejnaDetail && detailType === 'typ_servisu' && (
@@ -614,9 +588,7 @@ const Servis = () => {
                                             </div>
                                         </div>
                                     )}
-                                </div>
-                            </div>
-                        </div>
+                        </Modal>
                     )}
 
                     {/* Rozklad podle servisních techniků */}

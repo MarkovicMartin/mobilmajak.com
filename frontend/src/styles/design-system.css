@@ -14,25 +14,27 @@
     box-shadow: var(--shadow-card);
 }
 
-.analytics-nav-tab {
+.analytics-nav .module-subnav-tab,
+.coaching-nav .module-subnav-tab {
     background: var(--bg-nav-tab);
     color: var(--text-secondary);
 }
 
-.analytics-nav-tab:hover {
+.analytics-nav .module-subnav-tab:hover,
+.coaching-nav .module-subnav-tab:hover {
     background: var(--bg-tertiary);
     color: var(--text-primary);
 }
 
-.analytics-nav-tab--active,
-.analytics-nav-tab.active {
+.analytics-nav .module-subnav-tab--active,
+.coaching-nav .module-subnav-tab--active {
     background: var(--brand-pink-soft);
     border-color: var(--brand-pink);
     color: var(--brand-navy);
 }
 
-.dark-mode .analytics-nav-tab--active,
-.dark-mode .analytics-nav-tab.active {
+.dark-mode .analytics-nav .module-subnav-tab--active,
+.dark-mode .coaching-nav .module-subnav-tab--active {
     color: var(--text-primary);
 }
 
