@@ -29,7 +29,7 @@ const AnalyticsNav = () => {
             }
             const last = new Date(lastIso);
             const now = new Date();
-            const diffMin = Math.round((now.getTime() - last.getTime()) / 60000);
+            const diffMin = Math.max(0, Math.round((now.getTime() - last.getTime()) / 60000));
 
             let level = 'ok';
             let label = 'běží';
@@ -41,13 +41,12 @@ const AnalyticsNav = () => {
                 label = `neaktivní (${diffMin} min)`;
             }
 
-            const absDiff = Math.abs(diffMin);
             const rel =
-                absDiff < 1
+                diffMin < 1
                     ? 'před méně než minutou'
-                    : absDiff < 60
-                      ? `před ${absDiff} min`
-                      : `před ${Math.round(absDiff / 60)} h`;
+                    : diffMin < 60
+                      ? `před ${diffMin} min`
+                      : `před ${Math.round(diffMin / 60)} h`;
 
             const timeLabel = last.toLocaleString('cs-CZ', {
                 hour: '2-digit',

@@ -1667,8 +1667,10 @@ def get_last_backup_info(request):
         recent_records_all = WebProdejeAll.objects.filter(datum_vlozeni__gte=month_ago).count()
         
         # Vybereme nejnovější timestamp napříč tabulkami
-        latest_iso_web_prodeje = latest_web_prodeje.datum_vlozeni.isoformat() if latest_web_prodeje else None
-        latest_iso_web_prodeje_all = latest_web_prodeje_all.datum_vlozeni.isoformat() if latest_web_prodeje_all else None
+        from .actor_time import actor_import_iso
+
+        latest_iso_web_prodeje = actor_import_iso(latest_web_prodeje.datum_vlozeni) if latest_web_prodeje else None
+        latest_iso_web_prodeje_all = actor_import_iso(latest_web_prodeje_all.datum_vlozeni) if latest_web_prodeje_all else None
         
         def max_iso(a, b):
             if a and b:
@@ -1687,7 +1689,7 @@ def get_last_backup_info(request):
             'web_prodeje_count': 0,
             'web_prodeje_latest': None,
             'web_prodeje_all_count': total_web_prodeje_all,
-            'web_prodeje_all_latest': latest_web_prodeje_all.datum_vlozeni.isoformat() if latest_web_prodeje_all else None,
+            'web_prodeje_all_latest': latest_iso_web_prodeje_all,
             'backup_frequency': 'real-time',
             'backup_status': 'aktivní' if (total_web_prodeje_all or total_web_prodeje) else 'neaktivní',
             'data_source': 'WEB_PRODEJE_ALL' if total_web_prodeje_all else 'WEB_PRODEJE',
@@ -6547,24 +6549,61 @@ def _leaderboard_staff_roster():
     ]
 
 
-def _leaderboard_zero_month_row(user, prodejna_nazev, last_month_points, vykupy_map=None):
+def _leaderboard_zero_month_row(user, prodejna_nazev, last_month_points, vykupy_map=None, servis_points=0):
     """Řádek bez prodeje v aktuálním měsíci – pro filtrování podle minulého měsíce."""
     vykupy_map = vykupy_map or {}
     product_points, vykupy = _leaderboard_product_points({}, vykupy_map, user.id)
+    servis_points = int(servis_points or 0)
     return {
         'id': user.id,
         'prodejce': f"{user.jmeno} {user.prijmeni}".strip(),
         'prodejna': str(prodejna_nazev),
-        'total_points': product_points,
+        'total_points': product_points + servis_points,
         'last_month_points': last_month_points,
         'polozky_nad_100': 0,
         'viceprace_obrat': 0.0,
         'sluzby_celkem': 0,
-        'servis_provize': 0,
+        'servis_provize': servis_points,
         'vykupy': vykupy,
         'prumer_polozek_uctu': 0.0,
         'prumer_hodnota_uctenky': 0.0,
     }
+
+
+def _leaderboard_servis_only_day_rows(servis_map, seen_ids, excluded_ids, last_shift_points_map, home_store_map):
+    """
+    Řádky pro techniky s body ze servisu (sloupec Technik), kteří dnes nemají prodej pod svým id_prodejce.
+    """
+    extra_ids = [
+        int(uid) for uid, pts in servis_map.items()
+        if int(pts) > 0 and int(uid) not in excluded_ids and int(uid) not in seen_ids
+    ]
+    if not extra_ids:
+        return []
+
+    users = {u.id: u for u in WebUser.objects.filter(id__in=extra_ids)}
+    home_store_map.update(_leaderboard_home_store_map(users))
+    rows = []
+    for uid in extra_ids:
+        user = users.get(uid)
+        if not user:
+            continue
+        servis_points = int(servis_map.get(uid, 0) or 0)
+        rows.append({
+            'id': uid,
+            'prodejce': f"{user.jmeno} {user.prijmeni}".strip(),
+            'prodejna': str(home_store_map.get(uid, 'Neznámá')),
+            'total_points': servis_points,
+            'last_shift_points': last_shift_points_map.get(uid, 0),
+            'polozky_nad_100': 0,
+            'viceprace_obrat': 0.0,
+            'sluzby_celkem': 0,
+            'servis_provize': servis_points,
+            'vykupy': 0,
+            'prumer_polozek_uctu': 0.0,
+            'prumer_hodnota_uctenky': 0.0,
+        })
+    return rows
 
 
 def _get_cached_prev_month_points(prev_ym, today=None):
@@ -6694,6 +6733,7 @@ def web_prodeje_leaderboard_points(request):
                 home_store_map.get(staff_user.id, 'Neznámá'),
                 _leaderboard_prev_month_points_for_user(staff_user, prev_month_points_map),
                 vykupy_map=vykupy_map,
+                servis_points=servis_map.get(staff_user.id, 0),
             ))
             seen_ids.add(staff_user.id)
 
@@ -6785,6 +6825,25 @@ def web_prodeje_leaderboard_points_today(request):
                 'prumer_polozek_uctu': _leaderboard_prumer_polozek(item),
                 'prumer_hodnota_uctenky': _leaderboard_prumer_hodnota_uctenky(item),
             })
+
+        seen_ids = {item['id'] for item in leaderboard}
+        servis_only_ids = [
+            int(uid) for uid, pts in servis_map.items()
+            if int(pts) > 0 and int(uid) not in excluded_ids and int(uid) not in seen_ids
+        ]
+        if servis_only_ids:
+            last_shift_points_map.update(_compute_per_seller_last_shift_points_map(
+                today,
+                excluded_ids=excluded_ids,
+                seller_ids=servis_only_ids,
+            ))
+        leaderboard.extend(_leaderboard_servis_only_day_rows(
+            servis_map,
+            seen_ids,
+            excluded_ids,
+            last_shift_points_map,
+            home_store_map,
+        ))
 
         leaderboard.sort(key=lambda x: x['total_points'], reverse=True)
         for idx, item in enumerate(leaderboard):
