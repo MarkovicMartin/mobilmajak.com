@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { AnalyticsDateInput } from '../../components/AnalyticsDateRange';
 import { userAPI, storeAPI } from '../../services/api';
 import { useModalKeyboard } from '../../utils/useModalKeyboard';
@@ -149,6 +150,7 @@ function ShiftForm({ user, onClose, onSuccess, initialDatum = '' }) {
     };
 
     const selectedUser = users.find((u) => u.id === formData.user_id) || user;
+    const isAbsence = formData.typ_smeny === 'dovolena' || formData.typ_smeny === 'nemoc';
     const isBrigadnikShift = selectedUser?.role === 'BRIGADNIK' && formData.typ_smeny === 'prace';
 
     const handleSubmit = async (e) => {
@@ -161,6 +163,9 @@ function ShiftForm({ user, onClose, onSuccess, initialDatum = '' }) {
             const payload = { ...formData };
             if (!isBrigadnikShift) {
                 delete payload.brigadnik_rezim;
+            }
+            if (isAbsence) {
+                delete payload.prodejna;
             }
             // Pokud není ADMIN/VEDOUCI, neposíláme user_id
             if (!(user && ['ADMIN', 'VEDOUCI'].includes(user.role))) {
@@ -197,11 +202,16 @@ function ShiftForm({ user, onClose, onSuccess, initialDatum = '' }) {
         }
     };
 
-    return (
-        <div className="modal-overlay" onClick={handleClose}>
-            <div className="modal-content shift-form-modal" onClick={(e) => e.stopPropagation()}>
-                <div className="modal-header shift-form-header">
-                    <h3>➕ Přidat novou směnu</h3>
+    return createPortal(
+        <div className="shift-form-overlay" onClick={handleClose}>
+            <div
+                className="shift-form-modal"
+                onClick={(e) => e.stopPropagation()}
+                role="dialog"
+                aria-labelledby="shift-form-title"
+            >
+                <div className="shift-form-header">
+                    <h3 id="shift-form-title">➕ Přidat novou směnu</h3>
                     <button
                         type="button"
                         className="modal-close"
@@ -213,7 +223,7 @@ function ShiftForm({ user, onClose, onSuccess, initialDatum = '' }) {
                 </div>
 
                 <form ref={shiftFormRef} className="shift-form-shell" onSubmit={handleSubmit}>
-                    <div className="modal-body shift-form-body">
+                    <div className="shift-form-body">
                         {vacationBalance?.eligible && (
                             <div className="vacation-balance-banner">
                                 🏖️ Dovolená {vacationBalance.rok}: zbývá{' '}
@@ -244,15 +254,19 @@ function ShiftForm({ user, onClose, onSuccess, initialDatum = '' }) {
                             </select>
                         </div>
                     )}
-                    <AnalyticsDateInput
-                        label="Datum:"
-                        value={formData.datum}
-                        onApply={(datum) => setFormData(prev => ({ ...prev, datum }))}
-                        wrapperClassName="form-group"
-                        showError={false}
-                        required
-                    />
+                    <div className="form-group shift-form-date-group">
+                        <AnalyticsDateInput
+                            label="Datum:"
+                            value={formData.datum}
+                            onApply={(datum) => setFormData(prev => ({ ...prev, datum }))}
+                            wrapperClassName="form-group shift-form-date-group"
+                            showError={false}
+                            required
+                        />
+                    </div>
 
+                    {!isAbsence && (
+                    <>
                     <div className="form-group">
                         <label>Prodejna:</label>
                         <select
@@ -267,7 +281,7 @@ function ShiftForm({ user, onClose, onSuccess, initialDatum = '' }) {
                         </select>
                     </div>
 
-                    <div className="form-row">
+                    <div className="shift-form-datetime-row">
                         <div className="form-group">
                             <label>Od:</label>
                             <input
@@ -297,6 +311,14 @@ function ShiftForm({ user, onClose, onSuccess, initialDatum = '' }) {
                     {formData.prodejna !== 'Senimo' && (
                         <div className="time-info">
                             ℹ️ Standardní směna: 8:00-20:00
+                        </div>
+                    )}
+                    </>
+                    )}
+
+                    {isAbsence && (
+                        <div className="time-info">
+                            ℹ️ Dovolená a nemoc nejsou vázané na prodejnu – v kalendáři se zobrazí kompaktně.
                         </div>
                     )}
 
@@ -359,7 +381,8 @@ function ShiftForm({ user, onClose, onSuccess, initialDatum = '' }) {
                     </div>
                 </form>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }
 

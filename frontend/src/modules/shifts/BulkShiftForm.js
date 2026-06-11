@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { userAPI, storeAPI } from '../../services/api';
 import './BulkShiftForm.css';
 import UnifiedCalendar from './UnifiedCalendar';
@@ -134,6 +135,7 @@ function BulkShiftForm({ user, onClose, onSuccess, initialDates = [], initialMon
     };
 
     const selectedUser = users.find((u) => u.id === formData.user_id) || user;
+    const isAbsence = formData.typ_smeny === 'dovolena' || formData.typ_smeny === 'nemoc';
     const isBrigadnikShift = selectedUser?.role === 'BRIGADNIK' && formData.typ_smeny === 'prace';
 
     const handleSubmit = async () => {
@@ -153,6 +155,9 @@ function BulkShiftForm({ user, onClose, onSuccess, initialDates = [], initialMon
             };
             if (!isBrigadnikShift) {
                 delete requestData.brigadnik_rezim;
+            }
+            if (isAbsence) {
+                delete requestData.prodejna;
             }
             if (!(user && ['ADMIN', 'VEDOUCI'].includes(user.role))) {
                 delete requestData.user_id;
@@ -187,7 +192,7 @@ function BulkShiftForm({ user, onClose, onSuccess, initialDates = [], initialMon
         }
     };
 
-    return (
+    return createPortal(
         <div className="bulk-shift-overlay" onClick={onClose}>
             <div className="bulk-shift-modal" onClick={(e) => e.stopPropagation()}>
                 {/* HLAVIČKA */}
@@ -243,6 +248,7 @@ function BulkShiftForm({ user, onClose, onSuccess, initialDates = [], initialMon
                                         </select>
                                     </div>
                                 )}
+                                {!isAbsence && (
                                 <div className="form-group">
                                     <label className="form-label">Prodejna:</label>
                                     <select 
@@ -257,6 +263,7 @@ function BulkShiftForm({ user, onClose, onSuccess, initialDates = [], initialMon
                                         ))}
                                     </select>
                                 </div>
+                                )}
 
                                 <div className="form-group">
                                     <label className="form-label">Typ směny:</label>
@@ -285,6 +292,8 @@ function BulkShiftForm({ user, onClose, onSuccess, initialDates = [], initialMon
                                     </div>
                                 )}
 
+                                {!isAbsence && (
+                                <>
                                 <div className="form-group">
                                     <label className="form-label">Od:</label>
                                     <input 
@@ -304,6 +313,14 @@ function BulkShiftForm({ user, onClose, onSuccess, initialDates = [], initialMon
                                         onChange={(e) => setFormData(prev => ({...prev, cas_do: e.target.value}))}
                                     />
                                 </div>
+                                </>
+                                )}
+
+                                {isAbsence && (
+                                    <p className="time-info" style={{ gridColumn: '1 / -1' }}>
+                                        ℹ️ Dovolená a nemoc nejsou vázané na prodejnu.
+                                    </p>
+                                )}
                             </div>
 
                             <div className="form-group" style={{marginTop: '20px'}}>
@@ -394,7 +411,8 @@ function BulkShiftForm({ user, onClose, onSuccess, initialDates = [], initialMon
                     </button>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }
 

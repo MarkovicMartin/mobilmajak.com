@@ -129,15 +129,26 @@ const ProfileDayPanel = ({
                                         className={`profile-day-shift-card${focusShiftId === s.id ? ' profile-day-shift-card--focus' : ''}`}
                                     >
                                         <div className="profile-day-shift-main">
-                                            <span className="profile-day-shift-time">
-                                                {formatShiftTime(s.cas_od)}–{formatShiftTime(s.cas_do)}
-                                            </span>
-                                            {s.prodejna_nazev && (
-                                                <span className="profile-day-shift-store">{s.prodejna_nazev}</span>
+                                            {s.typ_smeny === 'dovolena' || s.typ_smeny === 'nemoc' ? (
+                                                <>
+                                                    <span className="profile-day-shift-type">
+                                                        {s.typ_smeny === 'dovolena' ? '🏖️' : '🏥'}{' '}
+                                                        {SHIFT_TYPE_LABELS[s.typ_smeny] || s.typ_smeny}
+                                                    </span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <span className="profile-day-shift-time">
+                                                        {formatShiftTime(s.cas_od)}–{formatShiftTime(s.cas_do)}
+                                                    </span>
+                                                    {s.prodejna_nazev && (
+                                                        <span className="profile-day-shift-store">{s.prodejna_nazev}</span>
+                                                    )}
+                                                    <span className="profile-day-shift-type">
+                                                        {SHIFT_TYPE_LABELS[s.typ_smeny] || s.typ_smeny}
+                                                    </span>
+                                                </>
                                             )}
-                                            <span className="profile-day-shift-type">
-                                                {SHIFT_TYPE_LABELS[s.typ_smeny] || s.typ_smeny}
-                                            </span>
                                         </div>
                                         {s.poznamka && (
                                             <p className="profile-day-shift-note">{s.poznamka}</p>

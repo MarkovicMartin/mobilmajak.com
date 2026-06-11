@@ -1,13 +1,44 @@
-/* Jednotlivá směna – modal nad dockem (z-index v Modals.css) */
+/* Portál na document.body – nad .dock-navbar (1100–1200) */
+.shift-form-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1400;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: max(calc(var(--dock-clearance, 5.5rem) + 0.5rem), calc(env(safe-area-inset-top, 0px) + 0.75rem))
+        max(12px, env(safe-area-inset-right, 0px))
+        max(12px, env(safe-area-inset-bottom, 0px))
+        max(12px, env(safe-area-inset-left, 0px));
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    background: rgba(0, 0, 0, 0.5);
+    box-sizing: border-box;
+}
 
 .shift-form-modal {
-    width: min(480px, 92vw);
-    max-width: 480px;
+    width: min(520px, 100%);
+    max-width: 520px;
+    margin: 0 auto 1rem;
     padding: 0;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    max-height: min(88dvh, calc(100dvh - var(--dock-clearance, 5.5rem) - 1.5rem));
+    background: var(--bg-card, #fff);
+    color: var(--text-primary);
+    border-radius: 14px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+    flex-shrink: 0;
 }
 
 .shift-form-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-shrink: 0;
     padding: 14px 18px;
     background: linear-gradient(135deg, var(--brand-navy, #1e40af) 0%, var(--brand-navy-hover, #2563eb) 100%);
     border-bottom: none;
@@ -129,14 +160,21 @@
     color-scheme: light;
 }
 
-.form-row {
+.shift-form-datetime-row {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
+    grid-template-columns: 1.2fr 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 14px;
 }
 
-.form-row .form-group {
+.shift-form-datetime-row .form-group {
     margin-bottom: 0;
+    min-width: 0;
+}
+
+.shift-form-date-group .react-datepicker-wrapper {
+    display: block;
+    width: 100%;
 }
 
 .shift-form-actions {
@@ -241,14 +279,13 @@
     color-scheme: dark;
 }
 
-@media (max-width: 520px) {
-    .form-row {
-        grid-template-columns: 1fr;
-        gap: 14px;
+@media (max-width: 560px) {
+    .shift-form-datetime-row {
+        grid-template-columns: 1fr 1fr;
     }
 
-    .form-row .form-group {
-        margin-bottom: 0;
+    .shift-form-date-group {
+        grid-column: 1 / -1;
     }
 
     .shift-form-actions {

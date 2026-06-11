@@ -8,6 +8,8 @@ const STAFFING_MANAGER_ROLES = ['ADMIN', 'VEDOUCI'];
 
 const isWorkShift = (shift) => shift.typ_smeny === 'prace';
 
+const isAbsenceShift = (shift) => shift.typ_smeny === 'dovolena' || shift.typ_smeny === 'nemoc';
+
 const storeDisplayName = (store) => store.nazev_kratkiy || store.nazev || '';
 
 /** Vrátí mezeru v obsazení (jen směny typu práce), nebo null. */
@@ -354,10 +356,12 @@ function ShiftCalendar({
                     renderCellContent={(date) => {
                         const dateStr = format(date, 'yyyy-MM-dd');
                         const shifts = getShiftsForDate(dateStr);
+                        const workShifts = shifts.filter(isWorkShift);
+                        const absenceShifts = shifts.filter(isAbsenceShift);
                         const isSvatek = svatky[dateStr];
                         const inMonth = dateStr.startsWith(month);
                         const staffingGap = inMonth && !isSvatek && isStaffingManager
-                            ? getStaffingGap(shifts, stores, allStores)
+                            ? getStaffingGap(workShifts, stores, allStores)
                             : null;
                         return (
                             <>
@@ -375,12 +379,10 @@ function ShiftCalendar({
                                     </div>
                                 )}
                                 <div className="shifts-container">
-                                    {shifts.map((shift) => {
+                                    {workShifts.map((shift) => {
                                         const shiftClasses = [
                                             'shift-item',
                                             shift.user_id === user?.id || !showAllEmployees ? 'mine' : 'other',
-                                            shift.typ_smeny === 'dovolena' ? 'vacation' : '',
-                                            shift.typ_smeny === 'nemoc' ? 'sick' : '',
                                             allStores ? 'shift-item--store-colored' : '',
                                             !allStores && !shift.je_domaci_prodejna && user?.id === shift.user_id
                                                 ? 'foreign-store'
@@ -412,12 +414,31 @@ function ShiftCalendar({
                                                 {!allStores && !shift.je_domaci_prodejna && user?.id === shift.user_id && (
                                                     <div className="foreign-indicator">📍</div>
                                                 )}
-                                                {shift.typ_smeny === 'dovolena' && (
-                                                    <div className="vacation-indicator">🏖️</div>
-                                                )}
                                             </div>
                                         );
                                     })}
+                                    {absenceShifts.length > 0 && (
+                                        <div className="shifts-absences">
+                                            {absenceShifts.map((shift) => {
+                                                const isVacation = shift.typ_smeny === 'dovolena';
+                                                const label = isVacation ? 'Dovolená' : 'Nemoc';
+                                                return (
+                                                    <div
+                                                        key={shift.id}
+                                                        className={`shift-item shift-item--absence ${isVacation ? 'vacation' : 'sick'}`}
+                                                        onMouseDown={(e) => e.stopPropagation()}
+                                                        onClick={(e) => handleShiftClick(shift, dateStr, e)}
+                                                        title={`${shift.user_jmeno} · ${label}`}
+                                                    >
+                                                        <span className="shift-absence-icon" aria-hidden="true">
+                                                            {isVacation ? '🏖️' : '🏥'}
+                                                        </span>
+                                                        <span className="shift-absence-name">{shift.user_jmeno}</span>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
                                 </div>
                             </>
                         );
@@ -449,8 +470,13 @@ function ShiftCalendar({
                         <div className="shift-details">
                             <p><strong>Prodejce:</strong> {shiftToDelete.user_jmeno}</p>
                             <p><strong>Datum:</strong> {formatShiftDate(shiftToDelete)}</p>
-                            <p><strong>Čas:</strong> {formatTime(shiftToDelete.cas_od)}-{formatTime(shiftToDelete.cas_do)}</p>
-                            <p><strong>Prodejna:</strong> {shiftToDelete.prodejna_nazev || shiftToDelete.prodejna || prodejna}</p>
+                            <p><strong>Typ:</strong> {shiftToDelete.typ_smeny === 'dovolena' ? 'Dovolená' : shiftToDelete.typ_smeny === 'nemoc' ? 'Nemoc' : 'Práce'}</p>
+                            {!isAbsenceShift(shiftToDelete) && (
+                                <>
+                                    <p><strong>Čas:</strong> {formatTime(shiftToDelete.cas_od)}-{formatTime(shiftToDelete.cas_do)}</p>
+                                    <p><strong>Prodejna:</strong> {shiftToDelete.prodejna_nazev || shiftToDelete.prodejna || prodejna}</p>
+                                </>
+                            )}
                         </div>
                         <p className="confirm-question">Opravdu chcete tuto směnu smazat?</p>
                         <div className="confirm-buttons">

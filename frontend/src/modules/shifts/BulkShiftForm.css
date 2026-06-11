@@ -1,17 +1,22 @@
 /* MODERNÍ UX PRO HROMADNÉ ZADÁVÁNÍ SMĚN */
 
+/* Portál na document.body – nad .dock-navbar (1100–1200) */
 .bulk-shift-overlay {
     position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    inset: 0;
     background: rgba(0, 0, 0, 0.6);
     display: flex;
     justify-content: center;
-    z-index: 1300;
+    align-items: flex-start;
+    z-index: 1400;
     backdrop-filter: blur(4px);
-    padding: 16px; /* bezpečný okraj, aby modal neřezal okraje v Safari */
+    padding: max(calc(var(--dock-clearance, 5.5rem) + 0.5rem), calc(env(safe-area-inset-top, 0px) + 0.75rem))
+        max(16px, env(safe-area-inset-right, 0px))
+        max(16px, env(safe-area-inset-bottom, 0px))
+        max(16px, env(safe-area-inset-left, 0px));
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    box-sizing: border-box;
 }
 
 .bulk-shift-modal {
@@ -20,11 +25,13 @@
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
     width: clamp(340px, 92vw, 720px);
     max-width: 720px;
-    max-height: min(90svh, 88vh);
+    max-height: min(88dvh, calc(100dvh - var(--dock-clearance, 5.5rem) - 1.5rem));
     overflow: hidden; /* scrolluje pouze obsah, ne celá karta */
     display: flex;
     flex-direction: column;
     position: relative;
+    margin: 0 auto 1rem;
+    flex-shrink: 0;
     animation: slideUp 0.3s ease-out;
     box-sizing: border-box;
 }

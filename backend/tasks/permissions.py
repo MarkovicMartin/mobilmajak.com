@@ -152,6 +152,17 @@ def assignees_for_store(store_id: int, user) -> list[dict]:
     )
     seen = set()
     result = []
+    if role == "ADMIN":
+        admini = (
+            WebUser.objects.filter(role="ADMIN", aktivni=True)
+            .exclude(id__in=excluded)
+            .order_by("jmeno", "prijmeni")
+        )
+        for u in admini:
+            if u.id in seen:
+                continue
+            seen.add(u.id)
+            result.append(_user_display(u, "admini"))
     for u in domovska:
         if u.id in seen:
             continue

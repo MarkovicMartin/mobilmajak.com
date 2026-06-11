@@ -16,7 +16,14 @@ class Smena(models.Model):
     ]
     
     user = models.ForeignKey(WebUser, on_delete=models.CASCADE, related_name='smeny')
-    prodejna = models.ForeignKey('stores.Prodejna', on_delete=models.CASCADE, verbose_name="Prodejna", related_name='smeny')
+    prodejna = models.ForeignKey(
+        'stores.Prodejna',
+        on_delete=models.CASCADE,
+        verbose_name="Prodejna",
+        related_name='smeny',
+        null=True,
+        blank=True,
+    )
     datum = models.DateField()
     cas_od = models.TimeField()
     cas_do = models.TimeField()
@@ -42,11 +49,18 @@ class Smena(models.Model):
         ordering = ['-datum', 'cas_od']
     
     def __str__(self):
-        return f"{self.user.prijmeni} - {self.prodejna} - {self.datum}"
-    
+        store = self.prodejna or '—'
+        return f"{self.user.prijmeni} - {store} - {self.datum}"
+
+    @property
+    def je_absence(self):
+        return self.typ_smeny in ('dovolena', 'nemoc')
+
     @property
     def je_domaci_prodejna(self):
         """Kontroluje, zda je směna na domácí prodejně prodejce"""
+        if not self.prodejna_id:
+            return True
         return self.prodejna.id == self.user.prodejna_id
     
     @property

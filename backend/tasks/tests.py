@@ -242,6 +242,40 @@ class TasksApiTests(TestCase):
         self.assertEqual(res.status_code, 201)
         self.assertEqual(res.data["id_prodejce_ukol"], prodejce_b.id)
 
+    def test_admin_can_assign_task_to_other_admin(self):
+        admin_b = _make_user(9014, "ADMIN", jmeno="Admin", prijmeni="Dva")
+        self._auth(self.admin)
+        res_list = self.client.get("/api/tasks/assignees/", {"prodejna_id": self.store_a.id})
+        self.assertEqual(res_list.status_code, 200)
+        ids = [a["id"] for a in res_list.data["assignees"]]
+        self.assertIn(admin_b.id, ids)
+        self.assertEqual(
+            res_list.data["assignees"][ids.index(admin_b.id)]["skupina"],
+            "admini",
+        )
+
+        res = self.client.post(
+            "/api/tasks/",
+            {
+                "ukol": "Úkol pro admina",
+                "priorita": "stredni",
+                "typ": "prirazeny",
+                "id_prodejce_ukol": admin_b.id,
+                "id_prodejny": self.store_a.id,
+            },
+            format="json",
+        )
+        self.assertEqual(res.status_code, 201)
+        self.assertEqual(res.data["id_prodejce_ukol"], admin_b.id)
+
+    def test_vedouci_assignees_exclude_admins(self):
+        _make_user(9015, "ADMIN", jmeno="Admin", prijmeni="Skryty")
+        self._auth(self.vedouci_a)
+        res = self.client.get("/api/tasks/assignees/", {"prodejna_id": self.store_a.id})
+        self.assertEqual(res.status_code, 200)
+        roles_present = {a["id"] for a in res.data["assignees"]}
+        self.assertNotIn(9015, roles_present)
+
     def test_dokonceno_v_set_on_hotovo(self):
         task = Ukol.objects.create(
             ukol="Dokončit",

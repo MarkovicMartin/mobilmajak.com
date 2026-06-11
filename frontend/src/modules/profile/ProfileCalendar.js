@@ -72,11 +72,13 @@ const ProfileCalendar = () => {
         const dateStr = format(_date, 'yyyy-MM-dd');
         const shifts = shiftData[dateStr] || [];
         const tasks = taskData[dateStr] || [];
+        const workShifts = shifts.filter((s) => s.typ_smeny === 'prace');
+        const absenceShifts = shifts.filter((s) => s.typ_smeny === 'dovolena' || s.typ_smeny === 'nemoc');
         return (
             <>
-                {shifts.length > 0 && (
+                {workShifts.length > 0 && (
                     <div className="shifts-container">
-                        {shifts.slice(0, 2).map((s) => (
+                        {workShifts.slice(0, 2).map((s) => (
                             <div
                                 key={`s-${s.id}`}
                                 className="shift-item mine profile-calendar-chip"
@@ -95,6 +97,25 @@ const ProfileCalendar = () => {
                                         <div className="shift-store">{s.prodejna_nazev}</div>
                                     )}
                                 </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+                {absenceShifts.length > 0 && (
+                    <div className="shifts-absences">
+                        {absenceShifts.slice(0, 2).map((s) => (
+                            <div
+                                key={`a-${s.id}`}
+                                className={`shift-item shift-item--absence ${s.typ_smeny === 'dovolena' ? 'vacation' : 'sick'}`}
+                                title={s.typ_smeny === 'dovolena' ? 'Dovolená' : 'Nemoc'}
+                                onMouseDown={(e) => e.stopPropagation()}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    openDay(dateStr, { shiftId: s.id });
+                                }}
+                            >
+                                <span className="shift-absence-icon">{s.typ_smeny === 'dovolena' ? '🏖️' : '🏥'}</span>
+                                <span className="shift-absence-name">{s.typ_smeny === 'dovolena' ? 'Dovolená' : 'Nemoc'}</span>
                             </div>
                         ))}
                     </div>

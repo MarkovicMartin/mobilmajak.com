@@ -227,8 +227,10 @@ function ShiftOverview({ user, month, onMonthChange }) {
                                     {new Date(smena.datum).toLocaleDateString('cs-CZ')}
                                 </div>
                                 <div className="store-cell">
-                                    {smena.prodejna}
-                                    {!smena.je_domaci_prodejna && <span className="foreign-badge">📍</span>}
+                                    {smena.typ_smeny === 'prace' ? smena.prodejna : '—'}
+                                    {smena.typ_smeny === 'prace' && !smena.je_domaci_prodejna && (
+                                        <span className="foreign-badge">📍</span>
+                                    )}
                                 </div>
                                 <div className="time-cell plan-cell">
                                     {formatTime(smena.cas_od)} – {formatTime(smena.cas_do)}

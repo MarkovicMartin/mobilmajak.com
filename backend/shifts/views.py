@@ -26,7 +26,12 @@ from .vacation_service import (
 )
 from users.models import WebUser
 from stores.models import Prodejna
-from .czech_holidays import get_ceske_svatky, get_nazev_svatku
+from .shift_helpers import (
+    apply_calendar_prodejna_filter,
+    find_existing_shift,
+    is_absence_shift,
+    resolve_prodejna,
+)
 
 
 def _normalize_brigadnik_rezim(user, typ_smeny, raw_rezim):
@@ -107,7 +112,11 @@ def smeny_list(request):
                 pass
         
         if prodejna:
-            smeny = smeny.filter(prodejna=prodejna)
+            try:
+                prodejna_obj = Prodejna.objects.get(id=int(prodejna))
+                smeny = apply_calendar_prodejna_filter(smeny, prodejna_obj)
+            except (Prodejna.DoesNotExist, ValueError, TypeError):
+                smeny = smeny.filter(prodejna=prodejna)
             
         if user_id and request.user.role in ['ADMIN', 'VEDOUCI']:
             smeny = smeny.filter(user_id=user_id)
@@ -122,9 +131,9 @@ def smeny_list(request):
                 'user_id': smena.user.id,
                 'user_jmeno': smena.user.prijmeni,
                 'user_prijmeni': smena.user.prijmeni,
-                'prodejna_id': smena.prodejna.id,
-                'prodejna_nazev': smena.prodejna.nazev,
-                'prodejna': smena.prodejna.nazev_kratkiy,  # Použije krátký název pro frontend
+                'prodejna_id': smena.prodejna.id if smena.prodejna_id else None,
+                'prodejna_nazev': smena.prodejna.nazev if smena.prodejna_id else '',
+                'prodejna': smena.prodejna.nazev_kratkiy if smena.prodejna_id else '',
                 'user': {  # Pro kompatibilitu s frontendem
                     'jmeno': smena.user.jmeno,
                     'prijmeni': smena.user.prijmeni,
@@ -173,35 +182,27 @@ def smeny_list(request):
         
         try:
             user = WebUser.objects.get(id=user_id)
-            # Převod prodejny: přijímáme ID i název
-            prodejna_input = data.get('prodejna')
-            if prodejna_input is None:
-                return Response({'error': 'Chybí parametr prodejna'}, status=status.HTTP_400_BAD_REQUEST)
+            typ_smeny = data.get('typ_smeny', 'prace')
             try:
-                # Číslo nebo string čísla
-                prodejna_id = int(prodejna_input)
-                prodejna_obj = Prodejna.objects.get(id=prodejna_id)
-            except (ValueError, TypeError):
-                # Hledání podle názvu (více polí)
-                prodejna_obj = Prodejna.objects.filter(
-                    Q(nazev__iexact=prodejna_input) |
-                    Q(nazev_kratkiy__iexact=prodejna_input) |
-                    Q(nazev_google_sheets__iexact=prodejna_input)
-                ).first()
-                if not prodejna_obj:
-                    return Response({'error': f"Prodejna '{prodejna_input}' nebyla nalezena"}, status=status.HTTP_400_BAD_REQUEST)
-            
-            # Kontrola, zda směna už neexistuje
-            existing_smena = Smena.objects.filter(
-                user=user,
-                datum=data['datum'],
-                prodejna=prodejna_obj,
-                aktivni=True
-            ).first()
-            
+                prodejna_obj = resolve_prodejna(data.get('prodejna'), typ_smeny)
+            except Prodejna.DoesNotExist:
+                prodejna_input = data.get('prodejna')
+                return Response(
+                    {'error': f"Prodejna '{prodejna_input}' nebyla nalezena"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            except ValueError as exc:
+                return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+            existing_smena = find_existing_shift(user, data['datum'], prodejna_obj, typ_smeny)
             if existing_smena:
+                store_hint = (
+                    'dovolená/nemoc'
+                    if is_absence_shift(typ_smeny)
+                    else (prodejna_obj.nazev_kratkiy if prodejna_obj else data.get('prodejna'))
+                )
                 return Response({
-                    'error': f'Na datum {data["datum"]} už máte směnu v prodejně {data["prodejna"]}. Chcete-li změnit čas, upravte stávající směnu.',
+                    'error': f'Na datum {data["datum"]} už máte záznam ({store_hint}). Chcete-li změnit čas, upravte stávající směnu.',
                     'existing_shift_id': existing_smena.id,
                     'existing_shift': {
                         'cas_od': existing_smena.cas_od.strftime('%H:%M'),
@@ -210,7 +211,6 @@ def smeny_list(request):
                     }
                 }, status=status.HTTP_409_CONFLICT)
 
-            typ_smeny = data.get('typ_smeny', 'prace')
             shift_datum = datetime.strptime(data['datum'], '%Y-%m-%d').date() if isinstance(data['datum'], str) else data['datum']
             cas_od = data['cas_od']
             cas_do = data['cas_do']
@@ -218,6 +218,8 @@ def smeny_list(request):
                 err = validate_dovolena_kapacita(user, shift_datum, typ_smeny)
                 if err:
                     return Response({'error': err}, status=status.HTTP_400_BAD_REQUEST)
+                cas_od, cas_do = normalize_dovolena_casy(shift_datum, cas_od, cas_do)
+            elif is_absence_shift(typ_smeny):
                 cas_od, cas_do = normalize_dovolena_casy(shift_datum, cas_od, cas_do)
 
             smena = Smena.objects.create(
@@ -273,21 +275,16 @@ def smeny_bulk_create(request):
         
         uspesne = 0
         chyby = []
-        
-        # Mapování prodejny (ID nebo název)
-        if prodejna_input is None:
-            return Response({'error': 'Chybí parametr prodejna'}, status=status.HTTP_400_BAD_REQUEST)
+
         try:
-            prodejna_id = int(prodejna_input)
-            prodejna_obj = Prodejna.objects.get(id=prodejna_id)
-        except (ValueError, TypeError):
-            prodejna_obj = Prodejna.objects.filter(
-                Q(nazev__iexact=prodejna_input) |
-                Q(nazev_kratkiy__iexact=prodejna_input) |
-                Q(nazev_google_sheets__iexact=prodejna_input)
-            ).first()
-            if not prodejna_obj:
-                return Response({'error': f"Prodejna '{prodejna_input}' nebyla nalezena"}, status=status.HTTP_400_BAD_REQUEST)
+            prodejna_obj = resolve_prodejna(prodejna_input, typ_smeny)
+        except Prodejna.DoesNotExist:
+            return Response(
+                {'error': f"Prodejna '{prodejna_input}' nebyla nalezena"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except ValueError as exc:
+            return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
         for datum_str in datumy:
             try:
@@ -298,8 +295,7 @@ def smeny_bulk_create(request):
                     chyby.append(f'{datum_str}: Nelze vytvářet směny v minulých měsících')
                     continue
                 
-                # Kontrola, zda směna již neexistuje
-                if Smena.objects.filter(user=user, datum=datum, prodejna=prodejna_obj, aktivni=True).exists():
+                if find_existing_shift(user, datum, prodejna_obj, typ_smeny):
                     chyby.append(f'{datum_str}: Směna již existuje')
                     continue
 
@@ -309,6 +305,8 @@ def smeny_bulk_create(request):
                     if err:
                         chyby.append(f'{datum_str}: {err}')
                         continue
+                    bulk_cas_od, bulk_cas_do = normalize_dovolena_casy(datum, cas_od, cas_do)
+                elif is_absence_shift(typ_smeny):
                     bulk_cas_od, bulk_cas_do = normalize_dovolena_casy(datum, cas_od, cas_do)
 
                 Smena.objects.create(
@@ -376,11 +374,15 @@ def smena_detail(request, smena_id):
                 if err:
                     return Response({'error': err}, status=status.HTTP_400_BAD_REQUEST)
 
-            if 'prodejna' in data:
+            if 'typ_smeny' in data:
+                smena.typ_smeny = data['typ_smeny']
+            if is_absence_shift(smena.typ_smeny):
+                smena.prodejna = None
+            elif 'prodejna' in data:
                 smena.prodejna = data['prodejna']
             if 'datum' in data:
                 smena.datum = data['datum']
-            if new_typ == 'dovolena':
+            if is_absence_shift(smena.typ_smeny):
                 cas_od, cas_do = normalize_dovolena_casy(
                     new_datum,
                     data.get('cas_od', smena.cas_od),
@@ -393,8 +395,6 @@ def smena_detail(request, smena_id):
                     smena.cas_od = data['cas_od']
                 if 'cas_do' in data:
                     smena.cas_do = data['cas_do']
-            if 'typ_smeny' in data:
-                smena.typ_smeny = data['typ_smeny']
             if 'brigadnik_rezim' in data or 'typ_smeny' in data:
                 smena.brigadnik_rezim = _normalize_brigadnik_rezim(
                     smena.user,
@@ -421,6 +421,7 @@ def smena_detail(request, smena_id):
 def _shift_calendar_payload(smena):
     """Jeden řádek směny pro kalendář včetně barvy a názvu prodejny."""
     p = smena.prodejna
+    absence = is_absence_shift(smena.typ_smeny)
     return {
         'id': smena.id,
         'datum': smena.datum.isoformat(),
@@ -431,9 +432,9 @@ def _shift_calendar_payload(smena):
         'typ_smeny': smena.typ_smeny,
         'brigadnik_rezim': smena.brigadnik_rezim,
         'je_domaci_prodejna': smena.je_domaci_prodejna,
-        'prodejna_id': p.id,
-        'prodejna_nazev': (p.nazev_kratkiy or p.nazev or '').strip(),
-        'prodejna_barva': p.barva or '#0066cc',
+        'prodejna_id': p.id if p else None,
+        'prodejna_nazev': '' if absence else ((p.nazev_kratkiy or p.nazev or '').strip() if p else ''),
+        'prodejna_barva': None if absence else (p.barva or '#0066cc' if p else None),
         'poznamka': smena.poznamka or '',
     }
 
@@ -488,7 +489,7 @@ def kalendar_data(request):
             aktivni=True,
         ).select_related('user', 'prodejna')
         if prodejna is not None:
-            smeny = smeny.filter(prodejna=prodejna)
+            smeny = apply_calendar_prodejna_filter(smeny, prodejna)
         if mine_scope:
             smeny = smeny.filter(user=request.user)
             see_all_employees = False
@@ -622,7 +623,7 @@ def _smena_detail_row(smena):
     """Jeden řádek detailního rozpisu – plán + skutečná docházka."""
     row = {
         'datum': smena.datum,
-        'prodejna': smena.prodejna.nazev,
+        'prodejna': smena.prodejna.nazev if smena.prodejna_id else '',
         'cas_od': smena.cas_od,
         'cas_do': smena.cas_do,
         'hodiny': dovolena_hodin_ze_smeny(smena) if smena.typ_smeny == 'dovolena' else smena.delka_smeny_hodin,

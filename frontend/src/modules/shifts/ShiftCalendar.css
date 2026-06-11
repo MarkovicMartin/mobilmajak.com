@@ -437,6 +437,62 @@
     background: #ea4335;
 }
 
+.shifts-absences {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px 4px;
+    margin-top: 2px;
+}
+
+.shift-item--absence {
+    background: transparent !important;
+    box-shadow: none;
+    border: none;
+    min-height: 0;
+    padding: 0 2px;
+    width: auto;
+    max-width: 100%;
+    flex-direction: row;
+    align-items: center;
+    gap: 2px;
+    line-height: 1.1;
+    opacity: 0.95;
+}
+
+.shift-item--absence.vacation {
+    color: #15803d;
+}
+
+.shift-item--absence.sick {
+    color: #b91c1c;
+}
+
+.shift-item--absence.mine,
+.shift-item--absence.other {
+    background: transparent !important;
+}
+
+.shift-absence-icon {
+    font-size: 10px;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.shift-absence-name {
+    font-size: 9px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 4.5rem;
+}
+
+.shift-item--absence:hover {
+    opacity: 1;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
 /* INDIKÁTORY */
 .foreign-indicator,
 .vacation-indicator {

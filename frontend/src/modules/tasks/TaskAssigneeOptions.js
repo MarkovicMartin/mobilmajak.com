@@ -1,13 +1,14 @@
 import React, { useMemo } from 'react';
 
 const ASSIGNEE_GROUPS = [
+    { key: 'admini', label: 'Administrátoři' },
     { key: 'domaci', label: 'Domácí' },
     { key: 'brigadnik', label: 'Brigádníci' },
     { key: 'ostatni', label: 'Ostatní' },
 ];
 
 function groupAssignees(assignees) {
-    const grouped = { domaci: [], brigadnik: [], ostatni: [] };
+    const grouped = { admini: [], domaci: [], brigadnik: [], ostatni: [] };
     for (const a of assignees) {
         const key = grouped[a.skupina] ? a.skupina : 'ostatni';
         grouped[key].push(a);
