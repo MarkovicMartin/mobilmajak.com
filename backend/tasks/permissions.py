@@ -120,6 +120,8 @@ def validate_task_create(user, data: dict) -> str | None:
 def _assignee_allowed_on_store(assignee: WebUser, _store_id: int) -> bool:
     if not assignee.aktivni:
         return False
+    if assignee.role == "ADMIN":
+        return True
     if assignee.role not in ("PRODEJCE", "VEDOUCI", "BRIGADNIK"):
         return False
     return assignee.id not in get_excluded_report_user_ids()
@@ -153,11 +155,8 @@ def assignees_for_store(store_id: int, user) -> list[dict]:
     seen = set()
     result = []
     if role == "ADMIN":
-        admini = (
-            WebUser.objects.filter(role="ADMIN", aktivni=True)
-            .exclude(id__in=excluded)
-            .order_by("jmeno", "prijmeni")
-        )
+        # Admini jsou v reportech vynechaní (exclusions), ale do úkolů se přiřazovat musí.
+        admini = WebUser.objects.filter(role="ADMIN", aktivni=True).order_by("jmeno", "prijmeni")
         for u in admini:
             if u.id in seen:
                 continue
