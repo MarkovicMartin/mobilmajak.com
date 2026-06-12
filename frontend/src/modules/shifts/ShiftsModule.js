@@ -31,7 +31,6 @@ function defaultCalendarProdejna(user) {
 function ShiftsModule() {
     const location = useLocation();
     const { user } = useAuth();
-    const isShiftCalendarAdmin = user?.role === 'ADMIN';
     const [activeView, setActiveView] = useState('calendar');
     const [stores, setStores] = useState([]);
     const [selectedProdejna, setSelectedProdejna] = useState(() => defaultCalendarProdejna(user));
@@ -44,6 +43,7 @@ function ShiftsModule() {
     const [bulkInitialDates, setBulkInitialDates] = useState([]);
     const [formInitialDatum, setFormInitialDatum] = useState('');
     const [refreshTrigger, setRefreshTrigger] = useState(0);
+    const [shiftsSeeAllEmployees, setShiftsSeeAllEmployees] = useState(false);
     const adminDefaultStoresSet = useRef(false);
 
     useEffect(() => {
@@ -161,13 +161,15 @@ function ShiftsModule() {
     const storeSelectOptions = useMemo(() => [
         {
             value: ALL_PRODEJNY,
-            label: isShiftCalendarAdmin ? 'Všechny prodejny' : 'Moje směny (všechny prodejny)',
+            label: shiftsSeeAllEmployees || user?.role === 'ADMIN'
+                ? 'Všechny prodejny'
+                : 'Moje směny (všechny prodejny)',
         },
         ...stores.map((store) => ({
             value: String(store.id),
             label: storeLabel(store),
         })),
-    ], [stores, isShiftCalendarAdmin, user?.prodejna_id]);
+    ], [stores, user?.prodejna_id, user?.role, shiftsSeeAllEmployees]);
 
     return (
         <div className="shifts-module">
@@ -252,7 +254,6 @@ function ShiftsModule() {
                         user={user}
                         allStores={selectedProdejna === ALL_PRODEJNY}
                         stores={stores}
-                        showAllEmployees={isShiftCalendarAdmin}
                         refreshTrigger={refreshTrigger}
                         onRefresh={() => setRefreshTrigger((prev) => prev + 1)}
                         onRequestBulkAdd={(dates) => {
@@ -262,6 +263,9 @@ function ShiftsModule() {
                         onRequestSingleAdd={(dateStr) => {
                             setFormInitialDatum(dateStr);
                             setShowForm(true);
+                        }}
+                        onFeatureFlagsChange={({ shiftsSeeAllEmployees: enabled }) => {
+                            setShiftsSeeAllEmployees(Boolean(enabled));
                         }}
                     />
                 )}

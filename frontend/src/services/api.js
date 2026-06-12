@@ -335,6 +335,15 @@ export const leaderboardAPI = {
 
 export const plansAPI = {
     getAuditZbytek: async (rok, mesic) => (await api.get(`/plans/${rok}/${mesic}/audit-zbytek/`)).data,
+    getAuditZbytekPolozky: async (rok, mesic, { kategorie, kategorie_1 = '', limit = 500, offset = 0 } = {}) => {
+        const params = new URLSearchParams({
+            kategorie,
+            kategorie_1: kategorie_1 || '',
+            limit: String(limit),
+            offset: String(offset),
+        });
+        return (await api.get(`/plans/${rok}/${mesic}/audit-zbytek/polozky/?${params}`)).data;
+    },
     getPlneni: async (rok, mesic) => (await api.get(`/plans/${rok}/${mesic}/plneni/`)).data,
     getPlneniProdejci: async (rok, mesic) => (await api.get(`/plans/${rok}/${mesic}/plneni-prodejci/`)).data,
     getPlneniPolozky: async (rok, mesic, params) => (

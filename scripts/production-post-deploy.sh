@@ -14,6 +14,12 @@ if [ -f "$ENV_FILE" ]; then
     chmod 600 "$ENV_FILE"
     echo "OK: doplněn CAMERA_MOTION_SECRETS_FILE do .env"
   fi
+  if ! grep -q '^SHIFTS_CALENDAR_SEE_ALL_EMPLOYEES=' "$ENV_FILE" 2>/dev/null; then
+    echo 'SHIFTS_CALENDAR_SEE_ALL_EMPLOYEES=1' >> "$ENV_FILE"
+    chown webmajak:webmajak "$ENV_FILE"
+    chmod 600 "$ENV_FILE"
+    echo "OK: doplněn SHIFTS_CALENDAR_SEE_ALL_EMPLOYEES do .env"
+  fi
 fi
 
 cd "$APP"

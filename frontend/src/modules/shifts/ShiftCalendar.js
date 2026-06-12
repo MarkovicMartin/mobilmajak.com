@@ -4,8 +4,6 @@ import './ShiftCalendar.css';
 import UnifiedCalendar from './UnifiedCalendar';
 import { format, parse, startOfMonth, endOfMonth, eachDayOfInterval, isBefore } from 'date-fns';
 
-const STAFFING_MANAGER_ROLES = ['ADMIN', 'VEDOUCI'];
-
 const isWorkShift = (shift) => shift.typ_smeny === 'prace';
 
 const isAbsenceShift = (shift) => shift.typ_smeny === 'dovolena' || shift.typ_smeny === 'nemoc';
@@ -61,9 +59,10 @@ function ShiftCalendar({
     onRequestSingleAdd,
     allStores = false,
     stores = [],
-    showAllEmployees = false,
+    onFeatureFlagsChange,
 }) {
     const [kalendarData, setKalendarData] = useState({});
+    const [seeAllEmployees, setSeeAllEmployees] = useState(false);
     const [svatky, setSvatky] = useState({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -97,7 +96,11 @@ function ShiftCalendar({
             if (response.ok) {
                 const data = await response.json();
                 setKalendarData(data.kalendar_data);
+                setSeeAllEmployees(Boolean(data.see_all_employees));
                 setSvatky(data.svatky || {});
+                onFeatureFlagsChange?.({
+                    shiftsSeeAllEmployees: Boolean(data.shifts_see_all_employees),
+                });
             } else {
                 const errorData = await response.json().catch(() => ({}));
                 console.error('Chyba kalendáře:', errorData);
@@ -113,10 +116,10 @@ function ShiftCalendar({
 
     const getShiftsForDate = (dateStr) => kalendarData[dateStr] || [];
 
-    const isStaffingManager = showAllEmployees && STAFFING_MANAGER_ROLES.includes(user?.role);
+    const showStaffingGaps = seeAllEmployees;
 
     const monthCoverage = useMemo(() => {
-        if (!isStaffingManager) {
+        if (!showStaffingGaps) {
             return { gapDays: 0, allEmptyDays: 0, partialDays: 0 };
         }
         const monthStart = startOfMonth(parse(`${month}-01`, 'yyyy-MM-dd', new Date()));
@@ -134,18 +137,18 @@ function ShiftCalendar({
             else partialDays += 1;
         });
         return { gapDays, allEmptyDays, partialDays };
-    }, [isStaffingManager, month, kalendarData, stores, allStores, svatky]);
+    }, [showStaffingGaps, month, kalendarData, stores, allStores, svatky]);
 
     const getExtraCellClass = useCallback((dateStr) => {
         const classes = [];
         if (svatky[dateStr]) classes.push('holiday');
-        if (!dateStr.startsWith(month) || !isStaffingManager || svatky[dateStr]) {
+        if (!dateStr.startsWith(month) || !showStaffingGaps || svatky[dateStr]) {
             return classes.join(' ');
         }
         const gap = getStaffingGap(kalendarData[dateStr] || [], stores, allStores);
         if (gap) classes.push(gap.kind === 'all-empty' ? 'staffing-empty' : 'staffing-partial');
         return classes.join(' ');
-    }, [month, svatky, isStaffingManager, kalendarData, stores, allStores]);
+    }, [month, svatky, showStaffingGaps, kalendarData, stores, allStores]);
 
     const formatTime = (timeStr) => {
         return timeStr.substring(0, 5);
@@ -285,7 +288,7 @@ function ShiftCalendar({
                     </div>
                 </div>
             )}
-            {isStaffingManager && monthCoverage.gapDays > 0 && (
+            {showStaffingGaps && monthCoverage.gapDays > 0 && (
                 <div className="staffing-summary-banner" role="alert">
                     <span className="staffing-summary-icon" aria-hidden="true">⚠️</span>
                     <div className="staffing-summary-text">
@@ -308,7 +311,7 @@ function ShiftCalendar({
                 </div>
             )}
 
-            {isStaffingManager && allStores && monthCoverage.gapDays === 0 && stores.length > 0 && (
+            {showStaffingGaps && allStores && monthCoverage.gapDays === 0 && stores.length > 0 && (
                 <div className="staffing-summary-banner staffing-summary-banner--ok" role="status">
                     <span aria-hidden="true">✓</span>
                     <span>V tomto měsíci má každá prodejna na každý pracovní den alespoň jednu směnu.</span>
@@ -326,7 +329,7 @@ function ShiftCalendar({
                             {store.nazev_kratkiy || store.nazev}
                         </span>
                     ))}
-                    {isStaffingManager && (
+                    {showStaffingGaps && (
                         <>
                             <span className="legend-item legend-item--alert">
                                 <span className="legend-swatch legend-swatch--empty" />
@@ -376,7 +379,7 @@ function ShiftCalendar({
                         const absenceShifts = shifts.filter(isAbsenceShift);
                         const isSvatek = svatky[dateStr];
                         const inMonth = dateStr.startsWith(month);
-                        const staffingGap = inMonth && !isSvatek && isStaffingManager
+                        const staffingGap = inMonth && !isSvatek && showStaffingGaps
                             ? getStaffingGap(workShifts, stores, allStores)
                             : null;
                         return (

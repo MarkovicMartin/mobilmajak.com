@@ -7,6 +7,7 @@ urlpatterns = [
     path('forecast/create-year/', views.plan_forecast_create_year, name='plan-forecast-create-year'),
     path('muj-plan/', views.muj_plan, name='muj-plan'),
     path('<int:rok>/<int:mesic>/', views.plan_mesic, name='plan-mesic'),
+    path('<int:rok>/<int:mesic>/audit-zbytek/polozky/', views.audit_zbytek_polozky_view, name='plan-audit-zbytek-polozky'),
     path('<int:rok>/<int:mesic>/audit-zbytek/', views.audit_zbytek, name='plan-audit-zbytek'),
     path('<int:rok>/<int:mesic>/plneni/', views.plan_plneni, name='plan-plneni'),
     path('<int:rok>/<int:mesic>/plneni-prodejci/', views.plan_plneni_prodejci, name='plan-plneni-prodejci'),

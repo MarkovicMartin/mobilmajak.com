@@ -542,6 +542,127 @@
   color: #6b5a2e;
 }
 
+.audit-zbytek-row-btn {
+  border: none;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  color: var(--brand-navy, #1b2848);
+  text-align: left;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: rgba(27, 40, 72, 0.35);
+  text-underline-offset: 2px;
+}
+
+.audit-zbytek-row-btn:hover {
+  color: var(--brand-pink, #e40b4d);
+  text-decoration-color: currentColor;
+}
+
+.audit-zbytek-row-btn--ks {
+  font-weight: 700;
+}
+
+.audit-zbytek-detail-wrap {
+  overflow-x: auto;
+  max-height: min(60vh, 520px);
+}
+
+.audit-zbytek-detail-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.audit-zbytek-detail-table th,
+.audit-zbytek-detail-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border-secondary, #e2e8f0);
+  text-align: left;
+  vertical-align: top;
+}
+
+.audit-zbytek-product {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 280px;
+}
+
+.audit-zbytek-kod {
+  font-size: 0.75rem;
+  color: var(--text-muted, #64748b);
+}
+
+.audit-zbytek-links {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 7rem;
+}
+
+.audit-zbytek-link {
+  color: var(--brand-navy, #1b2848);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.audit-zbytek-link:hover {
+  text-decoration: underline;
+}
+
+.audit-zbytek-doklad {
+  font-size: 0.78rem;
+  color: var(--text-secondary, #475569);
+}
+
+.audit-zbytek-detail-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.audit-zbytek-detail-count {
+  font-size: 0.85rem;
+  color: var(--text-secondary, #475569);
+}
+
+.audit-zbytek-export-btn {
+  border: 1px solid var(--brand-navy, #1b2848);
+  background: var(--brand-navy, #1b2848);
+  color: #fff;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.audit-zbytek-export-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.audit-zbytek-detail-loading,
+.audit-zbytek-detail-empty {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-secondary, #475569);
+}
+
+.audit-zbytek-loading,
+.audit-zbytek-error {
+  font-size: 0.9rem;
+}
+
+.audit-zbytek-error {
+  color: #b91c1c;
+}
+
 .plneni-sekce {
   background: var(--card-bg, #fff);
   border-radius: 12px;

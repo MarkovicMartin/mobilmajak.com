@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import {
     getVisibleNavGroups,
     getProfileNavChildren,
@@ -20,8 +21,19 @@ const ShellNavLinks = ({
     collapsed = false,
     onNavigate,
 }) => {
-    const groups = getVisibleNavGroups(auth, { mobile: false });
     const { pathname, state: locationState } = location;
+    const isAdminUser = auth.isAdmin();
+    const canTasks = auth.canManageTasks();
+    const canCoaching = auth.canAccessCoaching();
+
+    const groups = useMemo(() => {
+        const stableAuth = {
+            isAdmin: () => isAdminUser,
+            canManageTasks: () => canTasks,
+            canAccessCoaching: () => canCoaching,
+        };
+        return getVisibleNavGroups(stableAuth, { mobile: false });
+    }, [isAdminUser, canTasks, canCoaching]);
 
     const activeParentKeys = useMemo(() => {
         const keys = new Set();
@@ -38,19 +50,91 @@ const ShellNavLinks = ({
         return keys;
     }, [groups, pathname, locationState]);
 
-    const [expandedMobile, setExpandedMobile] = useState(() => new Set(activeParentKeys));
-    const [hoveredParent, setHoveredParent] = useState(null);
+    const activeParentKeysKey = useMemo(
+        () => [...activeParentKeys].sort().join('|'),
+        [activeParentKeys],
+    );
+
+    const [expandedMobile, setExpandedMobile] = useState(() => new Set());
+    const [openFlyout, setOpenFlyout] = useState(null);
+    const [flyoutRect, setFlyoutRect] = useState(null);
 
     useEffect(() => {
         setExpandedMobile((prev) => {
+            let changed = false;
             const next = new Set(prev);
-            activeParentKeys.forEach((k) => next.add(k));
-            return next;
+            activeParentKeys.forEach((k) => {
+                if (!next.has(k)) {
+                    next.add(k);
+                    changed = true;
+                }
+            });
+            return changed ? next : prev;
         });
-    }, [activeParentKeys]);
+    }, [activeParentKeysKey, activeParentKeys]);
+
+    const openFlyoutItem = useMemo(
+        () => groups.flatMap((g) => g.items).find((i) => i.sectionKey === openFlyout),
+        [groups, openFlyout],
+    );
+
+    const updateFlyoutRect = useCallback((buttonEl) => {
+        if (!buttonEl) return;
+        const rect = buttonEl.getBoundingClientRect();
+        setFlyoutRect({
+            top: rect.top,
+            left: rect.right + 8,
+        });
+    }, []);
+
+    useEffect(() => {
+        setOpenFlyout(null);
+        setFlyoutRect(null);
+    }, [pathname]);
+
+    useEffect(() => {
+        if (!openFlyout) return undefined;
+        const onReposition = () => {
+            const btn = document.querySelector(
+                `.shell-nav__branch-toggle[aria-expanded="true"]`,
+            );
+            if (btn) updateFlyoutRect(btn);
+        };
+        window.addEventListener('resize', onReposition);
+        window.addEventListener('scroll', onReposition, true);
+        return () => {
+            window.removeEventListener('resize', onReposition);
+            window.removeEventListener('scroll', onReposition, true);
+        };
+    }, [openFlyout, updateFlyoutRect]);
+
+    useEffect(() => {
+        if (!openFlyout) return undefined;
+        const closeOnOutside = (e) => {
+            if (e.target.closest('.shell-nav__branch--flyout-open')) return;
+            if (e.target.closest('.shell-nav__flyout--fixed')) return;
+            setOpenFlyout(null);
+            setFlyoutRect(null);
+        };
+        const closeOnEscape = (e) => {
+            if (e.key === 'Escape') closeFlyout();
+        };
+        document.addEventListener('mousedown', closeOnOutside);
+        document.addEventListener('keydown', closeOnEscape);
+        return () => {
+            document.removeEventListener('mousedown', closeOnOutside);
+            document.removeEventListener('keydown', closeOnEscape);
+        };
+    }, [openFlyout]);
+
+    const closeFlyout = () => {
+        setOpenFlyout(null);
+        setFlyoutRect(null);
+    };
 
     const go = (item) => {
         navigateNavItem(navigate, item);
+        closeFlyout();
         onNavigate?.();
     };
 
@@ -96,11 +180,19 @@ const ShellNavLinks = ({
         });
     };
 
+    const toggleFlyout = (sectionKey, buttonEl) => {
+        if (openFlyout === sectionKey) {
+            closeFlyout();
+            return;
+        }
+        updateFlyoutRect(buttonEl);
+        setOpenFlyout(sectionKey);
+    };
+
     if (mobile) {
-        const mobileGroups = getVisibleNavGroups(auth, { mobile: false });
         return (
             <>
-                {mobileGroups.map((group) => (
+                {groups.map((group) => (
                     <div key={group.id} className={groupClass}>
                         <span className={groupLabelClass}>{group.label}</span>
                         {group.items.map((item) => {
@@ -135,8 +227,21 @@ const ShellNavLinks = ({
         );
     }
 
+    const flyoutPortal = openFlyoutItem && flyoutRect && createPortal(
+        <div
+            className="shell-nav__flyout shell-nav__flyout--fixed"
+            role="menu"
+            style={{ top: flyoutRect.top, left: flyoutRect.left }}
+        >
+            <div className="shell-nav__flyout-title">{openFlyoutItem.label}</div>
+            {openFlyoutItem.children.map((child) => renderLink(child, true))}
+        </div>,
+        document.body,
+    );
+
     return (
         <>
+            {flyoutPortal}
             {groups.map((group) => (
                 <div key={group.id} className={groupClass}>
                     {!collapsed && <span className={groupLabelClass}>{group.label}</span>}
@@ -148,28 +253,32 @@ const ShellNavLinks = ({
                             return renderLink(item, false);
                         }
 
-                        const isOpen =
-                            hoveredParent === item.sectionKey ||
-                            activeParentKeys.has(item.sectionKey);
+                        const isFlyoutOpen = openFlyout === item.sectionKey;
+                        const parentActive = activeParentKeys.has(item.sectionKey);
 
                         return (
                             <div
                                 key={item.sectionKey}
-                                className={`shell-nav__branch ${isOpen ? 'shell-nav__branch--open' : ''}`}
-                                onMouseEnter={() => !collapsed && setHoveredParent(item.sectionKey)}
-                                onMouseLeave={() => setHoveredParent(null)}
+                                className={[
+                                    'shell-nav__branch',
+                                    isFlyoutOpen ? 'shell-nav__branch--flyout-open' : '',
+                                    parentActive ? 'shell-nav__branch--active' : '',
+                                ].filter(Boolean).join(' ')}
                             >
-                                {renderLink(item, false, collapsed ? () => go(item) : undefined)}
-                                {isOpen && !collapsed && (
-                                    <div className="shell-nav__children">
-                                        {item.children.map((child) => renderLink(child, true))}
-                                    </div>
-                                )}
-                                {isOpen && collapsed && (
-                                    <div className="shell-nav__flyout">
-                                        {item.children.map((child) => renderLink(child, true))}
-                                    </div>
-                                )}
+                                <button
+                                    type="button"
+                                    className={`${linkClass} shell-nav__branch-toggle ${isFlyoutOpen ? 'shell-nav__branch-toggle--open' : ''} ${parentActive ? activeClass : ''}`.trim()}
+                                    onClick={(e) => toggleFlyout(item.sectionKey, e.currentTarget)}
+                                    aria-expanded={isFlyoutOpen}
+                                    aria-haspopup="true"
+                                    title={collapsed ? item.label : undefined}
+                                >
+                                    {renderIcon(item)}
+                                    {!collapsed && <span className="shell-nav__label">{item.label}</span>}
+                                    {!collapsed && (
+                                        <i className={`fas fa-chevron-${isFlyoutOpen ? 'up' : 'down'} shell-nav__chevron`} aria-hidden="true" />
+                                    )}
+                                </button>
                             </div>
                         );
                     })}

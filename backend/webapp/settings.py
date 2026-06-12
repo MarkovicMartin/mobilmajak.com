@@ -259,6 +259,13 @@ AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
 ]
 
+# Směny: viditelnost všech zaměstnanců v modulu (ne v profilu). Zapnout jen na produkci přes .env.
+SHIFTS_CALENDAR_SEE_ALL_EMPLOYEES = os.getenv('SHIFTS_CALENDAR_SEE_ALL_EMPLOYEES', '').lower() in (
+    '1',
+    'true',
+    'yes',
+)
+
 # N8N webhooky pro notifikace ticketů (nový ticket, nový komentář)
 TICKET_WEBHOOK_URLS = [
     'https://80-211-198-189.sslip.io/webhook/e06d3356-c8d9-4bbd-bf15-2f9701962278',

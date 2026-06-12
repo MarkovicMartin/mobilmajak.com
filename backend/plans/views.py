@@ -18,7 +18,7 @@ from .plan_service import ensure_plan_mesic
 from .forecast import predikce_rok, vypocitej_plan_z_projekce, vyhled_forecast
 from .plan_service import ensure_plans_bulk, mesice_bez_aktualniho_planu
 from .prodejci_auto import prirad_prodejce_automaticky
-from .audit_zbytek import audit_zbytek_mesic
+from .audit_zbytek import audit_zbytek_mesic, audit_zbytek_polozky, MAX_POLOZKY_LIMIT
 from .category_mapping import (
     SELLER_HIDDEN_PLAN_KATEGORIE,
     SERVIS_NAZEV_HINT,
@@ -1031,6 +1031,36 @@ def audit_zbytek(request, rok, mesic):
     if request.user.role != 'ADMIN':
         return Response({'error': 'Přístup pouze pro administrátory.'}, status=status.HTTP_403_FORBIDDEN)
     return Response(audit_zbytek_mesic(int(rok), int(mesic)))
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def audit_zbytek_polozky_view(request, rok, mesic):
+    """Admin: položky pro jeden řádek auditu Zbytku."""
+    if request.user.role != 'ADMIN':
+        return Response({'error': 'Přístup pouze pro administrátory.'}, status=status.HTTP_403_FORBIDDEN)
+    kategorie = (request.GET.get('kategorie') or '').strip()
+    if not kategorie:
+        return Response({'error': 'Chybí parametr kategorie.'}, status=status.HTTP_400_BAD_REQUEST)
+    kategorie_1 = request.GET.get('kategorie_1', '')
+    try:
+        limit = int(request.GET.get('limit', 500))
+    except (TypeError, ValueError):
+        limit = 500
+    try:
+        offset = int(request.GET.get('offset', 0))
+    except (TypeError, ValueError):
+        offset = 0
+    limit = max(1, min(limit, MAX_POLOZKY_LIMIT))
+    offset = max(0, offset)
+    return Response(audit_zbytek_polozky(
+        int(rok),
+        int(mesic),
+        kategorie,
+        kategorie_1,
+        limit=limit,
+        offset=offset,
+    ))
 
 
 @api_view(['GET'])

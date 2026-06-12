@@ -37,6 +37,16 @@ else
   echo "WARN: DB_PASSWORD missing – create $ENV_FILE manually (copy from production .env)"
 fi
 
+# Stejná viditelnost směn jako na produkci (týmový kalendář pro všechny role)
+if [ -f "$ENV_FILE" ]; then
+  if ! grep -q '^SHIFTS_CALENDAR_SEE_ALL_EMPLOYEES=' "$ENV_FILE" 2>/dev/null; then
+    echo 'SHIFTS_CALENDAR_SEE_ALL_EMPLOYEES=1' >> "$ENV_FILE"
+    chown webmajak:webmajak "$ENV_FILE"
+    chmod 600 "$ENV_FILE"
+    echo "OK: doplněn SHIFTS_CALENDAR_SEE_ALL_EMPLOYEES do staging .env"
+  fi
+fi
+
 cd "$STAGING"
 sudo -u webmajak bash -lc 'set -e; source venv/bin/activate; export DJANGO_SETTINGS_MODULE=webapp.settings_production; python manage.py migrate --noinput || echo "WARN: migrate skipped"; python manage.py collectstatic --noinput; python manage.py check --deploy || python manage.py check'
 systemctl restart webmajak-staging

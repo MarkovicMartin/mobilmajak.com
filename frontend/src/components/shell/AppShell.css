@@ -202,33 +202,24 @@
         position: relative;
     }
 
-    .shell-nav__children {
-        display: none;
-        flex-direction: column;
-        gap: var(--space-0-5);
-        margin-top: var(--space-0-5);
-    }
-
-    .shell-nav__branch--open > .shell-nav__children {
-        display: flex;
-    }
-
     .shell-nav__branch-toggle {
         justify-content: flex-start;
+        width: 100%;
     }
 
     .shell-nav__chevron {
         margin-left: auto;
         font-size: 0.625rem;
         opacity: 0.55;
+        flex-shrink: 0;
     }
 
-    .shell-nav__flyout {
-        position: absolute;
-        left: calc(100% + var(--space-2));
-        top: 0;
+  /* Desktop: podmenu jako panel vedle sidebaru (klik, ne hover) */
+    .shell-nav__flyout,
+    .shell-nav__flyout--fixed {
         z-index: var(--z-popover);
-        min-width: 12rem;
+        min-width: 13.5rem;
+        max-width: 16rem;
         padding: var(--space-2);
         border-radius: var(--radius-md);
         background: var(--bg-primary);
@@ -236,7 +227,28 @@
         box-shadow: var(--shadow-lg);
         display: flex;
         flex-direction: column;
-        gap: var(--space-1);
+        gap: var(--space-0-5);
+    }
+
+    .shell-nav__flyout-title {
+        padding: var(--space-1) var(--space-2) var(--space-2);
+        font-size: var(--text-xs);
+        font-weight: var(--font-weight-semibold);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-muted);
+        border-bottom: 1px solid var(--border-secondary);
+        margin-bottom: var(--space-1);
+    }
+
+    .shell-nav__flyout .app-sidebar__link--child,
+    .shell-nav__flyout--fixed .app-sidebar__link--child {
+        padding-left: var(--space-3);
+    }
+
+    .shell-nav__flyout--fixed {
+        position: fixed;
+        margin: 0;
     }
 
     .app-sidebar__link--child {
