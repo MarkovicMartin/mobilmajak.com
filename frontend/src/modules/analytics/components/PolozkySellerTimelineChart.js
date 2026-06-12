@@ -10,6 +10,7 @@ import {
     ResponsiveContainer,
 } from 'recharts';
 import { analyticsGet } from '../../../utils/analyticsRequest';
+import { getChartTheme } from '../../../utils/chartTheme';
 import { formatMonthKeyLabel } from '../sections/celkovaPeriodUtils';
 
 const COMPARE_LINE_LABELS = {
@@ -190,14 +191,22 @@ const PolozkySellerTimelineChart = ({
     if (error) return <p className="celkova-cisla-error">{error}</p>;
     if (!hasData) return <p className="polozky-chart-hint">Pro zvolené období nejsou žádná data.</p>;
 
+    const chartTheme = getChartTheme();
+
     return (
         <div className={`polozky-seller-chart__plot${compact ? ' polozky-seller-chart__plot--compact' : ''}`}>
             <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={points} margin={{ top: 8, right: 12, left: 0, bottom: 4 }}>
-                    <CartesianGrid strokeDasharray="3 3" opacity={0.25} />
-                    <XAxis dataKey="label" tick={{ fontSize: 11 }} interval="preserveStartEnd" />
+                    <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} opacity={0.6} />
+                    <XAxis
+                        dataKey="label"
+                        tick={{ fontSize: 11, fill: chartTheme.tick }}
+                        stroke={chartTheme.axis}
+                        interval="preserveStartEnd"
+                    />
                     <YAxis
-                        tick={{ fontSize: 11 }}
+                        tick={{ fontSize: 11, fill: chartTheme.tick }}
+                        stroke={chartTheme.axis}
                         domain={[0, yMax]}
                         allowDecimals={metric === 'celkovy_obrat'}
                     />
@@ -209,7 +218,7 @@ const PolozkySellerTimelineChart = ({
                             />
                         )}
                     />
-                    <Legend wrapperStyle={{ fontSize: 12 }} />
+                    <Legend wrapperStyle={{ fontSize: 12, color: chartTheme.label }} />
                     <Line
                         type="monotone"
                         dataKey="primary"

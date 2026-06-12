@@ -12,9 +12,8 @@ import {
 } from 'recharts';
 import api from '../../../services/api';
 import AnalyticsSectionWrapper from '../AnalyticsSectionWrapper';
-import CustomDropdown from '../../../components/CustomDropdown';
-import AnalyticsDateRange from '../../../components/AnalyticsDateRange';
-import { buildAnalyticsMonthFilterOptions } from '../../../utils/analyticsMonthOptions';
+import AnalyticsPeriodFilterPanel from '../../../components/analytics/AnalyticsPeriodFilterPanel';
+import { computeQuickRange, detectQuickRangePreset } from '../../../utils/analyticsQuickRange';
 import './Prodejnyzakaznici.css';
 
 const ProdejnyTrafficView = ({ isComparison = false }) => {
@@ -38,6 +37,9 @@ const ProdejnyTrafficView = ({ isComparison = false }) => {
             granularity: 'daily'
         };
     });
+    const [dateError, setDateError] = useState('');
+    const [quickKey, setQuickKey] = useState('thisMonth');
+
     // --- Actions ---
     const loadData = async () => {
         setLoading(true);
@@ -110,43 +112,6 @@ const ProdejnyTrafficView = ({ isComparison = false }) => {
     }, [filters]);
 
     // --- Helpers ---
-    const setQuickRange = (type) => {
-        const now = new Date();
-        const fmt = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-        let from, to;
-
-        switch (type) {
-            case 'today':
-                from = new Date(now); to = new Date(now);
-                break;
-            case 'yesterday':
-                const y = new Date(now); y.setDate(now.getDate() - 1);
-                from = y; to = y;
-                break;
-            case 'thisWeek':
-                const day = (now.getDay() + 6) % 7; // Mon=0
-                from = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day);
-                to = new Date(now);
-                break;
-            case 'thisMonth':
-                from = new Date(now.getFullYear(), now.getMonth(), 1);
-                to = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-                break;
-            case 'prevMonth':
-                from = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-                to = new Date(now.getFullYear(), now.getMonth(), 0);
-                break;
-            default: return;
-        }
-
-        setFilters(prev => ({
-            ...prev,
-            period: 'custom',
-            start_date: fmt(from),
-            end_date: fmt(to),
-        }));
-    };
-
     const handleFilterChange = (key, value) => {
         setFilters(prev => ({
             ...prev,
@@ -154,13 +119,38 @@ const ProdejnyTrafficView = ({ isComparison = false }) => {
         }));
     };
 
-    const applyDateRange = ({ start_date, end_date }) => {
-        setFilters(prev => {
+    const applyDateRange = ({ start_date, end_date, preset }) => {
+        setDateError('');
+        setFilters((prev) => {
             if (prev.period === 'custom' && prev.start_date === start_date && prev.end_date === end_date) {
                 return prev;
             }
             return { ...prev, period: 'custom', start_date, end_date };
         });
+        setQuickKey(preset || detectQuickRangePreset(start_date, end_date));
+    };
+
+    const handlePeriodChange = ({ type, month }) => {
+        if (type === 'custom') {
+            handleFilterChange('period', 'custom');
+            setQuickKey('custom');
+            setDateError('');
+        } else if (type === 'month') {
+            setFilters((prev) => ({
+                ...prev,
+                period: 'monthly_select',
+                selected_month: month,
+                start_date: '',
+                end_date: '',
+            }));
+            setDateError('');
+        }
+    };
+
+    const handleQuickPreset = (id) => {
+        const range = computeQuickRange(id);
+        if (!range) return;
+        applyDateRange({ ...range, preset: id });
     };
 
     // --- Heatmap Logic ---
@@ -248,65 +238,19 @@ const ProdejnyTrafficView = ({ isComparison = false }) => {
                     </div>
                 )}
 
-                {/* --- 1. FILTERS (stejný styl jako CelkovaCisla) --- */}
-                <div className="celkova-cisla-filters" style={{ marginBottom: 20 }}>
-                    <div className="filter-row">
-                        {/* Období – custom dropdown s měsíci */}
-                        <div className="filter-group">
-                            <label>Období:</label>
-                            {(() => {
-                                const opts = buildAnalyticsMonthFilterOptions();
-
-                                const currentValue = filters.period === 'monthly_select' ? `month:${filters.selected_month}` : 'custom';
-                                return (
-                                    <CustomDropdown
-                                        options={opts}
-                                        value={currentValue}
-                                        placeholder="Vyberte období"
-                                        onChange={(selectedValue) => {
-                                            if (selectedValue === 'custom') {
-                                                handleFilterChange('period', 'custom');
-                                            } else if (selectedValue.startsWith('month:')) {
-                                                const ym = selectedValue.split(':')[1];
-                                                setFilters(prev => ({
-                                                    ...prev,
-                                                    period: 'monthly_select',
-                                                    selected_month: ym,
-                                                    start_date: '',
-                                                    end_date: ''
-                                                }));
-                                            }
-                                        }}
-                                    />
-                                );
-                            })()}
-                        </div>
-
-                        {/* Vlastní období */}
-                        {filters.period === 'custom' && (
-                            <AnalyticsDateRange
-                                startDate={filters.start_date}
-                                endDate={filters.end_date}
-                                onApply={applyDateRange}
-                                errorStyle={{ marginTop: 8 }}
-                            />
-                        )}
-
-                        {/* Rychlé volby období */}
-                        {!isComparison && (
-                            <div className="filter-group quick-filters">
-                                <label>Rychlé volby:</label>
-                                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                                    <button className="refresh-btn" onClick={() => setQuickRange('today')}>Dnešek</button>
-                                    <button className="refresh-btn" onClick={() => setQuickRange('yesterday')}>Včerejšek</button>
-                                    <button className="refresh-btn" onClick={() => setQuickRange('thisWeek')}>Tento týden</button>
-                                    <button className="refresh-btn" onClick={() => setQuickRange('thisMonth')}>Tento měsíc</button>
-                                    <button className="refresh-btn" onClick={() => setQuickRange('prevMonth')}>Minulý měsíc</button>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Prodejna Selector */}
+                {!isComparison && (
+                    <AnalyticsPeriodFilterPanel
+                        className="traffic-filters"
+                        filters={filters}
+                        quickKey={quickKey}
+                        onPeriodChange={handlePeriodChange}
+                        onDateApply={(range) => applyDateRange({ ...range, preset: 'custom' })}
+                        onQuickPreset={handleQuickPreset}
+                        onRefresh={loadData}
+                        onDateErrorChange={setDateError}
+                        loading={loading}
+                        dateError={dateError}
+                    >
                         <div className="filter-group">
                             <label>Prodejna:</label>
                             <select
@@ -318,8 +262,8 @@ const ProdejnyTrafficView = ({ isComparison = false }) => {
                                 ))}
                             </select>
                         </div>
-                    </div>
-                </div>
+                    </AnalyticsPeriodFilterPanel>
+                )}
 
                 {error && <div className="error-banner" style={{ background: '#fee2e2', color: '#b91c1c', padding: 12, borderRadius: 8 }}>{error}</div>}
 

@@ -428,6 +428,40 @@
     color: #0b318f;
 }
 
+/* Protisměna – kolega na stejné prodejně */
+.shift-item.counter-shift {
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px dashed #d97706;
+    box-shadow: none;
+}
+
+.shift-item.counter-shift .counter-shift-badge {
+    display: inline-block;
+    margin-right: 3px;
+    padding: 0 3px;
+    border-radius: 2px;
+    background: rgba(217, 119, 6, 0.2);
+    font-size: 7px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    vertical-align: middle;
+}
+
+.shifts-legend--seller {
+    margin-bottom: var(--space-2);
+}
+
+.legend-swatch--mine {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+}
+
+.legend-swatch--counter {
+    background: #fef3c7;
+    border: 1px dashed #d97706;
+}
+
 .shift-item:hover {
     opacity: 0.9;
 }

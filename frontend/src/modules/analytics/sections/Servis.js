@@ -2,10 +2,8 @@ import { analyticsGet } from '../../../utils/analyticsRequest';
 import React, { useState, useEffect } from 'react';
 import Modal from '../../../components/Modal';
 import AnalyticsSectionWrapper from '../AnalyticsSectionWrapper';
-import CustomDropdown from '../../../components/CustomDropdown';
-import DateFilterBar from '../../../components/DateFilterBar';
-import { detectQuickRangePreset } from '../../../utils/analyticsQuickRange';
-import { buildAnalyticsMonthFilterOptions } from '../../../utils/analyticsMonthOptions';
+import AnalyticsPeriodFilterPanel from '../../../components/analytics/AnalyticsPeriodFilterPanel';
+import { computeQuickRange, detectQuickRangePreset } from '../../../utils/analyticsQuickRange';
 import './Servis.css';
 
 const Servis = () => {
@@ -209,6 +207,33 @@ const Servis = () => {
         setQuickKey(preset || detectQuickRangePreset(start_date, end_date));
     };
 
+    const handlePeriodChange = ({ type, month }) => {
+        if (type === 'custom') {
+            setFilters((prev) => ({ ...prev, period: 'custom' }));
+            setQuickKey('custom');
+            setDateError('');
+        } else if (type === 'month') {
+            const [year, monthNum] = month.split('-');
+            const startDate = `${year}-${monthNum}-01`;
+            const lastDay = new Date(parseInt(year, 10), parseInt(monthNum, 10), 0).getDate();
+            const endDate = `${year}-${monthNum}-${String(lastDay).padStart(2, '0')}`;
+            setFilters((prev) => ({
+                ...prev,
+                period: 'monthly_select',
+                selected_month: month,
+                start_date: startDate,
+                end_date: endDate,
+            }));
+            setDateError('');
+        }
+    };
+
+    const handleQuickPreset = (id) => {
+        const range = computeQuickRange(id);
+        if (!range) return;
+        applyDateRange({ ...range, preset: id });
+    };
+
     // Formátování čísel
     const formatNumber = (num) => {
         if (num === null || num === undefined) return '0';
@@ -251,91 +276,33 @@ const Servis = () => {
         <AnalyticsSectionWrapper title="Servis analytika" icon="🔧">
             <div className="servis">
 
-            {/* Filtry */}
-            <div className="servis-filters">
-                <div className="filter-row">
-                    {/* Období – custom dropdown s měsíci */}
-                    <div className="filter-group">
-                        <label>Období:</label>
-                        {(()=>{
-                            const opts = buildAnalyticsMonthFilterOptions();
-                            
-                            const currentValue = filters.period === 'monthly_select' && filters.selected_month ? 
-                                `month:${filters.selected_month}` : 'custom';
-                            
-                            return (
-                                <CustomDropdown
-                                    options={opts}
-                                    value={currentValue}
-                                    placeholder="Vyberte období"
-                                    onChange={(selectedValue) => {
-                                        if (selectedValue === 'custom') {
-                                            // Nastavit na custom režim
-                                            setFilters(prev => ({...prev, period: 'custom'}));
-                                            setDateError('');
-                                        } else if (selectedValue.startsWith('month:')) {
-                                            const ym = selectedValue.split(':')[1];
-                                            // Nastavíme start_date a end_date podle vybraného měsíce
-                                            const [year, month] = ym.split('-');
-                                            const startDate = `${year}-${month}-01`;
-                                            // Opraveno: explicitní výpočet posledního dne měsíce (31 dní pro leden, atd.)
-                                            const monthIndex = parseInt(month) - 1; // převedeme na 0-based index (leden=0)
-                                            const lastDay = new Date(parseInt(year), monthIndex + 1, 0).getDate(); // poslední den měsíce
-                                            const endDate = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
-                                            const updatedFilters = {...filters, period: 'monthly_select', selected_month: ym, start_date: startDate, end_date: endDate};
-                                            setFilters(updatedFilters);
-                                            setDateError('');
-                                        }
-                                    }}
-                                />
-                            );
-                        })()}
-                    </div>
-
-                    {filters.period === 'custom' && (
-                        <div className="filter-group filter-group--date-bar">
-                            <DateFilterBar
-                                startDate={filters.start_date}
-                                endDate={filters.end_date}
-                                preset={quickKey}
-                                onRangeChange={applyDateRange}
-                                onDateErrorChange={setDateError}
-                                onRefresh={fetchData}
-                                refreshDisabled={loading || !!dateError}
-                                refreshLoading={loading}
-                                refreshLabel="Obnovit data"
-                            />
-                        </div>
-                    )}
-
-                    {/* Prodejna */}
-                    <div className="filter-group">
-                        <label>Prodejna:</label>
-                        <select 
-                            value={filters.prodejna_id} 
-                            onChange={(e) => handleFilterChange('prodejna_id', e.target.value)}
-                        >
-                            <option value="">Všechny prodejny</option>
-                            <option value="1">Globus</option>
-                            <option value="2">Čepkov</option>
-                            <option value="3">Přerov</option>
-                            <option value="4">Šternberk</option>
-                            <option value="5">Vsetín</option>
-                        </select>
-                    </div>
-
-                    {filters.period !== 'custom' && (
-                        <button
-                            onClick={fetchData}
-                            disabled={loading || !!dateError}
-                            className="refresh-btn"
-                        >
-                            🔄 Obnovit data
-                        </button>
-                    )}
+            <AnalyticsPeriodFilterPanel
+                filters={filters}
+                quickKey={quickKey}
+                onPeriodChange={handlePeriodChange}
+                onDateApply={(range) => applyDateRange({ ...range, preset: 'custom' })}
+                onQuickPreset={handleQuickPreset}
+                onRefresh={fetchData}
+                onDateErrorChange={setDateError}
+                loading={loading}
+                dateError={dateError}
+                refreshLabel="Obnovit data"
+            >
+                <div className="filter-group">
+                    <label>Prodejna:</label>
+                    <select
+                        value={filters.prodejna_id}
+                        onChange={(e) => handleFilterChange('prodejna_id', e.target.value)}
+                    >
+                        <option value="">Všechny prodejny</option>
+                        <option value="1">Globus</option>
+                        <option value="2">Čepkov</option>
+                        <option value="3">Přerov</option>
+                        <option value="4">Šternberk</option>
+                        <option value="5">Vsetín</option>
+                    </select>
                 </div>
-                {dateError && <div className="servis-error" style={{marginTop:8}}>{dateError}</div>}
-            </div>
+            </AnalyticsPeriodFilterPanel>
 
             {data && (
                 <>

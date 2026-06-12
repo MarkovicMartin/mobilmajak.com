@@ -16,10 +16,8 @@ import {
     Cell
 } from 'recharts';
 import AnalyticsSectionWrapper from '../AnalyticsSectionWrapper';
-import CustomDropdown from '../../../components/CustomDropdown';
-import DateFilterBar from '../../../components/DateFilterBar';
-import { detectQuickRangePreset } from '../../../utils/analyticsQuickRange';
-import { buildAnalyticsMonthFilterOptions } from '../../../utils/analyticsMonthOptions';
+import AnalyticsPeriodFilterPanel from '../../../components/analytics/AnalyticsPeriodFilterPanel';
+import { computeQuickRange, detectQuickRangePreset } from '../../../utils/analyticsQuickRange';
 import './SectionStyles.css';
 
 const SalespersonBreakdown = ({ filters }) => {
@@ -214,6 +212,29 @@ const ProdejniAnalytika = ({ currentUser }) => {
         setQuickKey(preset || detectQuickRangePreset(start_date, end_date));
     };
 
+    const handlePeriodChange = ({ type, month }) => {
+        if (type === 'custom') {
+            handleFilterChange('period', 'custom');
+            setQuickKey('custom');
+            setDateError('');
+        } else if (type === 'month') {
+            setFilters((prev) => ({
+                ...prev,
+                period: 'monthly_select',
+                selected_month: month,
+                start_date: '',
+                end_date: '',
+            }));
+            setDateError('');
+        }
+    };
+
+    const handleQuickPreset = (id) => {
+        const range = computeQuickRange(id);
+        if (!range) return;
+        applyDateRange({ ...range, preset: id });
+    };
+
     const formatCurrency = (amount) => {
         return new Intl.NumberFormat('cs-CZ', {
             style: 'currency',
@@ -279,75 +300,41 @@ const ProdejniAnalytika = ({ currentUser }) => {
     return (
         <AnalyticsSectionWrapper>
             <div className="analytics-section prodejni-analytika">
-            <div className="section-filters">
-                <div className="filter-group">
+            <div className="section-filters section-filters--period">
+                <div className="filter-group filter-group--analysis-type">
                     <label>Typ analýzy:</label>
-                    <select 
-                        value={selectedAnalysis} 
+                    <select
+                        value={selectedAnalysis}
                         onChange={(e) => setSelectedAnalysis(e.target.value)}
                     >
-                        {/* Skryté možnosti - lze obnovit v budoucnu */}
-                        {/* <option value="categories">📊 Prodeje podle kategorií</option> */}
-                        {/* <option value="stores">🏪 Prodeje podle prodejen</option> */}
-                        {/* <option value="time">📈 Prodeje v čase</option> */}
-                        {/* <option value="products">📱 Prodeje podle produktů</option> */}
                         <option value="phones_accessories">📱+🔌 Telefony a příslušenství ≥ 100 Kč</option>
                     </select>
                 </div>
 
-                <div className="filter-group">
-                    <label>Období:</label>
-                    {(()=>{
-                        const opts = buildAnalyticsMonthFilterOptions();
-                        
-                        const currentValue = filters.period==='monthly_select' ? `month:${filters.selected_month}` : 'custom';
-                        return (
-                            <CustomDropdown
-                                options={opts}
-                                value={currentValue}
-                                placeholder="Vyberte období"
-                                onChange={(selectedValue) => {
-                                    if (selectedValue === 'custom'){
-                                        handleFilterChange('period','custom');
-                                    } else if (selectedValue.startsWith('month:')){
-                                        const ym = selectedValue.split(':')[1];
-                                        setFilters(prev=>({...prev, period:'monthly_select', selected_month: ym}));
-                                        setDateError('');
-                                    }
-                                }}
-                            />
-                        );
-                    })()}
-                </div>
-
-                {filters.period === 'custom' && (
-                    <div className="filter-group filter-group--date-bar">
-                        <DateFilterBar
-                            startDate={filters.start_date}
-                            endDate={filters.end_date}
-                            preset={quickKey}
-                            onRangeChange={applyDateRange}
-                            onDateErrorChange={setDateError}
-                            onRefresh={fetchData}
-                            refreshDisabled={loading || !!dateError}
-                            refreshLoading={loading}
-                        />
+                <AnalyticsPeriodFilterPanel
+                    filters={filters}
+                    quickKey={quickKey}
+                    onPeriodChange={handlePeriodChange}
+                    onDateApply={(range) => applyDateRange({ ...range, preset: 'custom' })}
+                    onQuickPreset={handleQuickPreset}
+                    onRefresh={fetchData}
+                    onDateErrorChange={setDateError}
+                    loading={loading}
+                    dateError={dateError}
+                >
+                    <div className="filter-group">
+                        <label>Kanál:</label>
+                        <select
+                            value={filters.kanal}
+                            onChange={(e) => handleFilterChange('kanal', e.target.value)}
+                        >
+                            <option value="all">Všechny kanály</option>
+                            <option value="prodejna">Prodejny</option>
+                            <option value="eshop">E-shop</option>
+                            <option value="allegro">ALLEGRO</option>
+                        </select>
                     </div>
-                )}
-                {dateError && <div className="error-container">{dateError}</div>}
-
-                <div className="filter-group">
-                    <label>Kanál:</label>
-                    <select 
-                        value={filters.kanal} 
-                        onChange={(e) => handleFilterChange('kanal', e.target.value)}
-                    >
-                        <option value="all">Všechny kanály</option>
-                        <option value="prodejna">Prodejny</option>
-                        <option value="eshop">E-shop</option>
-                        <option value="allegro">ALLEGRO</option>
-                    </select>
-                </div>
+                </AnalyticsPeriodFilterPanel>
             </div>
 
             <div className="section-content">

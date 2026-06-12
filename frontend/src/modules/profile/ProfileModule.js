@@ -32,7 +32,7 @@ const ProfileModule = () => {
         if (location.state?.profileTab) {
             setActiveTab(location.state.profileTab);
         }
-    }, [location.state?.profileTab]);
+    }, [location.state?.profileTab, location.key]);
 
     useEffect(() => {
         let cancelled = false;
@@ -76,7 +76,7 @@ const ProfileModule = () => {
                 activeId={activeTab}
                 onTabChange={setActiveTab}
                 ariaLabel="Sekce profilu"
-                className="profile-module-tabs"
+                className="profile-module-tabs module-tabs--desktop-only"
             />
 
             <div className="profile-content">

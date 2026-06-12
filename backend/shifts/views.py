@@ -499,6 +499,7 @@ def kalendar_data(request):
         mine_scope = str(request.GET.get('scope', '')).lower() == 'mine'
         all_stores = str(prodejna_id or '').lower() in ('vse', 'all', '0')
         see_all_employees = request.user.role == 'ADMIN'
+        show_store_colleagues = False
         prodejna = None
         if not all_stores:
             if not prodejna_id:
@@ -526,6 +527,9 @@ def kalendar_data(request):
         if mine_scope:
             smeny = smeny.filter(user=request.user)
             see_all_employees = False
+        elif prodejna is not None and request.user.role in ('PRODEJCE', 'VEDOUCI'):
+            show_store_colleagues = True
+            see_all_employees = True
         elif not see_all_employees:
             smeny = smeny.filter(user=request.user)
         smeny = smeny.order_by('datum', 'prodejna__poradi', 'prodejna__nazev', 'cas_od')
@@ -562,6 +566,7 @@ def kalendar_data(request):
             'zitra_smeny': [_format_smena_info(s, include_store=all_stores) for s in zitra_smeny],
             'vsechny_prodejny': all_stores,
             'see_all_employees': see_all_employees,
+            'show_store_colleagues': show_store_colleagues,
             'mine_only': all_stores and not see_all_employees,
         }
         

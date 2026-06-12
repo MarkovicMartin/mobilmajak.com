@@ -69,7 +69,7 @@ function ShiftCalendar({
     const [error, setError] = useState('');
     const [showConfirm, setShowConfirm] = useState(false);
     const [shiftToDelete, setShiftToDelete] = useState(null);
-    const [pickedDates, setPickedDates] = useState(() => new Set());
+    const [dragPreviewDates, setDragPreviewDates] = useState(() => new Set());
 
     useEffect(() => {
         if (prodejna && month) {
@@ -226,7 +226,7 @@ function ShiftCalendar({
     };
 
     useEffect(() => {
-        setPickedDates(new Set());
+        setDragPreviewDates(new Set());
     }, [month, prodejna]);
 
     const isDateSelectable = useCallback((date) => {
@@ -237,7 +237,7 @@ function ShiftCalendar({
     }, [month, svatky, user]);
 
     const handlePickDate = useCallback((dateStr) => {
-        setPickedDates((prev) => {
+        setDragPreviewDates((prev) => {
             const next = new Set(prev);
             if (next.has(dateStr)) next.delete(dateStr);
             else next.add(dateStr);
@@ -251,11 +251,13 @@ function ShiftCalendar({
         onRequestSingleAdd(dateStr);
     }, [onRequestSingleAdd, isDateSelectable]);
 
-    const handleOpenBulkFromPick = () => {
-        if (!pickedDates.size || !onRequestBulkAdd) return;
-        onRequestBulkAdd(Array.from(pickedDates).sort());
-        setPickedDates(new Set());
-    };
+    const handleDragSelectComplete = useCallback((dates) => {
+        setDragPreviewDates(new Set());
+        if (!dates?.length || !onRequestBulkAdd) return;
+        onRequestBulkAdd(dates);
+    }, [onRequestBulkAdd]);
+
+    const isSellerView = user?.role === 'PRODEJCE' || user?.role === 'VEDOUCI';
 
     if (loading) {
         return (
@@ -339,6 +341,19 @@ function ShiftCalendar({
                 </div>
             )}
 
+            {!allStores && isSellerView && (
+                <div className="shifts-legend shifts-legend--seller" aria-label="Legenda směn">
+                    <span className="legend-item">
+                        <span className="legend-swatch legend-swatch--mine" />
+                        Moje směna
+                    </span>
+                    <span className="legend-item">
+                        <span className="legend-swatch legend-swatch--counter" />
+                        Protisměna
+                    </span>
+                </div>
+            )}
+
             <p className="calendar-pick-hint">
                 <strong>Klik na den</strong> = přidat směnu · <strong>táhněte přes dny</strong> = hromadně · <strong>klik na směnu</strong> = smazat
             </p>
@@ -347,11 +362,12 @@ function ShiftCalendar({
                 <UnifiedCalendar
                     month={month}
                     variant="full"
-                    selectedDates={pickedDates}
+                    selectedDates={dragPreviewDates}
                     enableDragSelect
                     isDateEnabled={isDateSelectable}
                     onDateClick={(dateStr) => handleSingleDayAdd(dateStr)}
                     onDateDragSelect={(dateStr) => handlePickDate(dateStr)}
+                    onDragSelectComplete={handleDragSelectComplete}
                     getExtraCellClass={getExtraCellClass}
                     renderCellContent={(date) => {
                         const dateStr = format(date, 'yyyy-MM-dd');
@@ -380,11 +396,14 @@ function ShiftCalendar({
                                 )}
                                 <div className="shifts-container">
                                     {workShifts.map((shift) => {
+                                        const isOwnShift = String(shift.user_id) === String(user?.id);
+                                        const isCounterShift = !isOwnShift && !allStores;
                                         const shiftClasses = [
                                             'shift-item',
-                                            shift.user_id === user?.id || !showAllEmployees ? 'mine' : 'other',
+                                            isOwnShift ? 'mine' : 'other',
+                                            isCounterShift ? 'counter-shift' : '',
                                             allStores ? 'shift-item--store-colored' : '',
-                                            !allStores && !shift.je_domaci_prodejna && user?.id === shift.user_id
+                                            !allStores && !shift.je_domaci_prodejna && isOwnShift
                                                 ? 'foreign-store'
                                                 : '',
                                         ].filter(Boolean).join(' ');
@@ -393,7 +412,7 @@ function ShiftCalendar({
                                             : null;
                                         const titleParts = [
                                             allStores && shift.prodejna_nazev ? shift.prodejna_nazev : null,
-                                            shift.user_jmeno,
+                                            isCounterShift ? `Protisměna: ${shift.user_jmeno}` : shift.user_jmeno,
                                             servisBadge,
                                             `${formatTime(shift.cas_od)}-${formatTime(shift.cas_do)}`,
                                         ].filter(Boolean);
@@ -410,7 +429,12 @@ function ShiftCalendar({
                                                     {allStores && shift.prodejna_nazev && (
                                                         <div className="shift-store">{shift.prodejna_nazev}</div>
                                                     )}
-                                                    <div className="shift-name">{shift.user_jmeno}</div>
+                                                    <div className="shift-name">
+                                                        {isCounterShift && (
+                                                            <span className="counter-shift-badge">Protisměna</span>
+                                                        )}
+                                                        {shift.user_jmeno}
+                                                    </div>
                                                     <div className="shift-time">
                                                         {formatTime(shift.cas_od)}-{formatTime(shift.cas_do)}
                                                     </div>
@@ -452,23 +476,6 @@ function ShiftCalendar({
                     }}
                 />
             </div>
-
-            {pickedDates.size > 0 && (
-                <div className="calendar-pick-bar" role="status">
-                    <span>
-                        Vybráno <strong>{pickedDates.size}</strong>
-                        {pickedDates.size === 1 ? ' den' : pickedDates.size < 5 ? ' dny' : ' dnů'}
-                    </span>
-                    <div className="calendar-pick-actions">
-                        <button type="button" className="btn-pick-clear" onClick={() => setPickedDates(new Set())}>
-                            Zrušit výběr
-                        </button>
-                        <button type="button" className="btn-pick-submit" onClick={handleOpenBulkFromPick}>
-                            Přidat směny ({pickedDates.size})
-                        </button>
-                    </div>
-                </div>
-            )}
 
             {showConfirm && shiftToDelete && (
                 <ConfirmModal

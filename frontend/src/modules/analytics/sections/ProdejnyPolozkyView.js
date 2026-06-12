@@ -1,8 +1,7 @@
 import { analyticsGet } from '../../../utils/analyticsRequest';
 import React, { useState, useEffect, useMemo } from 'react';
-import CustomDropdown from '../../../components/CustomDropdown';
-import AnalyticsDateRange from '../../../components/AnalyticsDateRange';
-import { buildAnalyticsMonthFilterOptions } from '../../../utils/analyticsMonthOptions';
+import AnalyticsPeriodFilterPanel from '../../../components/analytics/AnalyticsPeriodFilterPanel';
+import { computeQuickRange, detectQuickRangePreset } from '../../../utils/analyticsQuickRange';
 import { PolozkyDeltaBadge } from '../components/PolozkyComparisonDelta';
 import PolozkySellerDetailChips from '../components/PolozkySellerDetailChips';
 import { formatFiltersPeriodLabel } from './celkovaPeriodUtils';
@@ -49,10 +48,7 @@ const ProdejnyPolozkyView = ({
     scopeFilters,
     onFiltersChange,
     compareData = null,
-    highlightUserIds = new Set(),
-    onToggleHighlight,
-    onOpenSellerDetail,
-    activeDetailSellerId = null,
+    onSellerClick,
     visibleMetrics,
     compactDetail = false,
 }) => {
@@ -65,6 +61,12 @@ const ProdejnyPolozkyView = ({
     const [error, setError] = useState(null);
     const [lastUpdate, setLastUpdate] = useState(null);
     const [dateError, setDateError] = useState('');
+    const [quickKey, setQuickKey] = useState(() =>
+        detectQuickRangePreset(
+            (filtersFromParent || buildInitialPolozkyFilters()).start_date,
+            (filtersFromParent || buildInitialPolozkyFilters()).end_date,
+        ),
+    );
 
     const effectiveFilters = useMemo(
         () => mergePolozkyScope(filters, scopeFilters),
@@ -87,8 +89,33 @@ const ProdejnyPolozkyView = ({
         onFiltersChange?.(merged);
     };
 
-    const applyDateRange = ({ start_date, end_date }) => {
+    const applyDateRange = ({ start_date, end_date, preset }) => {
+        setDateError('');
         updateFilters({ ...filters, period: 'custom', start_date, end_date });
+        setQuickKey(preset || detectQuickRangePreset(start_date, end_date));
+    };
+
+    const handlePeriodChange = ({ type, month }) => {
+        if (type === 'custom') {
+            handleFilterChange('period', 'custom');
+            setQuickKey('custom');
+            setDateError('');
+        } else if (type === 'month') {
+            updateFilters({
+                ...filters,
+                period: 'monthly_select',
+                selected_month: month,
+                start_date: '',
+                end_date: '',
+            });
+            setDateError('');
+        }
+    };
+
+    const handleQuickPreset = (id) => {
+        const range = computeQuickRange(id);
+        if (!range) return;
+        applyDateRange({ ...range, preset: id });
     };
 
     const fetchData = async () => {
@@ -153,50 +180,17 @@ const ProdejnyPolozkyView = ({
                 </div>
             )}
 
-            <div className="celkova-cisla-filters">
-                <div className="filter-row">
-                    <div className="filter-group">
-                        <label>Období:</label>
-                        {(() => {
-                            const opts = buildAnalyticsMonthFilterOptions();
-                            const currentValue = filters.period === 'monthly_select'
-                                ? `month:${filters.selected_month}` : 'custom';
-                            return (
-                                <CustomDropdown
-                                    options={opts}
-                                    value={currentValue}
-                                    placeholder="Vyberte období"
-                                    onChange={(selectedValue) => {
-                                        if (selectedValue === 'custom') {
-                                            handleFilterChange('period', 'custom');
-                                        } else if (selectedValue.startsWith('month:')) {
-                                            const ym = selectedValue.split(':')[1];
-                                            updateFilters({
-                                                ...filters,
-                                                period: 'monthly_select',
-                                                selected_month: ym,
-                                                start_date: '',
-                                                end_date: '',
-                                            });
-                                            setDateError('');
-                                        }
-                                    }}
-                                />
-                            );
-                        })()}
-                    </div>
-                    {filters.period === 'custom' && (
-                        <AnalyticsDateRange
-                            startDate={filters.start_date}
-                            endDate={filters.end_date}
-                            onApply={applyDateRange}
-                            onErrorChange={setDateError}
-                            showError={false}
-                        />
-                    )}
-                </div>
-                {dateError && <div className="celkova-cisla-error" style={{ marginTop: 8 }}>{dateError}</div>}
-            </div>
+            <AnalyticsPeriodFilterPanel
+                filters={filters}
+                quickKey={quickKey}
+                onPeriodChange={handlePeriodChange}
+                onDateApply={(range) => applyDateRange({ ...range, preset: 'custom' })}
+                onQuickPreset={handleQuickPreset}
+                onRefresh={fetchData}
+                onDateErrorChange={setDateError}
+                loading={loading}
+                dateError={dateError}
+            />
 
             {loading && (
                 <div className="celkova-cisla-loading">
@@ -309,20 +303,17 @@ const ProdejnyPolozkyView = ({
                         <div className={`sellers-cards${isComparison ? ' sellers-cards--comparison' : ''}`}>
                             {salesData.map((item, index) => {
                                 const cmp = findCompareRow(compareData, item.id_prodejce);
-                                const highlighted = highlightUserIds.has(item.id_prodejce);
-                                const isActive = activeDetailSellerId != null
-                                    && String(activeDetailSellerId) === String(item.id_prodejce);
                                 return (
                                     <div
                                         key={item.id_prodejce || index}
                                         role="button"
                                         tabIndex={0}
-                                        className={`seller-card seller-card--clickable${highlighted ? ' seller-card--highlight' : ''}${isActive ? ' seller-card--active' : ''}`}
-                                        onClick={() => onOpenSellerDetail?.(item)}
+                                        className="seller-card seller-card--clickable"
+                                        onClick={() => onSellerClick?.(item)}
                                         onKeyDown={(e) => {
                                             if (e.key === 'Enter' || e.key === ' ') {
                                                 e.preventDefault();
-                                                onOpenSellerDetail?.(item);
+                                                onSellerClick?.(item);
                                             }
                                         }}
                                     >
@@ -330,19 +321,7 @@ const ProdejnyPolozkyView = ({
                                             <div className="seller-info">
                                                 <h5 className="seller-name">
                                                     {item.prodejce}
-                                                    <span className="seller-card__open-hint">Detail ›</span>
-                                                    {onToggleHighlight && (
-                                                        <button
-                                                            type="button"
-                                                            className="seller-card__chart-btn refresh-btn"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                onToggleHighlight(item.id_prodejce);
-                                                            }}
-                                                        >
-                                                            {highlighted ? '★' : '☆'}
-                                                        </button>
-                                                    )}
+                                                    <span className="seller-card__open-hint">Výkony ›</span>
                                                 </h5>
                                                 <span className="seller-store">{item.prodejna}</span>
                                             </div>

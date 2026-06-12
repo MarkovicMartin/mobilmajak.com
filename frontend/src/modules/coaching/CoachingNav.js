@@ -60,7 +60,7 @@ const CoachingNav = ({
             meta={meta}
             accent="pink"
             ariaLabel="Navigace výkonů"
-            className="coaching-nav"
+            className="coaching-nav module-tabs--desktop-only"
             legacy
         />
     );

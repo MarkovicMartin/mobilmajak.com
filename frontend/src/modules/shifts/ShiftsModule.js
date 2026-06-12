@@ -77,7 +77,7 @@ function ShiftsModule() {
                 setShowForm(true);
             }
         }
-    }, [location.key]);
+    }, [location.key, location.state?.view]);
 
     const handleMonthChange = (direction) => {
         const [year, month] = currentMonth.split('-').map(Number);
@@ -179,7 +179,7 @@ function ShiftsModule() {
                 onTabChange={setActiveView}
                 accent="pink"
                 ariaLabel="Sekce směn"
-                className="shifts-subnav"
+                className="shifts-subnav module-tabs--desktop-only"
                 legacy
             />
 

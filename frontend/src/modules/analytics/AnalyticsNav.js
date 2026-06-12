@@ -105,7 +105,7 @@ const AnalyticsNav = () => {
             meta={meta}
             accent="pink"
             ariaLabel="Navigace analytiky"
-            className="analytics-nav"
+            className="analytics-nav module-tabs--desktop-only"
             legacy
         />
     );

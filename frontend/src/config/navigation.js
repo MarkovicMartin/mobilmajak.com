@@ -1,6 +1,9 @@
 /**
  * Jediný zdroj pravdy pro hlavní navigaci (sidebar, drawer, Clarity).
  */
+import { getNavChildren, PARENTS_WITH_CHILDREN } from './navChildren';
+import { getAnalyticsSection } from '../modules/analytics/analyticsSections';
+import { plansIdFromPath, PLANS_SECTIONS } from '../modules/plans/plansSections';
 
 export const NAV_GROUPS = [
     {
@@ -83,11 +86,30 @@ export const isNavItemVisible = (item, { isAdmin, canManageTasks, canAccessCoach
     return true;
 };
 
-export const getVisibleNavGroups = (auth) => {
-    const groups = NAV_GROUPS.map((group) => ({
-        ...group,
-        items: group.items.filter((item) => isNavItemVisible(item, auth)),
-    })).filter((group) => group.items.length > 0);
+const attachChildren = (item, auth) => {
+    if (!PARENTS_WITH_CHILDREN.has(item.sectionKey)) {
+        return { ...item, children: [] };
+    }
+    const children = isNavItemVisible(item, auth) ? getNavChildren(item, auth) : [];
+    return { ...item, children };
+};
+
+const flattenItemsForMobile = (items, auth) =>
+    items.flatMap((item) => {
+        if (!isNavItemVisible(item, auth)) return [];
+        const children = getNavChildren(item, auth);
+        if (children.length > 0) return children;
+        return [item];
+    });
+
+export const getVisibleNavGroups = (auth, { mobile = false } = {}) => {
+    const groups = NAV_GROUPS.map((group) => {
+        const visible = group.items.filter((item) => isNavItemVisible(item, auth));
+        const items = mobile
+            ? flattenItemsForMobile(visible, auth)
+            : visible.map((item) => attachChildren(item, auth));
+        return { ...group, items };
+    }).filter((group) => group.items.length > 0);
 
     if (auth.isAdmin() && ADMIN_NAV_GROUP.items.length > 0) {
         groups.push({
@@ -99,10 +121,49 @@ export const getVisibleNavGroups = (auth) => {
     return groups;
 };
 
+/** Položky profilu pro mobilní drawer (místo záložek v modulu). */
+export const getProfileNavChildren = (auth) => getNavChildren({ sectionKey: 'profile' }, auth);
+
 export const getRouteLabel = (pathname) => {
     if (!pathname || pathname === '/') {
         return ALL_NAV_ITEMS.find((i) => i.path === '/')?.label || 'Domů';
     }
+    if (pathname.startsWith('/analytics/')) {
+        const id = pathname.replace('/analytics/', '').split('/')[0];
+        return getAnalyticsSection(id)?.tabLabel || 'Analytika';
+    }
+    if (pathname.startsWith('/plans/')) {
+        const section = PLANS_SECTIONS.find((s) => s.id === plansIdFromPath(pathname));
+        return section?.tabLabel || 'Plány';
+    }
+    if (pathname.startsWith('/coaching')) {
+        if (pathname.includes('/compare')) return 'Analýza výkonu';
+        if (pathname.includes('/seller/')) return 'Výkony';
+        return 'Přehled týmu';
+    }
     const match = ALL_NAV_ITEMS.find((item) => isNavActive(item.path, pathname));
     return match?.label || pathname.replace(/^\//, '');
+};
+
+export const navigateNavItem = (navigate, item) => {
+    if (item.navState) {
+        navigate(item.path, { state: item.navState });
+    } else {
+        navigate(item.path);
+    }
+};
+
+export const isNavItemLinkActive = (item, pathname, locationState) => {
+    if (item.navState?.view) {
+        const view = locationState?.view || 'calendar';
+        return pathname === '/shifts' && view === item.navState.view;
+    }
+    if (item.navState?.profileTab) {
+        const tab = locationState?.profileTab || 'calendar';
+        return pathname === '/profile' && tab === item.navState.profileTab;
+    }
+    if (item.isChild && item.path) {
+        return pathname === item.path || pathname.startsWith(`${item.path}/`);
+    }
+    return isNavActive(item.path, pathname);
 };

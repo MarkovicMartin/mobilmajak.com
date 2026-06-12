@@ -1,7 +1,7 @@
 import React, { useCallback, useRef, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import AnalyticsSectionWrapper from '../AnalyticsSectionWrapper';
 import PolozkyMetricPicker, { DEFAULT_VISIBLE_METRICS } from '../components/PolozkyMetricPicker';
-import PolozkySellerDetailPanel from '../components/PolozkySellerDetailPanel';
 import PolozkyTasksPanel from '../components/PolozkyTasksPanel';
 import ProdejnyPolozkyView from './ProdejnyPolozkyView';
 import {
@@ -13,7 +13,7 @@ import {
     pickPolozkyScope,
 } from './polozkyFilters';
 import { analyticsGet } from '../../../utils/analyticsRequest';
-import { storeAPI, userAPI } from '../../../services/api';
+import { storeAPI } from '../../../services/api';
 import './CelkovaCisla.css';
 import './Polozky.css';
 import './ProdejnyPolozky.css';
@@ -31,7 +31,21 @@ const fetchPolozkyData = async (filters, visibleMetrics) => {
     return result.success && Array.isArray(result.data) ? result.data : [];
 };
 
+const mesicFromFilters = (filters) => {
+    if (filters?.period === 'monthly_select' && filters.selected_month) {
+        return filters.selected_month;
+    }
+    const dateStr = filters?.end_date || filters?.start_date;
+    if (dateStr) {
+        const [y, m] = dateStr.split('-');
+        if (y && m) return `${y}-${m}`;
+    }
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+};
+
 const ProdejnyPolozky = () => {
+    const navigate = useNavigate();
     const leftFiltersRef = useRef(buildInitialPolozkyFilters());
     const [isComparison, setIsComparison] = useState(false);
     const [rightFilters, setRightFilters] = useState(() => shiftFiltersOneYearBack(buildInitialPolozkyFilters()));
@@ -40,25 +54,15 @@ const ProdejnyPolozky = () => {
     const [rightData, setRightData] = useState([]);
     const [visibleMetrics, setVisibleMetrics] = useState(() => new Set(DEFAULT_VISIBLE_METRICS));
     const [compactDetail, setCompactDetail] = useState(false);
-    const [highlightUserIds, setHighlightUserIds] = useState(() => new Set());
-    const [detailSeller, setDetailSeller] = useState(null);
     const [sharedFilters, setSharedFilters] = useState(buildInitialPolozkyFilters());
     const [scopeFilters, setScopeFilters] = useState(() => pickPolozkyScope(buildInitialPolozkyFilters()));
     const [stores, setStores] = useState([]);
-    const [staffUsers, setStaffUsers] = useState([]);
 
     useEffect(() => {
         storeAPI.getStoreChoices().then((data) => {
             const list = Array.isArray(data) ? data : data?.results || [];
             setStores(list);
         }).catch(() => setStores([]));
-    }, []);
-
-    useEffect(() => {
-        userAPI.getUsers({ aktivni: true }).then((data) => {
-            const list = data?.users || (Array.isArray(data) ? data : data?.results || []);
-            setStaffUsers(list);
-        }).catch(() => setStaffUsers([]));
     }, []);
 
     const handleLeftFiltersChange = useCallback((next) => {
@@ -101,14 +105,11 @@ const ProdejnyPolozky = () => {
         });
     };
 
-    const toggleHighlight = (userId) => {
-        setHighlightUserIds((prev) => {
-            const next = new Set(prev);
-            if (next.has(userId)) next.delete(userId);
-            else if (next.size < 5) next.add(userId);
-            return next;
-        });
-    };
+    const openSellerCoaching = useCallback((seller) => {
+        if (!seller?.id_prodejce) return;
+        const mesic = mesicFromFilters(leftFiltersRef.current);
+        navigate(`/coaching/seller/${seller.id_prodejce}?mesic=${mesic}`);
+    }, [navigate]);
 
     const tasksFilters = leftFiltersRef.current;
 
@@ -165,7 +166,7 @@ const ProdejnyPolozky = () => {
                     <p className="celkova-comparison-hint">
                         {isComparison
                             ? 'Vlevo a vpravo zvolte libovolné období. Pravý sloupec startuje stejným úsekem před rokem – můžete ho kdykoli změnit.'
-                            : 'Srovnání zobrazí dvě období vedle sebe. Výchozí srovnání je stejné období loni, rozsah lze upravit. Porovnání prodejců je v detailu po kliknutí na kartu.'}
+                            : 'Srovnání zobrazí dvě období vedle sebe. Výchozí srovnání je stejné období loni, rozsah lze upravit. Kliknutím na kartu prodejce přejdete do modulu Výkony.'}
                     </p>
                     <button
                         type="button"
@@ -176,16 +177,6 @@ const ProdejnyPolozky = () => {
                     </button>
                 </div>
 
-                {detailSeller && (
-                    <PolozkySellerDetailPanel
-                        seller={detailSeller}
-                        filters={leftFiltersRef.current}
-                        visibleMetrics={visibleMetrics}
-                        staffUsers={staffUsers}
-                        onClose={() => setDetailSeller(null)}
-                    />
-                )}
-
                 <div className={`celkova-cisla-views${isComparison ? ' celkova-cisla-views--split' : ''}`}>
                     <div className="view-pane left-pane">
                         <ProdejnyPolozkyView
@@ -194,10 +185,7 @@ const ProdejnyPolozky = () => {
                             scopeFilters={scopeFilters}
                             onFiltersChange={handleLeftFiltersChange}
                             compareData={isComparison ? rightData : null}
-                            highlightUserIds={highlightUserIds}
-                            onToggleHighlight={toggleHighlight}
-                            onOpenSellerDetail={setDetailSeller}
-                            activeDetailSellerId={detailSeller?.id_prodejce}
+                            onSellerClick={openSellerCoaching}
                             visibleMetrics={visibleMetrics}
                             compactDetail={compactDetail}
                         />
@@ -211,10 +199,7 @@ const ProdejnyPolozky = () => {
                                 filtersFromParent={rightFilters}
                                 onFiltersChange={handleRightFiltersChange}
                                 compareData={leftData}
-                                highlightUserIds={highlightUserIds}
-                                onToggleHighlight={toggleHighlight}
-                                onOpenSellerDetail={setDetailSeller}
-                                activeDetailSellerId={detailSeller?.id_prodejce}
+                                onSellerClick={openSellerCoaching}
                                 visibleMetrics={visibleMetrics}
                                 compactDetail={compactDetail}
                             />

@@ -182,22 +182,25 @@
 }
 
 .polozky-chart-tooltip {
-    background: rgba(20, 24, 32, 0.95);
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: var(--bg-card);
+    border: 1px solid var(--border-primary);
     border-radius: 6px;
     padding: 8px 10px;
     font-size: 0.85rem;
+    color: var(--text-primary);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
 }
 
 .polozky-chart-tooltip__title {
     font-weight: 600;
     margin-bottom: 4px;
+    color: var(--text-primary);
 }
 
 .polozky-chart-tooltip__sub {
     margin-top: 4px;
     font-size: 0.75rem;
-    opacity: 0.75;
+    color: var(--text-muted);
 }
 
 .polozky-tasks-panel {
@@ -441,19 +444,19 @@
     color: var(--brand-navy);
 }
 
-/* Rozpad metrik u prodejce – malé dlaždičky: číslo + název */
+/* Rozpad metrik u prodejce – malé dlaždičky: číslo + název (6 sloupců na desktopu) */
 .seller-detail-chips {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(2.85rem, 1fr));
-    gap: 3px;
-    margin-top: 8px;
-    padding-top: 8px;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 5px;
+    margin-top: 9px;
+    padding-top: 9px;
     border-top: 1px solid var(--border-subtle);
 }
 
 .seller-detail-chips--dense {
-    grid-template-columns: repeat(auto-fill, minmax(2.65rem, 1fr));
-    gap: 2px;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 4px;
 }
 
 .polozky-chip {
@@ -461,24 +464,28 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 1px;
-    padding: 3px 2px;
-    border-radius: 4px;
+    gap: 2px;
+    padding: 5px 3px;
+    border-radius: 5px;
     background: var(--bg-inset);
-    border: 1px solid var(--border-subtle);
-    min-height: 0;
+    border: 1px solid color-mix(in srgb, var(--border-subtle) 70%, var(--text-label) 30%);
+    min-height: 34px;
     text-align: center;
 }
 
 .polozky-chip--zero {
-    opacity: 0.5;
+    opacity: 0.62;
+}
+
+.polozky-chip--zero .polozky-chip__label {
+    color: var(--text-label);
 }
 
 .polozky-chip__value {
-    font-size: 0.68rem;
+    font-size: 0.76rem;
     font-weight: 700;
     color: var(--text-strong);
-    line-height: 1.1;
+    line-height: 1.15;
     max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -486,14 +493,14 @@
 }
 
 .seller-detail-chips--dense .polozky-chip__value {
-    font-size: 0.64rem;
+    font-size: 0.72rem;
 }
 
 .polozky-chip__label {
-    font-size: 0.5rem;
+    font-size: 0.58rem;
     font-weight: 600;
-    color: var(--text-muted);
-    line-height: 1.05;
+    color: var(--text-label);
+    line-height: 1.15;
     max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -501,14 +508,14 @@
 }
 
 .seller-detail-chips--dense .polozky-chip__label {
-    font-size: 0.48rem;
+    font-size: 0.55rem;
 }
 
 .polozky-chip__extra {
-    font-size: 0.45rem;
+    font-size: 0.52rem;
     font-weight: 600;
     color: var(--accent-analytics);
-    line-height: 1;
+    line-height: 1.1;
 }
 
 .polozky-chip--servis {
@@ -532,4 +539,11 @@
 
 .dark-mode .polozky-chip--sun {
     background: var(--bg-inset);
+}
+
+@media (max-width: 1280px) {
+    .seller-detail-chips,
+    .seller-detail-chips--dense {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
 }

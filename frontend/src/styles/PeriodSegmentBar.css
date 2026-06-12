@@ -33,9 +33,9 @@
 }
 
 .period-segment--expanded {
-    flex: 1 1 0;
-    justify-content: flex-start;
-    text-align: left;
+    flex: 0 1 auto;
+    justify-content: center;
+    text-align: center;
     background: linear-gradient(135deg, var(--brand-navy) 0%, var(--brand-navy-hover) 100%);
     border-color: var(--brand-navy);
     color: white;

@@ -66,7 +66,7 @@ const PlansNav = ({
       meta={meta}
       accent="blue"
       ariaLabel="Sekce plánů"
-      className="plans-nav"
+      className="plans-nav module-tabs--desktop-only"
       legacy
     />
   );

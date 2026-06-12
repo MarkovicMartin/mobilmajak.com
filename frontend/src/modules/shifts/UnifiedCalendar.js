@@ -16,6 +16,7 @@ function UnifiedCalendar({
   selectedDates = new Set(), // Set<string> of 'yyyy-MM-dd'
   onDateClick,
   onDateDragSelect,
+  onDragSelectComplete,
   enableDragSelect = false,
   renderCellContent, // (date: Date, meta: { isCurrentMonth, isToday, isSelected }) => ReactNode
   isDateEnabled, // optional (date: Date) => boolean
@@ -51,7 +52,13 @@ function UnifiedCalendar({
   }, []);
 
   const cellRefs = useRef([]);
-  const dragState = useRef({ active: false, moved: false, startDateStr: null, mode: 'add' });
+  const dragState = useRef({
+    active: false,
+    moved: false,
+    startDateStr: null,
+    mode: 'add',
+    sessionDates: [],
+  });
 
   const isCellDisabled = useCallback((dateStr, date) => {
     const inCurrentMonth = format(date, 'yyyy-MM') === month;
@@ -63,25 +70,35 @@ function UnifiedCalendar({
     const isSelected = selectedDates && selectedDates.has(dateStr);
     if (mode === 'add' && !isSelected) {
       onDateDragSelect(dateStr, date);
+      dragState.current.sessionDates.push(dateStr);
     } else if (mode === 'remove' && isSelected) {
       onDateDragSelect(dateStr, date);
+      dragState.current.sessionDates = dragState.current.sessionDates.filter((d) => d !== dateStr);
     }
   }, [onDateDragSelect, selectedDates, isCellDisabled]);
 
   useEffect(() => {
     const endDrag = () => {
       const st = dragState.current;
-      if (st.active && !st.moved && st.startDateStr && onDateClick) {
+      if (st.active && st.moved && onDragSelectComplete && st.sessionDates.length > 0) {
+        onDragSelectComplete([...new Set(st.sessionDates)].sort());
+      } else if (st.active && !st.moved && st.startDateStr && onDateClick) {
         const date = daysByStr.get(st.startDateStr);
         if (date && !isCellDisabled(st.startDateStr, date)) {
           onDateClick(st.startDateStr, date);
         }
       }
-      dragState.current = { active: false, moved: false, startDateStr: null, mode: 'add' };
+      dragState.current = {
+        active: false,
+        moved: false,
+        startDateStr: null,
+        mode: 'add',
+        sessionDates: [],
+      };
     };
     document.addEventListener('mouseup', endDrag);
     return () => document.removeEventListener('mouseup', endDrag);
-  }, [onDateClick, daysByStr, isCellDisabled]);
+  }, [onDateClick, onDragSelectComplete, daysByStr, isCellDisabled]);
 
   const handleDateMouseDown = (dateStr, date, e) => {
     if (e.button !== 0) return;
@@ -91,7 +108,13 @@ function UnifiedCalendar({
 
     if (enableDragSelect && onDateDragSelect) {
       const mode = selectedDates.has(dateStr) ? 'remove' : 'add';
-      dragState.current = { active: true, moved: false, startDateStr: dateStr, mode };
+      dragState.current = {
+        active: true,
+        moved: false,
+        startDateStr: dateStr,
+        mode,
+        sessionDates: [],
+      };
       return;
     }
 

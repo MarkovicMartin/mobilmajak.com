@@ -1,9 +1,8 @@
 import React from 'react';
 import { useLocation } from 'react-router-dom';
-import BugButton from '../BugButton';
 import { routeToLabel } from '../../utils/clarity';
 
-const AppTopBar = ({ onMenuClick, user, isDarkMode, toggleTheme }) => {
+const AppTopBar = ({ onMenuClick, isDarkMode, toggleTheme, drawerOpen = false, onDrawerClose }) => {
     const location = useLocation();
     const pageTitle = routeToLabel(location.pathname);
 
@@ -12,10 +11,10 @@ const AppTopBar = ({ onMenuClick, user, isDarkMode, toggleTheme }) => {
             <button
                 type="button"
                 className="app-topbar__menu"
-                onClick={onMenuClick}
-                aria-expanded="false"
+                onClick={drawerOpen ? onDrawerClose : onMenuClick}
+                aria-expanded={drawerOpen}
                 aria-controls="app-mobile-drawer"
-                aria-label="Otevřít menu"
+                aria-label={drawerOpen ? 'Zavřít menu' : 'Otevřít menu'}
             >
                 <span className="app-topbar__hamburger" />
             </button>
@@ -29,7 +28,6 @@ const AppTopBar = ({ onMenuClick, user, isDarkMode, toggleTheme }) => {
                 >
                     <i className={`fas ${isDarkMode ? 'fa-sun' : 'fa-moon'}`} />
                 </button>
-                <BugButton user={user} />
             </div>
         </header>
     );

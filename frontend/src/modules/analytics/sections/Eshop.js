@@ -2,10 +2,8 @@ import { analyticsGet } from '../../../utils/analyticsRequest';
 import React, { useState, useEffect } from 'react';
 import Modal from '../../../components/Modal';
 import AnalyticsSectionWrapper from '../AnalyticsSectionWrapper';
-import CustomDropdown from '../../../components/CustomDropdown';
-import DateFilterBar from '../../../components/DateFilterBar';
-import { detectQuickRangePreset } from '../../../utils/analyticsQuickRange';
-import { buildAnalyticsMonthFilterOptions } from '../../../utils/analyticsMonthOptions';
+import AnalyticsPeriodFilterPanel from '../../../components/analytics/AnalyticsPeriodFilterPanel';
+import { computeQuickRange, detectQuickRangePreset } from '../../../utils/analyticsQuickRange';
 import './Eshop.css';
 // Sub-component for category analytics
 const EshopCategoryAnalytics = ({ filters }) => {
@@ -277,6 +275,28 @@ const Eshop = () => {
         setQuickKey(preset || detectQuickRangePreset(start_date, end_date));
     };
 
+    const handlePeriodChange = ({ type, month }) => {
+        if (type === 'custom') {
+            setFilters((prev) => ({ ...prev, period: 'custom' }));
+            setQuickKey('custom');
+            setDateError('');
+        } else if (type === 'month') {
+            const [year, monthNum] = month.split('-');
+            const startDate = `${year}-${monthNum}-01`;
+            const lastDay = new Date(parseInt(year, 10), parseInt(monthNum, 10), 0).getDate();
+            const endDate = `${year}-${monthNum}-${String(lastDay).padStart(2, '0')}`;
+            setFilters((prev) => ({ ...prev, period: 'custom', start_date: startDate, end_date: endDate }));
+            setQuickKey(detectQuickRangePreset(startDate, endDate));
+            setDateError('');
+        }
+    };
+
+    const handleQuickPreset = (id) => {
+        const range = computeQuickRange(id);
+        if (!range) return;
+        applyDateRange({ ...range, preset: id });
+    };
+
     // Načtení dat z API
     const fetchData = async () => {
         setLoading(true);
@@ -419,71 +439,28 @@ const Eshop = () => {
         <AnalyticsSectionWrapper title="E-shop analytika" icon="🛒">
             <div className="eshop-analytics">
 
-            {/* Filtry */}
-            <div className="eshop-filters">
-                <div className="filter-row">
-                    {/* Období – custom dropdown s měsíci */}
-                    <div className="filter-group">
-                        <label>Období:</label>
-                        {(()=>{
-                            const opts = buildAnalyticsMonthFilterOptions();
-                            
-                            // Najděme správnou hodnotu - zatím vždy custom, protože eshop používá vlastní období
-                            const currentValue = 'custom';
-                            
-                            return (
-                                <CustomDropdown
-                                    options={opts}
-                                    value={currentValue}
-                                    placeholder="Vyberte období"
-                                    onChange={(selectedValue) => {
-                                        if (selectedValue === 'custom') {
-                                            // Už je nastaveno na custom
-                                        } else if (selectedValue.startsWith('month:')) {
-                                            const ym = selectedValue.split(':')[1];
-                                            // Nastavíme start_date a end_date podle vybraného měsíce
-                                            const [year, month] = ym.split('-');
-                                            const startDate = `${year}-${month}-01`;
-                                            // Opraveno: explicitní výpočet posledního dne měsíce (31 dní pro leden, atd.)
-                                            const monthIndex = parseInt(month) - 1; // převedeme na 0-based index (leden=0)
-                                            const lastDay = new Date(parseInt(year), monthIndex + 1, 0).getDate(); // poslední den měsíce
-                                            const endDate = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
-                                            setFilters(prev=>({...prev, start_date: startDate, end_date: endDate}));
-                                            setDateError('');
-                                        }
-                                    }}
-                                />
-                            );
-                        })()}
-                    </div>
-
-                    {/* Vyloučit ALLEGRO */}
-                    <div className="filter-group">
-                        <label>
-                            <input
-                                type="checkbox"
-                                checked={filters.exclude_allegro}
-                                onChange={(e) => handleFilterChange('exclude_allegro', e.target.checked)}
-                            />
-                            Vyloučit ALLEGRO
-                        </label>
-                    </div>
-
-                    <div className="filter-group filter-group--date-bar">
-                        <DateFilterBar
-                            startDate={filters.start_date}
-                            endDate={filters.end_date}
-                            preset={quickKey}
-                            onRangeChange={applyDateRange}
-                            onDateErrorChange={setDateError}
-                            onRefresh={fetchData}
-                            refreshDisabled={loading || !!dateError}
-                            refreshLoading={loading}
+            <AnalyticsPeriodFilterPanel
+                filters={filters}
+                quickKey={quickKey}
+                onPeriodChange={handlePeriodChange}
+                onDateApply={(range) => applyDateRange({ ...range, preset: 'custom' })}
+                onQuickPreset={handleQuickPreset}
+                onRefresh={fetchData}
+                onDateErrorChange={setDateError}
+                loading={loading}
+                dateError={dateError}
+            >
+                <div className="filter-group">
+                    <label>
+                        <input
+                            type="checkbox"
+                            checked={filters.exclude_allegro}
+                            onChange={(e) => handleFilterChange('exclude_allegro', e.target.checked)}
                         />
-                    </div>
+                        {' '}Vyloučit ALLEGRO
+                    </label>
                 </div>
-                {dateError && <div className="eshop-error" style={{marginTop:8}}>{dateError}</div>}
-            </div>
+            </AnalyticsPeriodFilterPanel>
 
             {/* Loading state */}
             {loading && (

@@ -331,6 +331,10 @@
     gap: 16px;
 }
 
+.traffic-filters {
+    margin-bottom: 20px;
+}
+
 .traffic-view.is-comparison .celkova-cisla-filters {
     margin-bottom: 12px !important;
 }

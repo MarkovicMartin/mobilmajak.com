@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { getVisibleNavGroups, isNavActive } from '../../config/navigation';
+import ShellNavLinks, { ShellProfileLinks } from './ShellNavLinks';
 
 const AppMobileDrawer = ({
     open,
@@ -16,12 +16,7 @@ const AppMobileDrawer = ({
 }) => {
     const navigate = useNavigate();
     const location = useLocation();
-    const groups = getVisibleNavGroups({ isAdmin, canManageTasks, canAccessCoaching });
-
-    const go = (path) => {
-        navigate(path);
-        onClose();
-    };
+    const auth = { isAdmin, canManageTasks, canAccessCoaching };
 
     return (
         <>
@@ -53,47 +48,36 @@ const AppMobileDrawer = ({
                 </div>
 
                 <div className="app-drawer__nav">
-                    {groups.map((group) => (
-                        <div key={group.id} className="app-drawer__group">
-                            <span className="app-drawer__group-label">{group.label}</span>
-                            {group.items.map((item) => {
-                                const active = isNavActive(item.path, location.pathname);
-                                return (
-                                    <button
-                                        key={item.sectionKey}
-                                        type="button"
-                                        className={`app-drawer__link ${active ? 'app-drawer__link--active' : ''}`}
-                                        onClick={() => go(item.path)}
-                                    >
-                                        <i className={`fas ${item.icon}`} aria-hidden="true" />
-                                        {item.label}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    ))}
+                    <ShellNavLinks
+                        auth={auth}
+                        location={location}
+                        navigate={navigate}
+                        mobile
+                        onNavigate={onClose}
+                        linkClass="app-drawer__link"
+                        activeClass="app-drawer__link--active"
+                        childClass="app-drawer__link--child"
+                        groupClass="app-drawer__group"
+                        groupLabelClass="app-drawer__group-label"
+                    />
                 </div>
 
                 <div className="app-drawer__footer">
-                    <button
-                        type="button"
-                        className={`app-drawer__link ${location.pathname === '/profile' ? 'app-drawer__link--active' : ''}`}
-                        onClick={() => go('/profile')}
-                    >
-                        <i className="fas fa-user" aria-hidden="true" />
-                        Můj profil
-                        {profileTaskBadge > 0 && (
-                            <span className="badge app-drawer__profile-badge">
-                                {profileTaskBadge > 99 ? '99+' : profileTaskBadge}
-                            </span>
-                        )}
-                    </button>
+                    <span className="app-drawer__group-label">Profil</span>
+                    <ShellProfileLinks
+                        location={location}
+                        navigate={navigate}
+                        mobile
+                        profileTaskBadge={profileTaskBadge}
+                        onNavigate={onClose}
+                        linkClass="app-drawer__link"
+                        activeClass="app-drawer__link--active"
+                        childClass="app-drawer__link--child"
+                    />
                     <button
                         type="button"
                         className="app-drawer__link"
-                        onClick={() => {
-                            toggleTheme();
-                        }}
+                        onClick={() => toggleTheme()}
                     >
                         <i className={`fas ${isDarkMode ? 'fa-sun' : 'fa-moon'}`} aria-hidden="true" />
                         {isDarkMode ? 'Světlý režim' : 'Tmavý režim'}

@@ -34,9 +34,9 @@
 }
 
 .ui-segment-control__item--active {
-    flex: 1 1 0;
-    justify-content: flex-start;
-    text-align: left;
+    flex: 0 1 auto;
+    justify-content: center;
+    text-align: center;
     background: linear-gradient(135deg, var(--brand-navy) 0%, var(--brand-navy-hover) 100%);
     border-color: var(--brand-navy);
     color: var(--text-inverse);
@@ -69,16 +69,7 @@
     color: var(--text-inverse);
 }
 
-@media (max-width: 640px) {
-    .ui-segment-control {
-        flex-direction: column;
-    }
-
-    .ui-segment-control__item--active {
-        flex: none;
-        width: 100%;
-    }
-}
+/* Mobilní scroll – viz styles/responsive.css */
 
 .dark-mode .ui-segment-control__item {
     background: var(--bg-card);

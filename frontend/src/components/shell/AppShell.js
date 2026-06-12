@@ -8,6 +8,16 @@ import { taskAPI } from '../../services/api';
 import { useUnreadPoll } from '../../hooks/useUnreadPoll';
 import './AppShell.css';
 
+const SIDEBAR_COLLAPSED_KEY = 'mm-sidebar-collapsed';
+
+const readSidebarCollapsed = () => {
+    try {
+        return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === '1';
+    } catch {
+        return false;
+    }
+};
+
 const AppShell = ({
     children,
     user,
@@ -20,6 +30,23 @@ const AppShell = ({
 }) => {
     const location = useLocation();
     const [drawerOpen, setDrawerOpen] = useState(false);
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(readSidebarCollapsed);
+
+    const toggleSidebarCollapse = useCallback(() => {
+        setSidebarCollapsed((prev) => {
+            const next = !prev;
+            try {
+                localStorage.setItem(SIDEBAR_COLLAPSED_KEY, next ? '1' : '0');
+            } catch {
+                /* ignore */
+            }
+            return next;
+        });
+    }, []);
+
+    useEffect(() => {
+        document.documentElement.classList.toggle('sidebar-collapsed', sidebarCollapsed);
+    }, [sidebarCollapsed]);
 
     const fetchTaskNotifications = useCallback(async () => {
         if (!user) return 0;
@@ -54,19 +81,20 @@ const AppShell = ({
     }, []);
 
     useEffect(() => {
-        if (drawerOpen) {
-            document.body.style.overflow = 'hidden';
-            const handleEscape = (e) => {
-                if (e.key === 'Escape') setDrawerOpen(false);
-            };
-            document.addEventListener('keydown', handleEscape);
-            return () => {
-                document.body.style.overflow = '';
-                document.removeEventListener('keydown', handleEscape);
-            };
-        }
-        document.body.style.overflow = '';
+        document.body.classList.toggle('app-drawer-open', drawerOpen);
+        if (!drawerOpen) return undefined;
+        const handleEscape = (e) => {
+            if (e.key === 'Escape') setDrawerOpen(false);
+        };
+        document.addEventListener('keydown', handleEscape);
+        return () => {
+            document.removeEventListener('keydown', handleEscape);
+        };
     }, [drawerOpen]);
+
+    useEffect(() => () => {
+        document.body.classList.remove('app-drawer-open');
+    }, []);
 
     const shellProps = {
         user,
@@ -81,7 +109,11 @@ const AppShell = ({
 
     return (
         <div className="app-shell">
-            <AppSidebar {...shellProps} />
+            <AppSidebar
+                {...shellProps}
+                collapsed={sidebarCollapsed}
+                onToggleCollapse={toggleSidebarCollapse}
+            />
             <AppMobileDrawer
                 {...shellProps}
                 open={drawerOpen}
@@ -89,10 +121,11 @@ const AppShell = ({
             />
             <div className="app-shell__body">
                 <AppTopBar
-                    user={user}
                     isDarkMode={isDarkMode}
                     toggleTheme={toggleTheme}
+                    drawerOpen={drawerOpen}
                     onMenuClick={() => setDrawerOpen(true)}
+                    onDrawerClose={() => setDrawerOpen(false)}
                 />
                 <main className="app-main">{children}</main>
             </div>
