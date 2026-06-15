@@ -72,6 +72,7 @@ secrets/id_*
 secrets/camera_motion*.json
 scripts/senimo-gateway/config.json
 scripts/camera-gateway/config.json
+scripts/zlin-gateway/config.json
 
 # Environment variables
 .env

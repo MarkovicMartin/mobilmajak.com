@@ -4,6 +4,7 @@ import AnalyticsPeriodFilterPanel from '../../../components/analytics/AnalyticsP
 import { computeQuickRange, detectQuickRangePreset } from '../../../utils/analyticsQuickRange';
 import { PolozkyDeltaBadge } from '../components/PolozkyComparisonDelta';
 import PolozkySellerDetailChips from '../components/PolozkySellerDetailChips';
+import { formatPrumerHodnotaUctenky } from '../../leaderboard/leaderboardMetrics';
 import { formatFiltersPeriodLabel } from './celkovaPeriodUtils';
 import { buildInitialPolozkyFilters, mergePolozkyScope } from './polozkyFilters';
 import './SectionStyles.css';
@@ -348,6 +349,14 @@ const ProdejnyPolozkyView = ({
                                                     <span className="metric-value highlight-green">{item.sluzby_celkem || 0}</span>
                                                 </div>
                                             )}
+                                            {showMetric('celkovy_obrat') && (
+                                                <div className="metric-item primary">
+                                                    <span className="metric-label">Prům. hodnota účtenky</span>
+                                                    <span className="metric-value highlight-yellow">
+                                                        {formatPrumerHodnotaUctenky(item.prumer_hodnota_uctenky)}
+                                                    </span>
+                                                </div>
+                                            )}
                                             {showMetric('unikatni_doklady') && (
                                                 <div className="metric-item" title="Proxy obsluhy – ne počet zákazníků v provozu">
                                                     <span className="metric-label">Unikátní doklady</span>
@@ -360,6 +369,12 @@ const ProdejnyPolozkyView = ({
                                                     <span className="metric-value">
                                                         {item.odpracovane_hodiny ?? '—'}
                                                     </span>
+                                                </div>
+                                            )}
+                                            {showMetric('pol_dok') && (
+                                                <div className="metric-item">
+                                                    <span className="metric-label">Průměr pol./účt.</span>
+                                                    <span className="metric-value">{(item.pol_dok || 0).toFixed(2)}</span>
                                                 </div>
                                             )}
                                             {showMetric('polozky_nad_100_za_hodinu') && (

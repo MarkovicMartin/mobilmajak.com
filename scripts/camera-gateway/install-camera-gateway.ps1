@@ -1,5 +1,5 @@
-# Instalace brány pohybu kamer → MOBILMAJAK (Windows, všechny prodejny)
-# Python NENÍ potřeba – instalátor stáhne portable Python sám (internet).
+# MOBILMAJAK camera gateway install (Windows, all stores)
+# Python not required - installer downloads portable Python (needs internet).
 #
 #   .\install-camera-gateway.ps1 -ProdejnaId 2 -ProdejnaNazev Senimo
 
@@ -20,7 +20,7 @@ $SourceDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 
 . (Join-Path $SourceDir "bootstrap-python.ps1")
 
-Write-Host "=== MOBILMAJAK – brána kamer ($ProdejnaNazev, ID $ProdejnaId) ===" -ForegroundColor Cyan
+Write-Host "=== MOBILMAJAK camera gateway ($ProdejnaNazev, ID $ProdejnaId) ===" -ForegroundColor Cyan
 
 if (-not (Test-Path $InstallDir)) {
     New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
@@ -42,24 +42,24 @@ if (Test-Path $sourceConfig) {
     $cfg = Get-Content $configPath -Raw | ConvertFrom-Json
     $cfg.prodejna_id = $ProdejnaId
     $cfg.prodejna_nazev = $ProdejnaNazev
-    $cfg | ConvertTo-Json -Depth 5 | Set-Content $configPath -Encoding UTF8
+    $cfg | ConvertTo-Json -Depth 5 | Set-Content $configPath -Encoding ASCII
     Write-Host ""
-    Write-Host "Upravte $configPath :" -ForegroundColor Yellow
-    Write-Host "  motion_secret, nvr_pass (nvr_host nechte prázdné = autodetekce)"
-    Read-Host "Po úpravě Enter"
+    Write-Host "Edit $configPath :" -ForegroundColor Yellow
+    Write-Host "  motion_secret, nvr_pass (leave nvr_host empty for autodiscover)"
+    Read-Host "Press Enter after editing config.json"
 }
 
 $cfg = Get-Content $configPath -Raw | ConvertFrom-Json
 $cfg.prodejna_id = $ProdejnaId
 $cfg.prodejna_nazev = $ProdejnaNazev
 if (-not $cfg.autodiscover_nvr) { $cfg | Add-Member -NotePropertyName autodiscover_nvr -NotePropertyValue $true -Force }
-$cfg | ConvertTo-Json -Depth 5 | Set-Content $configPath -Encoding UTF8
+$cfg | ConvertTo-Json -Depth 5 | Set-Content $configPath -Encoding ASCII
 
 foreach ($key in @("motion_secret", "nvr_pass")) {
-    if ($cfg.$key -match "DOPLNTE") { throw "V config.json doplňte: $key" }
+    if ($cfg.$key -match "DOPLNTE") { throw "Missing value in config.json: $key" }
 }
 
-Set-Content (Join-Path $InstallDir "python-path.txt") $py -Encoding UTF8
+Set-Content (Join-Path $InstallDir "python-path.txt") $py -Encoding ASCII
 
 . (Join-Path $SourceDir "register-gateway-tasks.ps1")
 Register-MobilmajakGatewayTasks `
@@ -68,15 +68,15 @@ Register-MobilmajakGatewayTasks `
     -WakeKickScript (Join-Path $InstallDir "wake-kick-gateway.ps1") `
     -StartupDelay "PT30S"
 Write-Host "Tasks: $TaskName + $TaskName-WakeKick" -ForegroundColor Green
-Write-Host "Složka: $InstallDir"
+Write-Host "Folder: $InstallDir"
 
 if (-not $SkipTest) {
     Push-Location $InstallDir
-    Write-Host "Autodetekce NVR…"
+    Write-Host "NVR autodiscover..."
     & $py camera_motion_gateway.py --config config.json --discover-nvr
     & $py camera_motion_gateway.py --config config.json --test-isapi
     & $py camera_motion_gateway.py --config config.json --test-motion true
     Pop-Location
 }
 
-Write-Host "Hotovo. Log: $(Join-Path $InstallDir 'gateway.log')"
+Write-Host "Done. Log: $(Join-Path $InstallDir 'gateway.log')"

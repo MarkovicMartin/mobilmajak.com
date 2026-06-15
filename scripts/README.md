@@ -40,6 +40,10 @@ Návod: [`docs/zaloha-disaster-recovery.md`](../docs/zaloha-disaster-recovery.md
 | Soubor | Účel |
 |--------|------|
 | `camera_motion_gateway.py` | Brána v LAN: NVR alertStream → API `motion: true/false` |
+| `camera_motion_test_globus.sh` | Test pilotu Globus (lokálně) |
+| `camera_motion_test_zlin.sh` | Test pilotu Čepkov / Zlín (lokálně) |
+| `globus-gateway/` | Instalátor Windows pro Globus (ID 1) + README checklist |
+| `zlin-gateway/` | Instalátor Windows pro Čepkov / Zlín (ID 3) + README checklist |
 | `camera_motion_gateway.example.json` | Příklad konfigurace |
 
 Tajemství: `secrets/camera_motion_secrets.json` – viz `secrets/README.md`.

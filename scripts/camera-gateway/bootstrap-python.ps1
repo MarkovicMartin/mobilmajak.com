@@ -61,6 +61,28 @@ function Install-EmbeddedPython {
     return $pythonExe
 }
 
+function Test-GatewayPythonExe {
+    param([string]$Exe)
+
+    if (-not $Exe -or -not (Test-Path -LiteralPath $Exe)) { return $null }
+    # Windows Store alias (python.exe / python3.exe) - not a real install
+    if ($Exe -match '\\WindowsApps\\') { return $null }
+
+    try {
+        $prev = $ErrorActionPreference
+        $ErrorActionPreference = 'SilentlyContinue'
+        $v = & $Exe -c "import sys; print(sys.executable)" 2>$null
+        $ErrorActionPreference = $prev
+        if ($LASTEXITCODE -eq 0 -and $v) {
+            $path = $v.Trim()
+            if (Test-Path -LiteralPath $path) { return $path }
+        }
+    } catch {
+        return $null
+    }
+    return $null
+}
+
 function Resolve-GatewayPython {
     param(
         [Parameter(Mandatory = $true)]
@@ -68,15 +90,25 @@ function Resolve-GatewayPython {
     )
 
     if (Get-Command py -ErrorAction SilentlyContinue) {
-        $v = & py -3 -c "import sys; print(sys.executable)" 2>$null
-        if ($LASTEXITCODE -eq 0 -and $v) { return $v.Trim() }
-    }
-    foreach ($name in @("python3", "python")) {
-        if (Get-Command $name -ErrorAction SilentlyContinue) {
-            $v = & $name -c "import sys; print(sys.executable)" 2>$null
-            if ($LASTEXITCODE -eq 0 -and $v) { return $v.Trim() }
-        }
+        try {
+            $prev = $ErrorActionPreference
+            $ErrorActionPreference = 'SilentlyContinue'
+            $v = (& py -3 -c "import sys; print(sys.executable)" 2>$null)
+            $ErrorActionPreference = $prev
+            if ($LASTEXITCODE -eq 0 -and $v) {
+                $path = $v.Trim()
+                if (Test-Path -LiteralPath $path) { return $path }
+            }
+        } catch {}
     }
 
+    foreach ($name in @("python3", "python")) {
+        $cmd = Get-Command $name -ErrorAction SilentlyContinue
+        if (-not $cmd) { continue }
+        $v = Test-GatewayPythonExe -Exe $cmd.Source
+        if ($v) { return $v }
+    }
+
+    Write-Host "System Python not found - downloading portable Python..." -ForegroundColor Yellow
     return Install-EmbeddedPython -TargetDir $InstallDir
 }

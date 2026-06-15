@@ -560,7 +560,7 @@ def test_isapi_device(host: str, user: str, password: str, port: Optional[int] =
 def load_config(path: Optional[str]) -> dict:
     cfg = {}
     if path and os.path.isfile(path):
-        with open(path, encoding='utf-8') as f:
+        with open(path, encoding='utf-8-sig') as f:
             cfg = json.load(f)
     for key in (
         'MOBILMAJAK_API',

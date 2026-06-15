@@ -74,6 +74,10 @@ Ručně v NVR: **Configuration → Network → Advanced → HTTP(S) alarm** (neb
 
 **Windows instalátor (Senimo):** složka `scripts/senimo-gateway/` – zkopírovat na USB, `config.json` z `camera_motion_senimo.json`, spustit `install-senimo-camera-gateway.ps1` jako správce.
 
+**Windows instalátor (Globus, ID 1):** šablona `secrets/camera_motion_globus.example.json` → `camera_motion_globus.json`; složky `scripts/camera-gateway/` + `scripts/globus-gateway/` na USB, `install-globus-camera-gateway.cmd` jako správce. Checklist: `scripts/globus-gateway/README.md`.
+
+**Windows instalátor (Čepkov / Zlín, ID 3):** `scripts/zlin-gateway/config.example.json` → `secrets/camera_motion_zlin.json`; složky `scripts/camera-gateway/` + `scripts/zlin-gateway/` na USB, `install-zlin-camera-gateway.cmd` jako správce. Checklist: `scripts/zlin-gateway/README.md`.
+
 **Kompletní záloha serveru + actoři (lokálně, mimo git projektu):**
 
 ```bash

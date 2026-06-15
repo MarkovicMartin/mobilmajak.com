@@ -72,7 +72,28 @@ update-installed-gateway.cmd
 
 ## Senimo
 
-Složka `scripts/senimo-gateway/` – stejná logika, pevné ID 2. Pro nové prodejny preferujte `camera-gateway/`.
+Složka `scripts/senimo-gateway/` – stejná logika, pevné ID 2.
+
+## Globus
+
+- `prodejna_id`: **1**
+- Šablona: `secrets/camera_motion_globus.example.json`
+- USB: `scripts/camera-gateway/` + `scripts/globus-gateway/` (s `config.json`)
+- Instalace: `install-globus-camera-gateway.cmd`
+- VPS secrets: přidat `"1": "<hex>"` do `camera_motion_secrets.json`
+
+Podrobný checklist: `scripts/globus-gateway/README.md`
+
+## Čepkov (Zlín)
+
+- `prodejna_id`: **3**
+- NVR: `10.0.0.250`, kamera: `10.0.0.246`
+- Lokální config: `secrets/camera_motion_zlin.json`
+- USB: `scripts/camera-gateway/` + `scripts/zlin-gateway/` (s `config.json`)
+- Instalace: `install-zlin-camera-gateway.cmd`
+- VPS secrets: přidat `"3": "<hex>"` do `camera_motion_secrets.json`
+
+Podrobný checklist: `scripts/zlin-gateway/README.md`
 
 ## Přepnutí ze staging na produkci (už nainstalované PC)
 
