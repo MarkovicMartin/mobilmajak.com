@@ -1,0 +1,11 @@
+{
+  "mobilmajak_api": "https://mobilmajak.com",
+  "prodejna_id": 6,
+  "prodejna_nazev": "Sternberk",
+  "motion_secret": "b2ef431e89f530df211783c85a3720ab131f72a98d360f25939048bc426a5b19",
+  "autodiscover_nvr": true,
+  "nvr_host": "10.0.1.112",
+  "nvr_user": "admin",
+  "nvr_pass": "MajakCam2021",
+  "camera_host": "192.168.254.6"
+}

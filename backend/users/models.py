@@ -70,6 +70,7 @@ class WebUser(models.Model):
 
     # Časové údaje
     datum_vytvoreni = models.DateTimeField(auto_now_add=True, verbose_name="Datum vytvoření")
+    datum_upravy = models.DateTimeField(auto_now=True, verbose_name="Datum úpravy")
     last_login = models.DateTimeField(null=True, blank=True, verbose_name="Poslední přihlášení")
     
     class Meta:

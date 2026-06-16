@@ -269,10 +269,15 @@ def build_vacation_overview_user(user, rok=None, referencni_datum=None):
     if referencni_datum is None:
         referencni_datum = date.today()
 
-    from .payroll_service import prumer_fixni_hodinove_body
+    from .payroll_service import prumer_fixni_hodinove_body, prumer_fixni_hodinove_detail
+    from .prumer_mzdy_override import prumer_override_for_user
 
     ref_mesic = _reference_month_for_prumer(rok, referencni_datum)
-    prumer_h = prumer_fixni_hodinove_body(user, rok, ref_mesic)
+    override_mesice = prumer_override_for_user(user)
+    prumer_detail = prumer_fixni_hodinove_detail(
+        user, rok, ref_mesic, override_mesice=override_mesice,
+    )
+    prumer_h = prumer_fixni_hodinove_body(user, rok, ref_mesic, override_mesice=override_mesice)
     stav = dovolena_stav(user, rok)
     mesice = [
         mesicni_cerpani_dovolene(user.id, rok, m, referencni_datum=referencni_datum)
@@ -287,6 +292,7 @@ def build_vacation_overview_user(user, rok=None, referencni_datum=None):
         'prumer_fixni_h': float(prumer_h),
         'dovolena_sazba_h': float(prumer_h),
         'prumer_mesice': f'{rok}-{ref_mesic:02d}',
+        'prumer_detail': prumer_detail,
         'mesice': mesice,
         'cerpano_rok_z_mesicu_h': cerpano_rok_z_mesicu,
         **stav,

@@ -18,17 +18,27 @@ globs:
 
 ## config.json na PC prodejny
 
+Vždy obsahuje `prodejna_id` **a** `prodejna_nazev` (bez `prodejna_nazev` instalace na Windows spadne).
+
 ```json
 {
   "mobilmajak_api": "https://mobilmajak.com",
   "prodejna_id": <ID z admin Prodejny>,
+  "prodejna_nazev": "NazevBezDiakritiky",
   "motion_secret": "<hex z VPS camera_motion_secrets.json>",
   "autodiscover_nvr": true,
-  "nvr_host": "",
+  "nvr_host": "<IP NVR>",
   "nvr_user": "admin",
   "nvr_pass": "<na místě>"
 }
 ```
+
+## Nová prodejna (jeden postup)
+
+1. Přidat blok do `scripts/camera-gateway/prodejny.json`
+2. `./scripts/prepare-camera-gateway.sh <slug> [/Volumes/USB]`
+3. Secret na VPS + restart `webmajak`
+4. Na PC: `install-*-camera-gateway.cmd` (správce)
 
 ## VPS (produkce)
 

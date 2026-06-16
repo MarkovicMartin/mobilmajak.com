@@ -7,7 +7,7 @@ const MONTH_NAMES = [
     'Červenec', 'Srpen', 'Září', 'Říjen', 'Listopad', 'Prosinec',
 ];
 
-const CACHE_PREFIX = 'vacation-overview-v2';
+const CACHE_PREFIX = 'vacation-overview-v3';
 const CURRENT_MONTH_STALE_MS = 5 * 60 * 1000;
 const memoryCache = new Map();
 
@@ -227,6 +227,39 @@ function VacationPanel({ user }) {
                             {' '}<strong>{formatPoints(row.prumer_fixni_h)} bodů/h</strong>
                             {' '}→ výplata dovolené {formatPoints(row.dovolena_sazba_h)} bodů/h
                         </p>
+
+                        {row.prumer_detail?.mesice?.length > 0 && (
+                            <div className="vacation-table-wrap">
+                                <table className="vacation-table vacation-table--prumer">
+                                    <thead>
+                                        <tr>
+                                            <th>Měsíc (průměr)</th>
+                                            <th>Odpracováno</th>
+                                            <th>Fixní výplata</th>
+                                            <th>Sazba</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {row.prumer_detail.mesice.map((pm) => (
+                                            <tr key={`${pm.rok}-${pm.mesic}`}>
+                                                <td>{MONTH_NAMES[pm.mesic - 1]} {pm.rok}</td>
+                                                <td>{formatNumber(pm.odpracovano_h)} h</td>
+                                                <td>{formatPoints(pm.fixni_body)}</td>
+                                                <td>{formatPoints(pm.sazba_h)}/h</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                    <tfoot>
+                                        <tr>
+                                            <td>Celkem / průměr</td>
+                                            <td>{formatNumber(row.prumer_detail.celkem_h)} h</td>
+                                            <td>{formatPoints(row.prumer_detail.celkem_fixni)}</td>
+                                            <td><strong>{formatPoints(row.prumer_detail.prumer_fixni_h)}/h</strong></td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        )}
 
                         <div className="vacation-table-wrap">
                             <table className="vacation-table">

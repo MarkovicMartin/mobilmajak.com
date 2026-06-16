@@ -78,6 +78,8 @@ Ručně v NVR: **Configuration → Network → Advanced → HTTP(S) alarm** (neb
 
 **Windows instalátor (Čepkov / Zlín, ID 3):** `scripts/zlin-gateway/config.example.json` → `secrets/camera_motion_zlin.json`; složky `scripts/camera-gateway/` + `scripts/zlin-gateway/` na USB, `install-zlin-camera-gateway.cmd` jako správce. Checklist: `scripts/zlin-gateway/README.md`.
 
+**Windows instalátor (Šternberk, ID 6):** `scripts/sternberk-gateway/config.example.json` → `secrets/camera_motion_sternberk.json`; složky `scripts/camera-gateway/` + `scripts/sternberk-gateway/` na USB, `install-sternberk-camera-gateway.cmd` jako správce. Checklist: `scripts/sternberk-gateway/README.md`.
+
 **Kompletní záloha serveru + actoři (lokálně, mimo git projektu):**
 
 ```bash

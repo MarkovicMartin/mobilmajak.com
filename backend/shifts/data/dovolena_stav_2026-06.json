@@ -1,0 +1,18 @@
+{
+  "rok": 2026,
+  "poznamka": "Skutečný stav dovolené – červen 2026 (sloupec Má mít / Opravdu čerpal / Zbývá)",
+  "uzivatele": {
+    "Králik": { "fond_h": 200, "cerpano_h": 80, "zbyva_h": 120 },
+    "Kováčik": { "fond_h": 200, "cerpano_h": 0, "zbyva_h": 200 },
+    "Valenta": { "fond_h": 160, "cerpano_h": 48, "zbyva_h": 112 },
+    "Gabriel": { "fond_h": 170, "cerpano_h": 96, "zbyva_h": 74 },
+    "Babušík": { "fond_h": 160, "cerpano_h": 0, "zbyva_h": 160 },
+    "Kolarčík": { "fond_h": 200, "cerpano_h": 8, "zbyva_h": 192 },
+    "Vychodil": { "fond_h": 200, "cerpano_h": 24, "zbyva_h": 176 },
+    "Markovič": { "fond_h": 160, "cerpano_h": 40, "zbyva_h": 120 },
+    "Krumpolc": { "fond_h": 200, "cerpano_h": 32, "zbyva_h": 168 },
+    "Létal": { "fond_h": 80, "cerpano_h": 40, "zbyva_h": 40 },
+    "Karas": { "fond_h": 160, "cerpano_h": 32, "zbyva_h": 128 },
+    "Hekele": { "fond_h": 160, "cerpano_h": 63, "zbyva_h": 97 }
+  }
+}

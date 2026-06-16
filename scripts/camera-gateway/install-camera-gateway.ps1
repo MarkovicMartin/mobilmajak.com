@@ -40,8 +40,8 @@ if (Test-Path $sourceConfig) {
 } elseif (-not (Test-Path $configPath)) {
     Copy-Item (Join-Path $InstallDir "config.example.json") $configPath
     $cfg = Get-Content $configPath -Raw | ConvertFrom-Json
-    $cfg.prodejna_id = $ProdejnaId
-    $cfg.prodejna_nazev = $ProdejnaNazev
+    $cfg | Add-Member -NotePropertyName prodejna_id -NotePropertyValue $ProdejnaId -Force
+    $cfg | Add-Member -NotePropertyName prodejna_nazev -NotePropertyValue $ProdejnaNazev -Force
     $cfg | ConvertTo-Json -Depth 5 | Set-Content $configPath -Encoding ASCII
     Write-Host ""
     Write-Host "Edit $configPath :" -ForegroundColor Yellow
@@ -50,9 +50,11 @@ if (Test-Path $sourceConfig) {
 }
 
 $cfg = Get-Content $configPath -Raw | ConvertFrom-Json
-$cfg.prodejna_id = $ProdejnaId
-$cfg.prodejna_nazev = $ProdejnaNazev
-if (-not $cfg.autodiscover_nvr) { $cfg | Add-Member -NotePropertyName autodiscover_nvr -NotePropertyValue $true -Force }
+$cfg | Add-Member -NotePropertyName prodejna_id -NotePropertyValue $ProdejnaId -Force
+$cfg | Add-Member -NotePropertyName prodejna_nazev -NotePropertyValue $ProdejnaNazev -Force
+if (-not $cfg.PSObject.Properties.Match('autodiscover_nvr')) {
+    $cfg | Add-Member -NotePropertyName autodiscover_nvr -NotePropertyValue $true -Force
+}
 $cfg | ConvertTo-Json -Depth 5 | Set-Content $configPath -Encoding ASCII
 
 foreach ($key in @("motion_secret", "nvr_pass")) {

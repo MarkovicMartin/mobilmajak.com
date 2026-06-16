@@ -1,7 +1,7 @@
 import json
 import requests
 from datetime import datetime, date, timedelta
-from django.utils.dateparse import parse_date
+from django.utils.dateparse import parse_date, parse_datetime
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
@@ -6624,10 +6624,16 @@ def _get_cached_prev_month_points(prev_ym, today=None):
         except (ProgrammingError, OperationalError):
             use_cache = False
 
+    cache_computed_at = cache.computed_at if cache else None
+    if isinstance(cache_computed_at, str):
+        cache_computed_at = parse_datetime(cache_computed_at)
+    if cache_computed_at and timezone.is_naive(cache_computed_at):
+        cache_computed_at = timezone.make_aware(cache_computed_at, timezone.get_current_timezone())
+
     already_today = (
         cache
-        and cache.computed_at
-        and timezone.localtime(cache.computed_at).date() == today
+        and cache_computed_at
+        and timezone.localtime(cache_computed_at).date() == today
     )
     need_refresh = not use_cache or cache is None or (today.day == 1 and not already_today)
 

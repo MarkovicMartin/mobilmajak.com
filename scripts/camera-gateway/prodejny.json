@@ -1,0 +1,34 @@
+{
+  "globus": {
+    "prodejna_id": 1,
+    "prodejna_nazev": "Globus",
+    "nvr_host": "10.0.0.250",
+    "camera_host": "192.168.254.3",
+    "install_cmd": "install-globus-camera-gateway.cmd",
+    "gateway_dir": "globus-gateway"
+  },
+  "senimo": {
+    "prodejna_id": 2,
+    "prodejna_nazev": "Senimo",
+    "nvr_host": "192.168.1.104",
+    "camera_host": "",
+    "install_cmd": "install-senimo-camera-gateway.cmd",
+    "gateway_dir": "senimo-gateway"
+  },
+  "zlin": {
+    "prodejna_id": 3,
+    "prodejna_nazev": "Zlin",
+    "nvr_host": "10.0.0.250",
+    "camera_host": "10.0.0.246",
+    "install_cmd": "install-zlin-camera-gateway.cmd",
+    "gateway_dir": "zlin-gateway"
+  },
+  "sternberk": {
+    "prodejna_id": 6,
+    "prodejna_nazev": "Sternberk",
+    "nvr_host": "10.0.1.112",
+    "camera_host": "192.168.254.6",
+    "install_cmd": "install-sternberk-camera-gateway.cmd",
+    "gateway_dir": "sternberk-gateway"
+  }
+}

@@ -87,26 +87,34 @@ def _deficit_h_from_hours(uid, rok, mesic_cislo, hours_map, fondu_h):
     return round(max(0.0, fondu_h - odpracovano - dovolena), 2)
 
 
-def prumer_fixni_hodinove_body(user, rok, mesic_cislo, hours_cache=None):
+def prumer_fixni_hodinove_body(user, rok, mesic_cislo, hours_cache=None, override_mesice=None):
     """
     Průměr fixní části (základ + doplňky) / odpracované hodiny za 3 předchozí měsíce.
     hours_cache: volitelně {(rok, mesic): hours_map} – vyhne se N× dotazům na směny.
+    override_mesice: volitelně [{'rok', 'mesic', 'odpracovano_h', 'fixni_body'}, ...] – ruční data.
     """
     if is_brigadnik(user) or not is_dovolena_eligible(user):
         return Decimal('0')
 
     total_fixni = Decimal('0')
     total_h = Decimal('0')
-    for i in range(1, 4):
-        y, m = _subtract_months(rok, mesic_cislo, i)
-        if hours_cache is not None:
-            hm = hours_cache.get((y, m), {})
-            h = Decimal(str(hm.get(user.id, {}).get('odpracovano_h', 0)))
-        else:
-            h = _odpracovano_h_mesic(user.id, y, m)
-        fixni = mzda_fixni_bez_cestovneho(user, float(h))
-        total_fixni += fixni
-        total_h += h
+    if override_mesice:
+        for row in override_mesice:
+            h = Decimal(str(row.get('odpracovano_h', 0)))
+            fixni = Decimal(str(row.get('fixni_body', 0)))
+            total_fixni += fixni
+            total_h += h
+    else:
+        for i in range(1, 4):
+            y, m = _subtract_months(rok, mesic_cislo, i)
+            if hours_cache is not None:
+                hm = hours_cache.get((y, m), {})
+                h = Decimal(str(hm.get(user.id, {}).get('odpracovano_h', 0)))
+            else:
+                h = _odpracovano_h_mesic(user.id, y, m)
+            fixni = mzda_fixni_bez_cestovneho(user, float(h))
+            total_fixni += fixni
+            total_h += h
 
     if total_h > 0:
         return _body_whole(total_fixni / total_h)
@@ -116,6 +124,56 @@ def prumer_fixni_hodinove_body(user, rok, mesic_cislo, hours_cache=None):
     if fond > 0 and zaklad > 0:
         return _body_whole(zaklad / fond)
     return Decimal('0')
+
+
+def prumer_fixni_hodinove_detail(user, rok, mesic_cislo, hours_cache=None, override_mesice=None):
+    """Rozpad průměru za 3 předchozí měsíce – hodiny, fixní body, sazba/h."""
+    if is_brigadnik(user) or not is_dovolena_eligible(user):
+        return {'mesice': [], 'celkem_h': 0.0, 'celkem_fixni': 0.0, 'prumer_fixni_h': 0.0}
+
+    mesice = []
+    total_fixni = Decimal('0')
+    total_h = Decimal('0')
+
+    if override_mesice:
+        rows = [(int(r['rok']), int(r['mesic']), r) for r in override_mesice]
+    else:
+        rows = []
+        for i in range(1, 4):
+            y, m = _subtract_months(rok, mesic_cislo, i)
+            rows.append((y, m, None))
+
+    for y, m, override_row in rows:
+        if override_row is not None:
+            h = Decimal(str(override_row.get('odpracovano_h', 0)))
+            fixni = Decimal(str(override_row.get('fixni_body', 0)))
+        else:
+            if hours_cache is not None:
+                hm = hours_cache.get((y, m), {})
+                h = Decimal(str(hm.get(user.id, {}).get('odpracovano_h', 0)))
+            else:
+                h = _odpracovano_h_mesic(user.id, y, m)
+            fixni = mzda_fixni_bez_cestovneho(user, float(h))
+        sazba = _body_whole(fixni / h) if h > 0 else Decimal('0')
+        total_fixni += fixni
+        total_h += h
+        mesice.append({
+            'rok': y,
+            'mesic': m,
+            'odpracovano_h': float(h),
+            'fixni_body': float(fixni),
+            'sazba_h': float(sazba),
+        })
+
+    prumer = prumer_fixni_hodinove_body(
+        user, rok, mesic_cislo, hours_cache=hours_cache, override_mesice=override_mesice,
+    )
+    return {
+        'mesice': mesice,
+        'celkem_h': float(total_h),
+        'celkem_fixni': float(total_fixni),
+        'prumer_fixni_h': float(prumer),
+    }
 
 
 def prescas_body_vypocet(user, prescas_h, fondu_h):
