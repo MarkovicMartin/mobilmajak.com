@@ -1,4 +1,5 @@
 from django.db import models
+from users.fields import SafeDateTimeField
 from users.models import WebUser
 
 class Smena(models.Model):
@@ -50,8 +51,8 @@ class Smena(models.Model):
     )
     poznamka = models.TextField(blank=True, null=True)
     aktivni = models.BooleanField(default=True)
-    vytvoreno = models.DateTimeField(auto_now_add=True)
-    upraveno = models.DateTimeField(auto_now=True)
+    vytvoreno = SafeDateTimeField(auto_now_add=True)
+    upraveno = SafeDateTimeField(auto_now=True)
     
     class Meta:
         db_table = 'WEB_SMENY'
@@ -104,9 +105,9 @@ class SmenaDochazka(models.Model):
     
     smena = models.ForeignKey(Smena, on_delete=models.CASCADE, related_name='dochazka')
     typ_akce = models.CharField(max_length=20, choices=TYP_AKCE)
-    cas = models.DateTimeField()
+    cas = SafeDateTimeField()
     poznamka = models.TextField(blank=True, null=True)
-    vytvoreno = models.DateTimeField(auto_now_add=True)
+    vytvoreno = SafeDateTimeField(auto_now_add=True)
     
     class Meta:
         db_table = 'WEB_SMENY_DOCHAZKA'
@@ -128,7 +129,7 @@ class SmenaStatistiky(models.Model):
     pocet_hodin_dovolene = models.DecimalField(max_digits=6, decimal_places=2, default=0)
     pocet_hodin_pauz = models.DecimalField(max_digits=6, decimal_places=2, default=0)
     pocet_presasu = models.DecimalField(max_digits=6, decimal_places=2, default=0)
-    posledni_aktualizace = models.DateTimeField(auto_now=True)
+    posledni_aktualizace = SafeDateTimeField(auto_now=True)
     
     class Meta:
         db_table = 'WEB_SMENY_STATISTIKY'
@@ -148,8 +149,8 @@ class MzdovaOdmenaMesic(models.Model):
     mesic = models.DateField(verbose_name="Měsíc (první den)")
     castka = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name="Odměna (body)")
     poznamka = models.TextField(blank=True, null=True)
-    vytvoreno = models.DateTimeField(auto_now_add=True)
-    upraveno = models.DateTimeField(auto_now=True)
+    vytvoreno = SafeDateTimeField(auto_now_add=True)
+    upraveno = SafeDateTimeField(auto_now=True)
 
     class Meta:
         db_table = 'WEB_MZDOVAODMENA_MESIC'
@@ -168,7 +169,7 @@ class MzdovaPenalizaceMesic(models.Model):
     user = models.ForeignKey(WebUser, on_delete=models.CASCADE, related_name='mzda_penalizace_mesic')
     mesic = models.DateField(verbose_name="Měsíc (první den)")
     duvod = models.TextField(verbose_name="Důvod srážky")
-    vytvoreno = models.DateTimeField(auto_now_add=True)
+    vytvoreno = SafeDateTimeField(auto_now_add=True)
 
     class Meta:
         db_table = 'WEB_MZDOVA_PENALIZACE_MESIC'
@@ -189,9 +190,9 @@ class ProdejnaPohybUdalost(models.Model):
         related_name='pohyb_udalosti',
     )
     pohyb = models.BooleanField(verbose_name='Detekován pohyb')
-    cas = models.DateTimeField(db_index=True)
+    cas = SafeDateTimeField(db_index=True)
     zdroj = models.CharField(max_length=32, default='gateway')
-    vytvoreno = models.DateTimeField(auto_now_add=True)
+    vytvoreno = SafeDateTimeField(auto_now_add=True)
 
     class Meta:
         db_table = 'WEB_PRODEJNA_POHYB_UDALOST'

@@ -30,7 +30,12 @@ def _load_technik_maps():
     id_to_name = {}
     name_to_variants = defaultdict(set)
 
-    users = WebUser.objects.exclude(technik_id__isnull=True).exclude(technik_id=0)
+    users = (
+        WebUser.objects
+        .only('id', 'jmeno', 'prijmeni', 'technik_id')
+        .exclude(technik_id__isnull=True)
+        .exclude(technik_id=0)
+    )
     for u in users:
         name = f'{u.jmeno} {u.prijmeni}'.strip()
         if not name:

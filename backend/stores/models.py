@@ -1,5 +1,7 @@
 from django.db import models
 
+from users.fields import SafeDateTimeField
+
 # Create your models here.
 
 class Prodejna(models.Model):
@@ -47,8 +49,8 @@ class Prodejna(models.Model):
     poznamka = models.TextField(blank=True, null=True, verbose_name="Poznámka")
     
     # Časové údaje
-    datum_vytvoreni = models.DateTimeField(auto_now_add=True, verbose_name="Datum vytvoření")
-    datum_upravy = models.DateTimeField(auto_now=True, verbose_name="Datum úpravy")
+    datum_vytvoreni = SafeDateTimeField(auto_now_add=True, verbose_name="Datum vytvoření")
+    datum_upravy = SafeDateTimeField(auto_now=True, verbose_name="Datum úpravy")
     
     class Meta:
         db_table = 'WEB_PRODEJNY'

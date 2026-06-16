@@ -1,580 +1,375 @@
 {
   "uzivatele": {
-    "ambrož": {
+    "valenta": {
       "mesice": [
         {
-          "rok": 2025,
+          "rok": 2026,
           "mesic": 3,
-          "odpracovano_h": 4.5,
-          "fixni_body": 675.0
-        }
-      ]
-    },
-    "babušík": {
-      "mesice": [
-        {
-          "rok": 2025,
-          "mesic": 3,
-          "odpracovano_h": 183.0,
-          "fixni_body": 25368.571429
+          "odpracovano_h": 180.0
         },
         {
-          "rok": 2025,
+          "rok": 2026,
           "mesic": 4,
-          "odpracovano_h": 168.0,
-          "fixni_body": 27208.1
+          "odpracovano_h": 168.0
         },
         {
-          "rok": 2025,
+          "rok": 2026,
           "mesic": 5,
-          "odpracovano_h": 171.0,
-          "fixni_body": 28196.8
-        }
-      ]
-    },
-    "doležel": {
-      "mesice": [
-        {
-          "rok": 2025,
-          "mesic": 3,
-          "odpracovano_h": 132.0,
-          "fixni_body": 20671.068571
-        },
-        {
-          "rok": 2025,
-          "mesic": 4,
-          "odpracovano_h": 218.0,
-          "fixni_body": 29405.0
-        },
-        {
-          "rok": 2025,
-          "mesic": 5,
-          "odpracovano_h": 190.0,
-          "fixni_body": 27715.0
-        }
-      ]
-    },
-    "gabriel": {
-      "mesice": [
-        {
-          "rok": 2025,
-          "mesic": 3,
-          "odpracovano_h": 141.0,
-          "fixni_body": 27849.52
-        },
-        {
-          "rok": 2025,
-          "mesic": 4,
-          "odpracovano_h": 245.0,
-          "fixni_body": 41493.5
-        },
-        {
-          "rok": 2025,
-          "mesic": 5,
-          "odpracovano_h": 156.0,
-          "fixni_body": 27462.72
-        }
-      ]
-    },
-    "hekele": {
-      "mesice": [
-        {
-          "rok": 2025,
-          "mesic": 3,
-          "odpracovano_h": 165.0,
-          "fixni_body": 25470.0
-        },
-        {
-          "rok": 2025,
-          "mesic": 4,
-          "odpracovano_h": 135.0,
-          "fixni_body": 25462.559999999998
-        },
-        {
-          "rok": 2025,
-          "mesic": 5,
-          "odpracovano_h": 103.0,
-          "fixni_body": 28924.5
-        }
-      ]
-    },
-    "hugo": {
-      "mesice": [
-        {
-          "rok": 2025,
-          "mesic": 3,
-          "odpracovano_h": 183.0,
-          "fixni_body": 33525.714286
-        },
-        {
-          "rok": 2025,
-          "mesic": 4,
-          "odpracovano_h": 203.0,
-          "fixni_body": 35021.25
-        },
-        {
-          "rok": 2025,
-          "mesic": 5,
-          "odpracovano_h": 120.0,
-          "fixni_body": 27114.0
-        }
-      ]
-    },
-    "karas": {
-      "mesice": [
-        {
-          "rok": 2025,
-          "mesic": 3,
-          "odpracovano_h": 180.0,
-          "fixni_body": 22790.636363636364
-        },
-        {
-          "rok": 2025,
-          "mesic": 4,
-          "odpracovano_h": 134.0,
-          "fixni_body": 21893.8
-        },
-        {
-          "rok": 2025,
-          "mesic": 5,
-          "odpracovano_h": 216.0,
-          "fixni_body": 28016.842105263157
-        }
-      ]
-    },
-    "kolarčík": {
-      "mesice": [
-        {
-          "rok": 2025,
-          "mesic": 3,
-          "odpracovano_h": 180.0,
-          "fixni_body": 24169.857143
-        },
-        {
-          "rok": 2025,
-          "mesic": 4,
-          "odpracovano_h": 204.0,
-          "fixni_body": 29437.0
-        },
-        {
-          "rok": 2025,
-          "mesic": 5,
-          "odpracovano_h": 180.0,
-          "fixni_body": 25131.0
-        }
-      ]
-    },
-    "koldová": {
-      "mesice": [
-        {
-          "rok": 2025,
-          "mesic": 3,
-          "odpracovano_h": 160.0,
-          "fixni_body": 27557.714286
-        },
-        {
-          "rok": 2025,
-          "mesic": 4,
-          "odpracovano_h": 152.0,
-          "fixni_body": 27509.8
-        },
-        {
-          "rok": 2025,
-          "mesic": 5,
-          "odpracovano_h": 152.0,
-          "fixni_body": 27509.8
-        }
-      ]
-    },
-    "kosev": {
-      "mesice": [
-        {
-          "rok": 2025,
-          "mesic": 3,
-          "odpracovano_h": 6.0,
-          "fixni_body": 960.0
-        },
-        {
-          "rok": 2025,
-          "mesic": 5,
-          "odpracovano_h": 18.0,
-          "fixni_body": 2880.0
-        }
-      ]
-    },
-    "kováčik": {
-      "mesice": [
-        {
-          "rok": 2025,
-          "mesic": 3,
-          "odpracovano_h": 201.0,
-          "fixni_body": 38116.714286
-        },
-        {
-          "rok": 2025,
-          "mesic": 4,
-          "odpracovano_h": 178.0,
-          "fixni_body": 37169.0
-        },
-        {
-          "rok": 2025,
-          "mesic": 5,
-          "odpracovano_h": 200.0,
-          "fixni_body": 39585.0
-        }
-      ]
-    },
-    "krumpolc": {
-      "mesice": [
-        {
-          "rok": 2025,
-          "mesic": 3,
-          "odpracovano_h": 176.0,
-          "fixni_body": 20461.0
-        },
-        {
-          "rok": 2025,
-          "mesic": 4,
-          "odpracovano_h": 199.0,
-          "fixni_body": 30600.96
-        },
-        {
-          "rok": 2025,
-          "mesic": 5,
-          "odpracovano_h": 183.0,
-          "fixni_body": 22936.0
-        }
-      ]
-    },
-    "králik": {
-      "mesice": [
-        {
-          "rok": 2025,
-          "mesic": 3,
-          "odpracovano_h": 180.0,
-          "fixni_body": 22092.857143
-        },
-        {
-          "rok": 2025,
-          "mesic": 4,
-          "odpracovano_h": 156.0,
-          "fixni_body": 21145.0
-        },
-        {
-          "rok": 2025,
-          "mesic": 5,
-          "odpracovano_h": 192.0,
-          "fixni_body": 24081.0
-        }
-      ]
-    },
-    "kundera": {
-      "mesice": [
-        {
-          "rok": 2025,
-          "mesic": 3,
-          "odpracovano_h": 143.0,
-          "fixni_body": 22279.047619
-        },
-        {
-          "rok": 2025,
-          "mesic": 4,
-          "odpracovano_h": 162.0,
-          "fixni_body": 20719.3
-        },
-        {
-          "rok": 2025,
-          "mesic": 5,
-          "odpracovano_h": 186.0,
-          "fixni_body": 22644.0
-        }
-      ]
-    },
-    "křížková f": {
-      "mesice": [
-        {
-          "rok": 2025,
-          "mesic": 3,
-          "odpracovano_h": 25.0,
-          "fixni_body": 3750.0
-        },
-        {
-          "rok": 2025,
-          "mesic": 4,
-          "odpracovano_h": 22.0,
-          "fixni_body": 3300.0
-        },
-        {
-          "rok": 2025,
-          "mesic": 5,
-          "odpracovano_h": 29.0,
-          "fixni_body": 4350.0
+          "odpracovano_h": 180.0
         }
       ]
     },
     "létal": {
       "mesice": [
         {
-          "rok": 2025,
+          "rok": 2026,
           "mesic": 3,
-          "odpracovano_h": 210.0,
-          "fixni_body": 27110.272727272728
+          "odpracovano_h": 210.0
         },
         {
-          "rok": 2025,
+          "rok": 2026,
           "mesic": 4,
-          "odpracovano_h": 184.0,
-          "fixni_body": 29896.0
+          "odpracovano_h": 184.0
         },
         {
-          "rok": 2025,
+          "rok": 2026,
           "mesic": 5,
-          "odpracovano_h": 144.0,
-          "fixni_body": 25667.894736842107
+          "odpracovano_h": 144.0
         }
       ]
     },
-    "mahďák": {
+    "gabriel": {
       "mesice": [
         {
-          "rok": 2025,
+          "rok": 2026,
           "mesic": 3,
-          "odpracovano_h": 8.0,
-          "fixni_body": 1200.0
+          "odpracovano_h": 178.0
         },
         {
-          "rok": 2025,
+          "rok": 2026,
           "mesic": 4,
-          "odpracovano_h": 11.0,
-          "fixni_body": 1650.0
-        }
-      ]
-    },
-    "málek": {
-      "mesice": [
-        {
-          "rok": 2025,
-          "mesic": 3,
-          "odpracovano_h": 108.0,
-          "fixni_body": 13483.0
+          "odpracovano_h": 176.0
         },
         {
-          "rok": 2025,
-          "mesic": 4,
-          "odpracovano_h": 81.0,
-          "fixni_body": 9204.0
-        },
-        {
-          "rok": 2025,
+          "rok": 2026,
           "mesic": 5,
-          "odpracovano_h": 157.0,
-          "fixni_body": 20015.0
-        }
-      ]
-    },
-    "olah": {
-      "mesice": [
-        {
-          "rok": 2025,
-          "mesic": 3,
-          "odpracovano_h": 38.0,
-          "fixni_body": 0.0
-        }
-      ]
-    },
-    "pich": {
-      "mesice": [
-        {
-          "rok": 2025,
-          "mesic": 3,
-          "odpracovano_h": 2.5,
-          "fixni_body": 375.0
-        },
-        {
-          "rok": 2025,
-          "mesic": 4,
-          "odpracovano_h": 7.0,
-          "fixni_body": 1050.0
-        },
-        {
-          "rok": 2025,
-          "mesic": 5,
-          "odpracovano_h": 13.0,
-          "fixni_body": 1950.0
-        }
-      ]
-    },
-    "pohořelský": {
-      "mesice": [
-        {
-          "rok": 2025,
-          "mesic": 3,
-          "odpracovano_h": 77.0,
-          "fixni_body": 11550.0
-        },
-        {
-          "rok": 2025,
-          "mesic": 4,
-          "odpracovano_h": 72.0,
-          "fixni_body": 10800.0
-        },
-        {
-          "rok": 2025,
-          "mesic": 5,
-          "odpracovano_h": 192.0,
-          "fixni_body": 25075.0
-        }
-      ]
-    },
-    "ponížil": {
-      "mesice": [
-        {
-          "rok": 2025,
-          "mesic": 3,
-          "odpracovano_h": 22.0,
-          "fixni_body": 2805.0
-        },
-        {
-          "rok": 2025,
-          "mesic": 4,
-          "odpracovano_h": 8.0,
-          "fixni_body": 1020.0
+          "odpracovano_h": 167.0
         }
       ]
     },
     "tesař": {
       "mesice": [
         {
-          "rok": 2025,
-          "mesic": 4,
-          "odpracovano_h": 4.0,
-          "fixni_body": 600.0
-        },
-        {
-          "rok": 2025,
+          "rok": 2026,
           "mesic": 5,
-          "odpracovano_h": 48.0,
-          "fixni_body": 7200.0
+          "odpracovano_h": 48.0
         }
       ]
     },
-    "valenta": {
+    "ponížil": {
       "mesice": [
         {
-          "rok": 2025,
+          "rok": 2026,
           "mesic": 3,
-          "odpracovano_h": 230.0,
-          "fixni_body": 28167.714286
+          "odpracovano_h": 22.0
+        }
+      ]
+    },
+    "ambrož": {
+      "mesice": [
+        {
+          "rok": 2026,
+          "mesic": 3,
+          "odpracovano_h": 4.5
+        }
+      ]
+    },
+    "pich": {
+      "mesice": [
+        {
+          "rok": 2026,
+          "mesic": 3,
+          "odpracovano_h": 2.5
         },
         {
-          "rok": 2025,
+          "rok": 2026,
           "mesic": 4,
-          "odpracovano_h": 135.0,
-          "fixni_body": 24685.05
+          "odpracovano_h": 6.0
         },
         {
-          "rok": 2025,
+          "rok": 2026,
           "mesic": 5,
-          "odpracovano_h": 195.0,
-          "fixni_body": 26956.25
+          "odpracovano_h": 13.0
+        }
+      ]
+    },
+    "pohořelský": {
+      "mesice": [
+        {
+          "rok": 2026,
+          "mesic": 3,
+          "odpracovano_h": 77.0
+        },
+        {
+          "rok": 2026,
+          "mesic": 4,
+          "odpracovano_h": 72.0
+        }
+      ]
+    },
+    "křížková f": {
+      "mesice": [
+        {
+          "rok": 2026,
+          "mesic": 3,
+          "odpracovano_h": 25.0
+        },
+        {
+          "rok": 2026,
+          "mesic": 4,
+          "odpracovano_h": 22.0
+        },
+        {
+          "rok": 2026,
+          "mesic": 5,
+          "odpracovano_h": 29.0
+        }
+      ]
+    },
+    "málek": {
+      "mesice": [
+        {
+          "rok": 2026,
+          "mesic": 3,
+          "odpracovano_h": 108.0
+        },
+        {
+          "rok": 2026,
+          "mesic": 4,
+          "odpracovano_h": 81.0
+        },
+        {
+          "rok": 2026,
+          "mesic": 5,
+          "odpracovano_h": 96.0
         }
       ]
     },
     "valčík": {
       "mesice": [
         {
-          "rok": 2025,
+          "rok": 2026,
           "mesic": 3,
-          "odpracovano_h": 160.0,
-          "fixni_body": 28000.454545454544
+          "odpracovano_h": 160.0
         },
         {
-          "rok": 2025,
+          "rok": 2026,
           "mesic": 4,
-          "odpracovano_h": 156.0,
-          "fixni_body": 28097.239999999998
+          "odpracovano_h": 156.0
         },
         {
-          "rok": 2025,
+          "rok": 2026,
           "mesic": 5,
-          "odpracovano_h": 127.0,
-          "fixni_body": 28464.17105263158
+          "odpracovano_h": 127.0
         }
       ]
     },
-    "vychodil": {
+    "králik": {
       "mesice": [
         {
-          "rok": 2025,
+          "rok": 2026,
           "mesic": 3,
-          "odpracovano_h": 196.0,
-          "fixni_body": 33223.6
+          "odpracovano_h": 192.0
         },
         {
-          "rok": 2025,
+          "rok": 2026,
           "mesic": 4,
-          "odpracovano_h": 173.0,
-          "fixni_body": 30705.25
+          "odpracovano_h": 132.0
         },
         {
-          "rok": 2025,
+          "rok": 2026,
           "mesic": 5,
-          "odpracovano_h": 212.0,
-          "fixni_body": 37214.4
+          "odpracovano_h": 152.0
         }
       ]
     },
-    "šebák": {
+    "karas": {
       "mesice": [
         {
-          "rok": 2025,
+          "rok": 2026,
           "mesic": 3,
-          "odpracovano_h": 174.0,
-          "fixni_body": 20494.428571
+          "odpracovano_h": 180.0
         },
         {
-          "rok": 2025,
+          "rok": 2026,
           "mesic": 4,
-          "odpracovano_h": 102.0,
-          "fixni_body": 21464.4
+          "odpracovano_h": 134.0
+        },
+        {
+          "rok": 2026,
+          "mesic": 5,
+          "odpracovano_h": 216.0
         }
       ]
     },
-    "šmolc": {
+    "kováčik": {
       "mesice": [
         {
-          "rok": 2025,
+          "rok": 2026,
           "mesic": 3,
-          "odpracovano_h": 168.0,
-          "fixni_body": 25462.0
+          "odpracovano_h": 197.0
         },
         {
-          "rok": 2025,
+          "rok": 2026,
           "mesic": 4,
-          "odpracovano_h": 120.0,
-          "fixni_body": 27469.0
+          "odpracovano_h": 185.0
+        },
+        {
+          "rok": 2026,
+          "mesic": 5,
+          "odpracovano_h": 168.0
+        }
+      ]
+    },
+    "kosev": {
+      "mesice": [
+        {
+          "rok": 2026,
+          "mesic": 3,
+          "odpracovano_h": 6.0
+        },
+        {
+          "rok": 2026,
+          "mesic": 5,
+          "odpracovano_h": 18.0
+        }
+      ]
+    },
+    "mahďák": {
+      "mesice": [
+        {
+          "rok": 2026,
+          "mesic": 3,
+          "odpracovano_h": 8.0
+        },
+        {
+          "rok": 2026,
+          "mesic": 4,
+          "odpracovano_h": 11.0
+        }
+      ]
+    },
+    "babušík": {
+      "mesice": [
+        {
+          "rok": 2026,
+          "mesic": 3,
+          "odpracovano_h": 36.0
+        },
+        {
+          "rok": 2026,
+          "mesic": 4,
+          "odpracovano_h": 161.0
+        },
+        {
+          "rok": 2026,
+          "mesic": 5,
+          "odpracovano_h": 157.0
+        }
+      ]
+    },
+    "kolarčík": {
+      "mesice": [
+        {
+          "rok": 2026,
+          "mesic": 3,
+          "odpracovano_h": 178.0
+        },
+        {
+          "rok": 2026,
+          "mesic": 4,
+          "odpracovano_h": 152.0
+        },
+        {
+          "rok": 2026,
+          "mesic": 5,
+          "odpracovano_h": 186.0
+        }
+      ]
+    },
+    "krumpolc": {
+      "mesice": [
+        {
+          "rok": 2026,
+          "mesic": 3,
+          "odpracovano_h": 176.0
+        },
+        {
+          "rok": 2026,
+          "mesic": 4,
+          "odpracovano_h": 199.0
+        },
+        {
+          "rok": 2026,
+          "mesic": 5,
+          "odpracovano_h": 189.0
+        }
+      ]
+    },
+    "hekele": {
+      "mesice": [
+        {
+          "rok": 2026,
+          "mesic": 3,
+          "odpracovano_h": 165.0
+        },
+        {
+          "rok": 2026,
+          "mesic": 4,
+          "odpracovano_h": 135.0
+        },
+        {
+          "rok": 2026,
+          "mesic": 5,
+          "odpracovano_h": 103.0
         }
       ]
     },
     "šnyrych": {
       "mesice": [
         {
-          "rok": 2025,
+          "rok": 2026,
           "mesic": 3,
-          "odpracovano_h": 58.0,
-          "fixni_body": 8844.0
+          "odpracovano_h": 58.0
         },
         {
-          "rok": 2025,
+          "rok": 2026,
           "mesic": 4,
-          "odpracovano_h": 90.0,
-          "fixni_body": 13642.0
+          "odpracovano_h": 90.0
         },
         {
-          "rok": 2025,
+          "rok": 2026,
           "mesic": 5,
-          "odpracovano_h": 80.0,
-          "fixni_body": 12000.0
+          "odpracovano_h": 80.0
+        }
+      ]
+    },
+    "vychodil": {
+      "mesice": [
+        {
+          "rok": 2026,
+          "mesic": 3,
+          "odpracovano_h": 178.0
+        },
+        {
+          "rok": 2026,
+          "mesic": 4,
+          "odpracovano_h": 180.0
+        },
+        {
+          "rok": 2026,
+          "mesic": 5,
+          "odpracovano_h": 177.0
         }
       ]
     }

@@ -6348,13 +6348,18 @@ def _leaderboard_dominant_stredisko_map(queryset, seller_ids):
     return result
 
 
+def _leaderboard_webuser_queryset():
+    """Minimal queryset bez datetime sloupců s legacy zero-date hodnotami."""
+    return WebUser.objects.only('id', 'jmeno', 'prijmeni', 'role', 'aktivni', 'prodejna_id', 'technik_id')
+
+
 def _servis_points_map_for_month(month_ym):
     """Body ze servisu (10 % marže) pro všechny prodejce – jeden průchod DB + mapování techniků."""
     from users.exclusions import is_excluded_from_leaderboard
 
     id_to_name, _ = _load_technik_maps()
     name_to_user_id = {}
-    for user in WebUser.objects.exclude(technik_id__isnull=True).exclude(technik_id=0):
+    for user in _leaderboard_webuser_queryset().exclude(technik_id__isnull=True).exclude(technik_id=0):
         if is_excluded_from_leaderboard(user=user):
             continue
         name = f'{user.jmeno} {user.prijmeni}'.strip()
@@ -6391,7 +6396,7 @@ def _servis_points_map_for_day(day):
 
     id_to_name, _ = _load_technik_maps()
     name_to_user_id = {}
-    for user in WebUser.objects.exclude(technik_id__isnull=True).exclude(technik_id=0):
+    for user in _leaderboard_webuser_queryset().exclude(technik_id__isnull=True).exclude(technik_id=0):
         if is_excluded_from_leaderboard(user=user):
             continue
         name = f'{user.jmeno} {user.prijmeni}'.strip()
@@ -6483,7 +6488,7 @@ def _leaderboard_best_from_points_map(points_map, excluded_ids):
     if not candidates:
         return None
     best_id = max(candidates, key=candidates.get)
-    user = WebUser.objects.filter(id=best_id).first()
+    user = _leaderboard_webuser_queryset().filter(id=best_id).first()
     name = f"{user.jmeno} {user.prijmeni}".strip() if user else f"Prodejce {best_id}"
     return {'id': best_id, 'prodejce': name, 'points': candidates[best_id]}
 
@@ -6544,7 +6549,9 @@ def _leaderboard_staff_roster():
     from users.exclusions import is_excluded_from_leaderboard, real_sales_staff_queryset
 
     return [
-        u for u in real_sales_staff_queryset().order_by('jmeno', 'prijmeni')
+        u for u in real_sales_staff_queryset().only(
+            'id', 'jmeno', 'prijmeni', 'role', 'aktivni', 'prodejna_id', 'technik_id',
+        ).order_by('jmeno', 'prijmeni')
         if not is_excluded_from_leaderboard(user=u)
     ]
 
@@ -6581,7 +6588,7 @@ def _leaderboard_servis_only_day_rows(servis_map, seen_ids, excluded_ids, last_s
     if not extra_ids:
         return []
 
-    users = {u.id: u for u in WebUser.objects.filter(id__in=extra_ids)}
+    users = {u.id: u for u in _leaderboard_webuser_queryset().filter(id__in=extra_ids)}
     home_store_map.update(_leaderboard_home_store_map(users))
     rows = []
     for uid in extra_ids:
@@ -6624,17 +6631,16 @@ def _get_cached_prev_month_points(prev_ym, today=None):
         except (ProgrammingError, OperationalError):
             use_cache = False
 
+    cache_computed_date = None
     cache_computed_at = cache.computed_at if cache else None
     if isinstance(cache_computed_at, str):
         cache_computed_at = parse_datetime(cache_computed_at)
-    if cache_computed_at and timezone.is_naive(cache_computed_at):
-        cache_computed_at = timezone.make_aware(cache_computed_at, timezone.get_current_timezone())
+    if isinstance(cache_computed_at, datetime):
+        if timezone.is_aware(cache_computed_at):
+            cache_computed_at = timezone.localtime(cache_computed_at)
+        cache_computed_date = cache_computed_at.date()
 
-    already_today = (
-        cache
-        and cache_computed_at
-        and timezone.localtime(cache_computed_at).date() == today
-    )
+    already_today = bool(cache and cache_computed_date == today)
     need_refresh = not use_cache or cache is None or (today.day == 1 and not already_today)
 
     if use_cache and not need_refresh:
@@ -6681,13 +6687,13 @@ def web_prodeje_leaderboard_points(request):
 
         staff_roster = _leaderboard_staff_roster()
         prodejci_ids = [item['id_prodejce'] for item in current_aggregation]
-        users = {u.id: u for u in WebUser.objects.filter(id__in=prodejci_ids)}
+        users = {u.id: u for u in _leaderboard_webuser_queryset().filter(id__in=prodejci_ids)}
         users_by_technik = {}
         for staff_user in staff_roster:
             users[staff_user.id] = staff_user
             if staff_user.technik_id:
                 users_by_technik[staff_user.technik_id] = staff_user
-        for u in WebUser.objects.exclude(technik_id__isnull=True).exclude(technik_id=0):
+        for u in _leaderboard_webuser_queryset().exclude(technik_id__isnull=True).exclude(technik_id=0):
             if u.technik_id and u.technik_id not in users_by_technik:
                 users_by_technik[u.technik_id] = u
         home_store_map = _leaderboard_home_store_map(users)
@@ -6793,7 +6799,7 @@ def web_prodeje_leaderboard_points_today(request):
             excluded_ids=excluded_ids,
             seller_ids=prodejci_ids,
         )
-        users = {u.id: u for u in WebUser.objects.filter(id__in=prodejci_ids)}
+        users = {u.id: u for u in _leaderboard_webuser_queryset().filter(id__in=prodejci_ids)}
         home_store_map = _leaderboard_home_store_map(users)
         workplace_map = _leaderboard_dominant_stredisko_map(day_queryset, prodejci_ids)
 
@@ -6894,7 +6900,7 @@ def web_prodeje_leaderboard_average_items(request):
         excluded_ids = get_leaderboard_excluded_prodejce_ids()
 
         prodejci_ids = [item['id_prodejce'] for item in aggregation]
-        users = {u.id: u for u in WebUser.objects.filter(id__in=prodejci_ids)}
+        users = {u.id: u for u in _leaderboard_webuser_queryset().filter(id__in=prodejci_ids)}
         home_store_map = _leaderboard_home_store_map(users)
 
         leaderboard = []

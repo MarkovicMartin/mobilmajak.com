@@ -1,6 +1,9 @@
 from django.db import models
 from django.contrib.auth.hashers import make_password, check_password
 
+from .fields import SafeDateTimeField
+
+
 class WebUser(models.Model):
     ROLE_CHOICES = [
         ('ADMIN', 'Administrátor'),
@@ -69,9 +72,9 @@ class WebUser(models.Model):
     )
 
     # Časové údaje
-    datum_vytvoreni = models.DateTimeField(auto_now_add=True, verbose_name="Datum vytvoření")
-    datum_upravy = models.DateTimeField(auto_now=True, verbose_name="Datum úpravy")
-    last_login = models.DateTimeField(null=True, blank=True, verbose_name="Poslední přihlášení")
+    datum_vytvoreni = SafeDateTimeField(auto_now_add=True, verbose_name="Datum vytvoření")
+    datum_upravy = SafeDateTimeField(auto_now=True, verbose_name="Datum úpravy")
+    last_login = SafeDateTimeField(null=True, blank=True, verbose_name="Poslední přihlášení")
     
     class Meta:
         db_table = 'WEB_USERS'

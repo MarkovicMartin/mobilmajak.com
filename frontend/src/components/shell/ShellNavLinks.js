@@ -55,6 +55,7 @@ const ShellNavLinks = ({
     );
 
     const [expandedInline, setExpandedInline] = useState(() => new Set());
+    const [collapsedFlyoutKey, setCollapsedFlyoutKey] = useState(null);
 
     useEffect(() => {
         setExpandedInline((prev) => {
@@ -164,6 +165,7 @@ const ShellNavLinks = ({
         const parentActive = activeParentKeys.has(item.sectionKey);
 
         if (collapsed) {
+            const isOpen = collapsedFlyoutKey === item.sectionKey;
             return (
                 <div
                     key={item.sectionKey}
@@ -172,6 +174,10 @@ const ShellNavLinks = ({
                         'shell-nav__branch--collapsed',
                         parentActive ? 'shell-nav__branch--active' : '',
                     ].filter(Boolean).join(' ')}
+                    onMouseEnter={() => setCollapsedFlyoutKey(item.sectionKey)}
+                    onMouseLeave={() => setCollapsedFlyoutKey((current) => (
+                        current === item.sectionKey ? null : current
+                    ))}
                 >
                     <button
                         type="button"
@@ -182,12 +188,24 @@ const ShellNavLinks = ({
                     >
                         {renderIcon(item)}
                     </button>
-                    <div className="shell-nav__flyout" role="menu">
-                        <div className="shell-nav__flyout-panel">
-                            <div className="shell-nav__flyout-title">{item.label}</div>
-                            {item.children.map((child) => renderLink(child, true, undefined, true))}
+                    {isOpen && (
+                        <div className="shell-nav__flyout" role="menu">
+                            <div className="shell-nav__flyout-panel">
+                                <div className="shell-nav__flyout-title">{item.label}</div>
+                                {item.children.map((child) =>
+                                    renderLink(
+                                        child,
+                                        true,
+                                        () => {
+                                            go(child);
+                                            setCollapsedFlyoutKey(null);
+                                        },
+                                        true,
+                                    ),
+                                )}
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </div>
             );
         }

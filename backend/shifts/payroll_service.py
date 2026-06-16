@@ -87,11 +87,19 @@ def _deficit_h_from_hours(uid, rok, mesic_cislo, hours_map, fondu_h):
     return round(max(0.0, fondu_h - odpracovano - dovolena), 2)
 
 
+def _fixni_pro_prumer_mesic(user, h, override_row=None):
+    """Fixní část pro průměr – z profilu; override fixni_body jen pokud je explicitně v JSON."""
+    if override_row is not None and override_row.get('fixni_body') is not None:
+        return Decimal(str(override_row['fixni_body']))
+    return mzda_fixni_bez_cestovneho(user, float(h))
+
+
 def prumer_fixni_hodinove_body(user, rok, mesic_cislo, hours_cache=None, override_mesice=None):
     """
     Průměr fixní části (základ + doplňky) / odpracované hodiny za 3 předchozí měsíce.
     hours_cache: volitelně {(rok, mesic): hours_map} – vyhne se N× dotazům na směny.
-    override_mesice: volitelně [{'rok', 'mesic', 'odpracovano_h', 'fixni_body'}, ...] – ruční data.
+    override_mesice: volitelně [{'rok', 'mesic', 'odpracovano_h', 'fixni_body'?}, ...].
+    Bez fixni_body v override se fixní část bere z profilu uživatele.
     """
     if is_brigadnik(user) or not is_dovolena_eligible(user):
         return Decimal('0')
@@ -101,7 +109,7 @@ def prumer_fixni_hodinove_body(user, rok, mesic_cislo, hours_cache=None, overrid
     if override_mesice:
         for row in override_mesice:
             h = Decimal(str(row.get('odpracovano_h', 0)))
-            fixni = Decimal(str(row.get('fixni_body', 0)))
+            fixni = _fixni_pro_prumer_mesic(user, h, row)
             total_fixni += fixni
             total_h += h
     else:
@@ -146,7 +154,12 @@ def prumer_fixni_hodinove_detail(user, rok, mesic_cislo, hours_cache=None, overr
     for y, m, override_row in rows:
         if override_row is not None:
             h = Decimal(str(override_row.get('odpracovano_h', 0)))
-            fixni = Decimal(str(override_row.get('fixni_body', 0)))
+            fixni = _fixni_pro_prumer_mesic(user, h, override_row)
+            if hours_cache is not None:
+                hm = hours_cache.get((y, m), {})
+                h_smeny = Decimal(str(hm.get(user.id, {}).get('odpracovano_h', 0)))
+            else:
+                h_smeny = _odpracovano_h_mesic(user.id, y, m)
         else:
             if hours_cache is not None:
                 hm = hours_cache.get((y, m), {})
@@ -154,16 +167,21 @@ def prumer_fixni_hodinove_detail(user, rok, mesic_cislo, hours_cache=None, overr
             else:
                 h = _odpracovano_h_mesic(user.id, y, m)
             fixni = mzda_fixni_bez_cestovneho(user, float(h))
+            h_smeny = h
         sazba = _body_whole(fixni / h) if h > 0 else Decimal('0')
         total_fixni += fixni
         total_h += h
-        mesice.append({
+        row_out = {
             'rok': y,
             'mesic': m,
             'odpracovano_h': float(h),
             'fixni_body': float(fixni),
             'sazba_h': float(sazba),
-        })
+        }
+        if override_row is not None:
+            row_out['odpracovano_h_smeny'] = float(h_smeny)
+            row_out['hodiny_rozdil_h'] = round(float(h - h_smeny), 2)
+        mesice.append(row_out)
 
     prumer = prumer_fixni_hodinove_body(
         user, rok, mesic_cislo, hours_cache=hours_cache, override_mesice=override_mesice,
