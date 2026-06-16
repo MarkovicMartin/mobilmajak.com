@@ -26,10 +26,13 @@ class SafeDateTimeField(models.DateTimeField):
 
     def from_db_value(self, value, expression, connection):
         # DateTimeField u některých MySQL driverů může vracet invalidní hodnoty
-        # jako raw string. Použijeme stejnou logiku jako to_python.
-        return self.to_python(value)
+        # jako raw string. Validní DB hodnoty ale zůstávají v timezone DB spojení.
+        return self._to_python(value, source_tz=getattr(connection, 'timezone', None))
 
     def to_python(self, value):
+        return self._to_python(value)
+
+    def _to_python(self, value, source_tz=None):
         value = self._normalize_zero_datetime(value)
         if value is None:
             return None
@@ -38,5 +41,5 @@ class SafeDateTimeField(models.DateTimeField):
         if isinstance(parsed, str):
             return None
         if settings.USE_TZ and timezone.is_naive(parsed):
-            return timezone.make_aware(parsed, timezone.get_default_timezone())
+            return timezone.make_aware(parsed, source_tz or timezone.get_default_timezone())
         return parsed
