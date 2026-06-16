@@ -11,6 +11,7 @@ import AttendancePanel from './AttendancePanel';
 import PayrollPanel from './PayrollPanel';
 import AttendanceLogPanel from './AttendanceLogPanel';
 import AbsentStoresPanel from './AbsentStoresPanel';
+import VacationPanel from './VacationPanel';
 import { SHIFTS_SECTIONS } from './shiftsSections';
 import './ShiftsModule.css';
 
@@ -42,6 +43,7 @@ function ShiftsModule() {
     const [showBulkForm, setShowBulkForm] = useState(false);
     const [bulkInitialDates, setBulkInitialDates] = useState([]);
     const [formInitialDatum, setFormInitialDatum] = useState('');
+    const [editShift, setEditShift] = useState(null);
     const [refreshTrigger, setRefreshTrigger] = useState(0);
     const [shiftsSeeAllEmployees, setShiftsSeeAllEmployees] = useState(false);
     const adminDefaultStoresSet = useRef(false);
@@ -217,6 +219,7 @@ function ShiftsModule() {
                                 className="btn-primary"
                                 onClick={() => {
                                     setFormInitialDatum('');
+                                    setEditShift(null);
                                     setShowForm(true);
                                 }}
                             >
@@ -262,6 +265,12 @@ function ShiftsModule() {
                         }}
                         onRequestSingleAdd={(dateStr) => {
                             setFormInitialDatum(dateStr);
+                            setEditShift(null);
+                            setShowForm(true);
+                        }}
+                        onRequestEdit={(shift) => {
+                            setEditShift(shift);
+                            setFormInitialDatum('');
                             setShowForm(true);
                         }}
                         onFeatureFlagsChange={({ shiftsSeeAllEmployees: enabled }) => {
@@ -276,6 +285,10 @@ function ShiftsModule() {
                         month={currentMonth}
                         onMonthChange={setCurrentMonth}
                     />
+                )}
+
+                {activeView === 'vacation' && (
+                    <VacationPanel user={user} />
                 )}
 
                 {activeView === 'attendance' && (
@@ -303,13 +316,16 @@ function ShiftsModule() {
                 <ShiftForm
                     user={user}
                     initialDatum={formInitialDatum}
+                    editShift={editShift}
                     onClose={() => {
                         setShowForm(false);
                         setFormInitialDatum('');
+                        setEditShift(null);
                     }}
                     onSuccess={() => {
                         setShowForm(false);
                         setFormInitialDatum('');
+                        setEditShift(null);
                         setRefreshTrigger((prev) => prev + 1);
                     }}
                 />

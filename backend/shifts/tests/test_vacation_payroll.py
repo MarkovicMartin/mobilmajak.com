@@ -16,6 +16,7 @@ from shifts.vacation_service import (
     DOVOLENA_HODINY_ZA_DEN,
     DOVOLENA_PREVOD_MAX,
     DOVOLENA_ROCNI_FOND,
+    build_vacation_overview_user,
     celkove_cerpano_rok,
     cerpana_dovolena_rok,
     deficit_fondu_rok,
@@ -24,6 +25,7 @@ from shifts.vacation_service import (
     dovolena_hodin_ze_smeny,
     dovolena_stav,
     is_pracovni_den,
+    mesicni_cerpani_dovolene,
     prevod_z_predchoziho_roku,
     validate_dovolena_kapacita,
 )
@@ -207,6 +209,32 @@ class VacationServiceTests(TestCase):
         self.assertAlmostEqual(celkove_cerpano_rok(user.id, 2025), DOVOLENA_ROCNI_FOND, places=0)
         err = validate_dovolena_kapacita(user, workdays[int(volnych_h / DOVOLENA_HODINY_ZA_DEN)], 'dovolena')
         self.assertIsNotNone(err)
+
+    def test_mesicni_cerpani(self):
+        user = WebUser.objects.create(
+            id=9019, uzivatelske_jmeno='test_mes', jmeno='Mes', prijmeni='Test',
+            heslo='x', role='PRODEJCE', aktivni=True, prodejna_id=self.prodejna.id,
+        )
+        Smena.objects.create(
+            user=user, prodejna=self.prodejna, datum=date(2025, 3, 3),
+            cas_od=time(8, 0), cas_do=time(16, 0), typ_smeny='dovolena',
+        )
+        row = mesicni_cerpani_dovolene(user.id, 2025, 3, referencni_datum=date(2025, 12, 31))
+        self.assertEqual(row['dovolena_smeny_h'], DOVOLENA_HODINY_ZA_DEN)
+        self.assertEqual(row['cerpano_h'], DOVOLENA_HODINY_ZA_DEN)
+
+    def test_build_vacation_overview_user(self):
+        user = WebUser.objects.create(
+            id=9020, uzivatelske_jmeno='test_over', jmeno='Over', prijmeni='Test',
+            heslo='x', role='PRODEJCE', aktivni=True, prodejna_id=self.prodejna.id,
+            mzda_zaklad=Decimal('14000'),
+        )
+        overview = build_vacation_overview_user(user, 2026, referencni_datum=date(2026, 6, 15))
+        self.assertIsNotNone(overview)
+        self.assertEqual(overview['rok'], 2026)
+        self.assertEqual(len(overview['mesice']), 12)
+        self.assertGreater(overview['prumer_fixni_h'], 0)
+        self.assertEqual(overview['dovolena_sazba_h'], overview['prumer_fixni_h'])
 
 
 class PayrollComputationTests(TestCase):

@@ -136,6 +136,7 @@
     /* --- Z-index --- */
     --z-sidebar: 100;
     --z-header: 200;
+    --z-popover: 1200;
     --z-drawer: 1100;
     --z-drawer-backdrop: 1090;
     --z-modal: 15000;

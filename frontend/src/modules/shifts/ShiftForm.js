@@ -5,8 +5,21 @@ import { userAPI, storeAPI } from '../../services/api';
 import { shiftRoleLabel } from './shiftRoleLabels';
 import './ShiftForm.css';
 
-function ShiftForm({ user, onClose, onSuccess, initialDatum = '' }) {
-    const [formData, setFormData] = useState({
+const buildInitialFormData = (user, initialDatum, editShift) => {
+    if (editShift) {
+        return {
+            datum: String(editShift.datum || editShift.date || '').slice(0, 10),
+            prodejna: editShift.prodejna_id || user?.prodejna_id || null,
+            cas_od: String(editShift.cas_od || '08:00').substring(0, 5),
+            cas_do: String(editShift.cas_do || '20:00').substring(0, 5),
+            typ_smeny: editShift.typ_smeny || 'prace',
+            brigadnik_rezim: editShift.brigadnik_rezim || 'prodejce',
+            pozice_smeny: editShift.pozice_smeny || 'prodej',
+            poznamka: editShift.poznamka || '',
+            user_id: editShift.user_id ?? ((user && ['ADMIN', 'VEDOUCI'].includes(user.role)) ? user.id : undefined),
+        };
+    }
+    return {
         datum: initialDatum || '',
         prodejna: user?.prodejna_id || null,
         cas_od: '08:00',
@@ -15,9 +28,13 @@ function ShiftForm({ user, onClose, onSuccess, initialDatum = '' }) {
         brigadnik_rezim: 'prodejce',
         pozice_smeny: 'prodej',
         poznamka: '',
-        // user_id pouze pro ADMIN/VEDOUCI (jinak necháváme nevyplněné)
         user_id: (user && ['ADMIN', 'VEDOUCI'].includes(user.role)) ? user.id : undefined,
-    });
+    };
+};
+
+function ShiftForm({ user, onClose, onSuccess, initialDatum = '', editShift = null }) {
+    const isEditMode = Boolean(editShift?.id);
+    const [formData, setFormData] = useState(() => buildInitialFormData(user, initialDatum, editShift));
     const [users, setUsers] = useState([]);
     const [stores, setStores] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -44,8 +61,9 @@ function ShiftForm({ user, onClose, onSuccess, initialDatum = '' }) {
         })();
     }, [user]);
 
-    // Automatické nastavení času podle prodejny (podle názvu)
+    // Automatické nastavení času podle prodejny (podle názvu) – jen při vytváření
     useEffect(() => {
+        if (isEditMode) return;
         const storeName = stores.find(s => s.id === formData.prodejna)?.nazev;
         if (storeName === 'Senimo') {
             // Zkontrolujeme, zda je to sobota
@@ -82,7 +100,7 @@ function ShiftForm({ user, onClose, onSuccess, initialDatum = '' }) {
                 cas_do: '20:00'
             }));
         }
-    }, [formData.prodejna, formData.datum, stores]);
+    }, [formData.prodejna, formData.datum, stores, isEditMode]);
 
     // Načtení uživatelů pro ADMIN/VEDOUCI
     useEffect(() => {
@@ -104,13 +122,14 @@ function ShiftForm({ user, onClose, onSuccess, initialDatum = '' }) {
 
     // Když se změní vybraný uživatel, nastav výchozí prodejnu podle jeho domovské prodejny
     useEffect(() => {
+        if (isEditMode) return;
         if (!users || users.length === 0) return;
         if (!(user && ['ADMIN', 'VEDOUCI'].includes(user.role))) return;
         const selected = users.find(u => u.id === formData.user_id);
         if (selected && selected.prodejna_id) {
             setFormData(prev => ({ ...prev, prodejna: selected.prodejna_id }));
         }
-    }, [formData.user_id, users, user]);
+    }, [formData.user_id, users, user, isEditMode]);
 
     useEffect(() => {
         const targetUserId = formData.user_id || user?.id;
@@ -179,14 +198,17 @@ function ShiftForm({ user, onClose, onSuccess, initialDatum = '' }) {
                 delete payload.user_id;
             }
 
-            const response = await fetch('/api/shifts/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                credentials: 'include',
-                body: JSON.stringify(payload)
-            });
+            const response = await fetch(
+                isEditMode ? `/api/shifts/${editShift.id}/` : '/api/shifts/',
+                {
+                    method: isEditMode ? 'PUT' : 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify(payload)
+                }
+            );
 
             if (response.ok) {
                 onSuccess();
@@ -198,12 +220,12 @@ function ShiftForm({ user, onClose, onSuccess, initialDatum = '' }) {
                     setError(data.error);
                     setExistingShiftInfo(data.existing_shift);
                 } else {
-                    setError(data.error || 'Chyba při vytváření směny');
+                    setError(data.error || (isEditMode ? 'Chyba při ukládání směny' : 'Chyba při vytváření směny'));
                     setExistingShiftInfo(null);
                 }
             }
         } catch (error) {
-            setError('Chyba při vytváření směny');
+            setError(isEditMode ? 'Chyba při ukládání směny' : 'Chyba při vytváření směny');
         } finally {
             setLoading(false);
         }
@@ -211,7 +233,7 @@ function ShiftForm({ user, onClose, onSuccess, initialDatum = '' }) {
 
     return (
         <Modal
-            title="➕ Přidat novou směnu"
+            title={isEditMode ? '✏️ Upravit směnu' : '➕ Přidat novou směnu'}
             titleId="shift-form-title"
             onClose={handleClose}
             size="sm"
@@ -223,7 +245,7 @@ function ShiftForm({ user, onClose, onSuccess, initialDatum = '' }) {
                         Zrušit
                     </button>
                     <button type="submit" disabled={loading} className="btn-submit">
-                        {loading ? 'Ukládání...' : 'Uložit směnu'}
+                        {loading ? 'Ukládání...' : (isEditMode ? 'Uložit změny' : 'Uložit směnu')}
                     </button>
                 </>
             )}
@@ -245,7 +267,7 @@ function ShiftForm({ user, onClose, onSuccess, initialDatum = '' }) {
                             <select
                                 value={formData.user_id ?? ''}
                                 onChange={(e) => setFormData({ ...formData, user_id: Number(e.target.value) })}
-                                disabled={!users.length}
+                                disabled={!users.length || isEditMode}
                             >
                                 <option value="" disabled>
                                     {users.length ? 'Vyberte uživatele…' : 'Načítám uživatele…'}

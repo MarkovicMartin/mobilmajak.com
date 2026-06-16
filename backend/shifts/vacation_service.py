@@ -200,3 +200,73 @@ def normalize_dovolena_casy(datum, cas_od='08:00', cas_do='16:00'):
     if is_pracovni_den(datum):
         return '08:00', '16:00'
     return cas_od, cas_do
+
+
+def _reference_month_for_prumer(rok, referencni_datum=None):
+    """Měsíc pro výpočet průměru – aktuální v probíhajícím roce, jinak prosinec/leden."""
+    if referencni_datum is None:
+        referencni_datum = date.today()
+    if rok < referencni_datum.year:
+        return 12
+    if rok > referencni_datum.year:
+        return 1
+    return referencni_datum.month
+
+
+def cerpana_dovolena_mesic(user_id, rok, mesic_cislo):
+    """Hodiny dovolené ze směn v kalendářním měsíci."""
+    from .payroll_service import aggregate_hours_by_user
+
+    hours = aggregate_hours_by_user(rok, mesic_cislo).get(user_id, {})
+    return round(float(hours.get('dovolena_h', 0) or 0), 2)
+
+
+def mesicni_cerpani_dovolene(user_id, rok, mesic_cislo, referencni_datum=None):
+    """
+    Čerpání fondu v měsíci: směny dovolené + deficit (jen u ukončených měsíců).
+    """
+    smeny_h = cerpana_dovolena_mesic(user_id, rok, mesic_cislo)
+    deficit_h = deficit_mesic_hodin(user_id, rok, mesic_cislo)
+    ukoncen = _mesic_ukoncen(rok, mesic_cislo, referencni_datum)
+    deficit_odeceno = round(deficit_h, 2) if ukoncen else 0.0
+    return {
+        'mesic': mesic_cislo,
+        'dovolena_smeny_h': smeny_h,
+        'deficit_h': deficit_odeceno,
+        'deficit_predikce_h': round(deficit_h, 2) if not ukoncen and deficit_h > 0 else 0.0,
+        'cerpano_h': round(smeny_h + deficit_odeceno, 2),
+        'mesic_ukoncen': ukoncen,
+    }
+
+
+def build_vacation_overview_user(user, rok=None, referencni_datum=None):
+    """Přehled dovolené pro jednoho uživatele – roční tabulka měsíců a sazba výplaty."""
+    if not is_dovolena_eligible(user):
+        return None
+    if rok is None:
+        rok = date.today().year
+    if referencni_datum is None:
+        referencni_datum = date.today()
+
+    from .payroll_service import prumer_fixni_hodinove_body
+
+    ref_mesic = _reference_month_for_prumer(rok, referencni_datum)
+    prumer_h = prumer_fixni_hodinove_body(user, rok, ref_mesic)
+    stav = dovolena_stav(user, rok)
+    mesice = [
+        mesicni_cerpani_dovolene(user.id, rok, m, referencni_datum=referencni_datum)
+        for m in range(1, 13)
+    ]
+    cerpano_rok_z_mesicu = round(sum(m['cerpano_h'] for m in mesice), 2)
+
+    return {
+        'user_id': user.id,
+        'jmeno': f'{user.jmeno} {user.prijmeni}'.strip(),
+        'eligible': True,
+        'prumer_fixni_h': float(prumer_h),
+        'dovolena_sazba_h': float(prumer_h),
+        'prumer_mesice': f'{rok}-{ref_mesic:02d}',
+        'mesice': mesice,
+        'cerpano_rok_z_mesicu_h': cerpano_rok_z_mesicu,
+        **stav,
+    }

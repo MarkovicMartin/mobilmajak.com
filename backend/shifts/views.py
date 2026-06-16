@@ -19,6 +19,7 @@ from .attendance_service import (
     work_hours_from_history,
 )
 from .vacation_service import (
+    build_vacation_overview_user,
     deficit_mesic_hodin,
     dovolena_hodin_ze_smeny,
     dovolena_stav,
@@ -26,6 +27,7 @@ from .vacation_service import (
     normalize_dovolena_casy,
     validate_dovolena_kapacita,
 )
+from users.exclusions import real_sales_staff_queryset
 from users.models import WebUser
 from stores.models import Prodejna
 from .czech_holidays import get_ceske_svatky, get_nazev_svatku
@@ -701,6 +703,47 @@ def vacation_balance(request):
     return Response({'eligible': True, **stav})
 
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def vacation_overview(request):
+    """Roční přehled čerpání dovolené – tabulka měsíců a sazba výplaty."""
+    user_id = request.GET.get('user_id')
+    rok_param = request.GET.get('rok')
+
+    if rok_param:
+        try:
+            rok = int(rok_param)
+        except ValueError:
+            return Response({'error': 'Neplatný rok'}, status=status.HTTP_400_BAD_REQUEST)
+    else:
+        rok = date.today().year
+
+    if user_id:
+        if request.user.role != 'ADMIN' and int(user_id) != request.user.id:
+            return Response({'error': 'Nemáte oprávnění'}, status=status.HTTP_403_FORBIDDEN)
+        users = [get_object_or_404(WebUser, id=user_id)]
+    elif request.user.role == 'ADMIN':
+        users = list(real_sales_staff_queryset().order_by('jmeno', 'prijmeni'))
+    else:
+        users = [request.user]
+
+    result_users = []
+    for user in users:
+        overview = build_vacation_overview_user(user, rok)
+        if overview:
+            result_users.append(overview)
+
+    if not result_users and len(users) == 1 and not is_dovolena_eligible(users[0]):
+        return Response({
+            'rok': rok,
+            'eligible': False,
+            'message': 'Fond dovolené se nevztahuje na tuto roli.',
+            'users': [],
+        })
+
+    return Response({'rok': rok, 'users': result_users})
+
+
 def _smena_detail_row(smena):
     """Jeden řádek detailního rozpisu – plán + skutečná docházka."""
     row = {
@@ -861,7 +904,7 @@ def export_smeny(request):
             'Měsíc', 'Jméno', 'Středisko',
             'Odpracováno h', 'Dovolená h', 'Nemoc h', 'Svátek h',
             'Fond h', 'Přesčas h',
-            'Základ', 'Doplňky', 'Cestovné', 'Dovolená body', 'Přesčas body', 'Dýška',
+            'Základ', 'Doplňky', 'Cestovné', 'Dovolená výplata', 'Přesčas body', 'Dýška',
         ]
         headers += [label for _k, label in doplnek_kody]
         headers += [label for _k, label in provize_cols]

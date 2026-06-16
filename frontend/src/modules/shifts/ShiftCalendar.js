@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import ConfirmModal from '../../components/ConfirmModal';
+import Modal from '../../components/Modal';
 import './ShiftCalendar.css';
 import UnifiedCalendar from './UnifiedCalendar';
 import { shiftRoleLabel } from './shiftRoleLabels';
@@ -58,6 +59,7 @@ function ShiftCalendar({
     onRefresh,
     onRequestBulkAdd,
     onRequestSingleAdd,
+    onRequestEdit,
     allStores = false,
     stores = [],
     onFeatureFlagsChange,
@@ -67,8 +69,9 @@ function ShiftCalendar({
     const [svatky, setSvatky] = useState({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    const [showConfirm, setShowConfirm] = useState(false);
-    const [shiftToDelete, setShiftToDelete] = useState(null);
+    const [showActionModal, setShowActionModal] = useState(false);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [selectedShift, setSelectedShift] = useState(null);
     const [dragPreviewDates, setDragPreviewDates] = useState(() => new Set());
 
     useEffect(() => {
@@ -194,17 +197,30 @@ function ShiftCalendar({
             return;
         }
 
-        // Vše v pořádku, zobrazíme dialog pro mazání
+        // Vše v pořádku, zobrazíme dialog s akcemi
         setError('');
-        setShiftToDelete({ ...shift, datum: shiftDatum });
-        setShowConfirm(true);
+        setSelectedShift({ ...shift, datum: shiftDatum });
+        setShowActionModal(true);
+    };
+
+    const handleEditShift = () => {
+        if (!selectedShift || !onRequestEdit) return;
+        const shift = selectedShift;
+        setShowActionModal(false);
+        setSelectedShift(null);
+        onRequestEdit(shift);
+    };
+
+    const handleRequestDelete = () => {
+        setShowActionModal(false);
+        setShowDeleteConfirm(true);
     };
 
     const handleConfirmDelete = async () => {
-        if (!shiftToDelete) return;
+        if (!selectedShift) return;
 
         try {
-            const response = await fetch(`/api/shifts/${shiftToDelete.id}/`, {
+            const response = await fetch(`/api/shifts/${selectedShift.id}/`, {
                 method: 'DELETE',
                 credentials: 'include'
             });
@@ -220,13 +236,18 @@ function ShiftCalendar({
             setError('Chyba při mazání směny');
         }
 
-        setShowConfirm(false);
-        setShiftToDelete(null);
+        setShowDeleteConfirm(false);
+        setSelectedShift(null);
+    };
+
+    const handleCancelAction = () => {
+        setShowActionModal(false);
+        setSelectedShift(null);
     };
 
     const handleCancelDelete = () => {
-        setShowConfirm(false);
-        setShiftToDelete(null);
+        setShowDeleteConfirm(false);
+        setSelectedShift(null);
     };
 
     useEffect(() => {
@@ -359,7 +380,7 @@ function ShiftCalendar({
             )}
 
             <p className="calendar-pick-hint">
-                <strong>Klik na den</strong> = přidat směnu · <strong>táhněte přes dny</strong> = hromadně · <strong>klik na směnu</strong> = smazat
+                <strong>Klik na den</strong> = přidat směnu · <strong>táhněte přes dny</strong> = hromadně · <strong>klik na směnu</strong> = upravit / smazat
             </p>
 
             <div className="calendar-container">
@@ -479,7 +500,40 @@ function ShiftCalendar({
                 />
             </div>
 
-            {showConfirm && shiftToDelete && (
+            {showActionModal && selectedShift && (
+                <Modal
+                    title="Směna"
+                    onClose={handleCancelAction}
+                    size="sm"
+                    footer={(
+                        <>
+                            <button type="button" className="btn-cancel" onClick={handleCancelAction}>
+                                Zrušit
+                            </button>
+                            <button type="button" className="btn-submit" onClick={handleEditShift}>
+                                Upravit
+                            </button>
+                            <button type="button" className="btn-delete" onClick={handleRequestDelete}>
+                                Smazat
+                            </button>
+                        </>
+                    )}
+                >
+                    <div className="confirm-details">
+                        <p><strong>Prodejce:</strong> {selectedShift.user_jmeno}</p>
+                        <p><strong>Datum:</strong> {formatShiftDate(selectedShift)}</p>
+                        <p><strong>Role:</strong> {shiftRoleLabel(selectedShift)}</p>
+                        {!isAbsenceShift(selectedShift) && (
+                            <>
+                                <p><strong>Čas:</strong> {formatTime(selectedShift.cas_od)}-{formatTime(selectedShift.cas_do)}</p>
+                                <p><strong>Prodejna:</strong> {selectedShift.prodejna_nazev || selectedShift.prodejna || prodejna}</p>
+                            </>
+                        )}
+                    </div>
+                </Modal>
+            )}
+
+            {showDeleteConfirm && selectedShift && (
                 <ConfirmModal
                     title="Smazat směnu"
                     onClose={handleCancelDelete}
@@ -487,13 +541,13 @@ function ShiftCalendar({
                     confirmLabel="Smazat"
                 >
                     <div className="confirm-details">
-                        <p><strong>Prodejce:</strong> {shiftToDelete.user_jmeno}</p>
-                        <p><strong>Datum:</strong> {formatShiftDate(shiftToDelete)}</p>
-                        <p><strong>Role:</strong> {shiftRoleLabel(shiftToDelete)}</p>
-                        {!isAbsenceShift(shiftToDelete) && (
+                        <p><strong>Prodejce:</strong> {selectedShift.user_jmeno}</p>
+                        <p><strong>Datum:</strong> {formatShiftDate(selectedShift)}</p>
+                        <p><strong>Role:</strong> {shiftRoleLabel(selectedShift)}</p>
+                        {!isAbsenceShift(selectedShift) && (
                             <>
-                                <p><strong>Čas:</strong> {formatTime(shiftToDelete.cas_od)}-{formatTime(shiftToDelete.cas_do)}</p>
-                                <p><strong>Prodejna:</strong> {shiftToDelete.prodejna_nazev || shiftToDelete.prodejna || prodejna}</p>
+                                <p><strong>Čas:</strong> {formatTime(selectedShift.cas_od)}-{formatTime(selectedShift.cas_do)}</p>
+                                <p><strong>Prodejna:</strong> {selectedShift.prodejna_nazev || selectedShift.prodejna || prodejna}</p>
                             </>
                         )}
                     </div>

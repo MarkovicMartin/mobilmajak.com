@@ -1,0 +1,200 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import { formatPoints, formatNumber } from '../../utils/formatBody';
+import './VacationPanel.css';
+
+const MONTH_NAMES = [
+    'Leden', 'Únor', 'Březen', 'Duben', 'Květen', 'Červen',
+    'Červenec', 'Srpen', 'Září', 'Říjen', 'Listopad', 'Prosinec',
+];
+
+function VacationPanel({ user }) {
+    const [rok, setRok] = useState(() => new Date().getFullYear());
+    const [users, setUsers] = useState([]);
+    const [eligible, setEligible] = useState(true);
+    const [message, setMessage] = useState('');
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+    const [expandedId, setExpandedId] = useState(null);
+
+    const loadOverview = useCallback(async () => {
+        setLoading(true);
+        setError('');
+        try {
+            const res = await fetch(`/api/shifts/vacation-overview/?rok=${rok}`, {
+                credentials: 'include',
+            });
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                throw new Error(data.error || 'Chyba při načítání dovolené');
+            }
+            const data = await res.json();
+            setEligible(data.eligible !== false);
+            setMessage(data.message || '');
+            const list = data.users || [];
+            setUsers(list);
+            if (list.length === 1) {
+                setExpandedId(list[0].user_id);
+            }
+        } catch (e) {
+            setError(e.message);
+            setUsers([]);
+        } finally {
+            setLoading(false);
+        }
+    }, [rok]);
+
+    useEffect(() => {
+        loadOverview();
+    }, [loadOverview]);
+
+    const handleYearChange = (delta) => {
+        setRok((y) => y + delta);
+    };
+
+    const renderUserCard = (row) => {
+        const isOpen = expandedId === row.user_id;
+        const mesice = row.mesice || [];
+        const celkemCerpano = mesice.reduce((s, m) => s + (Number(m.cerpano_h) || 0), 0);
+
+        return (
+            <div key={row.user_id} className="vacation-user-card">
+                <button
+                    type="button"
+                    className={`vacation-user-header${isOpen ? ' open' : ''}`}
+                    onClick={() => setExpandedId(isOpen ? null : row.user_id)}
+                    aria-expanded={isOpen}
+                >
+                    <span className="vacation-user-name">{row.jmeno}</span>
+                    <span className="vacation-user-summary">
+                        zbývá <strong>{formatNumber(row.zbyva_h)} h</strong>
+                        {' '}/ fond {formatNumber(row.fond_h)} h
+                    </span>
+                    <span className="vacation-expand-icon">{isOpen ? '▼' : '▶'}</span>
+                </button>
+
+                {isOpen && (
+                    <div className="vacation-user-body">
+                        <div className="vacation-stats-grid">
+                            <div className="vacation-stat">
+                                <div className="vacation-stat-value">{formatNumber(row.fond_h)} h</div>
+                                <div className="vacation-stat-label">Roční fond</div>
+                            </div>
+                            <div className="vacation-stat">
+                                <div className="vacation-stat-value">{formatNumber(row.cerpano_h)} h</div>
+                                <div className="vacation-stat-label">Čerpáno celkem</div>
+                            </div>
+                            <div className="vacation-stat">
+                                <div className="vacation-stat-value">{formatNumber(row.zbyva_h)} h</div>
+                                <div className="vacation-stat-label">Zbývá</div>
+                            </div>
+                            <div className="vacation-stat highlight">
+                                <div className="vacation-stat-value">
+                                    {formatPoints(row.dovolena_sazba_h)}/h
+                                </div>
+                                <div className="vacation-stat-label">
+                                    Sazba dovolené (průměr 3 měs.)
+                                </div>
+                            </div>
+                        </div>
+
+                        {(row.odeceno_deficit_h > 0 || row.prevod_h > 0) && (
+                            <div className="vacation-meta">
+                                {row.cerpano_smeny_h > 0 && (
+                                    <span>Směny dovolené: <strong>{formatNumber(row.cerpano_smeny_h)} h</strong></span>
+                                )}
+                                {row.odeceno_deficit_h > 0 && (
+                                    <span>Deficit fondu: <strong>{formatNumber(row.odeceno_deficit_h)} h</strong></span>
+                                )}
+                                {row.prevod_h > 0 && (
+                                    <span>Převod z minulého roku: <strong>{formatNumber(row.prevod_h)} h</strong></span>
+                                )}
+                            </div>
+                        )}
+
+                        <p className="vacation-rate-hint">
+                            Průměr fixní mzdy za poslední 3 měsíce (k {row.prumer_mesice || `${rok}`}):
+                            {' '}<strong>{formatPoints(row.prumer_fixni_h)} bodů/h</strong>
+                            {' '}→ výplata dovolené {formatPoints(row.dovolena_sazba_h)} bodů/h
+                        </p>
+
+                        <div className="vacation-table-wrap">
+                            <table className="vacation-table">
+                                <thead>
+                                    <tr>
+                                        <th>Měsíc</th>
+                                        <th>Směny dovolené</th>
+                                        <th>Deficit fondu</th>
+                                        <th>Čerpáno celkem</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {mesice.map((m) => (
+                                        <tr key={m.mesic} className={m.cerpano_h > 0 ? 'has-usage' : ''}>
+                                            <td>{MONTH_NAMES[m.mesic - 1]}</td>
+                                            <td>{formatNumber(m.dovolena_smeny_h)} h</td>
+                                            <td>
+                                                {m.deficit_h > 0 && formatNumber(m.deficit_h)}
+                                                {m.deficit_predikce_h > 0 && (
+                                                    <span className="vacation-pending" title="Po skončení měsíce">
+                                                        {formatNumber(m.deficit_predikce_h)} h*
+                                                    </span>
+                                                )}
+                                                {!m.deficit_h && !m.deficit_predikce_h && '—'}
+                                            </td>
+                                            <td><strong>{formatNumber(m.cerpano_h)} h</strong></td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <td colSpan={3}>Součet čerpání v roce</td>
+                                        <td><strong>{formatNumber(celkemCerpano)} h</strong></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                        {mesice.some((m) => m.deficit_predikce_h > 0) && (
+                            <p className="vacation-footnote">* Předpokládaný deficit – odečte se po skončení měsíce</p>
+                        )}
+                    </div>
+                )}
+            </div>
+        );
+    };
+
+    if (loading && users.length === 0) {
+        return <div className="vacation-panel loading">Načítání dovolené…</div>;
+    }
+
+    return (
+        <div className="vacation-panel">
+            <div className="vacation-header">
+                <div className="year-navigation">
+                    <button type="button" onClick={() => handleYearChange(-1)} title="Předchozí rok">
+                        ◀
+                    </button>
+                    <h3>{rok}</h3>
+                    <button type="button" onClick={() => handleYearChange(1)} title="Následující rok">
+                        ▶
+                    </button>
+                </div>
+            </div>
+
+            {error && <div className="error-message">{error}</div>}
+
+            {!eligible && (
+                <p className="vacation-ineligible">{message || 'Fond dovolené se nevztahuje na tuto roli.'}</p>
+            )}
+
+            {eligible && users.length === 0 && !loading && (
+                <p className="vacation-empty">Žádní zaměstnanci s nárokem na dovolenou.</p>
+            )}
+
+            <div className="vacation-users">
+                {users.map(renderUserCard)}
+            </div>
+        </div>
+    );
+}
+
+export default VacationPanel;

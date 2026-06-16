@@ -24,6 +24,7 @@ urlpatterns = [
     # Přehled hodin pro uživatele
     path('overview/', views.smeny_prehled, name='smeny_prehled'),
     path('vacation-balance/', views.vacation_balance, name='vacation_balance'),
+    path('vacation-overview/', views.vacation_overview, name='vacation_overview'),
     
     # Export pro účetní
     path('export/', views.export_smeny, name='export_smeny'),

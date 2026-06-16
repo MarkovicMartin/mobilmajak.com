@@ -607,7 +607,12 @@ function PayrollPanel({ month, onMonthChange, onExport }) {
                                     {renderMzdaSouhrn(row)}
                                     {row.deficit_h > 0 && (
                                         <p className="payroll-detail-hint">
-                                            Deficit fondu v měsíci: {formatNumber(row.deficit_h)} h (odečteno z roční dovolené).
+                                            Deficit fondu v měsíci: {formatNumber(row.deficit_h)} h
+                                            {' '}(odečteno z roční dovolené
+                                            {row.prumer_fixni_h > 0
+                                                ? `, průměr ${formatPoints(row.prumer_fixni_h)} bodů/h`
+                                                : ''}
+                                            ).
                                         </p>
                                     )}
                                     {renderProvizeBreakdown(row.provize_breakdown)}
