@@ -57,7 +57,6 @@ class Smena(models.Model):
         db_table = 'WEB_SMENY'
         verbose_name = 'Směna'
         verbose_name_plural = 'Směny'
-        unique_together = ['user', 'datum', 'prodejna']  # Jeden prodejce může mít jen jednu směnu na prodejně za den
         ordering = ['-datum', 'cas_od']
     
     def __str__(self):

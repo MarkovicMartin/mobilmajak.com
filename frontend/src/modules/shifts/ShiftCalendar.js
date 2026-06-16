@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import ConfirmModal from '../../components/ConfirmModal';
 import './ShiftCalendar.css';
 import UnifiedCalendar from './UnifiedCalendar';
+import { shiftRoleLabel } from './shiftRoleLabels';
 import { format, parse, startOfMonth, endOfMonth, eachDayOfInterval, isBefore } from 'date-fns';
 
 const isWorkShift = (shift) => shift.typ_smeny === 'prace';
@@ -410,13 +411,11 @@ function ShiftCalendar({
                                                 ? 'foreign-store'
                                                 : '',
                                         ].filter(Boolean).join(' ');
-                                        const servisBadge = shift.pozice_smeny === 'servis'
-                                            ? (shift.servis_uroven === 'zauceni' ? 'Servis (zašk.)' : 'Servis')
-                                            : null;
+                                        const roleLabel = shiftRoleLabel(shift, { short: true });
                                         const titleParts = [
                                             allStores && shift.prodejna_nazev ? shift.prodejna_nazev : null,
                                             isCounterShift ? `Protisměna: ${shift.user_jmeno}` : shift.user_jmeno,
-                                            servisBadge,
+                                            roleLabel,
                                             `${formatTime(shift.cas_od)}-${formatTime(shift.cas_do)}`,
                                         ].filter(Boolean);
                                         return (
@@ -441,8 +440,8 @@ function ShiftCalendar({
                                                     <div className="shift-time">
                                                         {formatTime(shift.cas_od)}-{formatTime(shift.cas_do)}
                                                     </div>
-                                                    {servisBadge && (
-                                                        <div className="shift-servis-badge">{servisBadge}</div>
+                                                    {roleLabel && (
+                                                        <div className="shift-servis-badge shift-role-badge">{roleLabel}</div>
                                                     )}
                                                 </div>
                                                 {!allStores && !shift.je_domaci_prodejna && user?.id === shift.user_id && (
@@ -490,7 +489,7 @@ function ShiftCalendar({
                     <div className="confirm-details">
                         <p><strong>Prodejce:</strong> {shiftToDelete.user_jmeno}</p>
                         <p><strong>Datum:</strong> {formatShiftDate(shiftToDelete)}</p>
-                        <p><strong>Typ:</strong> {shiftToDelete.typ_smeny === 'dovolena' ? 'Dovolená' : shiftToDelete.typ_smeny === 'nemoc' ? 'Nemoc' : 'Práce'}</p>
+                        <p><strong>Role:</strong> {shiftRoleLabel(shiftToDelete)}</p>
                         {!isAbsenceShift(shiftToDelete) && (
                             <>
                                 <p><strong>Čas:</strong> {formatTime(shiftToDelete.cas_od)}-{formatTime(shiftToDelete.cas_do)}</p>

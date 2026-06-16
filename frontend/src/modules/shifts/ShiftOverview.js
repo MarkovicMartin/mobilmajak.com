@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './ShiftOverview.css';
+import { shiftRoleLabel } from './shiftRoleLabels';
 
 function ShiftOverview({ user, month, onMonthChange }) {
     const [overview, setOverview] = useState(null);
@@ -249,11 +250,7 @@ function ShiftOverview({ user, month, onMonthChange }) {
                                         {smena.typ_smeny === 'prace' && '💼'}
                                         {smena.typ_smeny === 'dovolena' && '🏖️'}
                                         {smena.typ_smeny === 'nemoc' && '🏥'}
-                                        {smena.typ_smeny === 'prace'
-                                            ? (smena.pozice_smeny === 'servis'
-                                                ? 'Servis'
-                                                : (smena.brigadnik_rezim === 'vypomoc' ? 'Výpomoc' : 'Práce'))
-                                            : smena.typ_smeny === 'dovolena' ? 'Dovolená' : 'Nemoc'}
+                                        {shiftRoleLabel(smena)}
                                     </span>
                                 </div>
                             </div>

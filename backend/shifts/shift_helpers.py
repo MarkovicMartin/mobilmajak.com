@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta, time
+
 from django.db.models import Q
 
 from stores.models import Prodejna
@@ -32,7 +34,84 @@ def resolve_prodejna(prodejna_input, typ_smeny: str):
         return prodejna_obj
 
 
-def find_existing_shift(user, datum, prodejna_obj, typ_smeny: str):
+def parse_shift_time(value) -> time:
+    """Parsuje čas směny z time objektu nebo řetězce HH:MM / HH:MM:SS."""
+    if isinstance(value, time):
+        return value
+    if isinstance(value, str):
+        for fmt in ('%H:%M:%S', '%H:%M'):
+            try:
+                return datetime.strptime(value.strip(), fmt).time()
+            except ValueError:
+                continue
+    raise ValueError(f'Neplatný čas směny: {value!r}')
+
+
+def shift_interval_bounds(datum, cas_od, cas_do):
+    """Vrátí (start, end) jako datetime; směna přes půlnoc má end na další den."""
+    start = datetime.combine(datum, parse_shift_time(cas_od))
+    end = datetime.combine(datum, parse_shift_time(cas_do))
+    if end <= start:
+        end += timedelta(days=1)
+    return start, end
+
+
+def shifts_time_overlap(datum, cas_od_a, cas_do_a, cas_od_b, cas_do_b) -> bool:
+    a_start, a_end = shift_interval_bounds(datum, cas_od_a, cas_do_a)
+    b_start, b_end = shift_interval_bounds(datum, cas_od_b, cas_do_b)
+    return a_start < b_end and b_start < a_end
+
+
+def find_overlapping_shift(
+    user,
+    datum,
+    prodejna_obj,
+    typ_smeny: str,
+    cas_od,
+    cas_do,
+    *,
+    exclude_id=None,
+):
+    """
+    Vrátí konfliktní směnu, pokud existuje.
+    Dovolená/nemoc: max. jeden záznam na den (bez ohledu na čas).
+    Práce: konflikt jen při časovém překryvu na stejné prodejně.
+    """
+    from .models import Smena
+
+    if is_absence_shift(typ_smeny):
+        qs = Smena.objects.filter(
+            user=user,
+            datum=datum,
+            aktivni=True,
+            typ_smeny__in=ABSENCE_SHIFT_TYPES,
+        )
+        if exclude_id is not None:
+            qs = qs.exclude(id=exclude_id)
+        return qs.first()
+
+    qs = Smena.objects.filter(
+        user=user,
+        datum=datum,
+        prodejna=prodejna_obj,
+        aktivni=True,
+        typ_smeny='prace',
+    )
+    if exclude_id is not None:
+        qs = qs.exclude(id=exclude_id)
+
+    for smena in qs:
+        if shifts_time_overlap(datum, cas_od, cas_do, smena.cas_od, smena.cas_do):
+            return smena
+    return None
+
+
+def find_existing_shift(user, datum, prodejna_obj, typ_smeny: str, cas_od=None, cas_do=None, exclude_id=None):
+    """Zpětná kompatibilita – bez časů u práce hledá libovolnou směnu ten den (staré volání)."""
+    if cas_od is not None and cas_do is not None:
+        return find_overlapping_shift(
+            user, datum, prodejna_obj, typ_smeny, cas_od, cas_do, exclude_id=exclude_id,
+        )
     from .models import Smena
 
     if is_absence_shift(typ_smeny):

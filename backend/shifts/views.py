@@ -31,8 +31,9 @@ from stores.models import Prodejna
 from .czech_holidays import get_ceske_svatky, get_nazev_svatku
 from .shift_helpers import (
     apply_calendar_prodejna_filter,
-    find_existing_shift,
+    find_overlapping_shift,
     is_absence_shift,
+    parse_shift_time,
     resolve_prodejna,
 )
 
@@ -209,26 +210,9 @@ def smeny_list(request):
             except ValueError as exc:
                 return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
-            existing_smena = find_existing_shift(user, data['datum'], prodejna_obj, typ_smeny)
-            if existing_smena:
-                store_hint = (
-                    'dovolená/nemoc'
-                    if is_absence_shift(typ_smeny)
-                    else (prodejna_obj.nazev_kratkiy if prodejna_obj else data.get('prodejna'))
-                )
-                return Response({
-                    'error': f'Na datum {data["datum"]} už máte záznam ({store_hint}). Chcete-li změnit čas, upravte stávající směnu.',
-                    'existing_shift_id': existing_smena.id,
-                    'existing_shift': {
-                        'cas_od': existing_smena.cas_od.strftime('%H:%M'),
-                        'cas_do': existing_smena.cas_do.strftime('%H:%M'),
-                        'typ_smeny': existing_smena.typ_smeny
-                    }
-                }, status=status.HTTP_409_CONFLICT)
-
             shift_datum = datetime.strptime(data['datum'], '%Y-%m-%d').date() if isinstance(data['datum'], str) else data['datum']
-            cas_od = data['cas_od']
-            cas_do = data['cas_do']
+            cas_od = parse_shift_time(data['cas_od'])
+            cas_do = parse_shift_time(data['cas_do'])
             if typ_smeny == 'dovolena':
                 err = validate_dovolena_kapacita(user, shift_datum, typ_smeny)
                 if err:
@@ -236,6 +220,37 @@ def smeny_list(request):
                 cas_od, cas_do = normalize_dovolena_casy(shift_datum, cas_od, cas_do)
             elif is_absence_shift(typ_smeny):
                 cas_od, cas_do = normalize_dovolena_casy(shift_datum, cas_od, cas_do)
+
+            existing_smena = find_overlapping_shift(
+                user, shift_datum, prodejna_obj, typ_smeny, cas_od, cas_do,
+            )
+            if existing_smena:
+                store_hint = (
+                    'dovolená/nemoc'
+                    if is_absence_shift(typ_smeny)
+                    else (prodejna_obj.nazev_kratkiy if prodejna_obj else data.get('prodejna'))
+                )
+                if is_absence_shift(typ_smeny):
+                    err_msg = (
+                        f'Na datum {data["datum"]} už máte záznam ({store_hint}). '
+                        'Chcete-li změnit čas, upravte stávající směnu.'
+                    )
+                else:
+                    err_msg = (
+                        f'Na datum {data["datum"]} na prodejně {store_hint} už máte směnu '
+                        f'{existing_smena.cas_od.strftime("%H:%M")}–{existing_smena.cas_do.strftime("%H:%M")}, '
+                        'která se časově překrývá. Pro druhý úsek (např. výpomoc → prodej) zvolte jiný čas.'
+                    )
+                return Response({
+                    'error': err_msg,
+                    'existing_shift_id': existing_smena.id,
+                    'existing_shift': {
+                        'cas_od': existing_smena.cas_od.strftime('%H:%M'),
+                        'cas_do': existing_smena.cas_do.strftime('%H:%M'),
+                        'typ_smeny': existing_smena.typ_smeny,
+                        'brigadnik_rezim': existing_smena.brigadnik_rezim,
+                    }
+                }, status=status.HTTP_409_CONFLICT)
 
             smena = Smena.objects.create(
                 user=user,
@@ -313,19 +328,20 @@ def smeny_bulk_create(request):
                     chyby.append(f'{datum_str}: Nelze vytvářet směny v minulých měsících')
                     continue
                 
-                if find_existing_shift(user, datum, prodejna_obj, typ_smeny):
-                    chyby.append(f'{datum_str}: Směna již existuje')
-                    continue
-
-                bulk_cas_od, bulk_cas_do = cas_od, cas_do
+                bulk_cas_od = parse_shift_time(cas_od)
+                bulk_cas_do = parse_shift_time(cas_do)
                 if typ_smeny == 'dovolena':
                     err = validate_dovolena_kapacita(user, datum, typ_smeny)
                     if err:
                         chyby.append(f'{datum_str}: {err}')
                         continue
-                    bulk_cas_od, bulk_cas_do = normalize_dovolena_casy(datum, cas_od, cas_do)
+                    bulk_cas_od, bulk_cas_do = normalize_dovolena_casy(datum, bulk_cas_od, bulk_cas_do)
                 elif is_absence_shift(typ_smeny):
-                    bulk_cas_od, bulk_cas_do = normalize_dovolena_casy(datum, cas_od, cas_do)
+                    bulk_cas_od, bulk_cas_do = normalize_dovolena_casy(datum, bulk_cas_od, bulk_cas_do)
+
+                if find_overlapping_shift(user, datum, prodejna_obj, typ_smeny, bulk_cas_od, bulk_cas_do):
+                    chyby.append(f'{datum_str}: Směna se časově překrývá s existující')
+                    continue
 
                 Smena.objects.create(
                     user=user,
@@ -430,6 +446,26 @@ def smena_detail(request, smena_id):
                 )
             if 'poznamka' in data:
                 smena.poznamka = data['poznamka']
+
+            conflict = find_overlapping_shift(
+                smena.user,
+                smena.datum,
+                smena.prodejna,
+                smena.typ_smeny,
+                smena.cas_od,
+                smena.cas_do,
+                exclude_id=smena.id,
+            )
+            if conflict:
+                if is_absence_shift(smena.typ_smeny):
+                    err_msg = 'Na tento den už existuje záznam dovolené/nemoci.'
+                else:
+                    store = smena.prodejna.nazev_kratkiy if smena.prodejna else ''
+                    err_msg = (
+                        f'Směna se časově překrývá s existující ({conflict.cas_od.strftime("%H:%M")}'
+                        f'–{conflict.cas_do.strftime("%H:%M")} na {store}).'
+                    )
+                return Response({'error': err_msg}, status=status.HTTP_409_CONFLICT)
 
             smena.save()
             

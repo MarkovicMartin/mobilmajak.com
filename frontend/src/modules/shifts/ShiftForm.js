@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Modal from '../../components/Modal';
 import { AnalyticsDateInput } from '../../components/AnalyticsDateRange';
 import { userAPI, storeAPI } from '../../services/api';
+import { shiftRoleLabel } from './shiftRoleLabels';
 import './ShiftForm.css';
 
 function ShiftForm({ user, onClose, onSuccess, initialDatum = '' }) {
@@ -381,8 +382,7 @@ function ShiftForm({ user, onClose, onSuccess, initialDatum = '' }) {
                                     <div className="existing-shift-info">
                                         <strong>Stávající směna:</strong><br/>
                                         📅 {existingShiftInfo.cas_od}-{existingShiftInfo.cas_do}<br/>
-                                        📋 {existingShiftInfo.typ_smeny === 'prace' ? 'Práce' : 
-                                            existingShiftInfo.typ_smeny === 'dovolena' ? 'Dovolená' : 'Nemoc'}
+                                        📋 {shiftRoleLabel(existingShiftInfo)}
                                     </div>
                                 )}
                             </div>

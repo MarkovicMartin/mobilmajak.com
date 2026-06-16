@@ -7,12 +7,7 @@ import { useAuth } from '../../context/AuthContext';
 import { taskAPI } from '../../services/api';
 import TaskDetailPanel from '../tasks/TaskDetailPanel';
 import TaskUrgencyBadge from '../tasks/TaskUrgencyBadge';
-
-const SHIFT_TYPE_LABELS = {
-    prace: 'Práce',
-    dovolena: 'Dovolená',
-    nemoc: 'Nemoc',
-};
+import { shiftRoleLabel } from '../shifts/shiftRoleLabels';
 
 const formatShiftTime = (t) => (t || '').substring(0, 5);
 
@@ -126,7 +121,7 @@ const ProfileDayPanel = ({
                                                 <>
                                                     <span className="profile-day-shift-type">
                                                         {s.typ_smeny === 'dovolena' ? '🏖️' : '🏥'}{' '}
-                                                        {SHIFT_TYPE_LABELS[s.typ_smeny] || s.typ_smeny}
+                                                        {shiftRoleLabel(s)}
                                                     </span>
                                                 </>
                                             ) : (
@@ -138,7 +133,7 @@ const ProfileDayPanel = ({
                                                         <span className="profile-day-shift-store">{s.prodejna_nazev}</span>
                                                     )}
                                                     <span className="profile-day-shift-type">
-                                                        {SHIFT_TYPE_LABELS[s.typ_smeny] || s.typ_smeny}
+                                                        {shiftRoleLabel(s)}
                                                     </span>
                                                 </>
                                             )}
