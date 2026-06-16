@@ -20,7 +20,7 @@ from .attendance_service import (
 )
 from .vacation_service import (
     build_vacation_overview_user,
-    deficit_mesic_hodin,
+    deficit_mesic_pro_dovolenou,
     dovolena_hodin_ze_smeny,
     dovolena_stav,
     is_dovolena_eligible,
@@ -834,7 +834,7 @@ def smeny_prehled(request):
     from .labor_hours import fondu_hodin_mesic
 
     mesicni_fond = fondu_hodin_mesic(rok, mesic_cislo)
-    deficit_mesic = deficit_mesic_hodin(user.id, rok, mesic_cislo) if is_dovolena_eligible(user) else 0.0
+    deficit_mesic = deficit_mesic_pro_dovolenou(user.id, rok, mesic_cislo) if is_dovolena_eligible(user) else 0.0
 
     return Response({
         'mesic': f'{rok}-{mesic_cislo:02d}',

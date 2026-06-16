@@ -10,6 +10,8 @@ from .czech_holidays import get_ceske_svatky
 DOVOLENA_ROCNI_FOND = 160
 DOVOLENA_PREVOD_MAX = 40
 DOVOLENA_HODINY_ZA_DEN = HODINY_NA_PRACOVNI_DEN
+DOVOLENA_DEFICIT_OD_ROK = 2026
+DOVOLENA_DEFICIT_OD_MESIC = 6
 
 
 def _is_markovic_active_seller(user):
@@ -74,6 +76,15 @@ def cerpana_dovolena_rok(user_id, rok, ignorovat_smena_id=None):
     return round(sum(dovolena_hodin_ze_smeny(s) for s in smeny), 2)
 
 
+def _mesic_pocita_deficit(rok, mesic_cislo):
+    """True pokud se deficit z nesplněného fondu započítává do čerpání dovolené."""
+    if rok < DOVOLENA_DEFICIT_OD_ROK:
+        return False
+    if rok == DOVOLENA_DEFICIT_OD_ROK:
+        return mesic_cislo >= DOVOLENA_DEFICIT_OD_MESIC
+    return True
+
+
 def _mesic_ukoncen(rok, mesic_cislo, referencni_datum=None):
     """True pokud kalendářní měsíc již skončil (ne aktuální ani budoucí)."""
     if referencni_datum is None:
@@ -101,6 +112,13 @@ def deficit_mesic_hodin(user_id, rok, mesic_cislo):
     return round(max(0.0, fondu - odpracovano - dovolena), 2)
 
 
+def deficit_mesic_pro_dovolenou(user_id, rok, mesic_cislo):
+    """Deficit započítaný do dovolené – 0 před červnem 2026."""
+    if not _mesic_pocita_deficit(rok, mesic_cislo):
+        return 0.0
+    return deficit_mesic_hodin(user_id, rok, mesic_cislo)
+
+
 def deficit_fondu_rok(user_id, rok, referencni_datum=None):
     """Součet deficitů z ukončených měsíců v daném roce."""
     if referencni_datum is None:
@@ -108,6 +126,8 @@ def deficit_fondu_rok(user_id, rok, referencni_datum=None):
     celkem = 0.0
     for mesic in range(1, 13):
         if not _mesic_ukoncen(rok, mesic, referencni_datum):
+            continue
+        if not _mesic_pocita_deficit(rok, mesic):
             continue
         celkem += deficit_mesic_hodin(user_id, rok, mesic)
     return round(celkem, 2)
@@ -226,14 +246,15 @@ def mesicni_cerpani_dovolene(user_id, rok, mesic_cislo, referencni_datum=None):
     Čerpání fondu v měsíci: směny dovolené + deficit (jen u ukončených měsíců).
     """
     smeny_h = cerpana_dovolena_mesic(user_id, rok, mesic_cislo)
-    deficit_h = deficit_mesic_hodin(user_id, rok, mesic_cislo)
+    pocita_deficit = _mesic_pocita_deficit(rok, mesic_cislo)
+    deficit_h = deficit_mesic_hodin(user_id, rok, mesic_cislo) if pocita_deficit else 0.0
     ukoncen = _mesic_ukoncen(rok, mesic_cislo, referencni_datum)
-    deficit_odeceno = round(deficit_h, 2) if ukoncen else 0.0
+    deficit_odeceno = round(deficit_h, 2) if ukoncen and pocita_deficit else 0.0
     return {
         'mesic': mesic_cislo,
         'dovolena_smeny_h': smeny_h,
         'deficit_h': deficit_odeceno,
-        'deficit_predikce_h': round(deficit_h, 2) if not ukoncen and deficit_h > 0 else 0.0,
+        'deficit_predikce_h': round(deficit_h, 2) if not ukoncen and pocita_deficit and deficit_h > 0 else 0.0,
         'cerpano_h': round(smeny_h + deficit_odeceno, 2),
         'mesic_ukoncen': ukoncen,
     }

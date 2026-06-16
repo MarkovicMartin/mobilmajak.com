@@ -47,7 +47,7 @@ from .payroll_points_batch import (
     build_points_payload_for_user,
 )
 from .vacation_service import (
-    deficit_mesic_hodin,
+    _mesic_pocita_deficit,
     dovolena_hodin_ze_smeny,
     is_dovolena_eligible,
 )
@@ -78,9 +78,19 @@ def _odpracovano_h_mesic(user_id, rok, mesic_cislo, prodejna_id=None):
     return Decimal(str(hours_map.get(user_id, {}).get('odpracovano_h', 0)))
 
 
-def prumer_fixni_hodinove_body(user, rok, mesic_cislo):
+def _deficit_h_from_hours(uid, rok, mesic_cislo, hours_map, fondu_h):
+    if not _mesic_pocita_deficit(rok, mesic_cislo) or fondu_h <= 0:
+        return 0.0
+    hours = hours_map.get(uid, {})
+    odpracovano = float(hours.get('odpracovano_h', 0) or 0)
+    dovolena = float(hours.get('dovolena_h', 0) or 0)
+    return round(max(0.0, fondu_h - odpracovano - dovolena), 2)
+
+
+def prumer_fixni_hodinove_body(user, rok, mesic_cislo, hours_cache=None):
     """
     Průměr fixní části (základ + doplňky) / odpracované hodiny za 3 předchozí měsíce.
+    hours_cache: volitelně {(rok, mesic): hours_map} – vyhne se N× dotazům na směny.
     """
     if is_brigadnik(user) or not is_dovolena_eligible(user):
         return Decimal('0')
@@ -89,7 +99,11 @@ def prumer_fixni_hodinove_body(user, rok, mesic_cislo):
     total_h = Decimal('0')
     for i in range(1, 4):
         y, m = _subtract_months(rok, mesic_cislo, i)
-        h = _odpracovano_h_mesic(user.id, y, m)
+        if hours_cache is not None:
+            hm = hours_cache.get((y, m), {})
+            h = Decimal(str(hm.get(user.id, {}).get('odpracovano_h', 0)))
+        else:
+            h = _odpracovano_h_mesic(user.id, y, m)
         fixni = mzda_fixni_bez_cestovneho(user, float(h))
         total_fixni += fixni
         total_h += h
@@ -184,7 +198,7 @@ def aggregate_hours_by_user(rok, mesic_cislo, prodejna_id=None):
 
 def build_payroll_row(user, rok, mesic_cislo, hours_map, mesic_date, prodejny_cache,
                       fondu_h, metrics_map, servis_map, odmeny_map, dyska_map=None,
-                      penalizace_map=None):
+                      penalizace_map=None, hours_cache=None):
     uid = user.id
     hours = hours_map.get(uid, {
         'odpracovano_h': 0,
@@ -237,8 +251,8 @@ def build_payroll_row(user, rok, mesic_cislo, hours_map, mesic_date, prodejny_ca
     )
 
     prescas_h = prescas_hodin(odpracovano, fondu_h)
-    deficit_h = deficit_mesic_hodin(uid, rok, mesic_cislo) if is_dovolena_eligible(user) else 0.0
-    prumer_fixni_h = prumer_fixni_hodinove_body(user, rok, mesic_cislo)
+    deficit_h = _deficit_h_from_hours(uid, rok, mesic_cislo, hours_map, fondu_h) if is_dovolena_eligible(user) else 0.0
+    prumer_fixni_h = prumer_fixni_hodinove_body(user, rok, mesic_cislo, hours_cache=hours_cache)
     dovolena_body = dovolena_body_vypocet(user, dovolena_h, prumer_fixni_h)
     prescas_body, prescas_sazba_h, zaklad_pro_vicepraci = prescas_body_vypocet(user, prescas_h, fondu_h)
 
@@ -311,6 +325,10 @@ def build_payroll_preview(mesic_str, prodejna_id=None):
 
     prodejny_cache = {p.id: p.nazev for p in Prodejna.objects.all()}
     hours_map = aggregate_hours_by_user(rok, mesic_cislo, prodejna_id)
+    hours_cache = {(rok, mesic_cislo): hours_map}
+    for i in range(1, 4):
+        y, m = _subtract_months(rok, mesic_cislo, i)
+        hours_cache[(y, m)] = aggregate_hours_by_user(y, m, prodejna_id)
 
     users_qs = real_sales_staff_queryset().order_by('jmeno', 'prijmeni')
     users_list = []
@@ -341,6 +359,7 @@ def build_payroll_preview(mesic_str, prodejna_id=None):
         rows.append(build_payroll_row(
             user, rok, mesic_cislo, hours_map, mesic_date, prodejny_cache,
             fondu_h, metrics_map, servis_map, odmeny_map, dyska_map, penalizace_map,
+            hours_cache=hours_cache,
         ))
 
     celkem_bodu = int(round(sum(r.get('celkem_body', 0) for r in rows)))

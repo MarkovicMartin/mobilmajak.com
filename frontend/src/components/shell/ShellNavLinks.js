@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { createPortal } from 'react-dom';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
     getVisibleNavGroups,
     getProfileNavChildren,
@@ -55,86 +54,22 @@ const ShellNavLinks = ({
         [activeParentKeys],
     );
 
-    const [expandedMobile, setExpandedMobile] = useState(() => new Set());
-    const [openFlyout, setOpenFlyout] = useState(null);
-    const [flyoutRect, setFlyoutRect] = useState(null);
+    const [expandedInline, setExpandedInline] = useState(() => new Set());
 
     useEffect(() => {
-        setExpandedMobile((prev) => {
-            let changed = false;
-            const next = new Set(prev);
-            activeParentKeys.forEach((k) => {
-                if (!next.has(k)) {
-                    next.add(k);
-                    changed = true;
-                }
-            });
-            return changed ? next : prev;
+        setExpandedInline((prev) => {
+            if (
+                prev.size === activeParentKeys.size
+                && [...activeParentKeys].every((k) => prev.has(k))
+            ) {
+                return prev;
+            }
+            return new Set(activeParentKeys);
         });
     }, [activeParentKeysKey, activeParentKeys]);
 
-    const openFlyoutItem = useMemo(
-        () => groups.flatMap((g) => g.items).find((i) => i.sectionKey === openFlyout),
-        [groups, openFlyout],
-    );
-
-    const updateFlyoutRect = useCallback((buttonEl) => {
-        if (!buttonEl) return;
-        const rect = buttonEl.getBoundingClientRect();
-        setFlyoutRect({
-            top: rect.top,
-            left: rect.right + 8,
-        });
-    }, []);
-
-    useEffect(() => {
-        setOpenFlyout(null);
-        setFlyoutRect(null);
-    }, [pathname]);
-
-    useEffect(() => {
-        if (!openFlyout) return undefined;
-        const onReposition = () => {
-            const btn = document.querySelector(
-                `.shell-nav__branch-toggle[aria-expanded="true"]`,
-            );
-            if (btn) updateFlyoutRect(btn);
-        };
-        window.addEventListener('resize', onReposition);
-        window.addEventListener('scroll', onReposition, true);
-        return () => {
-            window.removeEventListener('resize', onReposition);
-            window.removeEventListener('scroll', onReposition, true);
-        };
-    }, [openFlyout, updateFlyoutRect]);
-
-    useEffect(() => {
-        if (!openFlyout) return undefined;
-        const closeOnOutside = (e) => {
-            if (e.target.closest('.shell-nav__branch--flyout-open')) return;
-            if (e.target.closest('.shell-nav__flyout--fixed')) return;
-            setOpenFlyout(null);
-            setFlyoutRect(null);
-        };
-        const closeOnEscape = (e) => {
-            if (e.key === 'Escape') closeFlyout();
-        };
-        document.addEventListener('mousedown', closeOnOutside);
-        document.addEventListener('keydown', closeOnEscape);
-        return () => {
-            document.removeEventListener('mousedown', closeOnOutside);
-            document.removeEventListener('keydown', closeOnEscape);
-        };
-    }, [openFlyout]);
-
-    const closeFlyout = () => {
-        setOpenFlyout(null);
-        setFlyoutRect(null);
-    };
-
     const go = (item) => {
         navigateNavItem(navigate, item);
-        closeFlyout();
         onNavigate?.();
     };
 
@@ -146,7 +81,7 @@ const ShellNavLinks = ({
         return <span className="shell-nav__emoji" aria-hidden="true">{icon}</span>;
     };
 
-    const renderLink = (item, isChild = false, onClickOverride) => {
+    const renderLink = (item, isChild = false, onClickOverride, showLabel = false) => {
         const active = isNavItemLinkActive(item, pathname, locationState);
         const cls = [
             linkClass,
@@ -163,30 +98,21 @@ const ShellNavLinks = ({
                 className={cls}
                 onClick={onClickOverride || (() => go(item))}
                 aria-current={active ? 'page' : undefined}
-                title={collapsed && !isChild ? item.label : undefined}
+                title={collapsed && !isChild && !showLabel ? item.label : undefined}
             >
                 {renderIcon(item)}
-                {!collapsed && <span className="shell-nav__label">{item.label}</span>}
+                {(!collapsed || showLabel) && (
+                    <span className="shell-nav__label">{item.label}</span>
+                )}
             </button>
         );
     };
 
-    const toggleMobile = (sectionKey) => {
-        setExpandedMobile((prev) => {
-            const next = new Set(prev);
-            if (next.has(sectionKey)) next.delete(sectionKey);
-            else next.add(sectionKey);
-            return next;
+    const toggleInline = (sectionKey) => {
+        setExpandedInline((prev) => {
+            if (prev.has(sectionKey)) return new Set();
+            return new Set([sectionKey]);
         });
-    };
-
-    const toggleFlyout = (sectionKey, buttonEl) => {
-        if (openFlyout === sectionKey) {
-            closeFlyout();
-            return;
-        }
-        updateFlyoutRect(buttonEl);
-        setOpenFlyout(sectionKey);
     };
 
     if (mobile) {
@@ -200,13 +126,13 @@ const ShellNavLinks = ({
                             if (!hasChildren) {
                                 return renderLink(item, false);
                             }
-                            const isOpen = expandedMobile.has(item.sectionKey);
+                            const isOpen = expandedInline.has(item.sectionKey);
                             return (
                                 <div key={item.sectionKey} className="shell-nav__branch">
                                     <button
                                         type="button"
                                         className={`${linkClass} shell-nav__branch-toggle ${isOpen ? 'shell-nav__branch-toggle--open' : ''}`}
-                                        onClick={() => toggleMobile(item.sectionKey)}
+                                        onClick={() => toggleInline(item.sectionKey)}
                                         aria-expanded={isOpen}
                                     >
                                         {renderIcon(item)}
@@ -227,61 +153,79 @@ const ShellNavLinks = ({
         );
     }
 
-    const flyoutPortal = openFlyoutItem && flyoutRect && createPortal(
-        <div
-            className="shell-nav__flyout shell-nav__flyout--fixed"
-            role="menu"
-            style={{ top: flyoutRect.top, left: flyoutRect.left }}
-        >
-            <div className="shell-nav__flyout-title">{openFlyoutItem.label}</div>
-            {openFlyoutItem.children.map((child) => renderLink(child, true))}
-        </div>,
-        document.body,
-    );
+    const renderDesktopBranch = (item) => {
+        const hasChildren =
+            PARENTS_WITH_CHILDREN.has(item.sectionKey) && item.children?.length > 0;
+
+        if (!hasChildren) {
+            return renderLink(item, false);
+        }
+
+        const parentActive = activeParentKeys.has(item.sectionKey);
+
+        if (collapsed) {
+            return (
+                <div
+                    key={item.sectionKey}
+                    className={[
+                        'shell-nav__branch',
+                        'shell-nav__branch--collapsed',
+                        parentActive ? 'shell-nav__branch--active' : '',
+                    ].filter(Boolean).join(' ')}
+                >
+                    <button
+                        type="button"
+                        className={`${linkClass} shell-nav__branch-toggle ${parentActive ? activeClass : ''}`.trim()}
+                        aria-haspopup="true"
+                        title={item.label}
+                        tabIndex={0}
+                    >
+                        {renderIcon(item)}
+                    </button>
+                    <div className="shell-nav__flyout" role="menu">
+                        <div className="shell-nav__flyout-panel">
+                            <div className="shell-nav__flyout-title">{item.label}</div>
+                            {item.children.map((child) => renderLink(child, true, undefined, true))}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        const isOpen = expandedInline.has(item.sectionKey);
+        return (
+            <div
+                key={item.sectionKey}
+                className={[
+                    'shell-nav__branch',
+                    parentActive ? 'shell-nav__branch--active' : '',
+                ].filter(Boolean).join(' ')}
+            >
+                <button
+                    type="button"
+                    className={`${linkClass} shell-nav__branch-toggle ${isOpen ? 'shell-nav__branch-toggle--open' : ''} ${parentActive ? activeClass : ''}`.trim()}
+                    onClick={() => toggleInline(item.sectionKey)}
+                    aria-expanded={isOpen}
+                >
+                    {renderIcon(item)}
+                    <span className="shell-nav__label">{item.label}</span>
+                    <i className={`fas fa-chevron-${isOpen ? 'up' : 'down'} shell-nav__chevron`} aria-hidden="true" />
+                </button>
+                {isOpen && (
+                    <div className="shell-nav__children">
+                        {item.children.map((child) => renderLink(child, true))}
+                    </div>
+                )}
+            </div>
+        );
+    };
 
     return (
         <>
-            {flyoutPortal}
             {groups.map((group) => (
                 <div key={group.id} className={groupClass}>
                     {!collapsed && <span className={groupLabelClass}>{group.label}</span>}
-                    {group.items.map((item) => {
-                        const hasChildren =
-                            PARENTS_WITH_CHILDREN.has(item.sectionKey) && item.children?.length > 0;
-
-                        if (!hasChildren) {
-                            return renderLink(item, false);
-                        }
-
-                        const isFlyoutOpen = openFlyout === item.sectionKey;
-                        const parentActive = activeParentKeys.has(item.sectionKey);
-
-                        return (
-                            <div
-                                key={item.sectionKey}
-                                className={[
-                                    'shell-nav__branch',
-                                    isFlyoutOpen ? 'shell-nav__branch--flyout-open' : '',
-                                    parentActive ? 'shell-nav__branch--active' : '',
-                                ].filter(Boolean).join(' ')}
-                            >
-                                <button
-                                    type="button"
-                                    className={`${linkClass} shell-nav__branch-toggle ${isFlyoutOpen ? 'shell-nav__branch-toggle--open' : ''} ${parentActive ? activeClass : ''}`.trim()}
-                                    onClick={(e) => toggleFlyout(item.sectionKey, e.currentTarget)}
-                                    aria-expanded={isFlyoutOpen}
-                                    aria-haspopup="true"
-                                    title={collapsed ? item.label : undefined}
-                                >
-                                    {renderIcon(item)}
-                                    {!collapsed && <span className="shell-nav__label">{item.label}</span>}
-                                    {!collapsed && (
-                                        <i className={`fas fa-chevron-${isFlyoutOpen ? 'up' : 'down'} shell-nav__chevron`} aria-hidden="true" />
-                                    )}
-                                </button>
-                            </div>
-                        );
-                    })}
+                    {group.items.map((item) => renderDesktopBranch(item))}
                 </div>
             ))}
         </>

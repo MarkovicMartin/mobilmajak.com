@@ -27,7 +27,7 @@ from .category_mapping import (
     seller_kategorie_nazev,
 )
 from .plneni import plneni_polozky
-from .plneni_kontext import historie_plneni_prodejce
+from .plneni_kontext import historie_plneni_prodejci_batch
 from .rozpocet import rozpoctij
 
 MIN_CASTKA_FIRMA = Decimal('500000')
@@ -1418,9 +1418,9 @@ def plan_plneni_prodejci(request, rok, mesic):
 
     from datetime import date as date_type
     from .plneni import (
-        plneni_prodejce_s_detailem,
-        plneni_prodejce_do_data,
-        plneni_prodejce_obrat_do_data,
+        plneni_prodejci_s_detailem_batch,
+        plneni_prodejci_do_data_batch,
+        plneni_prodejci_obrat_do_data_batch,
     )
     import calendar
 
@@ -1433,8 +1433,11 @@ def plan_plneni_prodejci(request, rok, mesic):
 
     # Sběr všech prodejců s plánem (agregace přes více prodejen)
     prodejci_plan = {}
-    for ps in plan.prodejny.select_related('prodejna').prefetch_related('plany_prodejcu__kategorie'):
-        for pp in ps.plany_prodejcu.select_related('uzivatel').prefetch_related('kategorie'):
+    for ps in plan.prodejny.select_related('prodejna').prefetch_related(
+        'plany_prodejcu__kategorie',
+        'plany_prodejcu__uzivatel',
+    ):
+        for pp in ps.plany_prodejcu.all():
             uid = pp.uzivatel_id
             if uid not in prodejci_plan:
                 prodejci_plan[uid] = {
@@ -1454,6 +1457,10 @@ def plan_plneni_prodejci(request, rok, mesic):
                 prodejci_plan[uid]['plan_obrat'] += k.castka
                 prodejci_plan[uid]['plan_kusy'] += k.pocet_kusu
 
+    prodejce_ids = list(prodejci_plan.keys())
+    if not prodejce_ids:
+        return Response({'prodejci': []})
+
     dnes = date_type.today()
     je_aktualni_mesic = (rok == dnes.year and mesic == dnes.month)
     pocet_dni = 0
@@ -1463,9 +1470,19 @@ def plan_plneni_prodejci(request, rok, mesic):
         pocet_dni = (dnes - prvni_den).days + 1
         dni_v_mesici = calendar.monthrange(rok, mesic)[1]
 
+    skutecne_batch = plneni_prodejci_s_detailem_batch(prodejce_ids, rok, mesic)
+    kusy_do_dnes_batch = {}
+    obrat_do_dnes_batch = {}
+    if je_aktualni_mesic and pocet_dni >= 2:
+        kusy_do_dnes_batch = plneni_prodejci_do_data_batch(prodejce_ids, rok, mesic, dnes)
+        obrat_do_dnes_batch = plneni_prodejci_obrat_do_data_batch(prodejce_ids, rok, mesic, dnes)
+
+    historie_batch = historie_plneni_prodejci_batch(prodejce_ids, rok, mesic)
+
+    empty_skut = {'obrat': Decimal('0'), 'kategorie': {}}
     result = []
     for uid, data in prodejci_plan.items():
-        skutecne = plneni_prodejce_s_detailem(rok, mesic, uid)
+        skutecne = skutecne_batch.get(uid, empty_skut)
         skut_obrat = skutecne['obrat']
         plan_obrat = data['plan_obrat']
         pct_obrat = float(skut_obrat / plan_obrat * 100) if plan_obrat and plan_obrat > 0 else 0
@@ -1474,11 +1491,11 @@ def plan_plneni_prodejci(request, rok, mesic):
         trend_procent = None
         trend_kategorie = {}
         if je_aktualni_mesic and pocet_dni >= 2:
-            obrat_do_dnes = plneni_prodejce_obrat_do_data(rok, mesic, dnes, uid)
+            obrat_do_dnes = obrat_do_dnes_batch.get(uid, Decimal('0'))
             prumer_den = float(obrat_do_dnes) / pocet_dni
             trend_obrat = round(prumer_den * dni_v_mesici, 2)
             trend_procent = round((trend_obrat / float(plan_obrat) * 100), 1) if plan_obrat else 0
-            kusy_do_dnes = plneni_prodejce_do_data(rok, mesic, dnes, uid)
+            kusy_do_dnes = kusy_do_dnes_batch.get(uid, {})
             for kod, kusy_d in kusy_do_dnes.items():
                 prumer_k = kusy_d / pocet_dni if pocet_dni else 0
                 trend_kategorie[kod] = round(prumer_k * dni_v_mesici)
@@ -1510,7 +1527,15 @@ def plan_plneni_prodejci(request, rok, mesic):
         trend_kusy_celkem = round(sum(trend_kategorie.values())) if trend_kategorie else None
         trend_procent_kusy = round((trend_kusy_celkem / plan_kusy_celkem * 100), 1) if plan_kusy_celkem and trend_kusy_celkem is not None else None
 
-        historie = historie_plneni_prodejce(uid, rok, mesic)
+        historie = historie_batch.get(uid, {
+            'mesice': [],
+            'signaly': {
+                'systematicky_pod_planem': False,
+                'silne_kategorie': [],
+                'slabe_kategorie': [],
+            },
+            'prumer_plneni_3m': None,
+        })
 
         result.append({
             'prodejce_id': uid,

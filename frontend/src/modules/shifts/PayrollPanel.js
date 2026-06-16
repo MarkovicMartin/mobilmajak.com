@@ -10,6 +10,61 @@ import { formatPoints, formatNumber } from '../../utils/formatBody';
 import { manualNumberInputClass, preventNumberInputWheel } from '../../utils/manualNumberInput';
 import './PayrollPanel.css';
 
+const CACHE_PREFIX = 'payroll-overview-v1';
+const CURRENT_MONTH_STALE_MS = 5 * 60 * 1000;
+const memoryCache = new Map();
+
+function cacheKey(month) {
+    return `${CACHE_PREFIX}:${month}`;
+}
+
+function readCache(month) {
+    const mem = memoryCache.get(month);
+    if (mem) return mem;
+    try {
+        const raw = sessionStorage.getItem(cacheKey(month));
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        memoryCache.set(month, parsed);
+        return parsed;
+    } catch {
+        return null;
+    }
+}
+
+function writeCache(month, payload) {
+    const entry = { ...payload, fetchedAt: Date.now() };
+    memoryCache.set(month, entry);
+    try {
+        sessionStorage.setItem(cacheKey(month), JSON.stringify(entry));
+    } catch {
+        // sessionStorage plné – modulová cache stačí
+    }
+}
+
+function invalidateCache(month) {
+    memoryCache.delete(month);
+    try {
+        sessionStorage.removeItem(cacheKey(month));
+    } catch {
+        // ignore
+    }
+}
+
+function needsBackgroundRefresh(month, cached, now = new Date()) {
+    if (!cached) return true;
+    const current = currentMonthStr();
+    if (month < current) return false;
+    if (month > current) return true;
+    return Date.now() - (cached.fetchedAt || 0) > CURRENT_MONTH_STALE_MS;
+}
+
+function applyPayrollPayload(data, setRows, setFonduH) {
+    setRows(data.rows || []);
+    const fond = data.fondu_h ?? data.rows?.[0]?.fondu_h ?? null;
+    setFonduH(fond);
+}
+
 const MONTH_NAMES = [
     'Leden', 'Únor', 'Březen', 'Duben', 'Květen', 'Červen',
     'Červenec', 'Srpen', 'Září', 'Říjen', 'Listopad', 'Prosinec',
@@ -53,6 +108,7 @@ function PayrollPanel({ month, onMonthChange, onExport }) {
     const monthPickerRef = useRef(null);
     const odmenaFormRef = useRef(null);
     const penalizaceFormRef = useRef(null);
+    const fetchSeq = useRef(0);
 
     const closeOdmenaModal = useCallback(() => {
         setShowOdmenaModal(false);
@@ -71,10 +127,25 @@ function PayrollPanel({ month, onMonthChange, onExport }) {
         [rows],
     );
 
-    const loadPayroll = useCallback(async () => {
+    const loadPayroll = useCallback(async (options = {}) => {
+        const { force = false } = options;
         if (!month) return;
-        setLoading(true);
+        const seq = ++fetchSeq.current;
+        const cached = force ? null : readCache(month);
+        const hasCachedRows = Boolean(cached?.data?.rows?.length);
+
+        if (cached?.data) {
+            applyPayrollPayload(cached.data, setRows, setFonduH);
+            setLoading(false);
+        } else {
+            setLoading(true);
+        }
         setError('');
+
+        if (!force && !needsBackgroundRefresh(month, cached)) {
+            return;
+        }
+
         try {
             const res = await fetch(`/api/shifts/payroll/?mesic=${month}`, { credentials: 'include' });
             if (!res.ok) {
@@ -82,15 +153,21 @@ function PayrollPanel({ month, onMonthChange, onExport }) {
                 throw new Error(data.error || 'Chyba při načítání výplaty');
             }
             const data = await res.json();
-            setRows(data.rows || []);
-            const fond = data.fondu_h ?? data.rows?.[0]?.fondu_h ?? null;
-            setFonduH(fond);
+            if (seq !== fetchSeq.current) return;
+
+            writeCache(month, { data });
+            applyPayrollPayload(data, setRows, setFonduH);
         } catch (e) {
-            setError(e.message);
-            setRows([]);
-            setFonduH(null);
+            if (seq !== fetchSeq.current) return;
+            if (!hasCachedRows) {
+                setError(e.message);
+                setRows([]);
+                setFonduH(null);
+            }
         } finally {
-            setLoading(false);
+            if (seq === fetchSeq.current) {
+                setLoading(false);
+            }
         }
     }, [month]);
 
@@ -137,7 +214,8 @@ function PayrollPanel({ month, onMonthChange, onExport }) {
                 throw new Error(data.error || 'Uložení selhalo');
             }
             closePenalizaceModal();
-            await loadPayroll();
+            invalidateCache(month);
+            await loadPayroll({ force: true });
         } catch (err) {
             alert(err.message);
         } finally {
@@ -171,7 +249,8 @@ function PayrollPanel({ month, onMonthChange, onExport }) {
                 throw new Error(data.error || 'Uložení selhalo');
             }
             closeOdmenaModal();
-            await loadPayroll();
+            invalidateCache(month);
+            await loadPayroll({ force: true });
         } catch (err) {
             alert(err.message);
         } finally {

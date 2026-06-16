@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { formatPoints, formatNumber } from '../../utils/formatBody';
 import './VacationPanel.css';
 
@@ -6,6 +6,95 @@ const MONTH_NAMES = [
     'Leden', 'Únor', 'Březen', 'Duben', 'Květen', 'Červen',
     'Červenec', 'Srpen', 'Září', 'Říjen', 'Listopad', 'Prosinec',
 ];
+
+const CACHE_PREFIX = 'vacation-overview-v2';
+const CURRENT_MONTH_STALE_MS = 5 * 60 * 1000;
+const memoryCache = new Map();
+
+function cacheKey(rok) {
+    return `${CACHE_PREFIX}:${rok}`;
+}
+
+function readCache(rok) {
+    const mem = memoryCache.get(rok);
+    if (mem) return mem;
+    try {
+        const raw = sessionStorage.getItem(cacheKey(rok));
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        memoryCache.set(rok, parsed);
+        return parsed;
+    } catch {
+        return null;
+    }
+}
+
+function writeCache(rok, payload) {
+    const entry = { ...payload, fetchedAt: Date.now() };
+    memoryCache.set(rok, entry);
+    try {
+        sessionStorage.setItem(cacheKey(rok), JSON.stringify(entry));
+    } catch {
+        // sessionStorage plné – modulová cache stačí
+    }
+}
+
+function applyOverviewPayload(data, setEligible, setMessage, setUsers, setExpandedId) {
+    setEligible(data.eligible !== false);
+    setMessage(data.message || '');
+    const list = data.users || [];
+    setUsers(list);
+    if (list.length === 1) {
+        setExpandedId(list[0].user_id);
+    }
+}
+
+function mergeUserRows(cachedUsers, freshUsers, rok, now = new Date()) {
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+    const freshById = new Map((freshUsers || []).map((u) => [u.user_id, u]));
+
+    if (rok < currentYear) {
+        return cachedUsers;
+    }
+
+    const source = cachedUsers?.length ? cachedUsers : freshUsers;
+    return (source || []).map((cachedUser) => {
+        const freshUser = freshById.get(cachedUser.user_id);
+        if (!freshUser) return cachedUser;
+        if (rok > currentYear) return freshUser;
+
+        const cachedMesice = cachedUser.mesice || [];
+        const freshMesice = freshUser.mesice || [];
+        const mesice = cachedMesice.map((cachedMonth) => {
+            if (cachedMonth.mesic < currentMonth) {
+                return cachedMonth;
+            }
+            const freshMonth = freshMesice.find((m) => m.mesic === cachedMonth.mesic);
+            return freshMonth || cachedMonth;
+        });
+        for (const freshMonth of freshMesice) {
+            if (freshMonth.mesic >= currentMonth && !mesice.some((m) => m.mesic === freshMonth.mesic)) {
+                mesice.push(freshMonth);
+            }
+        }
+        mesice.sort((a, b) => a.mesic - b.mesic);
+
+        return {
+            ...freshUser,
+            mesice,
+            cerpano_rok_z_mesicu_h: mesice.reduce((s, m) => s + (Number(m.cerpano_h) || 0), 0),
+        };
+    });
+}
+
+function needsBackgroundRefresh(rok, cached, now = new Date()) {
+    if (!cached) return true;
+    const currentYear = now.getFullYear();
+    if (rok < currentYear) return false;
+    if (rok > currentYear) return true;
+    return Date.now() - (cached.fetchedAt || 0) > CURRENT_MONTH_STALE_MS;
+}
 
 function VacationPanel({ user }) {
     const [rok, setRok] = useState(() => new Date().getFullYear());
@@ -15,10 +104,25 @@ function VacationPanel({ user }) {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [expandedId, setExpandedId] = useState(null);
+    const fetchSeq = useRef(0);
 
     const loadOverview = useCallback(async () => {
-        setLoading(true);
+        const seq = ++fetchSeq.current;
+        const cached = readCache(rok);
+        const hasCachedUsers = Boolean(cached?.data?.users?.length);
+
+        if (cached?.data) {
+            applyOverviewPayload(cached.data, setEligible, setMessage, setUsers, setExpandedId);
+            setLoading(false);
+        } else {
+            setLoading(true);
+        }
         setError('');
+
+        if (!needsBackgroundRefresh(rok, cached)) {
+            return;
+        }
+
         try {
             const res = await fetch(`/api/shifts/vacation-overview/?rok=${rok}`, {
                 credentials: 'include',
@@ -28,18 +132,25 @@ function VacationPanel({ user }) {
                 throw new Error(data.error || 'Chyba při načítání dovolené');
             }
             const data = await res.json();
-            setEligible(data.eligible !== false);
-            setMessage(data.message || '');
-            const list = data.users || [];
-            setUsers(list);
-            if (list.length === 1) {
-                setExpandedId(list[0].user_id);
-            }
+            if (seq !== fetchSeq.current) return;
+
+            const mergedUsers = cached?.data?.users?.length
+                ? mergeUserRows(cached.data.users, data.users || [], rok)
+                : (data.users || []);
+            const merged = { ...data, users: mergedUsers };
+
+            writeCache(rok, { data: merged });
+            applyOverviewPayload(merged, setEligible, setMessage, setUsers, setExpandedId);
         } catch (e) {
-            setError(e.message);
-            setUsers([]);
+            if (seq !== fetchSeq.current) return;
+            if (!hasCachedUsers) {
+                setError(e.message);
+                setUsers([]);
+            }
         } finally {
-            setLoading(false);
+            if (seq === fetchSeq.current) {
+                setLoading(false);
+            }
         }
     }, [rok]);
 

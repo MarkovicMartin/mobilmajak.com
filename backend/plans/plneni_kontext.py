@@ -4,7 +4,7 @@ Historické plnění a signály pro řízení prodejců.
 from decimal import Decimal
 
 from .models import PlanMonth
-from .plneni import mesice_pred_planem, plneni_prodejce_s_detailem
+from .plneni import mesice_pred_planem, plneni_prodejci_s_detailem_batch
 
 NAZVY_MESICU = {
     1: 'Leden', 2: 'Únor', 3: 'Březen', 4: 'Duben',
@@ -13,32 +13,57 @@ NAZVY_MESICU = {
 }
 
 
-def _plan_kusy_prodejce(rok, mesic, user_id):
-    plan = PlanMonth.objects.filter(rok=rok, mesic=mesic, je_aktualni=True).first()
-    if not plan:
-        return 0, {}
-    total = 0
-    per_kat = {}
-    for ps in plan.prodejny.prefetch_related('plany_prodejcu__kategorie'):
-        for pp in ps.plany_prodejcu.filter(uzivatel_id=user_id):
-            for k in pp.kategorie.all():
-                total += k.pocet_kusu
-                per_kat[k.kategorie_kod] = per_kat.get(k.kategorie_kod, 0) + k.pocet_kusu
-    return total, per_kat
+
+def _plan_kusy_vsech_prodejcu(user_ids, months):
+    """
+    Plánované kusy pro více prodejců a měsíců.
+    Returns: {(user_id, rok, mesic): (total_kusy, {kod: kusy})}
+    """
+    if not user_ids or not months:
+        return {}
+    ids = set(int(u) for u in user_ids)
+    month_set = set((int(r), int(m)) for r, m in months)
+    roky = {r for r, _ in month_set}
+    result = {}
+
+    plans = PlanMonth.objects.filter(
+        je_aktualni=True,
+        rok__in=roky,
+    ).prefetch_related(
+        'prodejny__plany_prodejcu__kategorie',
+        'prodejny__plany_prodejcu__uzivatel',
+    )
+    for plan in plans:
+        key_month = (plan.rok, plan.mesic)
+        if key_month not in month_set:
+            continue
+        for ps in plan.prodejny.all():
+            for pp in ps.plany_prodejcu.all():
+                uid = pp.uzivatel_id
+                if uid not in ids:
+                    continue
+                user_key = (uid, plan.rok, plan.mesic)
+                total, per_kat = result.get(user_key, (0, {}))
+                per_kat = dict(per_kat)
+                for k in pp.kategorie.all():
+                    total += k.pocet_kusu
+                    per_kat[k.kategorie_kod] = per_kat.get(k.kategorie_kod, 0) + k.pocet_kusu
+                result[user_key] = (total, per_kat)
+    return result
 
 
-def historie_plneni_prodejce(user_id, rok, mesic):
-    """
-    Plnění prodejce za 3 měsíce před (rok, mesic) + signály pro UI.
-    """
+def _historie_z_dat(user_id, hist_months, skut_by_month, plan_by_month):
+    """Sestaví historii pro jednoho prodejce z předpočítaných dat."""
     mesice = []
     pcts = []
     kat_silne = {}
     kat_slabe = {}
 
-    for r, m in mesice_pred_planem(rok, mesic, 3):
-        skut = plneni_prodejce_s_detailem(r, m, user_id)
-        plan_kusy, plan_kat = _plan_kusy_prodejce(r, m, user_id)
+    for r, m in hist_months:
+        skut = skut_by_month.get((r, m), {}).get(
+            user_id, {'obrat': Decimal('0'), 'kategorie': {}},
+        )
+        plan_kusy, plan_kat = plan_by_month.get((user_id, r, m), (0, {}))
         skut_kusy = sum(k['kusy'] for k in skut['kategorie'].values())
         pct = round((skut_kusy / plan_kusy * 100), 1) if plan_kusy > 0 else None
         if pct is not None:
@@ -85,3 +110,38 @@ def historie_plneni_prodejce(user_id, rok, mesic):
         },
         'prumer_plneni_3m': prumer_pct,
     }
+
+
+def historie_plneni_prodejci_batch(user_ids, rok, mesic):
+    """
+    Historie 3 měsíců pro více prodejců – dávkové SQL místo N×3 dotazů.
+    Returns: {user_id: historie_dict}
+    """
+    if not user_ids:
+        return {}
+    ids = list({int(u) for u in user_ids})
+    hist_months = mesice_pred_planem(rok, mesic, 3)
+    skut_by_month = {}
+    for r, m in hist_months:
+        skut_by_month[(r, m)] = plneni_prodejci_s_detailem_batch(ids, r, m)
+    plan_by_month = _plan_kusy_vsech_prodejcu(ids, hist_months)
+    return {uid: _historie_z_dat(uid, hist_months, skut_by_month, plan_by_month) for uid in ids}
+
+
+def historie_plneni_prodejce(user_id, rok, mesic):
+    """
+    Plnění prodejce za 3 měsíce před (rok, mesic) + signály pro UI.
+    """
+    batch = historie_plneni_prodejci_batch([user_id], rok, mesic)
+    return batch.get(
+        int(user_id),
+        {
+            'mesice': [],
+            'signaly': {
+                'systematicky_pod_planem': False,
+                'silne_kategorie': [],
+                'slabe_kategorie': [],
+            },
+            'prumer_plneni_3m': None,
+        },
+    )

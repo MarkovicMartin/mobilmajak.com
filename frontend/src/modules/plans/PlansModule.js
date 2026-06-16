@@ -15,6 +15,19 @@ import {
   plansIdFromHash,
   plansPathForId,
 } from './plansSections';
+import {
+  outlookCacheParamsKey,
+  readOutlookCache,
+  writeOutlookCache,
+  invalidateOutlookCache,
+  mergeOutlookData,
+  needsOutlookBackgroundRefresh,
+} from './planOutlookCache';
+import {
+  readPlneniProdejciCache,
+  writePlneniProdejciCache,
+  needsPlneniProdejciBackgroundRefresh,
+} from './plneniProdejciCache';
 
 const NAZVY_MESICU = [
   'Leden','Únor','Březen','Duben','Květen','Červen',
@@ -241,6 +254,7 @@ export default function PlansModule() {
   const [autoGenerating, setAutoGenerating] = useState(false);
   const [pokrocileOpen, setPokrocileOpen] = useState(false);
   const autoGenerateAttempted = useRef(null);
+  const forecastFetchSeq = useRef(0);
 
   const [forecastRok, setForecastRok] = useState(() => new Date().getFullYear());
   const [forecastCompareRoky, setForecastCompareRoky] = useState(() => {
@@ -275,12 +289,24 @@ export default function PlansModule() {
   }, []);
 
   const loadPlneniProdejci = useCallback(async (rok, mesic) => {
-    setPlneniLoading(true);
+    const cached = readPlneniProdejciCache(rok, mesic);
+    const hasCached = Boolean(cached?.data);
+    if (hasCached) {
+      setPlneniProdejciData(cached.data);
+      setPlneniLoading(false);
+    } else {
+      setPlneniLoading(true);
+    }
+    if (!needsPlneniProdejciBackgroundRefresh(rok, mesic, cached)) {
+      return;
+    }
     try {
       const res = await plansAPI.getPlneniProdejci(rok, mesic);
-      setPlneniProdejciData(res.prodejci || []);
+      const fresh = res.prodejci || [];
+      setPlneniProdejciData(fresh);
+      writePlneniProdejciCache(rok, mesic, fresh);
     } catch {
-      setPlneniProdejciData([]);
+      if (!hasCached) setPlneniProdejciData([]);
     } finally {
       setPlneniLoading(false);
     }
@@ -415,29 +441,67 @@ export default function PlansModule() {
     loadPlan(vybraneMesic.rok, vybraneMesic.mesic);
   }, [vybraneMesic, loadPlan]);
 
-  const loadForecast = useCallback(async () => {
+  const loadForecast = useCallback(async (options = {}) => {
+    const { force = false } = options;
     const rust = Number(String(rustProcent).replace(',', '.'));
     if (Number.isNaN(rust) || rust < -100) {
       setChyba('Zadejte platné procento růstu.');
       return;
     }
-    setForecastLoading(true);
+
+    const paramsKey = outlookCacheParamsKey({
+      forecastRok,
+      forecastCompareRoky,
+      vyhledFirma,
+      vyhledProdejny,
+      rustProcent,
+    });
+    const seq = ++forecastFetchSeq.current;
+    const cached = force ? null : readOutlookCache(paramsKey);
+    const hasCachedData = Boolean(cached?.data?.predikce);
+
+    if (cached?.data) {
+      setForecastData(cached.data);
+      if (cached.data.meta?.dostupne_roky?.length) {
+        setDostupneRoky(cached.data.meta.dostupne_roky);
+      }
+      setForecastLoading(false);
+    } else {
+      setForecastLoading(true);
+    }
     setChyba(null);
+
+    if (!force && !needsOutlookBackgroundRefresh(forecastRok, cached)) {
+      return;
+    }
+
     try {
       const roky = [...new Set([...forecastCompareRoky, forecastRok])].filter(
         r => r !== forecastRok,
       );
       const pids = vyhledFirma || !vyhledProdejny.length ? [] : vyhledProdejny;
       const res = await plansAPI.getForecast(forecastRok, rust, roky, pids.length ? pids : null);
-      setForecastData(res);
-      if (res.meta?.dostupne_roky?.length) {
-        setDostupneRoky(res.meta.dostupne_roky);
+      if (seq !== forecastFetchSeq.current) return;
+
+      const merged = cached?.data
+        ? mergeOutlookData(cached.data, res, forecastRok)
+        : res;
+
+      writeOutlookCache(paramsKey, { data: merged });
+      setForecastData(merged);
+      if (merged.meta?.dostupne_roky?.length) {
+        setDostupneRoky(merged.meta.dostupne_roky);
       }
     } catch (e) {
-      setForecastData(null);
-      setChyba(e.response?.data?.error || 'Nepodařilo se načíst výhled.');
+      if (seq !== forecastFetchSeq.current) return;
+      if (!hasCachedData) {
+        setForecastData(null);
+        setChyba(e.response?.data?.error || 'Nepodařilo se načíst výhled.');
+      }
     } finally {
-      setForecastLoading(false);
+      if (seq === forecastFetchSeq.current) {
+        setForecastLoading(false);
+      }
     }
   }, [forecastRok, forecastCompareRoky, vyhledFirma, vyhledProdejny, rustProcent]);
 
@@ -599,8 +663,15 @@ export default function PlansModule() {
         }
         setUspech(txt);
         setVybraneMesic({ rok: forecastRok, mesic: res.vytvoreno[0]?.mesic || 1 });
+        invalidateOutlookCache(outlookCacheParamsKey({
+          forecastRok,
+          forecastCompareRoky,
+          vyhledFirma,
+          vyhledProdejny,
+          rustProcent,
+        }));
         navigate('/plans/plan');
-        loadForecast();
+        loadForecast({ force: true });
       } else if (res.info || res.pocet_jiz_existovalo === 12) {
         setUspech(res.info || `Rok ${forecastRok}: všechny měsíce už mají plán.`);
       } else if (chybyData.length) {

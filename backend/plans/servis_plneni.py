@@ -161,6 +161,50 @@ def technik_variant_to_user_id_map() -> dict[str, int]:
     return out
 
 
+def batch_servis_plneni_detail(
+    start_d: str, end_d: str, user_ids: list[int] | None = None,
+) -> dict[int, dict]:
+    """
+    {user_id: {kusy: int, obrat: Decimal}} pro SERVIS podle Technik – jeden SQL dotaz.
+    """
+    variant_map = technik_variant_to_user_id_map()
+    if not variant_map:
+        return {}
+    if user_ids is not None:
+        allowed = set(int(u) for u in user_ids)
+        variant_map = {k: v for k, v in variant_map.items() if v in allowed}
+    if not variant_map:
+        return {}
+
+    in_clause = _sql_in_technik(list(variant_map.keys()))
+    sql = f"""
+        SELECT Technik,
+            SUM(COALESCE(NULLIF(Pocet_kusu, 0), 1) * COALESCE(Cena_ks_vcl_DPH, 0)) AS obrat,
+            SUM(
+                CASE WHEN COALESCE(Cena_ks_vcl_DPH, 0) >= 0
+                THEN COALESCE(NULLIF(Pocet_kusu, 0), 1)
+                ELSE -COALESCE(NULLIF(Pocet_kusu, 0), 1) END
+            ) AS kusy
+        FROM WEB_PRODEJE_ALL
+        WHERE {_PLNENI_ROW_WHERE}
+        AND {_SERVIS_BASE_WHERE}
+        AND Technik IN ({in_clause})
+        GROUP BY Technik
+    """
+    params = [start_d, end_d, '%servis eda%', '%!Servis%']
+    by_user: dict[int, dict] = {}
+    with connection.cursor() as cursor:
+        cursor.execute(sql, params)
+        for technik, obrat, kusy in cursor.fetchall():
+            uid = variant_map.get(technik)
+            if uid is None:
+                continue
+            entry = by_user.setdefault(uid, {'kusy': 0, 'obrat': Decimal('0')})
+            entry['kusy'] += int(kusy) if kusy is not None else 0
+            entry['obrat'] += Decimal(str(obrat)) if obrat else Decimal('0')
+    return by_user
+
+
 def batch_servis_plneni_by_month(start_d: str, end_d: str, user_ids: list[int] | None = None) -> dict:
     """
     {(user_id, rok, mesic): kusy} pro SERVIS podle Technik.

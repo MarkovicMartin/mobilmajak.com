@@ -352,6 +352,163 @@ def plneni_prodejce_obrat_do_data(rok, mesic, end_date, prodejce_id):
     return Decimal(str(row[0])) if row and row[0] else Decimal('0')
 
 
+def _empty_prodejce_detail():
+    return {'obrat': Decimal('0'), 'kategorie': {}}
+
+
+def _apply_servis_detail(detail, servis):
+    """Nahradí SERVIS z ID_PRODEJCE hodnotou podle Technik (předpočítaná dávka)."""
+    if not servis:
+        kat = dict(detail.get('kategorie') or {})
+        old = kat.pop('SERVIS', None)
+        if old:
+            detail['obrat'] -= old.get('obrat', Decimal('0'))
+        detail['kategorie'] = kat
+        return detail
+    kat = dict(detail.get('kategorie') or {})
+    old = kat.pop('SERVIS', None)
+    obrat = detail.get('obrat', Decimal('0'))
+    if old:
+        obrat -= old.get('obrat', Decimal('0'))
+    kusy = servis.get('kusy', 0)
+    servis_obrat = servis.get('obrat', Decimal('0'))
+    if kusy:
+        kat['SERVIS'] = {'obrat': servis_obrat, 'kusy': kusy}
+        obrat += servis_obrat
+    detail['obrat'] = obrat
+    detail['kategorie'] = kat
+    return detail
+
+
+def _apply_servis_dict(data, servis_kusy):
+    """Nahradí SERVIS v dict {kod: kusy} hodnotou podle Technik."""
+    out = dict(data)
+    out.pop('SERVIS', None)
+    if servis_kusy:
+        out['SERVIS'] = servis_kusy
+    return out
+
+
+def plneni_prodejci_s_detailem_batch(prodejce_ids, rok, mesic, servis_detail=None):
+    """
+    Plnění všech prodejců za měsíc v jednom SQL dotazu.
+    Returns: {prodejce_id: {obrat, kategorie: {kod: {obrat, kusy}}}}
+    """
+    if not prodejce_ids:
+        return {}
+    ids = list({int(x) for x in prodejce_ids})
+    start_d, end_d = _base_where_params(rok, mesic)
+    case_sql = _kategorie_case_sql()
+    placeholders = ', '.join(['%s'] * len(ids))
+    params = [start_d, end_d, *ids]
+    sql = f"""
+        SELECT ID_PRODEJCE, {case_sql} AS kategorie_kod,
+            SUM(COALESCE(NULLIF(Pocet_kusu, 0), 1) * COALESCE(Cena_ks_vcl_DPH, 0)) AS obrat,
+            SUM(CASE WHEN COALESCE(Cena_ks_vcl_DPH, 0) >= 0
+                THEN COALESCE(NULLIF(Pocet_kusu, 0), 1)
+                ELSE -COALESCE(NULLIF(Pocet_kusu, 0), 1) END) AS kusy
+        FROM WEB_PRODEJE_ALL
+        WHERE Vystaveno >= %s AND Vystaveno < %s
+        AND (Cena_ks_vcl_DPH > 14 OR Cena_ks_vcl_DPH < 0)
+        AND KATEGORIE IS NOT NULL AND TRIM(COALESCE(KATEGORIE,'')) != ''
+        AND COALESCE(KATEGORIE,'') != 'Nezařazeno'
+        AND ID_PRODEJCE IN ({placeholders})
+        GROUP BY ID_PRODEJCE, kategorie_kod
+    """
+    result = {uid: _empty_prodejce_detail() for uid in ids}
+    with connection.cursor() as cursor:
+        cursor.execute(sql, params)
+        for prodejce_id, kod, obrat, kusy in cursor.fetchall():
+            if not kod or prodejce_id is None:
+                continue
+            uid = int(prodejce_id)
+            if uid not in result:
+                continue
+            obrat_val = Decimal(str(obrat)) if obrat else Decimal('0')
+            kusy_val = int(kusy) if kusy is not None else 0
+            result[uid]['obrat'] += obrat_val
+            result[uid]['kategorie'][kod] = {'obrat': obrat_val, 'kusy': kusy_val}
+    if servis_detail is None:
+        from .servis_plneni import batch_servis_plneni_detail
+        servis_detail = batch_servis_plneni_detail(start_d, end_d, ids)
+    for uid in ids:
+        result[uid] = _apply_servis_detail(result[uid], servis_detail.get(uid))
+    return result
+
+
+def plneni_prodejci_do_data_batch(prodejce_ids, rok, mesic, end_date, servis_kusy=None):
+    """Kusy per kategorie pro více prodejců od 1. dne měsíce do end_date."""
+    if not prodejce_ids:
+        return {}
+    ids = list({int(x) for x in prodejce_ids})
+    start_d = date(rok, mesic, 1).isoformat()
+    end_d = (end_date + timedelta(days=1)).isoformat()
+    case_sql = _kategorie_case_sql()
+    placeholders = ', '.join(['%s'] * len(ids))
+    params = [start_d, end_d, *ids]
+    sql = f"""
+        SELECT ID_PRODEJCE, {case_sql} AS kategorie_kod,
+            SUM(CASE WHEN COALESCE(Cena_ks_vcl_DPH, 0) >= 0
+                THEN COALESCE(NULLIF(Pocet_kusu, 0), 1)
+                ELSE -COALESCE(NULLIF(Pocet_kusu, 0), 1) END) AS kusy
+        FROM WEB_PRODEJE_ALL
+        WHERE Vystaveno >= %s AND Vystaveno < %s
+        AND (Cena_ks_vcl_DPH > 14 OR Cena_ks_vcl_DPH < 0)
+        AND KATEGORIE IS NOT NULL AND TRIM(COALESCE(KATEGORIE,'')) != ''
+        AND COALESCE(KATEGORIE,'') != 'Nezařazeno'
+        AND ID_PRODEJCE IN ({placeholders})
+        GROUP BY ID_PRODEJCE, kategorie_kod
+    """
+    result = {uid: {} for uid in ids}
+    with connection.cursor() as cursor:
+        cursor.execute(sql, params)
+        for prodejce_id, kod, kusy in cursor.fetchall():
+            if not kod or prodejce_id is None:
+                continue
+            uid = int(prodejce_id)
+            if uid in result:
+                result[uid][kod] = int(kusy) if kusy is not None else 0
+    if servis_kusy is None:
+        from .servis_plneni import batch_servis_plneni_detail
+        servis_kusy = {
+            uid: d.get('kusy', 0)
+            for uid, d in batch_servis_plneni_detail(start_d, end_d, ids).items()
+        }
+    return {uid: _apply_servis_dict(result.get(uid, {}), servis_kusy.get(uid, 0)) for uid in ids}
+
+
+def plneni_prodejci_obrat_do_data_batch(prodejce_ids, rok, mesic, end_date):
+    """Obrat per prodejce od 1. dne měsíce do end_date (bez úpravy SERVIS)."""
+    if not prodejce_ids:
+        return {}
+    ids = list({int(x) for x in prodejce_ids})
+    start_d = date(rok, mesic, 1).isoformat()
+    end_d = (end_date + timedelta(days=1)).isoformat()
+    placeholders = ', '.join(['%s'] * len(ids))
+    params = [start_d, end_d, *ids]
+    sql = f"""
+        SELECT ID_PRODEJCE,
+            SUM(COALESCE(NULLIF(Pocet_kusu, 0), 1) * COALESCE(Cena_ks_vcl_DPH, 0)) AS obrat
+        FROM WEB_PRODEJE_ALL
+        WHERE Vystaveno >= %s AND Vystaveno < %s
+        AND (Cena_ks_vcl_DPH > 14 OR Cena_ks_vcl_DPH < 0)
+        AND KATEGORIE IS NOT NULL AND TRIM(COALESCE(KATEGORIE,'')) != ''
+        AND COALESCE(KATEGORIE,'') != 'Nezařazeno'
+        AND ID_PRODEJCE IN ({placeholders})
+        GROUP BY ID_PRODEJCE
+    """
+    result = {uid: Decimal('0') for uid in ids}
+    with connection.cursor() as cursor:
+        cursor.execute(sql, params)
+        for prodejce_id, obrat in cursor.fetchall():
+            if prodejce_id is None:
+                continue
+            uid = int(prodejce_id)
+            if uid in result:
+                result[uid] = Decimal(str(obrat)) if obrat else Decimal('0')
+    return result
+
+
 def plneni_celkem_firma(rok, mesic):
     """Celkový obrat a kusy za firmu v daném měsíci."""
     start_d, end_d = _base_where_params(rok, mesic)
