@@ -230,6 +230,37 @@
     margin-bottom: 10px;
 }
 
+.polozky-tasks-panel--page {
+    margin-top: 0;
+}
+
+.polozky-tasks-panel__title {
+    margin: 0 0 12px;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.polozky-tasks-panel__body--page {
+    margin-top: 0;
+    padding: 16px;
+    background: var(--bg-card, #fff);
+    border-radius: 12px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.polozky-tasks-panel__body--page .polozky-tasks-table th,
+.polozky-tasks-panel__body--page .polozky-tasks-table td {
+    border-bottom-color: var(--border-subtle, #e8ecef);
+}
+
+.polozky-tasks-sla {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem 1.5rem;
+    margin-bottom: 12px;
+    font-size: 0.9rem;
+}
+
 .polozky-tasks-table {
     width: 100%;
     border-collapse: collapse;

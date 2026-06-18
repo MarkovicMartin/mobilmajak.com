@@ -2,7 +2,6 @@ import React, { useCallback, useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AnalyticsSectionWrapper from '../AnalyticsSectionWrapper';
 import PolozkyMetricPicker, { DEFAULT_VISIBLE_METRICS } from '../components/PolozkyMetricPicker';
-import PolozkyTasksPanel from '../components/PolozkyTasksPanel';
 import ProdejnyPolozkyView from './ProdejnyPolozkyView';
 import {
     shiftFiltersOneYearBack,
@@ -112,8 +111,6 @@ const ProdejnyPolozky = () => {
         navigate(`/coaching/seller/${seller.id_prodejce}?mesic=${mesic}`);
     }, [navigate]);
 
-    const tasksFilters = leftFiltersRef.current;
-
     return (
         <AnalyticsSectionWrapper title="Položky & výkony" icon="📱">
             <div className={`celkova-cisla-container polozky-container ${isComparison ? 'comparison-mode' : ''}`}>
@@ -207,8 +204,6 @@ const ProdejnyPolozky = () => {
                         </div>
                     )}
                 </div>
-
-                <PolozkyTasksPanel filters={tasksFilters} />
             </div>
         </AnalyticsSectionWrapper>
     );

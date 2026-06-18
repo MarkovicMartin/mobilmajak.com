@@ -9,6 +9,7 @@ import TaskEditForm from './TaskEditForm';
 import TaskUrgencyBadge from './TaskUrgencyBadge';
 import TaskStatusIcon from '../../components/TaskStatusIcon';
 import { buildAssigneeSelectOptions } from './TaskAssigneeOptions';
+import TasksWorkloadSection from './TasksWorkloadSection';
 import './TasksModule.css';
 
 const STAV_OPTIONS = [
@@ -26,6 +27,7 @@ const PRIORITA_OPTIONS = [
 
 const TasksManageModule = () => {
     const { user, isAdmin, canManageTasks } = useAuth();
+    const [adminTab, setAdminTab] = useState('manage');
     const [stores, setStores] = useState([]);
     const [assignees, setAssignees] = useState([]);
     const [filterStav, setFilterStav] = useState('vse');
@@ -183,12 +185,13 @@ const TasksManageModule = () => {
 
     const storeLocked = user?.role === 'VEDOUCI' && vedouciStores.length <= 1;
     const showFilterStore = isAdmin() || vedouciStores.length > 1;
+    const showWorkloadTab = isAdmin();
 
     return (
         <div className="tasks-module">
             <PageHeader
-                title="Správa úkolů"
-                actions={(
+                title={showWorkloadTab && adminTab === 'workload' ? 'Úkoly – vytížení' : 'Správa úkolů'}
+                actions={(!showWorkloadTab || adminTab === 'manage') ? (
                     <div className="tasks-filters">
                         <Select
                             options={STAV_OPTIONS}
@@ -211,9 +214,36 @@ const TasksManageModule = () => {
                             aria-label="Filtr zaměstnance"
                         />
                     </div>
-                )}
+                ) : undefined}
             />
 
+            {showWorkloadTab && (
+                <div className="tasks-admin-tabs" role="tablist" aria-label="Sekce úkolů">
+                    <button
+                        type="button"
+                        role="tab"
+                        aria-selected={adminTab === 'manage'}
+                        className={`tasks-admin-tabs__btn${adminTab === 'manage' ? ' is-active' : ''}`}
+                        onClick={() => setAdminTab('manage')}
+                    >
+                        Správa úkolů
+                    </button>
+                    <button
+                        type="button"
+                        role="tab"
+                        aria-selected={adminTab === 'workload'}
+                        className={`tasks-admin-tabs__btn${adminTab === 'workload' ? ' is-active' : ''}`}
+                        onClick={() => setAdminTab('workload')}
+                    >
+                        Vytížení
+                    </button>
+                </div>
+            )}
+
+            {adminTab === 'workload' && showWorkloadTab ? (
+                <TasksWorkloadSection />
+            ) : (
+                <>
             <div className="task-form-card">
                 <h3>Nový úkol</h3>
                 <form className="task-form-grid" onSubmit={handleCreate}>
@@ -343,6 +373,8 @@ const TasksManageModule = () => {
                     )}
                 </div>
             </div>
+                </>
+            )}
         </div>
     );
 };
