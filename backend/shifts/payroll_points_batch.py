@@ -10,7 +10,7 @@ from analytics.receipt_metrics import (
     qualifying_polozka_q,
 )
 from analytics.points_config import POINTS_METRIC_KEYS, calculate_product_points
-from analytics.sunshine_config import SUNSHINE_METRIC_KEY, sunshine_kusy_sum, sunshine_row_q
+from analytics.sunshine_config import SUNSHINE_METRIC_KEY, sunshine_bonus_kusy_sum
 from analytics.vykupy_config import VYKUPY_METRIC_KEY, vykupy_counts_map
 from analytics.viceprace_config import aggregate_viceprace, polozky_nad_100_q
 from analytics.views import (
@@ -69,7 +69,7 @@ def batch_sales_metrics_for_month(rok, mesic_cislo, user_ids):
             if uid in metrics:
                 metrics[uid][key] = row['v'] or 0
 
-    sunshine_rows = base.values('id_prodejce').annotate(v=sunshine_kusy_sum())
+    sunshine_rows = base.values('id_prodejce').annotate(v=sunshine_bonus_kusy_sum())
     for row in sunshine_rows:
         uid = row['id_prodejce']
         if uid in metrics and (row['v'] or 0):

@@ -7,6 +7,7 @@ from analytics.sunshine_config import (
     calculate_sunshine_points,
     prolepenost_pct,
     prolepenost_zaklad_kusy,
+    sunshine_bonus_row_q,
     sunshine_row_q,
 )
 
@@ -43,6 +44,9 @@ class SunshinePointsTests(SimpleTestCase):
 
     def test_sunshine_row_q_matches_name(self):
         self.assertIn('SUNSHINE', str(sunshine_row_q()))
+
+    def test_sunshine_bonus_row_q_requires_price_at_least_100(self):
+        self.assertIn('gte', str(sunshine_bonus_row_q()).lower())
 
     def test_prolepenost_includes_sunshine_in_denominator(self):
         self.assertEqual(prolepenost_zaklad_kusy(10, 5), 15)

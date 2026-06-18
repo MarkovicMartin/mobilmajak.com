@@ -19,9 +19,19 @@ def sunshine_row_q():
     return Q(nazev__icontains='SUNSHINE')
 
 
+def sunshine_bonus_row_q():
+    """SUNSHINE s bonusem +15 bodů – jen při ceně ≥ 100 Kč (reklamace / osobní pod 100 se nepočítá)."""
+    return sunshine_row_q() & Q(cena_ks_vcl_dph__gte=100)
+
+
 def sunshine_kusy_sum():
     """Agregace počtu kusů (Pocet_kusu) pro annotate() – stejně jako položky nad 100 Kč."""
     return Sum('pocet_kusu', filter=sunshine_row_q(), default=0)
+
+
+def sunshine_bonus_kusy_sum():
+    """Počet SUNSHINE kusů způsobilých pro příplatek ve výplatě."""
+    return Sum('pocet_kusu', filter=sunshine_bonus_row_q(), default=0)
 
 
 def calculate_sunshine_points(count):
