@@ -61,3 +61,16 @@ export function normalizeOteviraciDoba(raw) {
         }, {}),
     };
 }
+
+const DOW_TO_DEN_KEY = ['ne', 'po', 'ut', 'st', 'ct', 'pa', 'so'];
+
+/** Je prodejna v daný den otevřená dle nastavené otevírací doby? */
+export function isStoreOpenOnDate(store, dateStr) {
+    if (!store?.oteviraci_doba) return true;
+    const parsed = new Date(`${dateStr}T12:00:00`);
+    if (Number.isNaN(parsed.getTime())) return true;
+    const cfg = normalizeOteviraciDoba(store.oteviraci_doba);
+    const denKey = DOW_TO_DEN_KEY[parsed.getDay()];
+    const eff = effectiveDenHours(cfg.dny[denKey], cfg.vychozi);
+    return !eff.zavreno;
+}

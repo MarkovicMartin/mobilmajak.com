@@ -5,6 +5,7 @@ import './ShiftCalendar.css';
 import UnifiedCalendar from './UnifiedCalendar';
 import { shiftRoleLabel } from './shiftRoleLabels';
 import { format, parse, startOfMonth, endOfMonth, eachDayOfInterval, isBefore } from 'date-fns';
+import { isStoreOpenOnDate } from '../../constants/oteviraciDoba';
 
 const isWorkShift = (shift) => shift.typ_smeny === 'prace';
 
@@ -13,23 +14,32 @@ const isAbsenceShift = (shift) => shift.typ_smeny === 'dovolena' || shift.typ_sm
 const storeDisplayName = (store) => store.nazev_kratkiy || store.nazev || '';
 
 /** Vrátí mezeru v obsazení (jen směny typu práce), nebo null. */
-const getStaffingGap = (shifts, stores, allStores) => {
+const getStaffingGap = (shifts, stores, allStores, dateStr, selectedProdejnaId = null) => {
     const workShifts = shifts.filter(isWorkShift);
     if (allStores && stores.length > 0) {
+        const openStores = dateStr
+            ? stores.filter((s) => isStoreOpenOnDate(s, dateStr))
+            : stores;
+        if (!openStores.length) return null;
+
         const staffedIds = new Set(workShifts.map((s) => s.prodejna_id));
-        const missing = stores.filter((s) => !staffedIds.has(s.id));
+        const missing = openStores.filter((s) => !staffedIds.has(s.id));
         if (!missing.length) return null;
-        const allEmpty = missing.length === stores.length;
+        const allEmpty = missing.length === openStores.length;
         return {
             kind: allEmpty ? 'all-empty' : 'partial',
             missing,
             label: allEmpty ? '0 směn' : `−${missing.length}`,
             title: allEmpty
-                ? 'Žádná pracovní směna na žádné prodejně'
+                ? 'Žádná pracovní směna na žádné otevřené prodejně'
                 : `Bez směny: ${missing.map(storeDisplayName).join(', ')}`,
         };
     }
     if (workShifts.length === 0) {
+        if (dateStr && selectedProdejnaId && selectedProdejnaId !== 'vse') {
+            const store = stores.find((s) => String(s.id) === String(selectedProdejnaId));
+            if (store && !isStoreOpenOnDate(store, dateStr)) return null;
+        }
         return {
             kind: 'all-empty',
             missing: [],
@@ -134,14 +144,14 @@ function ShiftCalendar({
         days.forEach((day) => {
             const dateStr = format(day, 'yyyy-MM-dd');
             if (svatky[dateStr]) return;
-            const gap = getStaffingGap(getShiftsForDate(dateStr), stores, allStores);
+            const gap = getStaffingGap(getShiftsForDate(dateStr), stores, allStores, dateStr, prodejna);
             if (!gap) return;
             gapDays += 1;
             if (gap.kind === 'all-empty') allEmptyDays += 1;
             else partialDays += 1;
         });
         return { gapDays, allEmptyDays, partialDays };
-    }, [showStaffingGaps, month, kalendarData, stores, allStores, svatky]);
+    }, [showStaffingGaps, month, kalendarData, stores, allStores, svatky, prodejna]);
 
     const getExtraCellClass = useCallback((dateStr) => {
         const classes = [];
@@ -149,10 +159,10 @@ function ShiftCalendar({
         if (!dateStr.startsWith(month) || !showStaffingGaps || svatky[dateStr]) {
             return classes.join(' ');
         }
-        const gap = getStaffingGap(kalendarData[dateStr] || [], stores, allStores);
+        const gap = getStaffingGap(kalendarData[dateStr] || [], stores, allStores, dateStr, prodejna);
         if (gap) classes.push(gap.kind === 'all-empty' ? 'staffing-empty' : 'staffing-partial');
         return classes.join(' ');
-    }, [month, svatky, showStaffingGaps, kalendarData, stores, allStores]);
+    }, [month, svatky, showStaffingGaps, kalendarData, stores, allStores, prodejna]);
 
     const formatTime = (timeStr) => {
         return timeStr.substring(0, 5);
@@ -402,7 +412,7 @@ function ShiftCalendar({
                         const isSvatek = svatky[dateStr];
                         const inMonth = dateStr.startsWith(month);
                         const staffingGap = inMonth && !isSvatek && showStaffingGaps
-                            ? getStaffingGap(workShifts, stores, allStores)
+                            ? getStaffingGap(workShifts, stores, allStores, dateStr, prodejna)
                             : null;
                         return (
                             <>
