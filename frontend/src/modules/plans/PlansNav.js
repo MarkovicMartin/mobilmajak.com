@@ -17,6 +17,7 @@ const PlansNav = ({
   showPlanRezim,
   planovaciRezim,
   onPlanovaciRezimChange,
+  vyhledFilters,
 }) => {
   const tabs = PLANS_SECTIONS.map((section) => ({
     id: section.id,
@@ -36,6 +37,7 @@ const PlansNav = ({
 
   const meta = (
     <>
+      {vyhledFilters}
       {showPlanRezim && (
         <SegmentControl
           options={REZIM_OPTIONS}

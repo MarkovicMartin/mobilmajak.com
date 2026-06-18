@@ -621,6 +621,90 @@ export default function PlansModule() {
   const mesiceBezPlanu = vyhledMeta?.mesice_bez_planu || [];
   const pocetMesicuBezPlanu = vyhledMeta?.pocet_mesicu_bez_planu ?? mesiceBezPlanu.length;
 
+  const vyhledNavFilters = viewMode === 'vyhled' ? (
+    <div className="plans-nav-vyhled-filters">
+      <VyhledFilterMenu
+        open={prodejnyMenuOpen}
+        onClose={closeProdejnyMenu}
+        triggerLabel={prodejnyTriggerLabel}
+        onTriggerClick={toggleProdejnyMenu}
+        title="Výběr poboček"
+        className="plans-vyhled-dropdown-prodejny"
+      >
+        <p className="plans-vyhled-dropdown-section">Pohled na obrat</p>
+        <label className="plans-vyhled-dropdown-row">
+          <input
+            type="checkbox"
+            checked={draftVyhledFirma && !draftVyhledProdejny.length}
+            onChange={() => {
+              setDraftVyhledFirma(true);
+              setDraftVyhledProdejny([]);
+            }}
+          />
+          <span>Celá firma</span>
+        </label>
+        {(vyhledMeta?.prodejny || []).map(p => (
+          <label key={p.id} className="plans-vyhled-dropdown-row" title={p.nazev}>
+            <input
+              type="checkbox"
+              checked={draftVyhledProdejny.includes(p.id)}
+              onChange={() => toggleDraftProdejna(p.id)}
+            />
+            <span>{p.nazev}</span>
+          </label>
+        ))}
+      </VyhledFilterMenu>
+      <VyhledFilterMenu
+        open={rokyMenuOpen}
+        onClose={closeRokyMenu}
+        triggerLabel={rokyTriggerLabel}
+        onTriggerClick={toggleRokyMenu}
+        title="Rok plánování a porovnání v grafu"
+        className="plans-vyhled-dropdown-roky"
+      >
+        <p className="plans-vyhled-dropdown-section">Plánovaný rok (tabulka, predikce, založení plánů)</p>
+        <div className="plans-vyhled-dropdown-roky-hlavni">
+          {rokyVolba.map((rok, i) => (
+            <button
+              key={`h-${rok}`}
+              type="button"
+              className={`plans-vyhled-dropdown-rok-btn${rok === draftForecastRok ? ' is-hlavni' : ''}`}
+              onClick={() => setDraftHlavniRok(rok)}
+            >
+              <span
+                className="plans-vyhled-chip-dot"
+                style={{ background: GRAF_ROKY_BARVY[i % GRAF_ROKY_BARVY.length] }}
+              />
+              {rok}{rok === draftForecastRok ? ' ★' : ''}
+              {rok > new Date().getFullYear() && (
+                <span className="plans-vyhled-rok-budouci"> plán</span>
+              )}
+            </button>
+          ))}
+        </div>
+        <p className="plans-vyhled-dropdown-section">Roky v grafu (porovnání)</p>
+        {rokyVolba.map((rok, i) => (
+          <label
+            key={`c-${rok}`}
+            className={`plans-vyhled-dropdown-row${rok === draftForecastRok ? ' is-disabled' : ''}`}
+          >
+            <input
+              type="checkbox"
+              checked={rok === draftForecastRok || draftCompareRoky.includes(rok)}
+              disabled={rok === draftForecastRok}
+              onChange={() => toggleDraftCompareRok(rok)}
+            />
+            <span
+              className="plans-vyhled-chip-dot"
+              style={{ background: GRAF_ROKY_BARVY[i % GRAF_ROKY_BARVY.length] }}
+            />
+            <span>{rok}{rok === draftForecastRok ? ' (hlavní)' : ''}</span>
+          </label>
+        ))}
+      </VyhledFilterMenu>
+    </div>
+  ) : null;
+
   const zalozitPlanyNaRok = async () => {
     const rust = Number(String(rustProcent).replace(',', '.'));
     if (Number.isNaN(rust) || rust < -100) {
@@ -991,6 +1075,7 @@ export default function PlansModule() {
         showPlanRezim={viewMode === 'plan' && Boolean(aktivniPlan)}
         planovaciRezim={planovaciRezim}
         onPlanovaciRezimChange={setPlanovaciRezim}
+        vyhledFilters={vyhledNavFilters}
       />
 
       <div className="plans-content">
@@ -1127,98 +1212,15 @@ export default function PlansModule() {
           {forecastLoading && <div className="plans-loading">Načítám výhled…</div>}
           {!forecastLoading && forecastPred && (
             <>
-              <div className="plans-vyhled-toolbar">
-                <div className="ui-filter-bar plans-vyhled-toolbar-filters">
-                  <VyhledFilterMenu
-                    open={prodejnyMenuOpen}
-                    onClose={closeProdejnyMenu}
-                    triggerLabel={prodejnyTriggerLabel}
-                    onTriggerClick={toggleProdejnyMenu}
-                    title="Výběr poboček"
-                    className="plans-vyhled-dropdown-prodejny"
-                  >
-                    <p className="plans-vyhled-dropdown-section">Pohled na obrat</p>
-                    <label className="plans-vyhled-dropdown-row">
-                      <input
-                        type="checkbox"
-                        checked={draftVyhledFirma && !draftVyhledProdejny.length}
-                        onChange={() => {
-                          setDraftVyhledFirma(true);
-                          setDraftVyhledProdejny([]);
-                        }}
-                      />
-                      <span>Celá firma</span>
-                    </label>
-                    {(vyhledMeta?.prodejny || []).map(p => (
-                      <label key={p.id} className="plans-vyhled-dropdown-row" title={p.nazev}>
-                        <input
-                          type="checkbox"
-                          checked={draftVyhledProdejny.includes(p.id)}
-                          onChange={() => toggleDraftProdejna(p.id)}
-                        />
-                        <span>{p.nazev}</span>
-                      </label>
-                    ))}
-                  </VyhledFilterMenu>
-                  <VyhledFilterMenu
-                    open={rokyMenuOpen}
-                    onClose={closeRokyMenu}
-                    triggerLabel={rokyTriggerLabel}
-                    onTriggerClick={toggleRokyMenu}
-                    title="Rok plánování a porovnání v grafu"
-                    className="plans-vyhled-dropdown-roky"
-                  >
-                    <p className="plans-vyhled-dropdown-section">Plánovaný rok (tabulka, predikce, založení plánů)</p>
-                    <div className="plans-vyhled-dropdown-roky-hlavni">
-                      {rokyVolba.map((rok, i) => (
-                        <button
-                          key={`h-${rok}`}
-                          type="button"
-                          className={`plans-vyhled-dropdown-rok-btn${rok === draftForecastRok ? ' is-hlavni' : ''}`}
-                          onClick={() => setDraftHlavniRok(rok)}
-                        >
-                          <span
-                            className="plans-vyhled-chip-dot"
-                            style={{ background: GRAF_ROKY_BARVY[i % GRAF_ROKY_BARVY.length] }}
-                          />
-                          {rok}{rok === draftForecastRok ? ' ★' : ''}
-                          {rok > new Date().getFullYear() && (
-                            <span className="plans-vyhled-rok-budouci"> plán</span>
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                    <p className="plans-vyhled-dropdown-section">Roky v grafu (porovnání)</p>
-                    {rokyVolba.map((rok, i) => (
-                      <label
-                        key={`c-${rok}`}
-                        className={`plans-vyhled-dropdown-row${rok === draftForecastRok ? ' is-disabled' : ''}`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={rok === draftForecastRok || draftCompareRoky.includes(rok)}
-                          disabled={rok === draftForecastRok}
-                          onChange={() => toggleDraftCompareRok(rok)}
-                        />
-                        <span
-                          className="plans-vyhled-chip-dot"
-                          style={{ background: GRAF_ROKY_BARVY[i % GRAF_ROKY_BARVY.length] }}
-                        />
-                        <span>{rok}{rok === draftForecastRok ? ' (hlavní)' : ''}</span>
-                      </label>
-                    ))}
-                  </VyhledFilterMenu>
-                </div>
-                <div className="plans-vyhled-toolbar-summary">
-                  <span className="plans-vyhled-summary-pred">
-                    Predikce <strong>{forecastRok}</strong>
-                    {vyhledMeta?.prodejna_nazev ? ` · ${vyhledMeta.prodejna_nazev}` : ''}
-                    {' '}{formatKcShort(forecastPred.celkem_obrat_pred)}
-                  </span>
-                  <span className={`plans-confidence plans-confidence-${forecastPred.meta?.confidence || 'medium'}`}>
-                    {forecastPred.meta?.confidence || '—'}
-                  </span>
-                </div>
+              <div className="plans-vyhled-summary">
+                <span className="plans-vyhled-summary-pred">
+                  Predikce <strong>{forecastRok}</strong>
+                  {vyhledMeta?.prodejna_nazev ? ` · ${vyhledMeta.prodejna_nazev}` : ''}
+                  {' '}{formatKcShort(forecastPred.celkem_obrat_pred)}
+                </span>
+                <span className={`plans-confidence plans-confidence-${forecastPred.meta?.confidence || 'medium'}`}>
+                  {forecastPred.meta?.confidence || '—'}
+                </span>
               </div>
               <div
                 className="plans-vyhled-legenda"

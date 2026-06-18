@@ -1,4 +1,17 @@
 /* Meta styly plánů – záložky jsou v ModuleSubnav */
+.plans-nav-vyhled-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+    flex: 1;
+    min-width: 0;
+}
+
+.plans-nav-vyhled-filters .plans-vyhled-dropdown-panel {
+  z-index: 60;
+}
+
 .plans-nav-month {
     display: inline-flex;
     align-items: center;

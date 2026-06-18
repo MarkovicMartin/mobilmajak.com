@@ -27,6 +27,7 @@ const fetchPolozkyData = async (filters, visibleMetrics) => {
     if ([...visibleMetrics].some((m) => hourly.includes(m))) {
         params.set('include_hours', '1');
     }
+    params.set('include_profit', '1');
     const result = await analyticsGet('web-prodeje/polozky/', params);
     return result.success && Array.isArray(result.data) ? result.data : [];
 };

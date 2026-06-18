@@ -36,6 +36,7 @@ const buildApiParams = (filters, visibleMetrics) => {
     if ([...visibleMetrics].some((m) => hourly.includes(m))) {
         params.set('include_hours', '1');
     }
+    params.set('include_profit', '1');
     return params;
 };
 

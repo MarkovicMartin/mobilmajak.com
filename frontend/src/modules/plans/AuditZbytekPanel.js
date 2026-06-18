@@ -126,21 +126,14 @@ export default function AuditZbytekPanel({ rok, mesic }) {
     setExporting(true);
     setDetailError('');
     try {
-      const all = [];
-      let offset = 0;
-      const limit = 500;
-      let hasMore = true;
-      while (hasMore) {
-        const res = await fetchPolozky(detailRow, { limit, offset });
-        const batch = res.polozky || [];
-        all.push(...batch.map((p) => ({
-          ...p,
-          kategorie: detailRow.kategorie,
-          kategorie_1: detailRow.kategorie_1 || '',
-        })));
-        hasMore = res.has_more;
-        offset += batch.length;
-        if (!batch.length) break;
+      const res = await fetchPolozky(detailRow, { limit: 2000, offset: 0 });
+      const all = (res.polozky || []).map((p) => ({
+        ...p,
+        kategorie: detailRow.kategorie,
+        kategorie_1: detailRow.kategorie_1 || '',
+      }));
+      if (res.has_more) {
+        setDetailError(`Export obsahuje max. 2000 položek z ${res.total ?? '?'}.`);
       }
       const safeKat = (detailRow.kategorie || 'zbytek').replace(/[^\w\d-]+/gi, '_').slice(0, 40);
       downloadCsv(`audit-zbytek_${rok}-${String(mesic).padStart(2, '0')}_${safeKat}.csv`, all);

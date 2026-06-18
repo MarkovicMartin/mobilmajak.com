@@ -31,6 +31,8 @@ urlpatterns = [
 
     # Payroll (ADMIN)
     path('payroll/', payroll_views.payroll_preview, name='payroll_preview'),
+    path('payroll/discounted-services/', payroll_views.payroll_discounted_services, name='payroll_discounted_services'),
+    path('payroll/dobropisy/', payroll_views.payroll_dobropisy, name='payroll_dobropisy'),
     path('payroll/odmena/', payroll_views.payroll_odmena, name='payroll_odmena'),
     path('payroll/penalizace/', payroll_views.payroll_penalizace, name='payroll_penalizace'),
 

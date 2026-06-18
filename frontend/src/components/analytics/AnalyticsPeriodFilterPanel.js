@@ -1,10 +1,10 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import CustomDropdown from '../CustomDropdown';
 import AnalyticsDateRange from '../AnalyticsDateRange';
 import PeriodSegmentBar from '../PeriodSegmentBar';
 import { buildAnalyticsMonthFilterOptions } from '../../utils/analyticsMonthOptions';
 import { QUICK_RANGE_PRESETS } from '../../utils/analyticsQuickRange';
-import '../../modules/analytics/sections/CelkovaCisla.css';
+import '../../modules/analytics/sections/analytics-filters.css';
 
 /**
  * Sjednocený filtr období – stejné rozložení jako Celková čísla.
@@ -31,6 +31,8 @@ const AnalyticsPeriodFilterPanel = ({
             ? `month:${filters.selected_month}`
             : 'custom';
 
+    const monthOptions = useMemo(() => buildAnalyticsMonthFilterOptions(), []);
+
     const handlePeriodDropdown = (selectedValue) => {
         if (selectedValue === 'custom') {
             onPeriodChange?.({ type: 'custom' });
@@ -45,7 +47,7 @@ const AnalyticsPeriodFilterPanel = ({
                 <div className="filter-group">
                     <label>Období:</label>
                     <CustomDropdown
-                        options={buildAnalyticsMonthFilterOptions()}
+                        options={monthOptions}
                         value={periodValue}
                         placeholder="Vyberte období"
                         onChange={handlePeriodDropdown}

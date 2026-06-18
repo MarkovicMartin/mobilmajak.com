@@ -80,19 +80,7 @@ function currentMonthStr() {
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 }
 
-/** Posledních 36 měsíců (včetně aktuálního) pro výběr v pickeru. */
-function buildMonthOptions(count = 36) {
-    const options = [];
-    const now = new Date();
-    for (let i = 0; i < count; i += 1) {
-        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-        options.push({ value, label: formatMonthName(value) });
-    }
-    return options;
-}
-
-function PayrollPanel({ month, onMonthChange, onExport }) {
+function PayrollPanel({ month, onExport }) {
     const [rows, setRows] = useState([]);
     const [fonduH, setFonduH] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -102,10 +90,25 @@ function PayrollPanel({ month, onMonthChange, onExport }) {
     const [showPenalizaceModal, setShowPenalizaceModal] = useState(false);
     const [savingOdmena, setSavingOdmena] = useState(false);
     const [savingPenalizace, setSavingPenalizace] = useState(false);
-    const [monthPickerOpen, setMonthPickerOpen] = useState(false);
     const [odmenaForm, setOdmenaForm] = useState({ user_id: '', castka: '', poznamka: '' });
     const [penalizaceForm, setPenalizaceForm] = useState({ user_id: '', duvod: '' });
-    const monthPickerRef = useRef(null);
+    const [discountedRows, setDiscountedRows] = useState([]);
+    const [discountedExcluded, setDiscountedExcluded] = useState(0);
+    const [discountedLoading, setDiscountedLoading] = useState(false);
+    const [discountedError, setDiscountedError] = useState('');
+    const [discountedOpen, setDiscountedOpen] = useState(false);
+    const [dobropisySummary, setDobropisySummary] = useState([]);
+    const [dobropisyRows, setDobropisyRows] = useState([]);
+    const [dobropisyTotals, setDobropisyTotals] = useState({ polozky: 0, doklady: 0, castka: 0 });
+    const [dobropisyLoading, setDobropisyLoading] = useState(false);
+    const [dobropisyError, setDobropisyError] = useState('');
+    const [dobropisyOpen, setDobropisyOpen] = useState(false);
+    const [dobropisyFilterUser, setDobropisyFilterUser] = useState('');
+    const [dobropisyFilterPairing, setDobropisyFilterPairing] = useState('');
+    const [dobropisyPairingTotals, setDobropisyPairingTotals] = useState({
+        zrcadlo: 0, par: 0, bez_paru: 0,
+    });
+    const dobropisyRowsLoadedRef = useRef(false);
     const odmenaFormRef = useRef(null);
     const penalizaceFormRef = useRef(null);
     const fetchSeq = useRef(0);
@@ -119,8 +122,6 @@ function PayrollPanel({ month, onMonthChange, onExport }) {
         setShowPenalizaceModal(false);
         setPenalizaceForm({ user_id: '', duvod: '' });
     }, []);
-
-    const monthOptions = useMemo(() => buildMonthOptions(48), []);
 
     const soucetBodu = useMemo(
         () => rows.reduce((s, r) => s + (Number(r.celkem_body) || 0), 0),
@@ -171,19 +172,122 @@ function PayrollPanel({ month, onMonthChange, onExport }) {
         }
     }, [month]);
 
-    useEffect(() => {
-        loadPayroll();
-    }, [loadPayroll]);
+    const loadDiscountedServices = useCallback(async () => {
+        if (!month) return;
+        setDiscountedLoading(true);
+        setDiscountedError('');
+        try {
+            const res = await fetch(
+                `/api/shifts/payroll/discounted-services/?mesic=${month}`,
+                { credentials: 'include' },
+            );
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                throw new Error(data.error || 'Chyba při načítání slev');
+            }
+            const data = await res.json();
+            setDiscountedRows(data.rows || []);
+            setDiscountedExcluded(Number(data.vyloucene_body_celkem) || 0);
+            if ((data.rows || []).length > 0) {
+                setDiscountedOpen(true);
+            }
+        } catch (e) {
+            setDiscountedError(e.message);
+            setDiscountedRows([]);
+            setDiscountedExcluded(0);
+        } finally {
+            setDiscountedLoading(false);
+        }
+    }, [month]);
+
+    const loadDobropisySummary = useCallback(async () => {
+        if (!month) return;
+        setDobropisyError('');
+        dobropisyRowsLoadedRef.current = false;
+        setDobropisyRows([]);
+        setDobropisyPairingTotals({ zrcadlo: 0, par: 0, bez_paru: 0 });
+        try {
+            const res = await fetch(
+                `/api/shifts/payroll/dobropisy/?mesic=${month}`,
+                { credentials: 'include' },
+            );
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                throw new Error(data.error || 'Chyba při načítání dobropisů');
+            }
+            const data = await res.json();
+            setDobropisySummary(data.summary || []);
+            setDobropisyTotals(data.totals || { polozky: 0, doklady: 0, castka: 0 });
+            setDobropisyFilterUser('');
+            if ((data.totals?.polozky || 0) > 0) {
+                setDobropisyOpen(true);
+            }
+        } catch (e) {
+            setDobropisyError(e.message);
+            setDobropisySummary([]);
+            setDobropisyTotals({ polozky: 0, doklady: 0, castka: 0 });
+        }
+    }, [month]);
+
+    const loadDobropisyRows = useCallback(async () => {
+        if (!month || dobropisyRowsLoadedRef.current) return;
+        setDobropisyLoading(true);
+        setDobropisyError('');
+        try {
+            const res = await fetch(
+                `/api/shifts/payroll/dobropisy/?mesic=${month}&rows_only=1`,
+                { credentials: 'include' },
+            );
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                throw new Error(data.error || 'Chyba při načítání položek dobropisů');
+            }
+            const data = await res.json();
+            setDobropisyRows(data.rows || []);
+            setDobropisyPairingTotals(data.pairing_totals || { zrcadlo: 0, par: 0, bez_paru: 0 });
+            setDobropisyFilterPairing('');
+            dobropisyRowsLoadedRef.current = true;
+        } catch (e) {
+            setDobropisyError(e.message);
+            setDobropisyRows([]);
+        } finally {
+            setDobropisyLoading(false);
+        }
+    }, [month]);
+
+    const toggleDobropisy = useCallback(() => {
+        setDobropisyOpen((wasOpen) => {
+            const next = !wasOpen;
+            if (next && !dobropisyRowsLoadedRef.current) {
+                loadDobropisyRows();
+            }
+            return next;
+        });
+    }, [loadDobropisyRows]);
+
+    const filteredDobropisyRows = useMemo(() => {
+        let out = dobropisyRows;
+        if (dobropisyFilterUser) {
+            const uid = Number(dobropisyFilterUser);
+            out = out.filter((r) => Number(r.id_prodejce) === uid);
+        }
+        if (dobropisyFilterPairing) {
+            out = out.filter((r) => r.pairing === dobropisyFilterPairing);
+        }
+        return out;
+    }, [dobropisyRows, dobropisyFilterUser, dobropisyFilterPairing]);
 
     useEffect(() => {
-        const onDocClick = (e) => {
-            if (monthPickerRef.current && !monthPickerRef.current.contains(e.target)) {
-                setMonthPickerOpen(false);
-            }
-        };
-        document.addEventListener('mousedown', onDocClick);
-        return () => document.removeEventListener('mousedown', onDocClick);
-    }, []);
+        loadPayroll();
+        loadDiscountedServices();
+        loadDobropisySummary();
+    }, [loadPayroll, loadDiscountedServices, loadDobropisySummary]);
+
+    useEffect(() => {
+        if (dobropisyOpen && dobropisyTotals.polozky > 0 && !dobropisyRowsLoadedRef.current) {
+            loadDobropisyRows();
+        }
+    }, [dobropisyOpen, dobropisyTotals.polozky, loadDobropisyRows]);
 
     const employeeOptions = useMemo(
         () => rows.map((r) => ({ id: r.user_id, jmeno: r.jmeno })),
@@ -534,76 +638,7 @@ function PayrollPanel({ month, onMonthChange, onExport }) {
 
     return (
         <div className="payroll-panel">
-            <div className="payroll-controls shifts-controls">
-                <div className="payroll-month-block" ref={monthPickerRef}>
-                    <div className="month-navigation">
-                        <button
-                            type="button"
-                            className="nav-btn"
-                            onClick={() => {
-                                const idx = monthOptions.findIndex((o) => o.value === month);
-                                if (idx < monthOptions.length - 1) {
-                                    onMonthChange?.(monthOptions[idx + 1].value);
-                                }
-                            }}
-                            title="Předchozí měsíc"
-                        >
-                            ◀
-                        </button>
-                        <button
-                            type="button"
-                            className="month-picker-trigger"
-                            onClick={() => setMonthPickerOpen((v) => !v)}
-                        >
-                            {formatMonthName(month)}
-                            <span className="picker-caret">{monthPickerOpen ? '▲' : '▼'}</span>
-                        </button>
-                        <button
-                            type="button"
-                            className="nav-btn"
-                            onClick={() => {
-                                const idx = monthOptions.findIndex((o) => o.value === month);
-                                if (idx > 0) {
-                                    onMonthChange?.(monthOptions[idx - 1].value);
-                                }
-                            }}
-                            title="Následující měsíc"
-                        >
-                            ▶
-                        </button>
-                    </div>
-                    {monthPickerOpen && (
-                        <div className="month-picker-dropdown">
-                            <button
-                                type="button"
-                                className="month-picker-today"
-                                onClick={() => {
-                                    onMonthChange?.(currentMonthStr());
-                                    setMonthPickerOpen(false);
-                                }}
-                            >
-                                Aktuální měsíc
-                            </button>
-                            <ul className="month-picker-list">
-                                {monthOptions.map((opt) => (
-                                    <li key={opt.value}>
-                                        <button
-                                            type="button"
-                                            className={opt.value === month ? 'active' : ''}
-                                            onClick={() => {
-                                                onMonthChange?.(opt.value);
-                                                setMonthPickerOpen(false);
-                                            }}
-                                        >
-                                            {opt.label}
-                                        </button>
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-                    )}
-                </div>
-
+            <div className="payroll-toolbar">
                 <div className="payroll-stats stats-grid">
                     <div className="stat-card primary">
                         <div className="stat-content">
@@ -653,6 +688,249 @@ function PayrollPanel({ month, onMonthChange, onExport }) {
             </p>
 
             {error && <div className="error-message">{error}</div>}
+
+            <section className="payroll-discounted-section">
+                <button
+                    type="button"
+                    className="payroll-discounted-toggle"
+                    onClick={() => setDiscountedOpen((v) => !v)}
+                    aria-expanded={discountedOpen}
+                >
+                    <span className="toggle-icon">{discountedOpen ? '▼' : '▶'}</span>
+                    Služby se slevou ≥ 20 % (bez příplatku)
+                    {discountedRows.length > 0 && (
+                        <span className="discounted-badge">
+                            {discountedRows.length} řádků · −{formatPoints(discountedExcluded)} b.
+                        </span>
+                    )}
+                </button>
+                {discountedOpen && (
+                    <div className="payroll-discounted-body">
+                        <p className="payroll-discounted-hint">
+                            Ceny typu 599 / 499 / 249 (x99) a sleva do 10 % zůstávají v odměňování.
+                            Od 20 % slevy se příplatek za službu nepočítá.
+                        </p>
+                        {discountedLoading && (
+                            <p className="payroll-loading-inline">Načítám výjimky…</p>
+                        )}
+                        {discountedError && (
+                            <div className="error-message">{discountedError}</div>
+                        )}
+                        {!discountedLoading && !discountedError && discountedRows.length === 0 && (
+                            <p className="payroll-discounted-empty">V tomto měsíci žádné.</p>
+                        )}
+                        {discountedRows.length > 0 && (
+                            <div className="payroll-discounted-table-wrap">
+                                <table className="payroll-discounted-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Datum</th>
+                                            <th>Doklad</th>
+                                            <th>Kód</th>
+                                            <th>Prodejce</th>
+                                            <th>Cena/ks</th>
+                                            <th>Katalog</th>
+                                            <th>Sleva</th>
+                                            <th>Ks</th>
+                                            <th>Bez bodů</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {discountedRows.map((row, idx) => (
+                                            <tr key={`${row.doklad}-${row.kod}-${idx}`}>
+                                                <td>{row.datum || '—'}</td>
+                                                <td>{row.doklad || '—'}</td>
+                                                <td><code>{row.kod}</code></td>
+                                                <td>{row.prodejce || '—'}</td>
+                                                <td>{formatNumber(row.cena_ks_vcl_dph)} Kč</td>
+                                                <td>
+                                                    {row.katalog_cena != null
+                                                        ? `${formatNumber(row.katalog_cena)} Kč`
+                                                        : '—'}
+                                                </td>
+                                                <td>
+                                                    {row.sleva_procent != null
+                                                        ? `${formatNumber(row.sleva_procent)} %`
+                                                        : '—'}
+                                                </td>
+                                                <td>{row.kusy}</td>
+                                                <td className="col-excluded">−{formatPoints(row.vyloucene_body)}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                    <tfoot>
+                                        <tr>
+                                            <td colSpan={8} className="tfoot-label">Celkem vyloučené body</td>
+                                            <td className="col-excluded">
+                                                <strong>−{formatPoints(discountedExcluded)}</strong>
+                                            </td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </section>
+
+            <section className="payroll-dobropisy-section">
+                <button
+                    type="button"
+                    className="payroll-dobropisy-toggle"
+                    onClick={toggleDobropisy}
+                    aria-expanded={dobropisyOpen}
+                >
+                    <span className="toggle-icon">{dobropisyOpen ? '▼' : '▶'}</span>
+                    Dobropisy (vratky)
+                    {dobropisyTotals.polozky > 0 && (
+                        <span className="dobropisy-badge">
+                            {dobropisyTotals.polozky} položek · {dobropisyTotals.doklady} dokladů
+                        </span>
+                    )}
+                </button>
+                {dobropisyOpen && (
+                    <div className="payroll-dobropisy-body">
+                        <p className="payroll-dobropisy-hint">
+                            Skutečné vratky produktů (záporná cena). Nezapočítáváme slevy BODY/SLEVA ani zaokrouhlení.
+                            {' '}<strong>Zrcadlo</strong> = stejný den, stejná cena/ks, do 3 h po prodeji.
+                            {' '}<strong>Jiný prodej</strong> = starší prodej stejné položky u stejného prodejce.
+                        </p>
+                        {dobropisyPairingTotals.zrcadlo + dobropisyPairingTotals.par + dobropisyPairingTotals.bez_paru > 0 && (
+                            <div className="payroll-dobropisy-chips">
+                                <span className="pairing-chip pairing-chip--mirror">
+                                    Zrcadlo: {dobropisyPairingTotals.zrcadlo}
+                                </span>
+                                <span className="pairing-chip pairing-chip--par">
+                                    Jiný prodej: {dobropisyPairingTotals.par}
+                                </span>
+                                <span className="pairing-chip pairing-chip--none">
+                                    Bez páru: {dobropisyPairingTotals.bez_paru}
+                                </span>
+                            </div>
+                        )}
+                        {dobropisyLoading && (
+                            <p className="payroll-loading-inline">Načítám dobropisy…</p>
+                        )}
+                        {dobropisyError && (
+                            <div className="error-message">{dobropisyError}</div>
+                        )}
+                        {!dobropisyLoading && !dobropisyError && dobropisyTotals.polozky === 0 && (
+                            <p className="payroll-dobropisy-empty">V tomto měsíci žádné.</p>
+                        )}
+                        {!dobropisyLoading && !dobropisyError && dobropisyTotals.polozky > 0 && (
+                            <>
+                                <div className="payroll-dobropisy-summary-wrap">
+                                    <table className="payroll-dobropisy-table payroll-dobropisy-summary">
+                                        <thead>
+                                            <tr>
+                                                <th>Prodejce</th>
+                                                <th>Položky</th>
+                                                <th>Doklady</th>
+                                                <th>Částka</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {dobropisySummary.map((row) => (
+                                                <tr key={row.id_prodejce}>
+                                                    <td>{row.prodejce}</td>
+                                                    <td>{row.polozky}</td>
+                                                    <td>{row.doklady}</td>
+                                                    <td className="col-negative">{formatNumber(row.castka)} Kč</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                        <tfoot>
+                                            <tr>
+                                                <td className="tfoot-label">Celkem</td>
+                                                <td>{dobropisyTotals.polozky}</td>
+                                                <td>{dobropisyTotals.doklady}</td>
+                                                <td className="col-negative">
+                                                    <strong>{formatNumber(dobropisyTotals.castka)} Kč</strong>
+                                                </td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+
+                                <div className="payroll-dobropisy-filter">
+                                    <label>
+                                        Prodejce
+                                        <select
+                                            value={dobropisyFilterUser}
+                                            onChange={(e) => setDobropisyFilterUser(e.target.value)}
+                                        >
+                                            <option value="">Všichni prodejci</option>
+                                            {dobropisySummary.map((row) => (
+                                                <option key={row.id_prodejce} value={row.id_prodejce}>
+                                                    {row.prodejce} ({row.polozky})
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </label>
+                                    <label>
+                                        Typ páru
+                                        <select
+                                            value={dobropisyFilterPairing}
+                                            onChange={(e) => setDobropisyFilterPairing(e.target.value)}
+                                        >
+                                            <option value="">Vše</option>
+                                            <option value="zrcadlo">Zrcadlo ({dobropisyPairingTotals.zrcadlo})</option>
+                                            <option value="par">Jiný prodej ({dobropisyPairingTotals.par})</option>
+                                            <option value="bez_paru">Bez páru ({dobropisyPairingTotals.bez_paru})</option>
+                                        </select>
+                                    </label>
+                                </div>
+
+                                <div className="payroll-dobropisy-table-wrap">
+                                    <table className="payroll-dobropisy-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Typ</th>
+                                                <th>Datum</th>
+                                                <th>Doklad</th>
+                                                <th>Kód</th>
+                                                <th>Název</th>
+                                                <th>Prodejce</th>
+                                                <th>Původní doklad</th>
+                                                <th>Původní den</th>
+                                                <th>Po prodeji</th>
+                                                <th>Částka</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {filteredDobropisyRows.map((row, idx) => (
+                                                <tr
+                                                    key={`${row.doklad}-${row.kod}-${idx}`}
+                                                    className={`pairing-row pairing-row--${row.pairing || 'bez_paru'}`}
+                                                >
+                                                    <td>
+                                                        <span className={`pairing-badge pairing-badge--${row.pairing}`}>
+                                                            {row.pairing_label || '—'}
+                                                        </span>
+                                                    </td>
+                                                    <td>{row.datum || '—'}</td>
+                                                    <td>{row.doklad || '—'}</td>
+                                                    <td><code>{row.kod}</code></td>
+                                                    <td className="col-nazev" title={row.nazev}>{row.nazev || '—'}</td>
+                                                    <td>{row.prodejce || '—'}</td>
+                                                    <td>{row.puvodni_doklad || '—'}</td>
+                                                    <td>{row.puvodni_datum || '—'}</td>
+                                                    <td>
+                                                        {row.minut_po_prodeji != null
+                                                            ? `${formatNumber(row.minut_po_prodeji)} min`
+                                                            : '—'}
+                                                    </td>
+                                                    <td className="col-negative">{formatNumber(row.castka)} Kč</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                )}
+            </section>
 
             <div className="payroll-table-wrap">
                 <table className="payroll-table">

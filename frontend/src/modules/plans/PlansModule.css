@@ -2016,26 +2016,16 @@
 .plans-vyhled {
   margin-top: 12px;
 }
-.plans-vyhled-toolbar {
+.plans-vyhled-summary {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 16px;
   margin-bottom: 12px;
-  padding: 8px 10px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
   font-size: 0.8rem;
+  color: #334155;
 }
-.plans-vyhled-toolbar-filters {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 12px;
-  flex: 1 1 320px;
-  min-width: 0;
-}
+.plans-vyhled-summary-pred strong { color: #1d4ed8; }
 .plans-vyhled-dropdown {
   position: relative;
 }
@@ -2158,16 +2148,7 @@
   font-size: 0.68rem;
   color: #94a3b8;
 }
-.plans-vyhled-toolbar-summary {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 12px;
-  flex: 1 1 280px;
-  min-width: 0;
-  color: #334155;
-}
-.plans-vyhled-summary-pred strong { color: #1d4ed8; }
+
 .plans-vyhled-chip-dot {
   width: 8px;
   height: 8px;

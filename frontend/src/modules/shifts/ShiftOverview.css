@@ -2,42 +2,10 @@
     padding: 20px;
 }
 
-.overview-header {
+.overview-user-bar {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 30px;
-    padding-bottom: 20px;
-    border-bottom: 2px solid #e0e0e0;
-}
-
-.month-navigation {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-}
-
-.month-navigation button {
-    padding: 8px 15px;
-    border: 1px solid #ddd;
-    background: var(--bg-card);
-    cursor: pointer;
-    border-radius: 6px;
-    font-size: 14px;
-    transition: all 0.3s ease;
-}
-
-.month-navigation button:hover {
-    background: #f0f0f0;
-    border-color: #007bff;
-}
-
-.month-navigation h3 {
-    margin: 0;
-    font-size: 24px;
-    color: var(--text-heading);
-    min-width: 200px;
-    text-align: center;
+    justify-content: flex-end;
+    margin-bottom: 24px;
 }
 
 .user-info {
@@ -298,16 +266,6 @@
 
 /* Responzivní design */
 @media (max-width: 768px) {
-    .overview-header {
-        flex-direction: column;
-        gap: 15px;
-    }
-    
-    .month-navigation h3 {
-        font-size: 20px;
-        min-width: unset;
-    }
-    
     .stats-grid {
         grid-template-columns: 1fr;
     }

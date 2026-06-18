@@ -30,6 +30,7 @@ from analytics.receipt_metrics import (
     sum_obrat_s_dph,
 )
 from analytics.sunshine_config import sunshine_kusy_sum, sunshine_row_q
+from analytics.service_commission import service_metrics_count_annotations
 from analytics.viceprace_config import (
     polozky_nad_100_q,
     viceprace_obrat_sum,
@@ -113,6 +114,7 @@ class PolozkyParams:
     user_ids: Optional[list[int]] = None
     metrics: Optional[set[str]] = None
     include_hours: bool = False
+    include_profit: bool = True
     period_start: Optional[date] = None
     period_end: Optional[date] = None
 
@@ -260,6 +262,7 @@ def parse_polozky_params(get_params) -> PolozkyParams:
     prodejna_id = get_params.get('prodejna_id') or None
     segment = get_params.get('segment', 'vse') or 'vse'
     include_hours = get_params.get('include_hours') in ('1', 'true', 'True')
+    include_profit = get_params.get('include_profit', '1') not in ('0', 'false', 'False')
 
     user_ids = None
     raw_users = get_params.get('user_ids', '')
@@ -289,6 +292,7 @@ def parse_polozky_params(get_params) -> PolozkyParams:
         user_ids=user_ids,
         metrics=metrics,
         include_hours=include_hours,
+        include_profit=include_profit,
         period_start=sd,
         period_end=ed,
     )
@@ -390,17 +394,7 @@ def aggregate_polozky_by_salesperson(
     agregace = queryset.filter(id_prodejce__isnull=False).values('id_prodejce').annotate(
         polozky_nad_100=Sum('pocet_kusu', filter=polozky_nad_100_q(), default=0),
         viceprace_obrat=viceprace_obrat_sum(),
-        ct300=Count('id', filter=Q(kod='P114194')),
-        ct600=Count('id', filter=Q(kod='CT600')),
-        ct1200=Count('id', filter=Q(kod='CT1200')),
-        akt=Count('id', filter=Q(kod='AKT')),
-        zah250=Count('id', filter=Q(kod='ZAH250')),
-        nap=Count('id', filter=Q(kod__in=['NAP', 'NAN'])),
-        zah500=Count('id', filter=Q(kod='ZAH500')),
-        kop250=Count('id', filter=Q(kod='KOP250')),
-        kop500=Count('id', filter=Q(kod='KOP500')),
-        pz1=Count('id', filter=Q(kod='PZ1')),
-        knz=Count('id', filter=Q(kod='KNZ')),
+        **service_metrics_count_annotations(),
         sunshine=sunshine_kusy_sum(),
         sklicka=Count('id', filter=Q(kategorie_1='Skla a fólie')),
         lepeni=Count('id', filter=Q(kod='LOS')),

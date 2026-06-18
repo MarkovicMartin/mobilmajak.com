@@ -9,8 +9,9 @@ from analytics.receipt_metrics import (
     prumer_polozek_uctu,
     qualifying_polozka_q,
 )
-from analytics.points_config import POINTS_METRIC_KEYS, calculate_product_points
-from analytics.sunshine_config import SUNSHINE_METRIC_KEY, sunshine_kusy_sum, sunshine_row_q
+from analytics.service_commission import service_commission_qualified_q
+from analytics.points_config import POINTS_METRIC_KEYS, SERVICE_POINT_KEYS, calculate_product_points
+from analytics.sunshine_config import SUNSHINE_METRIC_KEY, sunshine_bonus_kusy_sum
 from analytics.vykupy_config import VYKUPY_METRIC_KEY, vykupy_counts_map
 from analytics.viceprace_config import aggregate_viceprace, polozky_nad_100_q
 from analytics.views import (
@@ -20,18 +21,18 @@ from analytics.views import (
     _servis_points_for_user_id,
 )
 
-# Počet řádků (jako v _aggregate_web_prodeje_all_salesperson)
+# Počet řádků s příplatkem za službu (sleva < 20 %; x99 ceny v pořádku)
 _SERVICE_COUNT_FILTERS = [
     ('ct300', Q(kod='P114194')),
-    ('ct600', Q(kod='CT600')),
-    ('ct1200', Q(kod='CT1200')),
-    ('akt', Q(kod='AKT')),
-    ('zah250', Q(kod='ZAH250')),
-    ('nap', Q(kod__in=['NAP', 'NAN'])),
-    ('zah500', Q(kod='ZAH500')),
-    ('kop250', Q(kod='KOP250')),
-    ('kop500', Q(kod='KOP500')),
-    ('pz1', Q(kod='PZ1')),
+    ('ct600', service_commission_qualified_q('ct600')),
+    ('ct1200', service_commission_qualified_q('ct1200')),
+    ('akt', service_commission_qualified_q('akt')),
+    ('zah250', service_commission_qualified_q('zah250')),
+    ('nap', service_commission_qualified_q('nap')),
+    ('zah500', service_commission_qualified_q('zah500')),
+    ('kop250', service_commission_qualified_q('kop250')),
+    ('kop500', service_commission_qualified_q('kop500')),
+    ('pz1', service_commission_qualified_q('pz1')),
     ('knz', Q(kod='KNZ')),
 ]
 
@@ -69,7 +70,7 @@ def batch_sales_metrics_for_month(rok, mesic_cislo, user_ids):
             if uid in metrics:
                 metrics[uid][key] = row['v'] or 0
 
-    sunshine_rows = base.values('id_prodejce').annotate(v=sunshine_kusy_sum())
+    sunshine_rows = base.values('id_prodejce').annotate(v=sunshine_bonus_kusy_sum())
     for row in sunshine_rows:
         uid = row['id_prodejce']
         if uid in metrics and (row['v'] or 0):

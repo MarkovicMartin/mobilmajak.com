@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import './ShiftOverview.css';
 import { shiftRoleLabel } from './shiftRoleLabels';
 
-function ShiftOverview({ user, month, onMonthChange }) {
+function ShiftOverview({ user, month }) {
     const [overview, setOverview] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -53,26 +53,6 @@ function ShiftOverview({ user, month, onMonthChange }) {
         return `${od} – ${doValue}`;
     };
 
-    const formatMonthName = (monthStr) => {
-        const [year, month] = monthStr.split('-').map(Number);
-        const date = new Date(year, month - 1);
-        return date.toLocaleDateString('cs-CZ', { month: 'long', year: 'numeric' });
-    };
-
-    const handleMonthChange = (direction) => {
-        const [year, monthNum] = month.split('-').map(Number);
-        const date = new Date(year, monthNum - 1);
-        
-        if (direction === 'prev') {
-            date.setMonth(date.getMonth() - 1);
-        } else {
-            date.setMonth(date.getMonth() + 1);
-        }
-        
-        const newMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-        onMonthChange(newMonth);
-    };
-
     if (loading) {
         return (
             <div className="shift-overview">
@@ -101,17 +81,7 @@ function ShiftOverview({ user, month, onMonthChange }) {
 
     return (
         <div className="shift-overview">
-            {/* Header s navigací měsíců */}
-            <div className="overview-header">
-                <div className="month-navigation">
-                    <button onClick={() => handleMonthChange('prev')}>
-                        ◀ Předchozí
-                    </button>
-                    <h3>{formatMonthName(month)}</h3>
-                    <button onClick={() => handleMonthChange('next')}>
-                        Následující ▶
-                    </button>
-                </div>
+            <div className="overview-user-bar">
                 <div className="user-info">
                     👤 {overview.user_jmeno}
                 </div>

@@ -25,6 +25,14 @@ from .camera_integration import camera_module_status
 from .camera_motion import build_pilot_motion_report
 
 
+def _month_sales_queryset(rok, mesic_cislo):
+    from analytics.models import WebProdejeAll
+    from analytics.views import _salesperson_month_filter
+
+    mesic_date = date(rok, mesic_cislo, 1)
+    return WebProdejeAll.objects.filter(_salesperson_month_filter(mesic_date))
+
+
 def _require_admin(request):
     if getattr(request.user, 'role', None) != 'ADMIN':
         return Response({'error': 'Nemáte oprávnění'}, status=status.HTTP_403_FORBIDDEN)
@@ -63,6 +71,112 @@ def payroll_preview(request):
     prodejna = request.GET.get('prodejna')
     data = build_payroll_preview(mesic, prodejna_id=prodejna)
     return Response(data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def payroll_discounted_services(request):
+    """Služby se slevou ≥ 20 % – bez příplatku v odměňování (ADMIN)."""
+    denied = _require_admin(request)
+    if denied:
+        return denied
+    mesic = request.GET.get('mesic')
+    if not mesic:
+        return Response({'error': 'Chybí parametr mesic'}, status=status.HTTP_400_BAD_REQUEST)
+    parsed = _parse_mesic(mesic)
+    if not parsed:
+        return Response({'error': 'Neplatný formát měsíce'}, status=status.HTTP_400_BAD_REQUEST)
+    rok, mesic_cislo, _mesic_date = parsed
+    from analytics.service_commission import list_discounted_service_sales
+
+    qs = _month_sales_queryset(rok, mesic_cislo)
+    prodejna = request.GET.get('prodejna')
+    if prodejna:
+        qs = qs.filter(stredisko=prodejna)
+
+    seller_ids = qs.values_list('id_prodejce', flat=True).distinct()
+    users_map = {
+        u.id: f'{u.jmeno} {u.prijmeni}'.strip()
+        for u in WebUser.objects.filter(id__in=seller_ids)
+    }
+    rows = list_discounted_service_sales(qs, users_map=users_map)
+    excluded_total = sum(int(r.get('vyloucene_body') or 0) for r in rows)
+    return Response({
+        'mesic': mesic,
+        'count': len(rows),
+        'vyloucene_body_celkem': excluded_total,
+        'rows': rows,
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def payroll_dobropisy(request):
+    """Dobropisy (vratky) po zaměstnancích – přehled položek za měsíc (ADMIN)."""
+    denied = _require_admin(request)
+    if denied:
+        return denied
+    mesic = request.GET.get('mesic')
+    if not mesic:
+        return Response({'error': 'Chybí parametr mesic'}, status=status.HTTP_400_BAD_REQUEST)
+    parsed = _parse_mesic(mesic)
+    if not parsed:
+        return Response({'error': 'Neplatný formát měsíce'}, status=status.HTTP_400_BAD_REQUEST)
+    rok, mesic_cislo, mesic_date = parsed
+    from analytics.dobropisy import (
+        dobropis_polozka_q,
+        dobropisy_summary_by_prodejce,
+        dobropisy_totals,
+        list_dobropisy,
+        original_sale_search_from,
+        pairing_totals_from_rows,
+    )
+    from analytics.models import WebProdejeAll
+    import calendar
+
+    qs = _month_sales_queryset(rok, mesic_cislo)
+    prodejna = request.GET.get('prodejna')
+    if prodejna:
+        qs = qs.filter(stredisko=prodejna)
+    user_id = request.GET.get('user_id')
+    if user_id:
+        try:
+            qs = qs.filter(id_prodejce=int(user_id))
+        except (TypeError, ValueError):
+            return Response({'error': 'Neplatné user_id'}, status=status.HTTP_400_BAD_REQUEST)
+
+    rows_only = request.GET.get('rows_only') in ('1', 'true', 'True')
+    seller_ids = (
+        qs.filter(dobropis_polozka_q(), id_prodejce__isnull=False)
+        .values_list('id_prodejce', flat=True)
+        .distinct()
+    )
+    users_map = {
+        u.id: f'{u.jmeno} {u.prijmeni}'.strip()
+        for u in WebUser.objects.filter(id__in=seller_ids)
+    }
+    last_day = calendar.monthrange(rok, mesic_cislo)[1]
+    month_end = date(rok, mesic_cislo, last_day)
+    search_qs = WebProdejeAll.objects.filter(
+        typ__gte=original_sale_search_from(mesic_date),
+        typ__lte=month_end,
+    )
+    if rows_only:
+        rows = list_dobropisy(qs, users_map=users_map, search_qs=search_qs)
+        return Response({
+            'mesic': mesic,
+            'rows': rows,
+            'pairing_totals': pairing_totals_from_rows(rows),
+        })
+
+    totals = dobropisy_totals(qs)
+    summary = dobropisy_summary_by_prodejce(qs, users_map=users_map)
+    return Response({
+        'mesic': mesic,
+        'totals': totals,
+        'summary': summary,
+        'rows': [],
+    })
 
 
 @api_view(['PUT'])

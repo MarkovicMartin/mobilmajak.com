@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import calendar
 from collections import defaultdict
+from functools import lru_cache
 from typing import Iterable, Optional
 
 from django.db.models import F, Q, Sum
@@ -47,14 +48,19 @@ def resolve_payroll_month(params: PolozkyParams) -> Optional[str]:
 
 
 def _technik_name_to_user_id() -> dict[str, int]:
-    out = {}
+    return dict(_technik_name_to_user_id_cached())
+
+
+@lru_cache(maxsize=1)
+def _technik_name_to_user_id_cached() -> tuple[tuple[str, int], ...]:
+    out = []
     for user in WebUser.objects.only('id', 'jmeno', 'prijmeni', 'technik_id').exclude(
         technik_id__isnull=True,
     ).exclude(technik_id=0):
         name = f'{user.jmeno} {user.prijmeni}'.strip()
         if name:
-            out[name] = user.id
-    return out
+            out.append((name, user.id))
+    return tuple(out)
 
 
 def batch_sales_margin_by_prodejce(queryset, prodejci_ids: Iterable[int]) -> dict[int, float]:
@@ -97,13 +103,18 @@ def batch_servis_margin_by_technik(queryset) -> dict[int, float]:
 
 def batch_payroll_body_for_month(mesic_str: str) -> dict[int, float]:
     """Celková měsíční výplata (body) – stejný zdroj jako modul Výplata."""
+    return dict(_batch_payroll_body_for_month_cached(mesic_str))
+
+
+@lru_cache(maxsize=8)
+def _batch_payroll_body_for_month_cached(mesic_str: str) -> tuple[tuple[int, float], ...]:
     from shifts.payroll_service import build_payroll_preview
 
     preview = build_payroll_preview(mesic_str)
-    return {
-        int(r['user_id']): float(r.get('celkem_body') or 0)
+    return tuple(
+        (int(r['user_id']), float(r.get('celkem_body') or 0))
         for r in preview.get('rows') or []
-    }
+    )
 
 
 def attach_profit_fields(
@@ -112,6 +123,9 @@ def attach_profit_fields(
     params: PolozkyParams,
 ) -> list[dict]:
     """Doplní marže a výnos pro firmu do řádků agregace prodejců."""
+    if not getattr(params, 'include_profit', True):
+        return rows
+
     servis_margin = batch_servis_margin_by_technik(queryset)
 
     existing_ids = {int(r['id_prodejce']) for r in rows if r.get('id_prodejce') is not None}

@@ -67,18 +67,7 @@ def audit_zbytek_mesic(rok: int, mesic: int) -> dict:
             else:
                 ostatni_kusy += kusy_i
 
-    total_zbytek_sql = f"""
-        SELECT SUM(
-            CASE WHEN COALESCE(Cena_ks_vcl_DPH, 0) >= 0
-            THEN COALESCE(NULLIF(Pocet_kusu, 0), 1)
-            ELSE -COALESCE(NULLIF(Pocet_kusu, 0), 1) END
-        )
-        FROM WEB_PRODEJE_ALL
-        WHERE {where_sql}
-    """
-    with connection.cursor() as cursor:
-        cursor.execute(total_zbytek_sql, [start_d, end_d])
-        total_zbytek = int(cursor.fetchone()[0] or 0)
+    total_zbytek = sum(r['kusy'] for r in rows)
 
     return {
         'rok': rok,

@@ -68,6 +68,10 @@ body.app-drawer-open .app-drawer-backdrop {
 }
 
 /* Modulové záložky – navigace jen v sidebaru / draweru */
+.module-tabs--desktop-only:not(:has(.module-subnav-meta, .ui-tabs__meta)) {
+    display: none;
+}
+
 .module-tabs--desktop-only .ui-tabs__list,
 .module-tabs--desktop-only .module-subnav-tabs {
     display: none !important;

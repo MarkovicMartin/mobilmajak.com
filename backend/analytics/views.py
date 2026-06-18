@@ -66,6 +66,10 @@ from .receipt_metrics import (
 
 
 from .query_helpers import count_active_receipts_from_queryset as _count_active_receipts
+from .service_commission import (
+    count_service_metrics_on_queryset,
+    service_metrics_count_annotations,
+)
 
 
 @method_decorator(permission_classes([AllowAny]), name='dispatch')
@@ -6053,18 +6057,18 @@ def _aggregate_web_prodeje_all_salesperson(queryset, user_id, iso_date):
     )['total'] or 0
     viceprace_data = aggregate_viceprace(queryset)
 
-    # Služby
-    ct300 = queryset.filter(kod='P114194').count()
-    ct600 = queryset.filter(kod='CT600').count()
-    ct1200 = queryset.filter(kod='CT1200').count()
-    akt = queryset.filter(kod='AKT').count()
-    zah250 = queryset.filter(kod='ZAH250').count()
-    nap = queryset.filter(kod__in=['NAP', 'NAN']).count()
-    zah500 = queryset.filter(kod='ZAH500').count()
-    kop250 = queryset.filter(kod='KOP250').count()
-    kop500 = queryset.filter(kod='KOP500').count()
-    pz1 = queryset.filter(kod='PZ1').count()
-    knz = queryset.filter(kod='KNZ').count()
+    service_counts = count_service_metrics_on_queryset(queryset)
+    ct300 = service_counts['ct300']
+    ct600 = service_counts['ct600']
+    ct1200 = service_counts['ct1200']
+    akt = service_counts['akt']
+    zah250 = service_counts['zah250']
+    nap = service_counts['nap']
+    zah500 = service_counts['zah500']
+    kop250 = service_counts['kop250']
+    kop500 = service_counts['kop500']
+    pz1 = service_counts['pz1']
+    knz = service_counts['knz']
     sklicka = queryset.filter(kategorie_1='Skla a fólie').count()
     lepeni = queryset.filter(kod='LOS').count()
     sunshine_int = int(sunshine or 0)
@@ -6182,17 +6186,7 @@ def _leaderboard_seller_aggregation(month_queryset):
     return month_queryset.filter(id_prodejce__isnull=False).values('id_prodejce').annotate(
         polozky_nad_100=Sum('pocet_kusu', filter=polozky_nad_100_q()),
         viceprace_obrat=viceprace_obrat_sum(),
-        ct300=Count('id', filter=Q(kod='P114194')),
-        ct600=Count('id', filter=Q(kod='CT600')),
-        ct1200=Count('id', filter=Q(kod='CT1200')),
-        akt=Count('id', filter=Q(kod='AKT')),
-        zah250=Count('id', filter=Q(kod='ZAH250')),
-        nap=Count('id', filter=Q(kod__in=['NAP', 'NAN'])),
-        zah500=Count('id', filter=Q(kod='ZAH500')),
-        kop250=Count('id', filter=Q(kod='KOP250')),
-        kop500=Count('id', filter=Q(kod='KOP500')),
-        pz1=Count('id', filter=Q(kod='PZ1')),
-        knz=Count('id', filter=Q(kod='KNZ')),
+        **service_metrics_count_annotations(),
         sunshine=sunshine_kusy_sum(),
         polozky_nad_29=Count('id', filter=qualifying_polozka_q()),
         unikatni_doklady=Count(
@@ -6219,17 +6213,7 @@ def _leaderboard_store_aggregation(month_queryset):
             id_prodejny=Max('id_prodejny'),
             polozky_nad_100=Sum('pocet_kusu', filter=polozky_nad_100_q()),
             viceprace_obrat=viceprace_obrat_sum(),
-            ct300=Count('id', filter=Q(kod='P114194')),
-            ct600=Count('id', filter=Q(kod='CT600')),
-            ct1200=Count('id', filter=Q(kod='CT1200')),
-            akt=Count('id', filter=Q(kod='AKT')),
-            zah250=Count('id', filter=Q(kod='ZAH250')),
-            nap=Count('id', filter=Q(kod__in=['NAP', 'NAN'])),
-            zah500=Count('id', filter=Q(kod='ZAH500')),
-            kop250=Count('id', filter=Q(kod='KOP250')),
-            kop500=Count('id', filter=Q(kod='KOP500')),
-            pz1=Count('id', filter=Q(kod='PZ1')),
-            knz=Count('id', filter=Q(kod='KNZ')),
+            **service_metrics_count_annotations(),
             polozky_nad_29=Count('id', filter=qualifying_polozka_q()),
             unikatni_doklady=Count(
                 'doklad',

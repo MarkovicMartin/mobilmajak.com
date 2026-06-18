@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { storeAPI } from '../../services/api';
-import { PageHeader, Tabs, Select } from '../../components/ui';
+import { PageHeader, Select } from '../../components/ui';
 import ShiftCalendar from './ShiftCalendar';
 import ShiftForm from './ShiftForm';
 import BulkShiftForm from './BulkShiftForm';
@@ -12,7 +12,6 @@ import PayrollPanel from './PayrollPanel';
 import AttendanceLogPanel from './AttendanceLogPanel';
 import AbsentStoresPanel from './AbsentStoresPanel';
 import VacationPanel from './VacationPanel';
-import { SHIFTS_SECTIONS } from './shiftsSections';
 import './ShiftsModule.css';
 
 const ALL_PRODEJNY = 'vse';
@@ -152,14 +151,6 @@ function ShiftsModule() {
         return name;
     };
 
-    const shiftTabs = SHIFTS_SECTIONS
-        .filter((section) => !section.adminOnly || user?.role === 'ADMIN')
-        .map((section) => ({
-            id: section.id,
-            label: section.tabLabel,
-            icon: section.icon,
-        }));
-
     const storeSelectOptions = useMemo(() => [
         {
             value: ALL_PRODEJNY,
@@ -173,33 +164,27 @@ function ShiftsModule() {
         })),
     ], [stores, user?.prodejna_id, user?.role, shiftsSeeAllEmployees]);
 
+    const showMonthControls = activeView === 'calendar' || activeView === 'overview' || activeView === 'payroll';
+
     return (
         <div className="shifts-module">
             <PageHeader title="Směny" />
 
-            <Tabs
-                tabs={shiftTabs}
-                activeId={activeView}
-                onTabChange={setActiveView}
-                accent="pink"
-                ariaLabel="Sekce směn"
-                className="shifts-subnav module-tabs--desktop-only"
-                legacy
-            />
-
-            <div className="shifts-controls">
-                {activeView === 'calendar' && (
+            {showMonthControls && (
+                <div className="shifts-controls">
                     <div className="shifts-controls__calendar-row">
-                        <div className="prodejna-selector">
-                            <label htmlFor="shifts-prodejna-select">Prodejna</label>
-                            <Select
-                                id="shifts-prodejna-select"
-                                options={storeSelectOptions}
-                                value={selectedProdejna}
-                                onChange={setSelectedProdejna}
-                                aria-label="Filtr prodejny"
-                            />
-                        </div>
+                        {activeView === 'calendar' && (
+                            <div className="prodejna-selector">
+                                <label htmlFor="shifts-prodejna-select">Prodejna</label>
+                                <Select
+                                    id="shifts-prodejna-select"
+                                    options={storeSelectOptions}
+                                    value={selectedProdejna}
+                                    onChange={setSelectedProdejna}
+                                    aria-label="Filtr prodejny"
+                                />
+                            </div>
+                        )}
 
                         <div className="month-navigation">
                             <button type="button" onClick={() => handleMonthChange('prev')}>
@@ -213,41 +198,43 @@ function ShiftsModule() {
                             </button>
                         </div>
 
-                        <div className="action-buttons">
-                            <button
-                                type="button"
-                                className="btn-primary"
-                                onClick={() => {
-                                    setFormInitialDatum('');
-                                    setEditShift(null);
-                                    setShowForm(true);
-                                }}
-                            >
-                                ➕ Přidat směnu
-                            </button>
-                            <button
-                                type="button"
-                                className="btn-secondary"
-                                onClick={() => {
-                                    setBulkInitialDates([]);
-                                    setShowBulkForm(true);
-                                }}
-                            >
-                                📝 Hromadně
-                            </button>
-                            {user?.role === 'ADMIN' && (
+                        {activeView === 'calendar' && (
+                            <div className="action-buttons">
                                 <button
                                     type="button"
-                                    className="btn-export"
-                                    onClick={handleExport}
+                                    className="btn-primary"
+                                    onClick={() => {
+                                        setFormInitialDatum('');
+                                        setEditShift(null);
+                                        setShowForm(true);
+                                    }}
                                 >
-                                    📊 Export
+                                    ➕ Přidat směnu
                                 </button>
-                            )}
-                        </div>
+                                <button
+                                    type="button"
+                                    className="btn-secondary"
+                                    onClick={() => {
+                                        setBulkInitialDates([]);
+                                        setShowBulkForm(true);
+                                    }}
+                                >
+                                    📝 Hromadně
+                                </button>
+                                {user?.role === 'ADMIN' && (
+                                    <button
+                                        type="button"
+                                        className="btn-export"
+                                        onClick={handleExport}
+                                    >
+                                        📊 Export
+                                    </button>
+                                )}
+                            </div>
+                        )}
                     </div>
-                )}
-            </div>
+                </div>
+            )}
 
             <div className="shifts-content">
                 {activeView === 'calendar' && selectedProdejna && (
@@ -283,7 +270,6 @@ function ShiftsModule() {
                     <ShiftOverview
                         user={user}
                         month={currentMonth}
-                        onMonthChange={setCurrentMonth}
                     />
                 )}
 
@@ -298,7 +284,6 @@ function ShiftsModule() {
                 {activeView === 'payroll' && user?.role === 'ADMIN' && (
                     <PayrollPanel
                         month={currentMonth}
-                        onMonthChange={setCurrentMonth}
                         onExport={handleExport}
                     />
                 )}
