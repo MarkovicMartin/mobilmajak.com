@@ -355,5 +355,5 @@ class PayrollComputationTests(TestCase):
             row['celkem_body'],
             row['mzda_fixni_body'] + row['provize_body'] + row['odmena_mesic_body']
             + row['dovolena_body'] + row['prescas_body'] + row['cestovne_body']
-            + row.get('dyska_body', 0),
+            + row.get('dyska_body', 0) + row.get('pol_dok_odmena_body', 0),
         )

@@ -905,6 +905,7 @@ def export_smeny(request):
             'Odpracováno h', 'Dovolená h', 'Nemoc h', 'Svátek h',
             'Fond h', 'Přesčas h',
             'Základ', 'Doplňky', 'Cestovné', 'Dovolená výplata', 'Přesčas body', 'Dýška',
+            'Prům. pol./účt.', 'Bonus pol./účt.',
         ]
         headers += [label for _k, label in doplnek_kody]
         headers += [label for _k, label in provize_cols]
@@ -932,6 +933,8 @@ def export_smeny(request):
                 data.get('dovolena_body', 0),
                 data.get('prescas_body', 0),
                 data.get('dyska_body', 0),
+                data.get('pol_dok', 0),
+                data.get('pol_dok_odmena_body', 0),
             ]
             for kod, _label in doplnek_kody:
                 out.append(doplnky_by_kod.get(kod, 0))

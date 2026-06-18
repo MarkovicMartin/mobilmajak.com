@@ -508,6 +508,8 @@ def aggregate_polozky_by_salesperson(
         if params.metrics:
             keep = wanted | {
                 'id_prodejce', 'prodejce', 'prodejna', 'servisni_prace', 'servis_provize',
+                'marze_vytvorena', 'marze_prodej', 'marze_servis',
+                'vyplata_body', 'vynos_firmy', 'profit_payroll_month',
             }
             row = {
                 k: v for k, v in row.items()
@@ -517,7 +519,9 @@ def aggregate_polozky_by_salesperson(
         data_list.append(row)
 
     data_list.sort(key=lambda x: x.get('polozky_nad_100', 0), reverse=True)
-    return data_list
+
+    from analytics.profit_by_salesperson import attach_profit_fields
+    return attach_profit_fields(data_list, queryset, params)
 
 
 _COMPARE_MONTH_SHIFT = {

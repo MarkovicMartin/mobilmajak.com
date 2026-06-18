@@ -300,6 +300,26 @@ function PayrollPanel({ month, onMonthChange, onExport }) {
         ) : null;
     };
 
+    const renderPolDokLine = (row) => {
+        const bonus = Number(row.pol_dok_odmena_body) || 0;
+        if (!bonus) return null;
+        const avg = Number(row.pol_dok) || 0;
+        const label = bonus > 0
+            ? `+ Prům. pol./účt. ${avg.toFixed(2)} (nad 2)`
+            : `− Prům. pol./účt. ${avg.toFixed(2)} (pod 2)`;
+        return (
+            <div
+                key="pol-dok"
+                className={`breakdown-line${bonus < 0 ? ' breakdown-line-deduction' : ''}`}
+            >
+                <span className="breakdown-label">{label}</span>
+                <span className="breakdown-value">
+                    {bonus > 0 ? '+' : ''}{formatPoints(bonus)}
+                </span>
+            </div>
+        );
+    };
+
     const renderBrigadnikSouhrn = (row) => {
         if (!row.is_brigadnik) return null;
         const vypomocH = Number(row.vypomoc_h) || 0;
@@ -346,6 +366,7 @@ function PayrollPanel({ month, onMonthChange, onExport }) {
                             <span className="breakdown-value">{formatPoints(row.dyska_body)}</span>
                         </div>
                     )}
+                    {renderPolDokLine(row)}
                     {(row.doplnky_body > 0 || row.odmena_mesic_body > 0) && (
                         <div className="breakdown-line">
                             <span className="breakdown-label">+ Doplňky / měsíční bonus</span>
@@ -465,6 +486,8 @@ function PayrollPanel({ month, onMonthChange, onExport }) {
                 </div>
             );
         }
+        const polDokLine = renderPolDokLine(row);
+        if (polDokLine) lines.push(polDokLine);
         if (prescas > 0) {
             const sazbaLabel = sazbaPrescas != null && zakladVp != null && fond
                 ? `${formatPoints(zakladVp)} / ${formatNumber(fond)} h = ${formatPoints(sazbaPrescas)}/h`

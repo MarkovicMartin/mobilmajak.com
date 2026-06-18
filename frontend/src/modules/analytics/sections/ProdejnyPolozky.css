@@ -155,6 +155,56 @@
     color: #fff;
 }
 
+.polozky-view .seller-profit-metrics {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.polozky-view .seller-profit-metrics .metric-item {
+    padding: 10px 8px;
+    border-radius: 6px;
+    background: var(--bg-inset);
+    border: 1px solid var(--border-subtle);
+    text-align: center;
+}
+
+.polozky-view .seller-profit-metrics .metric-item--profit-muted {
+    opacity: 0.75;
+}
+
+.polozky-view .seller-profit-metrics .metric-label {
+    display: block;
+    font-size: 0.62rem;
+    font-weight: 600;
+    color: var(--text-label);
+    margin-bottom: 4px;
+}
+
+.polozky-view .seller-profit-metrics .metric-value {
+    display: block;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-strong);
+}
+
+.polozky-view .seller-profit-metrics .metric-value.highlight-profit {
+    color: #0f766e;
+}
+
+.polozky-view .seller-profit-metrics .metric-value.highlight-negative {
+    color: #b91c1c;
+}
+
+.polozky-view .seller-profit-metrics .metric-sublabel {
+    display: block;
+    margin-top: 4px;
+    font-size: 0.62rem;
+    color: var(--text-muted);
+    line-height: 1.2;
+}
+
 .polozky-view .last-update {
     margin-bottom: 0.5rem;
 }

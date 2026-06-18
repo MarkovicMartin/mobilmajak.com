@@ -20,6 +20,9 @@ from users.mzda_utils import (
 
 from .labor_hours import fondu_hodin_mesic, prescas_hodin
 
+POL_DOK_HRANI = Decimal('2')
+POL_DOK_ODMENA_KC = Decimal('1000')
+
 
 def _body_whole(val):
     return Decimal(str(val or 0)).quantize(Decimal('1'), rounding=ROUND_HALF_UP)
@@ -42,6 +45,7 @@ from .models import MzdovaOdmenaMesic, MzdovaPenalizaceMesic, Smena
 from .payroll_points_batch import (
     _empty_metrics,
     batch_dyska_for_month,
+    batch_pol_dok_for_month,
     batch_sales_metrics_for_month,
     batch_servis_points_for_month,
     build_points_payload_for_user,
@@ -219,6 +223,21 @@ def dovolena_body_vypocet(user, dovolena_h, prumer_h):
     return _body_whole(prumer_h * h)
 
 
+def pol_dok_odmena_body(pol_dok, unikatni_doklady):
+    """
+    Bonus/penalizace za průměr položek/účtenku v měsíci.
+    > 2 → +1000 Kč, < 2 → −1000 Kč, přesně 2 nebo bez účtenek → 0.
+    """
+    if not unikatni_doklady or int(unikatni_doklady) <= 0:
+        return Decimal('0')
+    avg = Decimal(str(pol_dok or 0))
+    if avg > POL_DOK_HRANI:
+        return POL_DOK_ODMENA_KC
+    if avg < POL_DOK_HRANI:
+        return -POL_DOK_ODMENA_KC
+    return Decimal('0')
+
+
 def aggregate_hours_by_user(rok, mesic_cislo, prodejna_id=None):
     """Agregace hodin ze směn – stejná logika jako export."""
     ceske_svatky = get_ceske_svatky(rok)
@@ -274,7 +293,7 @@ def aggregate_hours_by_user(rok, mesic_cislo, prodejna_id=None):
 
 def build_payroll_row(user, rok, mesic_cislo, hours_map, mesic_date, prodejny_cache,
                       fondu_h, metrics_map, servis_map, odmeny_map, dyska_map=None,
-                      penalizace_map=None, hours_cache=None):
+                      penalizace_map=None, hours_cache=None, pol_dok_map=None):
     uid = user.id
     hours = hours_map.get(uid, {
         'odpracovano_h': 0,
@@ -335,9 +354,14 @@ def build_payroll_row(user, rok, mesic_cislo, hours_map, mesic_date, prodejny_ca
     dyska_info = (dyska_map or {}).get(uid) or {'obrat': 0, 'kusy': 0}
     dyska_body = _body_whole(dyska_info.get('obrat') or 0)
 
+    pol_dok_info = (pol_dok_map or {}).get(uid) or {'pol_dok': 0.0, 'unikatni_doklady': 0}
+    pol_dok = float(pol_dok_info.get('pol_dok') or 0)
+    pol_dok_unikatni = int(pol_dok_info.get('unikatni_doklady') or 0)
+    pol_dok_odmena = pol_dok_odmena_body(pol_dok, pol_dok_unikatni)
+
     celkem_body = _body_whole(
         mzda_fixni + provize_body + odmena_mesic
-        + dovolena_body + prescas_body + cestovne + dyska_body
+        + dovolena_body + prescas_body + cestovne + dyska_body + pol_dok_odmena
     )
 
     breakdown = points_payload.get('breakdown') or {}
@@ -376,6 +400,9 @@ def build_payroll_row(user, rok, mesic_cislo, hours_map, mesic_date, prodejny_ca
         'dyska_body': _body_float(dyska_body),
         'dyska_kusy': int(dyska_info.get('kusy') or 0),
         'dyska_obrat': float(dyska_info.get('obrat') or 0),
+        'pol_dok': pol_dok,
+        'pol_dok_unikatni_doklady': pol_dok_unikatni,
+        'pol_dok_odmena_body': _body_float(pol_dok_odmena),
         'provize_body_brutto': _body_float(provize_brutto),
         'provize_body': _body_float(provize_body),
         'penalizace_pocet': len(penalizace_rows),
@@ -422,6 +449,7 @@ def build_payroll_preview(mesic_str, prodejna_id=None):
     metrics_map = batch_sales_metrics_for_month(rok, mesic_cislo, user_ids)
     servis_map = batch_servis_points_for_month(users_list, ym)
     dyska_map = batch_dyska_for_month(rok, mesic_cislo, user_ids)
+    pol_dok_map = batch_pol_dok_for_month(rok, mesic_cislo, user_ids)
     odmeny_map = {
         o.user_id: o
         for o in MzdovaOdmenaMesic.objects.filter(mesic=mesic_date, user_id__in=user_ids)
@@ -435,7 +463,7 @@ def build_payroll_preview(mesic_str, prodejna_id=None):
         rows.append(build_payroll_row(
             user, rok, mesic_cislo, hours_map, mesic_date, prodejny_cache,
             fondu_h, metrics_map, servis_map, odmeny_map, dyska_map, penalizace_map,
-            hours_cache=hours_cache,
+            hours_cache=hours_cache, pol_dok_map=pol_dok_map,
         ))
 
     celkem_bodu = int(round(sum(r.get('celkem_body', 0) for r in rows)))

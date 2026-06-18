@@ -386,6 +386,45 @@ const ProdejnyPolozkyView = ({
                                                 </div>
                                             )}
                                         </div>
+                                        <div className="seller-profit-metrics">
+                                            <div
+                                                className="metric-item primary metric-item--profit"
+                                                title="Marže bez DPH z prodeje + servisní práce (servis přiřazen technikovi, který je provedl)"
+                                            >
+                                                <span className="metric-label">Marže vytvořená</span>
+                                                <span className="metric-value highlight-profit">
+                                                    {formatCurrency(item.marze_vytvorena ?? 0)}
+                                                </span>
+                                                {(item.marze_servis ?? 0) > 0 && (
+                                                    <span className="metric-sublabel">
+                                                        z toho servis {formatCurrency(item.marze_servis)}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            {item.vynos_firmy != null && item.vynos_firmy !== undefined ? (
+                                                <div
+                                                    className="metric-item primary metric-item--profit"
+                                                    title={`Marže − výplata (${item.vyplata_body ?? 0} bodů)`}
+                                                >
+                                                    <span className="metric-label">Výnos pro firmu</span>
+                                                    <span className={`metric-value${item.vynos_firmy < 0 ? ' highlight-negative' : ' highlight-profit'}`}>
+                                                        {formatCurrency(item.vynos_firmy)}
+                                                    </span>
+                                                    <span className="metric-sublabel">
+                                                        výplata {Number(item.vyplata_body ?? 0).toLocaleString('cs-CZ')} bodů
+                                                    </span>
+                                                </div>
+                                            ) : (
+                                                <div
+                                                    className="metric-item metric-item--profit-muted"
+                                                    title="Výnos pro firmu lze zobrazit jen za celý kalendářní měsíc"
+                                                >
+                                                    <span className="metric-label">Výnos pro firmu</span>
+                                                    <span className="metric-value">—</span>
+                                                    <span className="metric-sublabel">jen celý měsíc</span>
+                                                </div>
+                                            )}
+                                        </div>
                                         <PolozkySellerDetailChips
                                             item={item}
                                             losPctFn={losPctProlepenost}

@@ -19,7 +19,7 @@ from tasks.models import Ukol
 from users.models import WebUser
 
 
-def _sale(day, prodejce_id, prodejna_id, kod='P100', cena=150, kusy=1):
+def _sale(day, prodejce_id, prodejna_id, kod='P100', cena=150, kusy=1, zisk=50, **extra):
     return WebProdejeAll.objects.create(
         typ=day,
         doklad=f'D{prodejce_id}-{day}-{kod}',
@@ -27,9 +27,11 @@ def _sale(day, prodejce_id, prodejna_id, kod='P100', cena=150, kusy=1):
         nazev='Test',
         pocet_kusu=kusy,
         cena_ks_vcl_dph=Decimal(str(cena)),
+        zisk=Decimal(str(zisk)),
         id_prodejce=prodejce_id,
         id_prodejny=prodejna_id,
         stredisko='Test',
+        **extra,
     )
 
 
@@ -130,6 +132,66 @@ class PolozkyAggregateTests(TestCase):
         self.assertEqual(row['odpracovane_hodiny'], 8.0)
         self.assertAlmostEqual(row['polozky_nad_100_za_hodinu'], 0.25, places=2)
 
+
+class PolozkyProfitTests(TestCase):
+    def setUp(self):
+        self.store = Prodejna.objects.create(id=401, nazev='P', nazev_kratkiy='P', aktivni=True)
+        self.prodejce = WebUser.objects.create(
+            id=9101,
+            uzivatelske_jmeno='prod',
+            jmeno='Pro',
+            prijmeni='Dejce',
+            heslo='x',
+            role='PRODEJCE',
+            aktivni=True,
+            moduly=[],
+            prodejna_id=self.store.id,
+        )
+        self.technik = WebUser.objects.create(
+            id=9102,
+            uzivatelske_jmeno='tech',
+            jmeno='Tech',
+            prijmeni='Nik',
+            heslo='x',
+            role='PRODEJCE',
+            aktivni=True,
+            moduly=[],
+            technik_id=501,
+            prodejna_id=self.store.id,
+        )
+        self.day = '2026-06-10'
+        _sale(self.day, self.prodejce.id, self.store.id, zisk=100, kusy=2)
+        _sale(
+            self.day,
+            self.prodejce.id,
+            self.store.id,
+            kod='SERV',
+            zisk=300,
+            kusy=1,
+            objednavku_zalozil='servis eda',
+            k_servisu='ANO',
+            kategorie='!Servis test',
+            kategorie_1='Práce',
+            technik='Tech Nik',
+        )
+
+    def test_product_margin_to_seller_servis_margin_to_technik(self):
+        params = parse_polozky_params({
+            'start_date': '2026-06-01',
+            'end_date': '2026-06-30',
+            'period': 'monthly_select',
+            'selected_month': '2026-06',
+        })
+        rows = aggregate_polozky_by_salesperson(params, limit=50)
+        prod_row = next(r for r in rows if r['id_prodejce'] == self.prodejce.id)
+        tech_row = next(r for r in rows if r['id_prodejce'] == self.technik.id)
+
+        self.assertEqual(prod_row['marze_prodej'], 200.0)
+        self.assertEqual(prod_row['marze_servis'], 0.0)
+        self.assertEqual(prod_row['marze_vytvorena'], 200.0)
+
+        self.assertEqual(tech_row['marze_servis'], 300.0)
+        self.assertEqual(tech_row['marze_vytvorena'], 300.0)
 
 class PolozkyApiTests(TestCase):
     def setUp(self):

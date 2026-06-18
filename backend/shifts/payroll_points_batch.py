@@ -4,6 +4,11 @@ from datetime import date
 from django.db.models import Count, Q, Sum
 
 from analytics.models import WebProdejeAll
+from analytics.receipt_metrics import (
+    active_receipt_filter_q,
+    prumer_polozek_uctu,
+    qualifying_polozka_q,
+)
 from analytics.points_config import POINTS_METRIC_KEYS, calculate_product_points
 from analytics.sunshine_config import SUNSHINE_METRIC_KEY, sunshine_kusy_sum, sunshine_row_q
 from analytics.vykupy_config import VYKUPY_METRIC_KEY, vykupy_counts_map
@@ -77,6 +82,32 @@ def batch_sales_metrics_for_month(rok, mesic_cislo, user_ids):
             metrics[uid][VYKUPY_METRIC_KEY] = count
 
     return metrics
+
+
+def batch_pol_dok_for_month(rok, mesic_cislo, user_ids):
+    """Průměr položek/účtenku za měsíc – stejná logika jako analytika (varianta 1)."""
+    if not user_ids:
+        return {}
+    target = date(rok, mesic_cislo, 1)
+    uid_set = set(int(u) for u in user_ids)
+    out = {uid: {'pol_dok': 0.0, 'unikatni_doklady': 0} for uid in uid_set}
+    base = WebProdejeAll.objects.filter(
+        _salesperson_month_filter(target),
+        id_prodejce__in=uid_set,
+    )
+    for row in base.values('id_prodejce').annotate(
+        polozky_nad_29=Count('id', filter=qualifying_polozka_q()),
+        unikatni_doklady=Count('doklad', filter=active_receipt_filter_q(), distinct=True),
+    ):
+        uid = row['id_prodejce']
+        if uid not in out:
+            continue
+        doklady = int(row['unikatni_doklady'] or 0)
+        out[uid] = {
+            'pol_dok': prumer_polozek_uctu(row['polozky_nad_29'], doklady),
+            'unikatni_doklady': doklady,
+        }
+    return out
 
 
 def batch_dyska_for_month(rok, mesic_cislo, user_ids):
