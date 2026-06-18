@@ -10,7 +10,7 @@ from analytics.receipt_metrics import (
     qualifying_polozka_q,
 )
 from analytics.service_commission import service_commission_qualified_q
-from analytics.points_config import POINTS_METRIC_KEYS, SERVICE_POINT_KEYS, calculate_product_points
+from analytics.points_config import POINTS_METRIC_KEYS, calculate_product_points
 from analytics.sunshine_config import SUNSHINE_METRIC_KEY, sunshine_bonus_kusy_sum
 from analytics.vykupy_config import VYKUPY_METRIC_KEY, vykupy_counts_map
 from analytics.viceprace_config import aggregate_viceprace, polozky_nad_100_q
