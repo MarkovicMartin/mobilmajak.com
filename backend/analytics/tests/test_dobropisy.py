@@ -5,12 +5,14 @@ from django.test import TestCase
 from datetime import time
 
 from analytics.dobropisy import (
+    ORIGINAL_SALE_LOOKBACK_DAYS,
+    build_pairing_search_qs,
     dobropis_polozka_q,
     dobropisy_totals,
     list_dobropisy,
     dobropisy_summary_by_prodejce,
 )
-from analytics.models import WebProdejeAll
+from analytics.models import DobropisPairingCache, WebProdejeAll
 
 
 class DobropisyTests(TestCase):
@@ -19,7 +21,7 @@ class DobropisyTests(TestCase):
         self.prodejce_b = 7002
         self.den = '2026-06-10'
 
-    def _row(self, *, doklad, kod, cena, prodejce, nazev='Položka', kusy=1, den=None, cas=None):
+    def _row(self, *, doklad, kod, cena, prodejce, nazev='Položka', kusy=1, den=None, cas=None, stredisko='Test'):
         WebProdejeAll.objects.create(
             typ=den or self.den,
             doklad=doklad,
@@ -28,7 +30,7 @@ class DobropisyTests(TestCase):
             pocet_kusu=kusy,
             cena_ks_vcl_dph=Decimal(str(cena)),
             id_prodejce=prodejce,
-            stredisko='Test',
+            stredisko=stredisko,
             cas_prodeje=cas,
         )
 
@@ -95,3 +97,58 @@ class DobropisyTests(TestCase):
         rows = list_dobropisy(qs, search_qs=WebProdejeAll.objects.all())
         self.assertEqual(rows[0]['pairing'], 'par')
         self.assertEqual(rows[0]['puvodni_doklad'], 'UCT300')
+
+    def test_pairing_search_qs_scoped_to_dobropis_stores(self):
+        from datetime import date
+
+        self._row(
+            doklad='DOB-Z', kod='PZ', cena=-50, prodejce=self.prodejce_a, stredisko='Zlín',
+        )
+        WebProdejeAll.objects.create(
+            typ=self.den,
+            doklad='UCT-G',
+            kod='PG',
+            nazev='Globus prodej',
+            pocet_kusu=1,
+            cena_ks_vcl_dph=Decimal('100'),
+            id_prodejce=self.prodejce_a,
+            stredisko='Globus',
+        )
+        month_qs = WebProdejeAll.objects.filter(typ=self.den)
+        search = build_pairing_search_qs(
+            month_qs,
+            month_start=date(2026, 6, 1),
+            month_end=date(2026, 6, 30),
+        )
+        strediska = set(search.values_list('stredisko', flat=True))
+        self.assertEqual(strediska, {'Zlín'})
+
+        search_zlin = build_pairing_search_qs(
+            month_qs,
+            month_start=date(2026, 6, 1),
+            month_end=date(2026, 6, 30),
+            prodejna='Zlín',
+        )
+        self.assertEqual(
+            set(search_zlin.values_list('stredisko', flat=True)),
+            {'Zlín'},
+        )
+
+    def test_lookback_is_30_days(self):
+        self.assertEqual(ORIGINAL_SALE_LOOKBACK_DAYS, 30)
+
+    def test_pairing_persisted_in_cache(self):
+        self._row(
+            doklad='UCT100', kod='P100', cena=199, prodejce=self.prodejce_a,
+            cas=time(10, 0, 0),
+        )
+        self._row(
+            doklad='DOB100', kod='P100', cena=-199, prodejce=self.prodejce_a,
+            cas=time(10, 15, 0),
+        )
+        qs = WebProdejeAll.objects.filter(typ=self.den)
+        list_dobropisy(qs, users_map={self.prodejce_a: 'Anna'})
+        self.assertEqual(DobropisPairingCache.objects.filter(pairing='zrcadlo').count(), 1)
+        rows2 = list_dobropisy(qs, users_map={self.prodejce_a: 'Anna'})
+        self.assertEqual(rows2[0]['pairing'], 'zrcadlo')
+        self.assertEqual(DobropisPairingCache.objects.count(), 1)

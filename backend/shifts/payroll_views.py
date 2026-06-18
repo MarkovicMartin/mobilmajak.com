@@ -87,25 +87,44 @@ def payroll_discounted_services(request):
     if not parsed:
         return Response({'error': 'Neplatný formát měsíce'}, status=status.HTTP_400_BAD_REQUEST)
     rok, mesic_cislo, _mesic_date = parsed
-    from analytics.service_commission import list_discounted_service_sales
+    from analytics.service_commission import (
+        discounted_services_summary,
+        list_discounted_service_sales,
+    )
 
     qs = _month_sales_queryset(rok, mesic_cislo)
     prodejna = request.GET.get('prodejna')
     if prodejna:
         qs = qs.filter(stredisko=prodejna)
 
-    seller_ids = qs.values_list('id_prodejce', flat=True).distinct()
-    users_map = {
-        u.id: f'{u.jmeno} {u.prijmeni}'.strip()
-        for u in WebUser.objects.filter(id__in=seller_ids)
-    }
-    rows = list_discounted_service_sales(qs, users_map=users_map)
-    excluded_total = sum(int(r.get('vyloucene_body') or 0) for r in rows)
+    rows_only = request.GET.get('rows_only') in ('1', 'true', 'True')
+    if rows_only:
+        from analytics.service_commission import all_discounted_services_q
+
+        seller_ids = (
+            qs.filter(all_discounted_services_q(), id_prodejce__isnull=False)
+            .values_list('id_prodejce', flat=True)
+            .distinct()
+        )
+        users_map = {
+            u.id: f'{u.jmeno} {u.prijmeni}'.strip()
+            for u in WebUser.objects.filter(id__in=seller_ids)
+        }
+        rows = list_discounted_service_sales(qs, users_map=users_map)
+        excluded_total = sum(int(r.get('vyloucene_body') or 0) for r in rows)
+        return Response({
+            'mesic': mesic,
+            'count': len(rows),
+            'vyloucene_body_celkem': excluded_total,
+            'rows': rows,
+        })
+
+    summary = discounted_services_summary(qs)
     return Response({
         'mesic': mesic,
-        'count': len(rows),
-        'vyloucene_body_celkem': excluded_total,
-        'rows': rows,
+        'count': summary['count'],
+        'vyloucene_body_celkem': summary['vyloucene_body_celkem'],
+        'rows': [],
     })
 
 
@@ -122,16 +141,14 @@ def payroll_dobropisy(request):
     parsed = _parse_mesic(mesic)
     if not parsed:
         return Response({'error': 'Neplatný formát měsíce'}, status=status.HTTP_400_BAD_REQUEST)
-    rok, mesic_cislo, mesic_date = parsed
+    rok, mesic_cislo, _mesic_date = parsed
     from analytics.dobropisy import (
         dobropis_polozka_q,
         dobropisy_summary_by_prodejce,
         dobropisy_totals,
         list_dobropisy,
-        original_sale_search_from,
         pairing_totals_from_rows,
     )
-    from analytics.models import WebProdejeAll
     import calendar
 
     qs = _month_sales_queryset(rok, mesic_cislo)
@@ -157,12 +174,8 @@ def payroll_dobropisy(request):
     }
     last_day = calendar.monthrange(rok, mesic_cislo)[1]
     month_end = date(rok, mesic_cislo, last_day)
-    search_qs = WebProdejeAll.objects.filter(
-        typ__gte=original_sale_search_from(mesic_date),
-        typ__lte=month_end,
-    )
     if rows_only:
-        rows = list_dobropisy(qs, users_map=users_map, search_qs=search_qs)
+        rows = list_dobropisy(qs, users_map=users_map, month_end=month_end)
         return Response({
             'mesic': mesic,
             'rows': rows,

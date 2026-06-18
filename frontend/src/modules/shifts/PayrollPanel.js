@@ -93,10 +93,12 @@ function PayrollPanel({ month, onExport }) {
     const [odmenaForm, setOdmenaForm] = useState({ user_id: '', castka: '', poznamka: '' });
     const [penalizaceForm, setPenalizaceForm] = useState({ user_id: '', duvod: '' });
     const [discountedRows, setDiscountedRows] = useState([]);
+    const [discountedCount, setDiscountedCount] = useState(0);
     const [discountedExcluded, setDiscountedExcluded] = useState(0);
     const [discountedLoading, setDiscountedLoading] = useState(false);
     const [discountedError, setDiscountedError] = useState('');
     const [discountedOpen, setDiscountedOpen] = useState(false);
+    const discountedRowsLoadedRef = useRef(false);
     const [dobropisySummary, setDobropisySummary] = useState([]);
     const [dobropisyRows, setDobropisyRows] = useState([]);
     const [dobropisyTotals, setDobropisyTotals] = useState({ polozky: 0, doklady: 0, castka: 0 });
@@ -172,10 +174,11 @@ function PayrollPanel({ month, onExport }) {
         }
     }, [month]);
 
-    const loadDiscountedServices = useCallback(async () => {
+    const loadDiscountedSummary = useCallback(async () => {
         if (!month) return;
-        setDiscountedLoading(true);
         setDiscountedError('');
+        discountedRowsLoadedRef.current = false;
+        setDiscountedRows([]);
         try {
             const res = await fetch(
                 `/api/shifts/payroll/discounted-services/?mesic=${month}`,
@@ -186,19 +189,53 @@ function PayrollPanel({ month, onExport }) {
                 throw new Error(data.error || 'Chyba při načítání slev');
             }
             const data = await res.json();
-            setDiscountedRows(data.rows || []);
+            setDiscountedCount(Number(data.count) || 0);
             setDiscountedExcluded(Number(data.vyloucene_body_celkem) || 0);
-            if ((data.rows || []).length > 0) {
+            if ((data.count || 0) > 0) {
                 setDiscountedOpen(true);
             }
         } catch (e) {
             setDiscountedError(e.message);
-            setDiscountedRows([]);
+            setDiscountedCount(0);
             setDiscountedExcluded(0);
+        }
+    }, [month]);
+
+    const loadDiscountedRows = useCallback(async () => {
+        if (!month || discountedRowsLoadedRef.current) return;
+        setDiscountedLoading(true);
+        setDiscountedError('');
+        try {
+            const res = await fetch(
+                `/api/shifts/payroll/discounted-services/?mesic=${month}&rows_only=1`,
+                { credentials: 'include' },
+            );
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                throw new Error(data.error || 'Chyba při načítání položek se slevou');
+            }
+            const data = await res.json();
+            setDiscountedRows(data.rows || []);
+            setDiscountedCount(Number(data.count) || (data.rows || []).length);
+            setDiscountedExcluded(Number(data.vyloucene_body_celkem) || 0);
+            discountedRowsLoadedRef.current = true;
+        } catch (e) {
+            setDiscountedError(e.message);
+            setDiscountedRows([]);
         } finally {
             setDiscountedLoading(false);
         }
     }, [month]);
+
+    const toggleDiscounted = useCallback(() => {
+        setDiscountedOpen((wasOpen) => {
+            const next = !wasOpen;
+            if (next && !discountedRowsLoadedRef.current && discountedCount > 0) {
+                loadDiscountedRows();
+            }
+            return next;
+        });
+    }, [discountedCount, loadDiscountedRows]);
 
     const loadDobropisySummary = useCallback(async () => {
         if (!month) return;
@@ -279,9 +316,15 @@ function PayrollPanel({ month, onExport }) {
 
     useEffect(() => {
         loadPayroll();
-        loadDiscountedServices();
+        loadDiscountedSummary();
         loadDobropisySummary();
-    }, [loadPayroll, loadDiscountedServices, loadDobropisySummary]);
+    }, [loadPayroll, loadDiscountedSummary, loadDobropisySummary]);
+
+    useEffect(() => {
+        if (discountedOpen && discountedCount > 0 && !discountedRowsLoadedRef.current) {
+            loadDiscountedRows();
+        }
+    }, [discountedOpen, discountedCount, loadDiscountedRows]);
 
     useEffect(() => {
         if (dobropisyOpen && dobropisyTotals.polozky > 0 && !dobropisyRowsLoadedRef.current) {
@@ -693,14 +736,14 @@ function PayrollPanel({ month, onExport }) {
                 <button
                     type="button"
                     className="payroll-discounted-toggle"
-                    onClick={() => setDiscountedOpen((v) => !v)}
+                    onClick={toggleDiscounted}
                     aria-expanded={discountedOpen}
                 >
                     <span className="toggle-icon">{discountedOpen ? '▼' : '▶'}</span>
                     Služby se slevou ≥ 20 % (bez příplatku)
-                    {discountedRows.length > 0 && (
+                    {discountedCount > 0 && (
                         <span className="discounted-badge">
-                            {discountedRows.length} řádků · −{formatPoints(discountedExcluded)} b.
+                            {discountedCount} řádků · −{formatPoints(discountedExcluded)} b.
                         </span>
                     )}
                 </button>
@@ -716,7 +759,7 @@ function PayrollPanel({ month, onExport }) {
                         {discountedError && (
                             <div className="error-message">{discountedError}</div>
                         )}
-                        {!discountedLoading && !discountedError && discountedRows.length === 0 && (
+                        {!discountedLoading && !discountedError && discountedCount === 0 && (
                             <p className="payroll-discounted-empty">V tomto měsíci žádné.</p>
                         )}
                         {discountedRows.length > 0 && (

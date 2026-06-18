@@ -3,6 +3,7 @@ Dobropisy (vratky) z WEB_PRODEJE_ALL – záporná cena u reálné položky.
 
 Nezapočítáváme slevové řádky (SLEVA, BODY) ani zaokrouhlení bez kódu.
 Párování s původním prodejem: stejný kód + prodejce, heuristika (není vazba v Sympliu).
+Výsledek párování se ukládá kanonicky do DobropisPairingCache (jednou na sale_id).
 """
 from __future__ import annotations
 
@@ -14,7 +15,8 @@ from django.db.models import Count, F, Q, Sum
 
 DOBROPIS_EXCLUDED_KODY = ('SLEVA', 'BODY')
 MIRROR_MAX_MINUTES = 180
-ORIGINAL_SALE_LOOKBACK_DAYS = 120
+ORIGINAL_SALE_LOOKBACK_DAYS = 30
+PAIRING_VERSION = 1
 
 PAIRING_LABELS = {
     'zrcadlo': 'Zrcadlo',
@@ -36,8 +38,52 @@ def dobropis_polozka_q() -> Q:
     )
 
 
-def original_sale_search_from(month_start: date) -> date:
-    return month_start - timedelta(days=ORIGINAL_SALE_LOOKBACK_DAYS)
+def original_sale_search_from(anchor: date) -> date:
+    return anchor - timedelta(days=ORIGINAL_SALE_LOOKBACK_DAYS)
+
+
+def build_pairing_search_qs(
+    dobropisy_month_qs,
+    *,
+    month_start: date,
+    month_end: date,
+    prodejna: str | None = None,
+):
+    """Kandidáti na původní prodej – zuženo podle filtru prodejny nebo poboček s vratkami."""
+    from analytics.models import WebProdejeAll
+
+    search_qs = WebProdejeAll.objects.filter(
+        typ__gte=original_sale_search_from(month_start),
+        typ__lte=month_end,
+    )
+    if prodejna:
+        search_qs = search_qs.filter(stredisko=prodejna)
+    else:
+        strediska = list(
+            dobropisy_month_qs.filter(dobropis_polozka_q())
+            .exclude(stredisko__isnull=True)
+            .exclude(stredisko='')
+            .values_list('stredisko', flat=True)
+            .distinct()
+        )
+        if strediska:
+            search_qs = search_qs.filter(stredisko__in=strediska)
+    return search_qs
+
+
+def build_canonical_pairing_search_qs(dobropis_rows: list[dict], *, month_end: date):
+    """Kanonické párování – celá firma, okno 30 dní před nejstarším dobropisem v dávce."""
+    from analytics.models import WebProdejeAll
+
+    if not dobropis_rows:
+        return WebProdejeAll.objects.none()
+    dates = [r['typ'] for r in dobropis_rows if r.get('typ')]
+    if not dates:
+        return WebProdejeAll.objects.none()
+    earliest = min(dates)
+    search_from = original_sale_search_from(earliest)
+    end = max(month_end, max(dates))
+    return WebProdejeAll.objects.filter(typ__gte=search_from, typ__lte=end)
 
 
 def _line_total(pocet_kusu, cena_ks_vcl_dph) -> float:
@@ -136,6 +182,106 @@ def _original_payload(sale: dict | None) -> dict:
     }
 
 
+def _pairing_minutes(dobropis: dict, pairing: str, original: dict | None) -> float | None:
+    if pairing != 'zrcadlo' or not original:
+        return None
+    mins_po = _minutes_between(
+        _as_datetime(original['typ'], original.get('cas_prodeje')),
+        _as_datetime(dobropis['typ'], dobropis.get('cas_prodeje')),
+    )
+    if mins_po is None:
+        return None
+    return round(mins_po, 1)
+
+
+def _load_pairing_cache(sale_ids: list[int]) -> dict[int, dict]:
+    if not sale_ids:
+        return {}
+    from analytics.models import DobropisPairingCache
+
+    out = {}
+    for row in DobropisPairingCache.objects.filter(
+        sale_id__in=sale_ids,
+        pairing_version=PAIRING_VERSION,
+    ):
+        puvodni_datum = row.puvodni_datum.isoformat() if row.puvodni_datum else None
+        puvodni_cas = row.puvodni_cas.isoformat() if row.puvodni_cas else None
+        out[row.sale_id] = {
+            'pairing': row.pairing,
+            'pairing_label': PAIRING_LABELS.get(row.pairing, row.pairing),
+            'puvodni_doklad': row.puvodni_doklad,
+            'puvodni_datum': puvodni_datum,
+            'puvodni_cas': puvodni_cas,
+            'puvodni_cena': float(row.puvodni_cena) if row.puvodni_cena is not None else None,
+            'puvodni_stredisko': row.puvodni_stredisko,
+            'minut_po_prodeji': row.minut_po_prodeji,
+        }
+    return out
+
+
+def _cache_entry_from_pairing(sale_id: int, dobropis: dict, original: dict | None, pairing: str):
+    from analytics.models import DobropisPairingCache
+
+    orig = _original_payload(original)
+    puvodni_datum = None
+    if orig['puvodni_datum']:
+        puvodni_datum = date.fromisoformat(orig['puvodni_datum'])
+    puvodni_cas = None
+    if orig['puvodni_cas']:
+        puvodni_cas = time.fromisoformat(orig['puvodni_cas'])
+    return DobropisPairingCache(
+        sale_id=sale_id,
+        pairing=pairing,
+        puvodni_doklad=orig['puvodni_doklad'],
+        puvodni_datum=puvodni_datum,
+        puvodni_cas=puvodni_cas,
+        puvodni_cena=orig['puvodni_cena'],
+        puvodni_stredisko=orig['puvodni_stredisko'],
+        minut_po_prodeji=_pairing_minutes(dobropis, pairing, original),
+        pairing_version=PAIRING_VERSION,
+    )
+
+
+def _ensure_pairing_cached(
+    dobropis_list: list[dict],
+    cached: dict[int, dict],
+    *,
+    month_end: date,
+) -> dict[int, dict]:
+    uncached = [row for row in dobropis_list if row['id'] not in cached]
+    if not uncached:
+        return cached
+
+    pairs = {
+        (row['kod'], row['id_prodejce'])
+        for row in uncached
+        if row.get('kod') and row.get('id_prodejce') is not None
+    }
+    search_qs = build_canonical_pairing_search_qs(uncached, month_end=month_end)
+    candidates = _batch_positive_sales(search_qs, pairs)
+
+    to_store = []
+    for sale in uncached:
+        original, pairing = classify_original_sale(sale, candidates)
+        entry = _cache_entry_from_pairing(sale['id'], sale, original, pairing)
+        to_store.append(entry)
+        orig = _original_payload(original)
+        cached[sale['id']] = {
+            'pairing': pairing,
+            'pairing_label': PAIRING_LABELS[pairing],
+            'minut_po_prodeji': entry.minut_po_prodeji,
+            **orig,
+        }
+
+    from analytics.models import DobropisPairingCache
+
+    uncached_ids = [sale['id'] for sale in uncached]
+    if uncached_ids:
+        DobropisPairingCache.objects.filter(sale_id__in=uncached_ids).delete()
+    DobropisPairingCache.objects.bulk_create(to_store)
+    return cached
+
+
 def pairing_totals_from_rows(rows: list[dict]) -> dict[str, int]:
     out = {'zrcadlo': 0, 'par': 0, 'bez_paru': 0}
     for row in rows:
@@ -174,24 +320,64 @@ def list_dobropisy(
     queryset,
     *,
     users_map: dict | None = None,
+    month_end: date | None = None,
     search_qs=None,
 ) -> list[dict]:
+    """
+    Seznam dobropisů s kanonickým párováním (cache v DB).
+    search_qs: jen pro testy – produkce používá build_canonical_pairing_search_qs.
+    """
     users_map = users_map or {}
     dobropis_qs = (
         queryset.filter(dobropis_polozka_q())
         .order_by('-typ', 'doklad', 'id')
         .values(
-            'typ', 'doklad', 'kod', 'nazev', 'pocet_kusu', 'cena_ks_vcl_dph',
+            'id', 'typ', 'doklad', 'kod', 'nazev', 'pocet_kusu', 'cena_ks_vcl_dph',
             'id_prodejce', 'stredisko', 'cas_prodeje',
         )
     )
     dobropis_list = list(dobropis_qs)
-    pairs = {
-        (row['kod'], row['id_prodejce'])
-        for row in dobropis_list
-        if row.get('kod') and row.get('id_prodejce') is not None
-    }
-    candidates = _batch_positive_sales(search_qs or queryset, pairs)
+    if not dobropis_list:
+        return []
+
+    if month_end is None:
+        dates = [r['typ'] for r in dobropis_list if r.get('typ')]
+        month_end = max(dates) if dates else date.today()
+
+    sale_ids = [int(r['id']) for r in dobropis_list]
+    pairing_by_id = _load_pairing_cache(sale_ids)
+
+    uncached = [row for row in dobropis_list if row['id'] not in pairing_by_id]
+    if uncached:
+        if search_qs is not None:
+            pairs = {
+                (row['kod'], row['id_prodejce'])
+                for row in uncached
+                if row.get('kod') and row.get('id_prodejce') is not None
+            }
+            candidates = _batch_positive_sales(search_qs, pairs)
+            to_store = []
+            for sale in uncached:
+                original, pairing = classify_original_sale(sale, candidates)
+                entry = _cache_entry_from_pairing(sale['id'], sale, original, pairing)
+                to_store.append(entry)
+                orig = _original_payload(original)
+                pairing_by_id[sale['id']] = {
+                    'pairing': pairing,
+                    'pairing_label': PAIRING_LABELS[pairing],
+                    'minut_po_prodeji': entry.minut_po_prodeji,
+                    **orig,
+                }
+            from analytics.models import DobropisPairingCache
+
+            uncached_ids = [sale['id'] for sale in uncached]
+            if uncached_ids:
+                DobropisPairingCache.objects.filter(sale_id__in=uncached_ids).delete()
+            DobropisPairingCache.objects.bulk_create(to_store)
+        else:
+            pairing_by_id = _ensure_pairing_cached(
+                dobropis_list, pairing_by_id, month_end=month_end,
+            )
 
     rows = []
     for sale in dobropis_list:
@@ -199,17 +385,12 @@ def list_dobropisy(
         cena = float(sale['cena_ks_vcl_dph'] or 0)
         uid = sale['id_prodejce']
         typ = sale['typ']
-        original, pairing = classify_original_sale(sale, candidates)
-        orig_payload = _original_payload(original)
-        mins_po = None
-        if pairing == 'zrcadlo' and original:
-            mins_po = _minutes_between(
-                _as_datetime(original['typ'], original.get('cas_prodeje')),
-                _as_datetime(typ, sale.get('cas_prodeje')),
-            )
-            if mins_po is not None:
-                mins_po = round(mins_po, 1)
-
+        pairing_data = pairing_by_id.get(sale['id'], {
+            'pairing': 'bez_paru',
+            'pairing_label': PAIRING_LABELS['bez_paru'],
+            'minut_po_prodeji': None,
+            **_original_payload(None),
+        })
         rows.append({
             'datum': typ.isoformat() if typ else None,
             'cas': sale['cas_prodeje'].isoformat() if sale.get('cas_prodeje') else None,
@@ -222,10 +403,7 @@ def list_dobropisy(
             'id_prodejce': uid,
             'prodejce': users_map.get(uid, uid),
             'stredisko': sale['stredisko'],
-            'pairing': pairing,
-            'pairing_label': PAIRING_LABELS[pairing],
-            'minut_po_prodeji': mins_po,
-            **orig_payload,
+            **pairing_data,
         })
     return rows
 

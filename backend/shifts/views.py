@@ -19,6 +19,7 @@ from .attendance_service import (
     work_hours_from_history,
 )
 from .vacation_service import (
+    build_hours_cache_for_overview,
     build_vacation_overview_user,
     deficit_mesic_pro_dovolenou,
     dovolena_hodin_ze_smeny,
@@ -728,8 +729,12 @@ def vacation_overview(request):
         users = [request.user]
 
     result_users = []
+    referencni_datum = date.today()
+    hours_cache = build_hours_cache_for_overview(rok, referencni_datum=referencni_datum)
     for user in users:
-        overview = build_vacation_overview_user(user, rok)
+        overview = build_vacation_overview_user(
+            user, rok, referencni_datum=referencni_datum, hours_cache=hours_cache,
+        )
         if overview:
             result_users.append(overview)
 

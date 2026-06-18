@@ -13,7 +13,7 @@ from analytics.service_commission import service_commission_qualified_q
 from analytics.points_config import POINTS_METRIC_KEYS, calculate_product_points
 from analytics.sunshine_config import SUNSHINE_METRIC_KEY, sunshine_bonus_kusy_sum
 from analytics.vykupy_config import VYKUPY_METRIC_KEY, vykupy_counts_map
-from analytics.viceprace_config import aggregate_viceprace, polozky_nad_100_q
+from analytics.viceprace_config import polozky_nad_100_q, viceprace_obrat_sum, viceprace_row_q
 from analytics.views import (
     _build_points_payload,
     _empty_servisni_prace_data,
@@ -122,10 +122,16 @@ def batch_dyska_for_month(rok, mesic_cislo, user_ids):
         _salesperson_month_filter(target),
         id_prodejce__in=uid_set,
     )
-    for uid in uid_set:
-        qs = base.filter(id_prodejce=uid)
-        vp = aggregate_viceprace(qs)
-        out[uid] = {'obrat': float(vp.get('obrat') or 0), 'kusy': int(vp.get('kusy') or 0)}
+    for row in base.filter(viceprace_row_q()).values('id_prodejce').annotate(
+        obrat=viceprace_obrat_sum(),
+        kusy=Sum('pocet_kusu'),
+    ):
+        uid = row['id_prodejce']
+        if uid in out:
+            out[uid] = {
+                'obrat': round(float(row['obrat'] or 0), 2),
+                'kusy': int(row['kusy'] or 0),
+            }
     return out
 
 

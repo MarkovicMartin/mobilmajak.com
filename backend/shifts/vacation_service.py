@@ -96,7 +96,7 @@ def _mesic_ukoncen(rok, mesic_cislo, referencni_datum=None):
     return mesic_cislo < referencni_datum.month
 
 
-def deficit_mesic_hodin(user_id, rok, mesic_cislo):
+def deficit_mesic_hodin(user_id, rok, mesic_cislo, hours_cache=None):
     """
     Nesplněný měsíční pracovní fond: max(0, fondu - odpracováno - dovolená v měsíci).
     Dovolená v měsíci se odečte, aby se nepočítala dvakrát (směna + deficit).
@@ -106,20 +106,23 @@ def deficit_mesic_hodin(user_id, rok, mesic_cislo):
         return 0.0
     from .payroll_service import aggregate_hours_by_user
 
-    hours = aggregate_hours_by_user(rok, mesic_cislo).get(user_id, {})
+    if hours_cache is not None:
+        hours = hours_cache.get((rok, mesic_cislo), {}).get(user_id, {})
+    else:
+        hours = aggregate_hours_by_user(rok, mesic_cislo).get(user_id, {})
     odpracovano = float(hours.get('odpracovano_h', 0) or 0)
     dovolena = float(hours.get('dovolena_h', 0) or 0)
     return round(max(0.0, fondu - odpracovano - dovolena), 2)
 
 
-def deficit_mesic_pro_dovolenou(user_id, rok, mesic_cislo):
+def deficit_mesic_pro_dovolenou(user_id, rok, mesic_cislo, hours_cache=None):
     """Deficit započítaný do dovolené – 0 před červnem 2026."""
     if not _mesic_pocita_deficit(rok, mesic_cislo):
         return 0.0
-    return deficit_mesic_hodin(user_id, rok, mesic_cislo)
+    return deficit_mesic_hodin(user_id, rok, mesic_cislo, hours_cache=hours_cache)
 
 
-def deficit_fondu_rok(user_id, rok, referencni_datum=None):
+def deficit_fondu_rok(user_id, rok, referencni_datum=None, hours_cache=None):
     """Součet deficitů z ukončených měsíců v daném roce."""
     if referencni_datum is None:
         referencni_datum = date.today()
@@ -129,7 +132,7 @@ def deficit_fondu_rok(user_id, rok, referencni_datum=None):
             continue
         if not _mesic_pocita_deficit(rok, mesic):
             continue
-        celkem += deficit_mesic_hodin(user_id, rok, mesic)
+        celkem += deficit_mesic_hodin(user_id, rok, mesic, hours_cache=hours_cache)
     return round(celkem, 2)
 
 
@@ -169,17 +172,21 @@ def dovolena_fond_rok(user_id, rok, fond_extra=0.0):
     )
 
 
-def dovolena_stav(user, rok=None):
+def dovolena_stav(user, rok=None, hours_cache=None, referencni_datum=None):
     if not is_dovolena_eligible(user):
         return None
     if rok is None:
         rok = date.today().year
+    if referencni_datum is None:
+        referencni_datum = date.today()
     extra = fond_extra_h(user)
     korekce = korekce_cerpano_h(user)
     prevod = prevod_z_predchoziho_roku(user.id, rok)
     fond = dovolena_fond_rok(user.id, rok, fond_extra=extra)
     cerpano_smeny = cerpana_dovolena_rok(user.id, rok)
-    odeceno_deficit = deficit_fondu_rok(user.id, rok)
+    odeceno_deficit = deficit_fondu_rok(
+        user.id, rok, referencni_datum=referencni_datum, hours_cache=hours_cache,
+    )
     cerpano = round(cerpano_smeny + odeceno_deficit + korekce, 2)
     zbyva = fond - cerpano
     return {
@@ -233,21 +240,27 @@ def _reference_month_for_prumer(rok, referencni_datum=None):
     return referencni_datum.month
 
 
-def cerpana_dovolena_mesic(user_id, rok, mesic_cislo):
+def cerpana_dovolena_mesic(user_id, rok, mesic_cislo, hours_cache=None):
     """Hodiny dovolené ze směn v kalendářním měsíci."""
     from .payroll_service import aggregate_hours_by_user
 
-    hours = aggregate_hours_by_user(rok, mesic_cislo).get(user_id, {})
+    if hours_cache is not None:
+        hours = hours_cache.get((rok, mesic_cislo), {}).get(user_id, {})
+    else:
+        hours = aggregate_hours_by_user(rok, mesic_cislo).get(user_id, {})
     return round(float(hours.get('dovolena_h', 0) or 0), 2)
 
 
-def mesicni_cerpani_dovolene(user_id, rok, mesic_cislo, referencni_datum=None):
+def mesicni_cerpani_dovolene(user_id, rok, mesic_cislo, referencni_datum=None, hours_cache=None):
     """
     Čerpání fondu v měsíci: směny dovolené + deficit (jen u ukončených měsíců).
     """
-    smeny_h = cerpana_dovolena_mesic(user_id, rok, mesic_cislo)
+    smeny_h = cerpana_dovolena_mesic(user_id, rok, mesic_cislo, hours_cache=hours_cache)
     pocita_deficit = _mesic_pocita_deficit(rok, mesic_cislo)
-    deficit_h = deficit_mesic_hodin(user_id, rok, mesic_cislo) if pocita_deficit else 0.0
+    deficit_h = (
+        deficit_mesic_hodin(user_id, rok, mesic_cislo, hours_cache=hours_cache)
+        if pocita_deficit else 0.0
+    )
     ukoncen = _mesic_ukoncen(rok, mesic_cislo, referencni_datum)
     deficit_odeceno = round(deficit_h, 2) if ukoncen and pocita_deficit else 0.0
     return {
@@ -260,7 +273,26 @@ def mesicni_cerpani_dovolene(user_id, rok, mesic_cislo, referencni_datum=None):
     }
 
 
-def build_vacation_overview_user(user, rok=None, referencni_datum=None):
+def build_hours_cache_for_overview(rok, referencni_datum=None) -> dict:
+    """
+    Agregace hodin ze směn pro přehled dovolené – max. ~15 dotazů místo stovek.
+    Klíč: (rok, měsíc) → {user_id: {odpracovano_h, dovolena_h, …}}.
+    """
+    from .payroll_service import aggregate_hours_by_user, _subtract_months
+
+    if referencni_datum is None:
+        referencni_datum = date.today()
+    ref_mesic = _reference_month_for_prumer(rok, referencni_datum)
+    month_keys = {(rok, m) for m in range(1, 13)}
+    for i in range(1, 4):
+        month_keys.add(_subtract_months(rok, ref_mesic, i))
+    return {
+        key: aggregate_hours_by_user(y, m)
+        for (y, m) in month_keys
+    }
+
+
+def build_vacation_overview_user(user, rok=None, referencni_datum=None, hours_cache=None):
     """Přehled dovolené pro jednoho uživatele – roční tabulka měsíců a sazba výplaty."""
     if not is_dovolena_eligible(user):
         return None
@@ -275,12 +307,18 @@ def build_vacation_overview_user(user, rok=None, referencni_datum=None):
     ref_mesic = _reference_month_for_prumer(rok, referencni_datum)
     override_mesice = prumer_override_for_user(user)
     prumer_detail = prumer_fixni_hodinove_detail(
-        user, rok, ref_mesic, override_mesice=override_mesice,
+        user, rok, ref_mesic, hours_cache=hours_cache, override_mesice=override_mesice,
     )
-    prumer_h = prumer_fixni_hodinove_body(user, rok, ref_mesic, override_mesice=override_mesice)
-    stav = dovolena_stav(user, rok)
+    prumer_h = prumer_fixni_hodinove_body(
+        user, rok, ref_mesic, hours_cache=hours_cache, override_mesice=override_mesice,
+    )
+    stav = dovolena_stav(
+        user, rok, hours_cache=hours_cache, referencni_datum=referencni_datum,
+    )
     mesice = [
-        mesicni_cerpani_dovolene(user.id, rok, m, referencni_datum=referencni_datum)
+        mesicni_cerpani_dovolene(
+            user.id, rok, m, referencni_datum=referencni_datum, hours_cache=hours_cache,
+        )
         for m in range(1, 13)
     ]
     cerpano_rok_z_mesicu = round(sum(m['cerpano_h'] for m in mesice), 2)

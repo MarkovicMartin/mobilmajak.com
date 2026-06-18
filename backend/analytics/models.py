@@ -598,3 +598,30 @@ class LeaderboardMonthPointsCache(models.Model):
 
     def __str__(self):
         return f'{self.month_ym} ({len(self.points_by_prodejce or {})} prodejců)'
+
+
+class DobropisPairingCache(models.Model):
+    """Kanonická cache párování dobropisu s původním prodejem (append-only podle sale_id)."""
+
+    sale_id = models.PositiveIntegerField(
+        primary_key=True,
+        verbose_name='ID řádku WEB_PRODEJE_ALL (dobropis)',
+    )
+    pairing = models.CharField(max_length=16, verbose_name='Typ párování')
+    puvodni_doklad = models.CharField(max_length=100, null=True, blank=True)
+    puvodni_datum = models.DateField(null=True, blank=True)
+    puvodni_cas = models.TimeField(null=True, blank=True)
+    puvodni_cena = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True,
+    )
+    puvodni_stredisko = models.CharField(max_length=100, null=True, blank=True)
+    minut_po_prodeji = models.FloatField(null=True, blank=True)
+    pairing_version = models.PositiveSmallIntegerField(default=1)
+    computed_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Cache párování dobropisu'
+        verbose_name_plural = 'Cache párování dobropisů'
+
+    def __str__(self):
+        return f'{self.sale_id} → {self.pairing}'

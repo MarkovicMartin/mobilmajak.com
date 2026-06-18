@@ -173,47 +173,64 @@ def service_metrics_count_annotations():
 
 
 def count_service_metrics_on_queryset(queryset) -> dict:
-    """Počty služeb pro jeden queryset (profil / denní přehled)."""
+    """Počty služeb pro jeden queryset (profil / denní přehled) – jedna agregace."""
+    row = queryset.aggregate(**service_metrics_count_annotations())
     out = {
-        'ct300': queryset.filter(kod='P114194').count(),
-        'knz': queryset.filter(kod='KNZ').count(),
+        'ct300': int(row.get('ct300') or 0),
+        'knz': int(row.get('knz') or 0),
     }
     for key in SERVICE_POINT_KEYS:
-        if key in SERVICE_KOD_FILTERS:
-            out[key] = queryset.filter(service_commission_qualified_q(key)).count()
-        else:
-            out[key] = 0
+        out[key] = int(row.get(key) or 0)
     return out
+
+
+def discounted_services_summary(queryset) -> dict:
+    """Souhrn slevových služeb bez sestavení plných řádků."""
+    count = 0
+    excluded = 0
+    for row in queryset.filter(all_discounted_services_q()).values('kod', 'pocet_kusu'):
+        count += 1
+        metric = metric_key_for_kod(row['kod'])
+        if metric:
+            excluded += SERVICE_EXTRA_POINT_RATES.get(metric, 0) * int(row['pocet_kusu'] or 1)
+    return {'count': count, 'vyloucene_body_celkem': excluded}
 
 
 def list_discounted_service_sales(queryset, *, users_map: dict | None = None):
     """Řádky se slevou ≥ 20 % v querysetu (seřazeno od nejnovějších)."""
     users_map = users_map or {}
     rows = []
-    qs = queryset.filter(all_discounted_services_q()).order_by('-typ', 'doklad')
-    for sale in qs.iterator():
-        metric = metric_key_for_kod(sale.kod)
-        catalog = catalog_price_for_kod(sale.kod)
+    qs = (
+        queryset.filter(all_discounted_services_q())
+        .order_by('-typ', 'doklad')
+        .values(
+            'typ', 'doklad', 'kod', 'nazev', 'cena_ks_vcl_dph',
+            'pocet_kusu', 'id_prodejce', 'stredisko',
+        )
+    )
+    for sale in qs:
+        metric = metric_key_for_kod(sale['kod'])
+        catalog = catalog_price_for_kod(sale['kod'])
         if catalog is None and metric:
             catalog = catalog_price_for_metric(metric)
-        kusy = int(sale.pocet_kusu or 1)
-        cena = float(sale.cena_ks_vcl_dph or 0)
-        excluded_pts = 0
-        if metric:
-            excluded_pts = SERVICE_EXTRA_POINT_RATES.get(metric, 0) * kusy
+        kusy = int(sale['pocet_kusu'] or 1)
+        cena = float(sale['cena_ks_vcl_dph'] or 0)
+        excluded_pts = SERVICE_EXTRA_POINT_RATES.get(metric, 0) * kusy if metric else 0
+        typ = sale['typ']
+        uid = sale['id_prodejce']
         rows.append({
-            'datum': sale.typ.isoformat() if sale.typ else None,
-            'doklad': sale.doklad,
-            'kod': sale.kod,
-            'nazev': (sale.nazev or '')[:80],
+            'datum': typ.isoformat() if typ else None,
+            'doklad': sale['doklad'],
+            'kod': sale['kod'],
+            'nazev': (sale['nazev'] or '')[:80],
             'cena_ks_vcl_dph': cena,
             'katalog_cena': float(catalog) if catalog else None,
-            'sleva_procent': discount_percent(sale.kod, cena),
+            'sleva_procent': discount_percent(sale['kod'], cena),
             'kusy': kusy,
             'vyloucene_body': excluded_pts,
-            'id_prodejce': sale.id_prodejce,
-            'prodejce': users_map.get(sale.id_prodejce, sale.id_prodejce),
-            'stredisko': sale.stredisko,
+            'id_prodejce': uid,
+            'prodejce': users_map.get(uid, uid),
+            'stredisko': sale['stredisko'],
             'metric_key': metric,
         })
     return rows
