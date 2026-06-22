@@ -48,20 +48,21 @@ def _app_base_url() -> str:
     return (getattr(settings, "MOBILMAJAK_APP_URL", None) or "https://mobilmajak.com").rstrip("/")
 
 
+_SLACK_GET_METHODS = frozenset({"users.lookupByEmail"})
+
+
 def _slack_api(method: str, payload: dict[str, Any]) -> dict:
     token = _bot_token()
     if not token:
         raise SlackApiError("no_bot_token")
 
-    r = requests.post(
-        f"https://slack.com/api/{method}",
-        json=payload,
-        timeout=15,
-        headers={
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json; charset=utf-8",
-        },
-    )
+    headers = {"Authorization": f"Bearer {token}"}
+    url = f"https://slack.com/api/{method}"
+    if method in _SLACK_GET_METHODS:
+        r = requests.get(url, params=payload, timeout=15, headers=headers)
+    else:
+        headers["Content-Type"] = "application/json; charset=utf-8"
+        r = requests.post(url, json=payload, timeout=15, headers=headers)
     r.raise_for_status()
     data = r.json()
     if not data.get("ok"):

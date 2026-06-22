@@ -70,6 +70,8 @@ secrets/id_*
 !secrets/actor-cesta-na-vps.USER_INPUT_REQ
 !secrets/README.md
 secrets/camera_motion*.json
+secrets/slacktoken.json
+secrets/*token*.json
 scripts/*-gateway/config.json
 
 # Environment variables

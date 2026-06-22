@@ -21,7 +21,7 @@ const TaskDetailPanel = ({
     isManager = false,
     layout = 'inline',
 }) => {
-    const { user } = useAuth();
+    const { user, isAdmin, canManageTasks } = useAuth();
     const [startOpen, setStartOpen] = useState(false);
     const [prvniKrok, setPrvniKrok] = useState('');
     const [blockOpen, setBlockOpen] = useState(false);
@@ -58,8 +58,10 @@ const TaskDetailPanel = ({
     const title = taskDisplayTitle(task);
     const isAssignee = task.id_prodejce_ukol === user?.id
         || (task.typ === 'osobni' && task.id_prodejce_zadal === user?.id);
+    const canManageDod = isManager && canManageTasks() && (isAdmin() || Boolean(task.id_prodejny));
+    const canToggleDod = canEdit && task.stav !== 'hotovo' && (isAssignee || canManageDod);
+    const canAssigneeActions = canEdit && isAssignee;
     const canActOnTask = canEdit && (isManager || isAssignee);
-    const canToggleDod = canActOnTask && !isManager && task.stav !== 'hotovo';
 
     const saveUpdate = async (payload) => {
         setSaving(true);
@@ -137,7 +139,7 @@ const TaskDetailPanel = ({
         : null;
     const timeStr = task.deadline_cas ? String(task.deadline_cas).slice(0, 5) : null;
     const allDodDone = dodLocal.length > 0 && dodLocal.every((p) => p.splneno);
-    const canComplete = sop && canActOnTask && !isManager
+    const canComplete = sop && canAssigneeActions
         && ['v_procesu', 'blokovany'].includes(task.stav) && allDodDone;
 
     const panelClass = [
@@ -147,7 +149,7 @@ const TaskDetailPanel = ({
 
     const actionButtons = canActOnTask && task.stav !== 'hotovo' ? (
         <>
-            {sop && task.stav === 'novy' && !isManager && (
+            {sop && task.stav === 'novy' && canAssigneeActions && (
                 <button
                     type="button"
                     className="btn btn--primary"
@@ -157,7 +159,7 @@ const TaskDetailPanel = ({
                     Začít řešit
                 </button>
             )}
-            {sop && !isManager && ['v_procesu', 'blokovany'].includes(task.stav) && (
+            {sop && canAssigneeActions && ['v_procesu', 'blokovany'].includes(task.stav) && (
                 <>
                     {task.stav === 'v_procesu' && !task.mid_kontrola_v && (
                         <button
