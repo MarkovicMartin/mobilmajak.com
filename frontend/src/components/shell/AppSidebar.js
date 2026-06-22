@@ -60,16 +60,9 @@ const AppSidebar = ({
                             location={location}
                             navigate={navigate}
                             collapsed={collapsed}
-                            profileTaskBadge={profileTaskBadge}
                             linkClass="app-sidebar__link"
                             activeClass="app-sidebar__link--active"
-                            childClass="app-sidebar__link--child"
                         />
-                        {!collapsed && profileTaskBadge > 0 && (
-                            <span className="app-sidebar__badge" aria-label={`${profileTaskBadge} upozornění`}>
-                                {profileTaskBadge > 99 ? '99+' : profileTaskBadge}
-                            </span>
-                        )}
                     </div>
                     <button
                         type="button"

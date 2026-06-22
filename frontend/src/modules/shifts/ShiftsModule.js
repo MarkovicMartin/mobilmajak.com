@@ -66,10 +66,19 @@ function ShiftsModule() {
         adminDefaultStoresSet.current = true;
     }, [user]);
 
+    const isAdmin = user?.role === 'ADMIN';
+
     useEffect(() => {
         const st = location.state;
         if (!st) return;
-        if (st.view) setActiveView(st.view);
+        if (st.view) {
+            const adminOnlyViews = new Set(['vacation', 'payroll', 'absent-stores', 'attendance-log']);
+            if (adminOnlyViews.has(st.view) && !isAdmin) {
+                setActiveView('calendar');
+            } else {
+                setActiveView(st.view);
+            }
+        }
         if (st.month) setCurrentMonth(st.month);
         if (st.datum) {
             setActiveView('calendar');
@@ -78,7 +87,7 @@ function ShiftsModule() {
                 setShowForm(true);
             }
         }
-    }, [location.key, location.state?.view]);
+    }, [location.key, location.state?.view, isAdmin]);
 
     const handleMonthChange = (direction) => {
         const [year, month] = currentMonth.split('-').map(Number);
@@ -273,7 +282,7 @@ function ShiftsModule() {
                     />
                 )}
 
-                {activeView === 'vacation' && (
+                {activeView === 'vacation' && isAdmin && (
                     <VacationPanel user={user} />
                 )}
 

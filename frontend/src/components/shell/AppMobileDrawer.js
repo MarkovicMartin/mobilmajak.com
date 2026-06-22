@@ -64,16 +64,12 @@ const AppMobileDrawer = ({
                 </div>
 
                 <div className="app-drawer__footer">
-                    <span className="app-drawer__group-label">Profil</span>
                     <ShellProfileLinks
                         location={location}
                         navigate={navigate}
-                        mobile
-                        profileTaskBadge={profileTaskBadge}
                         onNavigate={onClose}
                         linkClass="app-drawer__link"
                         activeClass="app-drawer__link--active"
-                        childClass="app-drawer__link--child"
                     />
                     <button
                         type="button"

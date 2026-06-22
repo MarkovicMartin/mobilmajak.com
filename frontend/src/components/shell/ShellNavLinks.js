@@ -1,11 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
     getVisibleNavGroups,
-    getProfileNavChildren,
     isNavItemLinkActive,
     navigateNavItem,
 } from '../../config/navigation';
-import { MY_TASKS_PATH } from '../../utils/taskNavigation';
 import { PARENTS_WITH_CHILDREN } from '../../config/navChildren';
 
 const ShellNavLinks = ({
@@ -262,156 +260,26 @@ export const ShellProfileLinks = ({
     navigate,
     linkClass,
     activeClass,
-    childClass,
     collapsed = false,
-    mobile = false,
-    profileTaskBadge = 0,
     onNavigate,
 }) => {
-    const children = getProfileNavChildren({
-        isAdmin: () => true,
-        canManageTasks: () => true,
-        canAccessCoaching: () => true,
-    });
-    const { pathname, state: locationState } = location;
-    const [profileOpen, setProfileOpen] = useState(pathname === '/profile');
-
-    useEffect(() => {
-        if (pathname === '/profile') setProfileOpen(true);
-    }, [pathname]);
-
-    if (mobile) {
-        return (
-            <>
-                <button
-                    type="button"
-                    className={`${linkClass} shell-nav__branch-toggle ${profileOpen ? 'shell-nav__branch-toggle--open' : ''}`}
-                    onClick={() => setProfileOpen((v) => !v)}
-                    aria-expanded={profileOpen}
-                >
-                    <i className="fas fa-user" aria-hidden="true" />
-                    Můj profil
-                    {profileTaskBadge > 0 && (
-                        <span className="badge">{profileTaskBadge > 99 ? '99+' : profileTaskBadge}</span>
-                    )}
-                    <i className={`fas fa-chevron-${profileOpen ? 'up' : 'down'} shell-nav__chevron`} aria-hidden="true" />
-                </button>
-                {profileOpen &&
-                    children.map((item) => {
-                        const active = isNavItemLinkActive(item, pathname, locationState);
-                        return (
-                            <button
-                                key={item.sectionKey}
-                                type="button"
-                                className={`${linkClass} ${active ? activeClass : ''} ${childClass}`.trim()}
-                                onClick={() => {
-                                    navigateNavItem(navigate, item);
-                                    onNavigate?.();
-                                }}
-                            >
-                                <i className={`fas ${item.icon}`} aria-hidden="true" />
-                                {item.label}
-                            </button>
-                        );
-                    })}
-            </>
-        );
-    }
-
+    const { pathname } = location;
     const profileActive = pathname === '/profile';
-    const childActive = children.some((c) =>
-        isNavItemLinkActive(c, pathname, locationState),
-    );
-    const parentActive = profileActive || childActive;
-    const [collapsedFlyoutOpen, setCollapsedFlyoutOpen] = useState(false);
-
-    useEffect(() => {
-        if (profileActive || childActive) setProfileOpen(true);
-    }, [profileActive, childActive]);
-
-    const goProfileChild = (item) => {
-        navigateNavItem(navigate, item);
-        onNavigate?.();
-    };
-
-    const renderProfileChild = (item, onClickOverride) => {
-        const active = isNavItemLinkActive(item, pathname, locationState);
-        return (
-            <button
-                key={item.sectionKey}
-                type="button"
-                className={`${linkClass} ${active ? activeClass : ''} ${childClass}`.trim()}
-                onClick={onClickOverride || (() => goProfileChild(item))}
-            >
-                <i className={`fas ${item.icon}`} aria-hidden="true" />
-                <span className="shell-nav__label">{item.label}</span>
-            </button>
-        );
-    };
-
-    if (collapsed) {
-        return (
-            <div
-                className={[
-                    'shell-nav__branch',
-                    'shell-nav__branch--collapsed',
-                    parentActive ? 'shell-nav__branch--active' : '',
-                ].filter(Boolean).join(' ')}
-                onMouseEnter={() => setCollapsedFlyoutOpen(true)}
-                onMouseLeave={() => setCollapsedFlyoutOpen(false)}
-            >
-                <button
-                    type="button"
-                    className={`${linkClass} ${parentActive ? activeClass : ''}`.trim()}
-                    aria-haspopup="true"
-                    title="Můj profil"
-                    tabIndex={0}
-                >
-                    <i className="fas fa-user" aria-hidden="true" />
-                </button>
-                {collapsedFlyoutOpen && (
-                    <div className="shell-nav__flyout" role="menu">
-                        <div className="shell-nav__flyout-panel">
-                            <div className="shell-nav__flyout-title">Můj profil</div>
-                            {children.map((item) =>
-                                renderProfileChild(item, () => {
-                                    goProfileChild(item);
-                                    setCollapsedFlyoutOpen(false);
-                                }),
-                            )}
-                        </div>
-                    </div>
-                )}
-            </div>
-        );
-    }
 
     return (
-        <div
-            className={[
-                'shell-nav__branch',
-                parentActive ? 'shell-nav__branch--active' : '',
-            ].filter(Boolean).join(' ')}
+        <button
+            type="button"
+            className={`${linkClass} ${profileActive ? activeClass : ''}`.trim()}
+            onClick={() => {
+                navigate('/profile');
+                onNavigate?.();
+            }}
+            aria-current={profileActive ? 'page' : undefined}
+            title={collapsed ? 'Můj profil' : undefined}
         >
-            <button
-                type="button"
-                className={`${linkClass} shell-nav__branch-toggle ${profileOpen ? 'shell-nav__branch-toggle--open' : ''} ${parentActive ? activeClass : ''}`.trim()}
-                onClick={() => setProfileOpen((v) => !v)}
-                aria-expanded={profileOpen}
-            >
-                <i className="fas fa-user" aria-hidden="true" />
-                <span className="shell-nav__label">Můj profil</span>
-                {profileTaskBadge > 0 && (
-                    <span className="badge">{profileTaskBadge > 99 ? '99+' : profileTaskBadge}</span>
-                )}
-                <i className={`fas fa-chevron-${profileOpen ? 'up' : 'down'} shell-nav__chevron`} aria-hidden="true" />
-            </button>
-            {profileOpen && (
-                <div className="shell-nav__children">
-                    {children.map((item) => renderProfileChild(item))}
-                </div>
-            )}
-        </div>
+            <i className="fas fa-user" aria-hidden="true" />
+            {!collapsed && <span className="shell-nav__label">Můj profil</span>}
+        </button>
     );
 };
 
