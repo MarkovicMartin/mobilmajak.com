@@ -3,7 +3,9 @@ import ConfirmModal from '../../components/ConfirmModal';
 import Modal from '../../components/Modal';
 import './ShiftCalendar.css';
 import UnifiedCalendar from './UnifiedCalendar';
+import AdminShiftRoster from './AdminShiftRoster';
 import { shiftRoleLabel } from './shiftRoleLabels';
+import { groupDayShiftsByStore } from './shiftRosterUtils';
 import { format, parse, startOfMonth, endOfMonth, eachDayOfInterval, isBefore } from 'date-fns';
 import { isStoreOpenOnDate } from '../../constants/oteviraciDoba';
 
@@ -293,6 +295,76 @@ function ShiftCalendar({
     }, [onRequestBulkAdd]);
 
     const isSellerView = user?.role === 'PRODEJCE' || user?.role === 'VEDOUCI';
+    const isAdminAllStores = user?.role === 'ADMIN' && allStores && seeAllEmployees;
+
+    const renderShiftRow = (shift, dateStr, { hideStoreName = false } = {}) => {
+        const isOwnShift = String(shift.user_id) === String(user?.id);
+        const isCounterShift = !isOwnShift && !allStores;
+        const shiftClasses = [
+            'shift-item',
+            isOwnShift ? 'mine' : 'other',
+            isCounterShift ? 'counter-shift' : '',
+            allStores ? 'shift-item--store-colored' : '',
+            hideStoreName ? 'shift-item--in-store-group' : '',
+            !allStores && !shift.je_domaci_prodejna && isOwnShift ? 'foreign-store' : '',
+        ].filter(Boolean).join(' ');
+        const roleLabel = shiftRoleLabel(shift, { short: true });
+        const titleParts = [
+            !hideStoreName && allStores && shift.prodejna_nazev ? shift.prodejna_nazev : null,
+            isCounterShift ? `Protisměna: ${shift.user_jmeno}` : shift.user_jmeno,
+            roleLabel,
+            `${formatTime(shift.cas_od)}-${formatTime(shift.cas_do)}`,
+        ].filter(Boolean);
+        return (
+            <div
+                key={shift.id}
+                className={shiftClasses}
+                style={allStores ? getShiftStyle(shift) : undefined}
+                onMouseDown={(e) => e.stopPropagation()}
+                onClick={(e) => handleShiftClick(shift, dateStr, e)}
+                title={titleParts.join(' · ')}
+            >
+                <div className="shift-content">
+                    {!hideStoreName && allStores && shift.prodejna_nazev && (
+                        <div className="shift-store">{shift.prodejna_nazev}</div>
+                    )}
+                    <div className="shift-name">
+                        {isCounterShift && (
+                            <span className="counter-shift-badge">Protisměna</span>
+                        )}
+                        {shift.user_jmeno}
+                    </div>
+                    <div className="shift-time">
+                        {formatTime(shift.cas_od)}-{formatTime(shift.cas_do)}
+                    </div>
+                    {roleLabel && (
+                        <div className="shift-servis-badge shift-role-badge">{roleLabel}</div>
+                    )}
+                </div>
+                {!allStores && !shift.je_domaci_prodejna && user?.id === shift.user_id && (
+                    <div className="foreign-indicator">📍</div>
+                )}
+            </div>
+        );
+    };
+
+    const renderWorkShifts = (workShifts, dateStr) => {
+        if (isAdminAllStores) {
+            return groupDayShiftsByStore(workShifts, stores).map((storeGroup) => (
+                <div
+                    key={storeGroup.prodejna_id}
+                    className="shift-store-group"
+                    style={{ '--shift-store-bg': storeGroup.prodejna_barva }}
+                >
+                    <div className="shift-store-group__head">{storeGroup.prodejna_nazev}</div>
+                    <div className="shift-store-group__rows">
+                        {storeGroup.shifts.map((shift) => renderShiftRow(shift, dateStr, { hideStoreName: true }))}
+                    </div>
+                </div>
+            ));
+        }
+        return workShifts.map((shift) => renderShiftRow(shift, dateStr));
+    };
 
     if (loading) {
         return (
@@ -430,57 +502,7 @@ function ShiftCalendar({
                                     </div>
                                 )}
                                 <div className="shifts-container">
-                                    {workShifts.map((shift) => {
-                                        const isOwnShift = String(shift.user_id) === String(user?.id);
-                                        const isCounterShift = !isOwnShift && !allStores;
-                                        const shiftClasses = [
-                                            'shift-item',
-                                            isOwnShift ? 'mine' : 'other',
-                                            isCounterShift ? 'counter-shift' : '',
-                                            allStores ? 'shift-item--store-colored' : '',
-                                            !allStores && !shift.je_domaci_prodejna && isOwnShift
-                                                ? 'foreign-store'
-                                                : '',
-                                        ].filter(Boolean).join(' ');
-                                        const roleLabel = shiftRoleLabel(shift, { short: true });
-                                        const titleParts = [
-                                            allStores && shift.prodejna_nazev ? shift.prodejna_nazev : null,
-                                            isCounterShift ? `Protisměna: ${shift.user_jmeno}` : shift.user_jmeno,
-                                            roleLabel,
-                                            `${formatTime(shift.cas_od)}-${formatTime(shift.cas_do)}`,
-                                        ].filter(Boolean);
-                                        return (
-                                            <div
-                                                key={shift.id}
-                                                className={shiftClasses}
-                                                style={allStores ? getShiftStyle(shift) : undefined}
-                                                onMouseDown={(e) => e.stopPropagation()}
-                                                onClick={(e) => handleShiftClick(shift, dateStr, e)}
-                                                title={titleParts.join(' · ')}
-                                            >
-                                                <div className="shift-content">
-                                                    {allStores && shift.prodejna_nazev && (
-                                                        <div className="shift-store">{shift.prodejna_nazev}</div>
-                                                    )}
-                                                    <div className="shift-name">
-                                                        {isCounterShift && (
-                                                            <span className="counter-shift-badge">Protisměna</span>
-                                                        )}
-                                                        {shift.user_jmeno}
-                                                    </div>
-                                                    <div className="shift-time">
-                                                        {formatTime(shift.cas_od)}-{formatTime(shift.cas_do)}
-                                                    </div>
-                                                    {roleLabel && (
-                                                        <div className="shift-servis-badge shift-role-badge">{roleLabel}</div>
-                                                    )}
-                                                </div>
-                                                {!allStores && !shift.je_domaci_prodejna && user?.id === shift.user_id && (
-                                                    <div className="foreign-indicator">📍</div>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
+                                    {renderWorkShifts(workShifts, dateStr)}
                                     {absenceShifts.length > 0 && (
                                         <div className="shifts-absences">
                                             {absenceShifts.map((shift) => {
@@ -509,6 +531,14 @@ function ShiftCalendar({
                     }}
                 />
             </div>
+
+            {isAdminAllStores && (
+                <AdminShiftRoster
+                    kalendarData={kalendarData}
+                    stores={stores}
+                    month={month}
+                />
+            )}
 
             {showActionModal && selectedShift && (
                 <Modal

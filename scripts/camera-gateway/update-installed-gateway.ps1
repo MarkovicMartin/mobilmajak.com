@@ -19,7 +19,8 @@ foreach ($f in @(
     "run-gateway.ps1",
     "wake-kick-gateway.ps1",
     "register-gateway-tasks.ps1",
-    "bootstrap-python.ps1"
+    "bootstrap-python.ps1",
+    "run-ps-hidden.vbs"
 )) {
     $src = Join-Path $SourceDir $f
     if (Test-Path $src) {
@@ -28,7 +29,7 @@ foreach ($f in @(
     }
 }
 
-. (Join-Path $SourceDir "register-gateway-tasks.ps1")
+. (Join-Path $InstallDir "register-gateway-tasks.ps1")
 Register-MobilmajakGatewayTasks `
     -TaskName $TaskName `
     -RunScript (Join-Path $InstallDir "run-gateway.ps1") `

@@ -31,13 +31,14 @@ Brána komunikuje jen s **NVR** (ISAPI alertStream). Kamera musí být v NVR př
 cp scripts/sternberk-gateway/config.example.json secrets/camera_motion_sternberk.json
 # upravte motion_secret, nvr_pass
 
-cp secrets/camera_motion_sternberk.json scripts/sternberk-gateway/config.json
+cp -R scripts/camera-gateway scripts/sternberk-gateway /Volumes/USB/
+cp secrets/camera_motion_sternberk.json /Volumes/USB/sternberk-gateway/config.json
 ```
 
 Na USB zkopírujte **obě** složky:
 
-- `scripts/camera-gateway/`
-- `scripts/sternberk-gateway/` (s `config.json`)
+- `camera-gateway/`
+- `sternberk-gateway/` (s `config.json` ze `secrets/`)
 
 Kompletní návod: `scripts/camera-gateway/INSTALL.md`
 

@@ -35,7 +35,8 @@ export const NAV_GROUPS = [
         label: 'Operativa',
         items: [
             { sectionKey: 'shifts', label: 'Směny', path: '/shifts', icon: 'fa-calendar-alt' },
-            { sectionKey: 'tasks', label: 'Úkoly', path: '/tasks', managerOnly: true, icon: 'fa-clipboard-list' },
+            { sectionKey: 'my-tasks', label: 'Moje úkoly', path: '/my-tasks', icon: 'fa-clipboard-list' },
+            { sectionKey: 'tasks', label: 'Správa úkolů', path: '/tasks', managerOnly: true, icon: 'fa-tasks' },
             { sectionKey: 'coaching', label: 'Výkony', path: '/coaching', coachingOnly: true, icon: 'fa-user-check' },
         ],
     },

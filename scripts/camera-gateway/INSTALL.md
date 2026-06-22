@@ -32,8 +32,9 @@ chmod +x scripts/prepare-camera-gateway.sh
 ```
 
 Vytvoří:
-- `secrets/camera_motion_<slug>.json`
-- `scripts/<gateway_dir>/config.json` (vždy s `prodejna_nazev`)
+- `secrets/camera_motion_<slug>.json` (vždy s `prodejna_nazev`)
+
+Při volání s cestou na USB také zkopíruje `config.json` ze `secrets/` do složky gateway na USB.
 
 ### c) Secret na VPS
 
@@ -117,10 +118,11 @@ MOBILMAJAK → Směny → Není v práci → majáček u prodejny.
 
 | Prodejna | slug | ID | NVR |
 |----------|------|----|-----|
-| Globus | `globus` | 1 | 10.0.0.250 |
-| Senimo | `senimo` | 2 | 192.168.1.104 |
+| Globus | `globus` | 1 | NVR `10.0.0.250`, kamera `192.168.254.3` |
+| Senimo | `senimo` | 2 | 192.168.1.109 |
 | Čepkov / Zlín | `zlin` | 3 | 10.0.0.250 |
 | Šternberk | `sternberk` | 6 | 10.0.1.112 |
+| Přerov | `prerov` | 4 | *(doplnit)* |
 
 Nová prodejna = zkopírovat blok v `prodejny.json` + zkopírovat složku `*-gateway` z existující (jen přejmenovat `install-*.ps1`).
 

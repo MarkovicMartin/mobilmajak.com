@@ -43,6 +43,25 @@ Nastaví u uživatele `webmajak`: 1. den v měsíci 6:00 `ensure_monthly_plans -
 
 Po „Založit plány na rok“ z UI se prodejci přepočítají hned; denní cron od 15. doplňuje směny.
 
+**Slack notifikace termínů úkolů (volitelné):**
+
+V `backend/.env` na stagingu / produkci:
+
+```
+SLACK_TASKS_WEBHOOK_URL=https://hooks.slack.com/services/...
+MOBILMAJAK_APP_URL=https://staging.mobilmajak.com
+```
+
+Cron (např. každou hodinu u uživatele `webmajak`):
+
+```bash
+0 * * * * cd /home/webmajak/staging/backend && source ../venv/bin/activate && export DJANGO_SETTINGS_MODULE=webapp.settings_production && python manage.py notify_task_deadlines >> ../logs/task-slack-notify.log 2>&1
+```
+
+Test bez odeslání: `python manage.py notify_task_deadlines --dry-run`
+
+Bez `SLACK_TASKS_WEBHOOK_URL` příkaz jen vypíše úkoly a nic neodešle.
+
 **Pilot pohybu kamer (bez obrazu na serveru):**
 
 | Soubor | Účel |
@@ -79,6 +98,8 @@ Ručně v NVR: **Configuration → Network → Advanced → HTTP(S) alarm** (neb
 **Windows instalátor (Čepkov / Zlín, ID 3):** `scripts/zlin-gateway/config.example.json` → `secrets/camera_motion_zlin.json`; složky `scripts/camera-gateway/` + `scripts/zlin-gateway/` na USB, `install-zlin-camera-gateway.cmd` jako správce. Checklist: `scripts/zlin-gateway/README.md`.
 
 **Windows instalátor (Šternberk, ID 6):** `scripts/sternberk-gateway/config.example.json` → `secrets/camera_motion_sternberk.json`; složky `scripts/camera-gateway/` + `scripts/sternberk-gateway/` na USB, `install-sternberk-camera-gateway.cmd` jako správce. Checklist: `scripts/sternberk-gateway/README.md`.
+
+**Windows instalátor (Přerov, ID 4):** `scripts/prerov-gateway/config.example.json` → `secrets/camera_motion_prerov.json`; složky `scripts/camera-gateway/` + `scripts/prerov-gateway/` na USB, `install-prerov-camera-gateway.cmd` jako správce. Checklist: `scripts/prerov-gateway/README.md`.
 
 **Kompletní záloha serveru + actoři (lokálně, mimo git projektu):**
 

@@ -10,7 +10,7 @@
   "senimo": {
     "prodejna_id": 2,
     "prodejna_nazev": "Senimo",
-    "nvr_host": "192.168.1.104",
+    "nvr_host": "192.168.1.109",
     "camera_host": "",
     "install_cmd": "install-senimo-camera-gateway.cmd",
     "gateway_dir": "senimo-gateway"
@@ -30,5 +30,13 @@
     "camera_host": "192.168.254.6",
     "install_cmd": "install-sternberk-camera-gateway.cmd",
     "gateway_dir": "sternberk-gateway"
+  },
+  "prerov": {
+    "prodejna_id": 4,
+    "prodejna_nazev": "Prerov",
+    "nvr_host": "DOPLNTE_IP_NVR",
+    "camera_host": "DOPLNTE_IP_KAMERY",
+    "install_cmd": "install-prerov-camera-gateway.cmd",
+    "gateway_dir": "prerov-gateway"
   }
 }

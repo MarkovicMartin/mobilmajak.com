@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { format, addMonths, subMonths } from 'date-fns';
 import { cs } from 'date-fns/locale';
+import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import { taskAPI } from '../../services/api';
 import UnifiedCalendar from '../shifts/UnifiedCalendar';
 import ProfileDayPanel from './ProfileDayPanel';
+import { openTask } from '../../utils/taskNavigation';
 import { urgencyClassName, urgencyForTask } from '../../utils/taskUrgency';
 import '../shifts/ShiftCalendar.css';
 import './ProfileModule.css';
@@ -12,6 +14,7 @@ import './ProfileModule.css';
 const formatShiftTime = (t) => (t || '').substring(0, 5);
 
 const ProfileCalendar = () => {
+    const navigate = useNavigate();
     const [month, setMonth] = useState(() => format(new Date(), 'yyyy-MM'));
     const [shiftData, setShiftData] = useState({});
     const [taskData, setTaskData] = useState({});
@@ -127,7 +130,7 @@ const ProfileCalendar = () => {
                         onMouseDown={(e) => e.stopPropagation()}
                         onClick={(e) => {
                             e.stopPropagation();
-                            openDay(dateStr, { taskId: t.id });
+                            openTask(navigate, t.id);
                         }}
                     >
                         {t.ukol?.slice(0, 12)}

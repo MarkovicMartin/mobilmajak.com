@@ -1,6 +1,4 @@
-# Update files in C:\ProgramData\Mobilmajak\SenimoCameraGateway (no config overwrite)
-# Run as admin from senimo-gateway folder:
-#   powershell -ExecutionPolicy Bypass -File .\update-installed-gateway.ps1
+# Update Senimo gateway files in ProgramData (no config overwrite)
 
 param(
     [string]$InstallDir = "C:\ProgramData\Mobilmajak\SenimoCameraGateway"
@@ -8,10 +6,14 @@ param(
 
 $ErrorActionPreference = "Stop"
 $SourceDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$GwDir = Join-Path $SourceDir "..\camera-gateway"
 $TaskName = "Mobilmajak-Senimo-CameraGateway"
 
 if (-not (Test-Path $InstallDir)) {
     throw "Install dir not found: $InstallDir - run install first"
+}
+if (-not (Test-Path $GwDir)) {
+    throw "Missing $GwDir - copy scripts/camera-gateway next to senimo-gateway"
 }
 
 foreach ($f in @(
@@ -19,16 +21,17 @@ foreach ($f in @(
     "run-gateway.ps1",
     "wake-kick-gateway.ps1",
     "register-gateway-tasks.ps1",
-    "bootstrap-python.ps1"
+    "bootstrap-python.ps1",
+    "run-ps-hidden.vbs"
 )) {
-    $src = Join-Path $SourceDir $f
+    $src = Join-Path $GwDir $f
     if (Test-Path $src) {
         Copy-Item $src (Join-Path $InstallDir $f) -Force
         Write-Host "Updated: $f"
     }
 }
 
-. (Join-Path $SourceDir "register-gateway-tasks.ps1")
+. (Join-Path $InstallDir "register-gateway-tasks.ps1")
 Register-MobilmajakGatewayTasks `
     -TaskName $TaskName `
     -RunScript (Join-Path $InstallDir "run-gateway.ps1") `

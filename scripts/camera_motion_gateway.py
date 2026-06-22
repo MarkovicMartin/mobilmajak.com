@@ -391,16 +391,16 @@ def _classify_hikvision_device(device_info_xml: str, host: str, auth: HTTPDigest
     return 'unknown'
 
 
-def discover_nvr_host(
+def discover_lan_devices(
     user: str,
     password: str,
     *,
     subnets=None,
     port: Optional[int] = None,
     use_https: bool = False,
-) -> Optional[str]:
+) -> dict:
     """
-    Projede lokální síť a najde Hikvision NVR (ne IP kameru).
+    Projede lokální síť a vrátí nalezená Hikvision zařízení (NVR, IPC, unknown).
     """
     import ipaddress
     from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -416,7 +416,7 @@ def discover_nvr_host(
             continue
 
     print(
-        f'Autodetekce NVR: sítě {", ".join(networks)} ({len(hosts)} adres)…',
+        f'Sken LAN: sítě {", ".join(networks)} ({len(hosts)} adres)…',
         flush=True,
     )
 
@@ -428,26 +428,103 @@ def discover_nvr_host(
             except requests.RequestException:
                 return None
             if resp.status_code == 401:
-                return ('bad_auth', ip)
+                return {'kind': 'bad_auth', 'ip': ip, 'name': '', 'device_type': ''}
             if resp.status_code != 200:
                 return None
             kind = _classify_hikvision_device(resp.text, ip, auth)
-            if kind == 'nvr':
-                return ('nvr', ip)
-            if kind == 'ipc':
-                return ('ipc', ip)
-            return ('unknown', ip)
+            name_m = re.search(r'<deviceName>([^<]+)', resp.text or '')
+            type_m = re.search(r'<deviceType>([^<]+)', resp.text or '')
+            return {
+                'kind': kind,
+                'ip': ip,
+                'name': (name_m.group(1).strip() if name_m else ''),
+                'device_type': (type_m.group(1).strip() if type_m else ''),
+            }
         return None
 
-    found_nvr = []
+    buckets = {'nvr': [], 'ipc': [], 'unknown': [], 'bad_auth': []}
     with ThreadPoolExecutor(max_workers=40) as pool:
         futures = [pool.submit(probe, ip) for ip in hosts]
         for fut in as_completed(futures):
             result = fut.result()
-            if result and result[0] == 'nvr':
-                found_nvr.append(result[1])
+            if not result:
+                continue
+            kind = result['kind']
+            if kind in buckets:
+                buckets[kind].append(result)
 
-    found_nvr = sorted(set(found_nvr))
+    for key in buckets:
+        seen = set()
+        unique = []
+        for row in sorted(buckets[key], key=lambda r: r['ip']):
+            if row['ip'] in seen:
+                continue
+            seen.add(row['ip'])
+            unique.append(row)
+        buckets[key] = unique
+    return buckets
+
+
+def list_nvr_ip_cameras(
+    host: str,
+    user: str,
+    password: str,
+    port: Optional[int] = None,
+    use_https: bool = False,
+) -> list:
+    """IP kamery připojené k NVR (ISAPI InputProxy / video inputs)."""
+    auth = HTTPDigestAuth(user, password)
+    paths = (
+        '/ISAPI/ContentMgmt/InputProxy/channels',
+        '/ISAPI/System/Video/inputs/channels',
+    )
+    cameras = []
+    for base in _device_base_urls(host, port=port, use_https=use_https):
+        for path in paths:
+            url = f'{base}{path}'
+            try:
+                resp = requests.get(url, auth=auth, timeout=8, verify=False)
+            except requests.RequestException:
+                continue
+            if resp.status_code != 200:
+                continue
+            text = resp.text or ''
+            for block in re.findall(r'<InputProxyChannel[^>]*>.*?</InputProxyChannel>', text, re.DOTALL):
+                if re.search(r'<online>\s*false\s*</online>', block, re.IGNORECASE):
+                    continue
+                ip_m = re.search(r'<ipAddress>([^<]+)</ipAddress>', block)
+                if not ip_m:
+                    continue
+                cam_ip = ip_m.group(1).strip()
+                if not cam_ip or cam_ip in ('0.0.0.0', '127.0.0.1'):
+                    continue
+                ch_m = re.search(r'<id>(\d+)</id>', block)
+                name_m = re.search(r'<name>([^<]+)</name>', block)
+                cameras.append({
+                    'channel': int(ch_m.group(1)) if ch_m else None,
+                    'ip': cam_ip,
+                    'name': name_m.group(1).strip() if name_m else '',
+                })
+            if cameras:
+                return cameras
+    return cameras
+
+
+def discover_nvr_host(
+    user: str,
+    password: str,
+    *,
+    subnets=None,
+    port: Optional[int] = None,
+    use_https: bool = False,
+) -> Optional[str]:
+    """
+    Projede lokální síť a najde Hikvision NVR (ne IP kameru).
+    """
+    devices = discover_lan_devices(
+        user, password, subnets=subnets, port=port, use_https=use_https,
+    )
+    found_nvr = [row['ip'] for row in devices['nvr']]
     if len(found_nvr) == 1:
         print(f'NVR nalezen: {found_nvr[0]}', flush=True)
         return found_nvr[0]
@@ -581,6 +658,11 @@ def main():
     parser.add_argument('--test-motion', choices=('true', 'false'), help='Jednorázový test POST')
     parser.add_argument('--test-isapi', action='store_true', help='Ověření přihlášení ke kameře/NVR v LAN')
     parser.add_argument('--discover-nvr', action='store_true', help='Jen autodetekce NVR v LAN')
+    parser.add_argument(
+        '--discover-lan',
+        action='store_true',
+        help='Sken LAN: NVR, IPC kamery a kamery v NVR (bez monitoru)',
+    )
     parser.add_argument('--quiet-after', type=int, default=300, help='Sekund bez pohybu → klid')
     parser.add_argument('--motion-cooldown', type=int, default=60, help='Min. interval mezi POST pohyb')
     parser.add_argument('--reconnect-min', type=int, default=15, help='Min. cekani pred reconnect (s)')
@@ -612,6 +694,38 @@ def main():
         if not found:
             sys.exit(1)
         print(json.dumps({'nvr_host': found}, indent=2))
+        return
+
+    if args.discover_lan:
+        if not nvr_pass:
+            parser.error('Pro --discover-lan nastavte nvr_pass v configu')
+        devices = discover_lan_devices(
+            nvr_user,
+            nvr_pass,
+            subnets=cfg.get('autodiscover_subnets'),
+            port=nvr_port,
+            use_https=nvr_use_https,
+        )
+        out = {
+            'subnets_scanned': _local_lan_subnets(cfg.get('autodiscover_subnets')),
+            'nvr': devices['nvr'],
+            'ipc': devices['ipc'],
+            'unknown_hikvision': devices['unknown'],
+            'bad_auth': devices['bad_auth'],
+            'nvr_channels': [],
+        }
+        nvr_ip = (devices['nvr'][0]['ip'] if devices['nvr'] else nvr_host) or ''
+        if nvr_ip:
+            out['nvr_channels'] = list_nvr_ip_cameras(
+                nvr_ip, nvr_user, nvr_pass, port=nvr_port, use_https=nvr_use_https,
+            )
+            if out['nvr_channels']:
+                print(f'Kamery v NVR {nvr_ip}:', flush=True)
+                for cam in out['nvr_channels']:
+                    print(f"  kanál {cam.get('channel')}: {cam['ip']} {cam.get('name', '')}", flush=True)
+        print(json.dumps(out, indent=2, ensure_ascii=False))
+        if not devices['nvr'] and not devices['ipc'] and not out['nvr_channels']:
+            sys.exit(1)
         return
 
     nvr_host = resolve_nvr_host(cfg, nvr_user, nvr_pass)

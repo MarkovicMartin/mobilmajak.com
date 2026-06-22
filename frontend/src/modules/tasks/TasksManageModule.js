@@ -10,13 +10,22 @@ import TaskUrgencyBadge from './TaskUrgencyBadge';
 import TaskStatusIcon from '../../components/TaskStatusIcon';
 import { buildAssigneeSelectOptions } from './TaskAssigneeOptions';
 import TasksWorkloadSection from './TasksWorkloadSection';
+import { taskDisplayTitle, ACTIVE_TASK_STAVY } from '../../utils/taskDisplay';
 import './TasksModule.css';
 
 const STAV_OPTIONS = [
     { value: 'vse', label: 'Všechny stavy' },
     { value: 'novy', label: 'Nové' },
     { value: 'v_procesu', label: 'V procesu' },
+    { value: 'blokovany', label: 'Blokované' },
+    { value: 'ceka_schvaleni', label: 'Čeká schválení' },
     { value: 'hotovo', label: 'Hotové' },
+];
+
+const FILTER_OPTIONS = [
+    { value: '', label: 'Vše' },
+    { value: 'at_risk', label: 'At risk' },
+    { value: 'cekajici_schvaleni', label: 'Čeká schválení' },
 ];
 
 const PRIORITA_OPTIONS = [
@@ -25,34 +34,46 @@ const PRIORITA_OPTIONS = [
     { value: 'vysoka', label: 'Vysoká' },
 ];
 
+const WIP_LIMIT = 3;
+
+const emptyDodRow = () => ({ text: '', splneno: false });
+
 const TasksManageModule = () => {
     const { user, isAdmin, canManageTasks } = useAuth();
     const [adminTab, setAdminTab] = useState('manage');
     const [stores, setStores] = useState([]);
     const [assignees, setAssignees] = useState([]);
     const [filterStav, setFilterStav] = useState('vse');
+    const [filterSpecial, setFilterSpecial] = useState('');
     const [filterStore, setFilterStore] = useState('');
     const [filterAssignee, setFilterAssignee] = useState('');
     const [selected, setSelected] = useState(null);
     const [editing, setEditing] = useState(false);
+    const [formError, setFormError] = useState('');
+    const [wipWarning, setWipWarning] = useState('');
     const [form, setForm] = useState({
-        ukol: '',
+        vysledek: '',
+        popis: '',
+        dod_polozky: [emptyDodRow(), emptyDodRow()],
         priorita: 'stredni',
         deadline: '',
         deadline_cas: '',
         id_prodejny: '',
         id_prodejce_ukol: '',
+        vyzaduje_schvaleni: false,
         typ: 'prirazeny',
+        bezPobocky: false,
     });
 
     const listParams = useMemo(() => {
         const p = { stav: filterStav, typ: 'prirazeny' };
         if (filterStore) p.prodejna_id = filterStore;
         if (filterAssignee) p.prodejce_id = filterAssignee;
+        if (filterSpecial) p.filter = filterSpecial;
         return p;
-    }, [filterStav, filterStore, filterAssignee]);
+    }, [filterStav, filterStore, filterAssignee, filterSpecial]);
 
-    const { tasks, loading, load, create, update } = useTasks({
+    const { tasks, loading, load, create, update, setTasks } = useTasks({
         autoLoad: false,
         listParams,
     });
@@ -64,6 +85,16 @@ const TasksManageModule = () => {
         }
         return [];
     }, [stores, user, isAdmin]);
+
+    const wipByAssignee = useMemo(() => {
+        const counts = {};
+        tasks.forEach((t) => {
+            if (!ACTIVE_TASK_STAVY.includes(t.stav)) return;
+            const id = t.id_prodejce_ukol;
+            counts[id] = (counts[id] || 0) + 1;
+        });
+        return counts;
+    }, [tasks]);
 
     const storeOptionsForForm = useMemo(
         () => (isAdmin() ? stores : vedouciStores),
@@ -129,13 +160,15 @@ const TasksManageModule = () => {
         load(listParams);
     }, [load, listParams]);
 
-    const loadAssignees = useCallback(async (storeId) => {
-        if (!storeId) {
+    const loadAssignees = useCallback(async (storeId, storeless = false) => {
+        if (!storeless && !storeId) {
             setAssignees([]);
             return;
         }
         try {
-            const res = await taskAPI.getAssignees(storeId);
+            const res = storeless
+                ? await taskAPI.getAssignees(null, { storeless: true })
+                : await taskAPI.getAssignees(storeId);
             setAssignees(res.assignees || []);
         } catch {
             setAssignees([]);
@@ -143,32 +176,79 @@ const TasksManageModule = () => {
     }, []);
 
     useEffect(() => {
-        loadAssignees(form.id_prodejny);
-    }, [form.id_prodejny, loadAssignees]);
+        if (form.bezPobocky && isAdmin()) {
+            loadAssignees(null, true);
+        } else {
+            loadAssignees(form.id_prodejny);
+        }
+    }, [form.id_prodejny, form.bezPobocky, isAdmin, loadAssignees]);
+
+    const updateDod = (index, text) => {
+        setForm((f) => {
+            const dod = [...f.dod_polozky];
+            dod[index] = { ...dod[index], text };
+            return { ...f, dod_polozky: dod };
+        });
+    };
+
+    const addDodRow = () => {
+        setForm((f) => ({ ...f, dod_polozky: [...f.dod_polozky, emptyDodRow()] }));
+    };
+
+    const removeDodRow = (index) => {
+        setForm((f) => ({
+            ...f,
+            dod_polozky: f.dod_polozky.filter((_, i) => i !== index),
+        }));
+    };
 
     const handleCreate = async (e) => {
         e.preventDefault();
-        if (!form.ukol || !form.id_prodejny || !form.id_prodejce_ukol) return;
+        setFormError('');
+        setWipWarning('');
+        const dod = form.dod_polozky
+            .map((p) => ({ text: p.text.trim(), splneno: false }))
+            .filter((p) => p.text);
+        if (!form.vysledek.trim() || !form.id_prodejce_ukol || !form.deadline) {
+            setFormError('Vyplňte výsledek, zaměstnance a termín.');
+            return;
+        }
+        if (!form.bezPobocky && !form.id_prodejny) {
+            setFormError('Vyberte pobočku nebo zapněte „Bez pobočky“.');
+            return;
+        }
+        if (dod.length < 1) {
+            setFormError('Přidejte alespoň jednu položku Definition of Done.');
+            return;
+        }
         try {
             const created = await create({
-                ukol: form.ukol,
+                vysledek: form.vysledek.trim(),
+                ukol: form.vysledek.trim().split('\n')[0].slice(0, 255),
+                popis: form.popis.trim(),
+                dod_polozky: dod,
                 priorita: form.priorita,
-                deadline: form.deadline || null,
+                deadline: form.deadline,
                 deadline_cas: form.deadline_cas || null,
                 typ: 'prirazeny',
-                id_prodejny: Number(form.id_prodejny),
+                id_prodejny: form.bezPobocky ? null : Number(form.id_prodejny),
                 id_prodejce_ukol: Number(form.id_prodejce_ukol),
+                vyzaduje_schvaleni: form.vyzaduje_schvaleni,
             });
+            if (created?.wip_warning) setWipWarning(created.wip_warning);
             setForm((f) => ({
                 ...f,
-                ukol: '',
+                vysledek: '',
+                popis: '',
+                dod_polozky: [emptyDodRow(), emptyDodRow()],
                 deadline: '',
                 deadline_cas: '',
+                vyzaduje_schvaleni: false,
             }));
             setSelected(created);
             await load(listParams);
-        } catch {
-            /* tiché */
+        } catch (err) {
+            setFormError(err?.response?.data?.error || 'Vytvoření se nezdařilo.');
         }
     };
 
@@ -187,12 +267,25 @@ const TasksManageModule = () => {
     const showFilterStore = isAdmin() || vedouciStores.length > 1;
     const showWorkloadTab = isAdmin();
 
+    const selectedAssigneeWip = selected?.id_prodejce_ukol
+        ? wipByAssignee[selected.id_prodejce_ukol] || 0
+        : 0;
+
     return (
         <div className="tasks-module">
             <PageHeader
                 title={showWorkloadTab && adminTab === 'workload' ? 'Úkoly – vytížení' : 'Správa úkolů'}
                 actions={(!showWorkloadTab || adminTab === 'manage') ? (
                     <div className="tasks-filters">
+                        <Select
+                            options={FILTER_OPTIONS}
+                            value={filterSpecial}
+                            onChange={(v) => {
+                                setFilterSpecial(v);
+                                if (v === 'cekajici_schvaleni') setFilterStav('vse');
+                            }}
+                            aria-label="Speciální filtr"
+                        />
                         <Select
                             options={STAV_OPTIONS}
                             value={filterStav}
@@ -244,28 +337,130 @@ const TasksManageModule = () => {
                 <TasksWorkloadSection />
             ) : (
                 <>
+            {assignees.length > 0 && (
+                <div className="tasks-wip-bar">
+                    {assignees.map((a) => {
+                        const count = wipByAssignee[a.id] || 0;
+                        if (!count) return null;
+                        const over = count >= WIP_LIMIT;
+                        return (
+                            <button
+                                key={a.id}
+                                type="button"
+                                className={`tasks-wip-chip${over ? ' is-over' : ''}`}
+                                onClick={() => setFilterAssignee(String(a.id))}
+                            >
+                                {a.jmeno_plne}: {count}/{WIP_LIMIT}
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
+
             <div className="task-form-card">
-                <h3>Nový úkol</h3>
+                <div className="task-form-card__header">
+                    <h3>Nový úkol</h3>
+                    <span className="task-form-card__badge">SOP</span>
+                </div>
                 <form className="task-form-grid" onSubmit={handleCreate}>
-                    <input
-                        className="task-control task-control--text"
-                        placeholder="Text úkolu…"
-                        value={form.ukol}
-                        onChange={(e) => setForm({ ...form, ukol: e.target.value })}
-                    />
-                    <div className="task-form-row task-form-row--meta">
-                        <Select
-                            options={formStoreOptions}
-                            value={form.id_prodejny}
-                            disabled={storeLocked}
-                            onChange={(v) => setForm({ ...form, id_prodejny: v, id_prodejce_ukol: '' })}
-                            aria-label="Pobočka"
+                    <div className="task-form-section">
+                        <span className="task-form-section__label">Výsledek</span>
+                        <label className="task-form-label">
+                            Outcome *
+                            <textarea
+                                className="task-control task-control--text"
+                                rows={2}
+                                placeholder="Co má být na konci hotovo?"
+                                value={form.vysledek}
+                                onChange={(e) => setForm({ ...form, vysledek: e.target.value })}
+                            />
+                        </label>
+                    </div>
+                    <label className="task-form-label">
+                        Popis / kontext
+                        <textarea
+                            className="task-control task-control--text"
+                            rows={2}
+                            placeholder="Volitelný kontext…"
+                            value={form.popis}
+                            onChange={(e) => setForm({ ...form, popis: e.target.value })}
                         />
+                    </label>
+                    <div className="task-dod-editor">
+                        <p className="task-dod-editor__title">Definition of Done *</p>
+                        <p className="task-dod-editor__hint">Alespoň jedna měřitelná položka</p>
+                        {form.dod_polozky.map((row, i) => (
+                            <div key={i} className="task-dod-editor-row">
+                                <span className="task-dod-editor-row__num">{i + 1}</span>
+                                <input
+                                    className="task-control task-control--text"
+                                    placeholder={`Položka ${i + 1}`}
+                                    value={row.text}
+                                    onChange={(e) => updateDod(i, e.target.value)}
+                                />
+                                {form.dod_polozky.length > 1 && (
+                                    <button
+                                        type="button"
+                                        className="btn btn--ghost task-dod-remove"
+                                        onClick={() => removeDodRow(i)}
+                                        aria-label="Odebrat položku"
+                                    >
+                                        ×
+                                    </button>
+                                )}
+                            </div>
+                        ))}
+                        <button type="button" className="btn btn--ghost task-dod-add-btn" onClick={addDodRow}>
+                            + Přidat položku
+                        </button>
+                    </div>
+                    {isAdmin() && (
+                        <div className="task-toggle-row">
+                            <label className="task-toggle" htmlFor="bez-pobocky">
+                                <input
+                                    id="bez-pobocky"
+                                    type="checkbox"
+                                    checked={form.bezPobocky}
+                                    onChange={(e) => setForm({
+                                        ...form,
+                                        bezPobocky: e.target.checked,
+                                        id_prodejny: e.target.checked ? '' : form.id_prodejny,
+                                        id_prodejce_ukol: '',
+                                    })}
+                                />
+                                <span className="task-toggle__track" />
+                                <span className="task-toggle__thumb" />
+                            </label>
+                            <div>
+                                <label className="task-toggle-label" htmlFor="bez-pobocky">
+                                    Bez pobočky
+                                </label>
+                                <p className="task-toggle-hint">Pro admin / backoffice účty</p>
+                            </div>
+                        </div>
+                    )}
+                    <div className={`task-form-row task-form-row--meta${form.bezPobocky ? ' task-form-row--bez-pobocky' : ''}`}>
+                        {form.bezPobocky ? (
+                            <Select
+                                options={[{ value: '', label: 'Bez pobočky' }]}
+                                value=""
+                                disabled
+                                aria-label="Pobočka"
+                            />
+                        ) : (
+                            <Select
+                                options={formStoreOptions}
+                                value={form.id_prodejny}
+                                disabled={storeLocked}
+                                onChange={(v) => setForm({ ...form, id_prodejny: v, id_prodejce_ukol: '' })}
+                                aria-label="Pobočka"
+                            />
+                        )}
                         <Select
                             options={assigneeFormOptions}
                             value={form.id_prodejce_ukol}
                             onChange={(v) => setForm({ ...form, id_prodejce_ukol: v })}
-                            disabled={!form.id_prodejny}
+                            disabled={!form.bezPobocky && !form.id_prodejny}
                             aria-label="Přiřadit zaměstnance"
                         />
                         <Select
@@ -276,7 +471,7 @@ const TasksManageModule = () => {
                             aria-label="Priorita"
                         />
                     </div>
-                    <div className="task-form-row task-form-row--deadline">
+                    <div className="task-form-row task-form-row--actions">
                         <div className="task-date-field">
                             <DatePicker
                                 value={form.deadline}
@@ -291,10 +486,23 @@ const TasksManageModule = () => {
                             value={form.deadline_cas}
                             onChange={(e) => setForm({ ...form, deadline_cas: e.target.value })}
                         />
+                        <label className="task-checkbox-label">
+                            <input
+                                type="checkbox"
+                                checked={form.vyzaduje_schvaleni}
+                                onChange={(e) => setForm({
+                                    ...form,
+                                    vyzaduje_schvaleni: e.target.checked,
+                                })}
+                            />
+                            Vyžaduje schválení
+                        </label>
                         <button type="submit" className="btn btn--primary task-submit-btn">
                             Vytvořit úkol
                         </button>
                     </div>
+                    {formError && <p className="task-edit-error">{formError}</p>}
+                    {wipWarning && <p className="task-wip-warning">{wipWarning}</p>}
                 </form>
             </div>
 
@@ -313,10 +521,10 @@ const TasksManageModule = () => {
                         >
                             <TaskStatusIcon task={t} size="sm" />
                             <div className="tasks-list-item-body">
-                                <div className="task-title">{t.ukol}</div>
+                                <div className="task-title">{taskDisplayTitle(t)}</div>
                                 <div className="metric-sub">
                                     {t.assignee?.jmeno_plne || '—'}
-                                    {t.prodejna?.nazev ? ` · ${t.prodejna.nazev}` : ''}
+                                    {t.prodejna?.nazev ? ` · ${t.prodejna.nazev}` : (t.typ === 'prirazeny' && !t.id_prodejny ? ' · Bez pobočky' : '')}
                                     {t.deadline
                                         ? ` · ${format(new Date(t.deadline), 'd. M.')}`
                                         : ''}
@@ -328,12 +536,13 @@ const TasksManageModule = () => {
                         </div>
                     ))}
                 </div>
-                <div>
+                <div className="tasks-detail-column">
                     {selected && editing && canManageTasks() ? (
                         <TaskEditForm
                             task={selected}
                             storeOptions={isAdmin() ? stores : vedouciStores}
                             storeLocked={storeLocked}
+                            isAdmin={isAdmin()}
                             onSaved={(u) => {
                                 setSelected(u);
                                 setEditing(false);
@@ -346,10 +555,11 @@ const TasksManageModule = () => {
                         <TaskDetailPanel
                             task={selected}
                             canEdit
+                            isManager
                             showMarkRead={false}
                             onUpdate={(u) => {
                                 setSelected(u);
-                                update(u.id, u, { merge: true });
+                                setTasks((list) => list.map((t) => (t.id === u.id ? u : t)));
                             }}
                         />
                     )}
@@ -361,6 +571,11 @@ const TasksManageModule = () => {
                         >
                             Upravit úkol
                         </button>
+                    )}
+                    {selected && selectedAssigneeWip > 0 && !editing && (
+                        <p className="task-wip-indicator">
+                            WIP: {selectedAssigneeWip}/{WIP_LIMIT} aktivních u {selected.assignee?.jmeno_plne}
+                        </p>
                     )}
                     {selected && !editing && (
                         <button

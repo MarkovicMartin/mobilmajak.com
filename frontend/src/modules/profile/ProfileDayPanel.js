@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Modal from '../../components/Modal';
 import { format, parse } from 'date-fns';
 import { cs } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { taskAPI } from '../../services/api';
-import TaskDetailPanel from '../tasks/TaskDetailPanel';
 import TaskUrgencyBadge from '../tasks/TaskUrgencyBadge';
+import { openTask } from '../../utils/taskNavigation';
 import { shiftRoleLabel } from '../shifts/shiftRoleLabels';
 
 const formatShiftTime = (t) => (t || '').substring(0, 5);
@@ -35,18 +35,6 @@ const ProfileDayPanel = ({
     const navigate = useNavigate();
     const [newUkol, setNewUkol] = useState('');
     const [saving, setSaving] = useState(false);
-    const [selectedTask, setSelectedTask] = useState(null);
-    const [taskDetail, setTaskDetail] = useState(null);
-
-    useEffect(() => {
-        if (focusTaskId) {
-            const match = tasks.find((t) => t.id === focusTaskId);
-            if (match) {
-                setSelectedTask(match);
-                setTaskDetail(match);
-            }
-        }
-    }, [focusTaskId, tasks]);
 
     if (!dateStr) return null;
 
@@ -81,20 +69,9 @@ const ProfileDayPanel = ({
         }
     };
 
-    const openTaskInProfile = (task) => {
-        navigate('/profile', { state: { profileTab: 'tasks', taskId: task.id } });
+    const openTaskInModule = (task) => {
+        openTask(navigate, task.id);
         onClose();
-    };
-
-    const handleTaskSelect = async (task) => {
-        setSelectedTask(task);
-        setTaskDetail(task);
-    };
-
-    const handleTaskUpdate = (updated) => {
-        setTaskDetail(updated);
-        setSelectedTask(updated);
-        onRefresh?.();
     };
 
     return (
@@ -175,8 +152,8 @@ const ProfileDayPanel = ({
                                     <li key={t.id}>
                                         <button
                                             type="button"
-                                            className={`profile-day-task-btn${selectedTask?.id === t.id ? ' selected' : ''}${focusTaskId === t.id ? ' focus' : ''}`}
-                                            onClick={() => handleTaskSelect(t)}
+                                            className={`profile-day-task-btn${focusTaskId === t.id ? ' focus' : ''}`}
+                                            onClick={() => openTaskInModule(t)}
                                         >
                                             <span className="profile-day-task-title">
                                                 {t.typ === 'prirazeny' ? '📋 ' : ''}
@@ -187,25 +164,6 @@ const ProfileDayPanel = ({
                                     </li>
                                 ))}
                             </ul>
-                        )}
-                        {selectedTask && (
-                            <div className="profile-day-task-detail">
-                                <TaskDetailPanel
-                                    task={taskDetail}
-                                    onUpdate={handleTaskUpdate}
-                                    onClose={() => {
-                                        setSelectedTask(null);
-                                        setTaskDetail(null);
-                                    }}
-                                />
-                                <button
-                                    type="button"
-                                    className="btn-link"
-                                    onClick={() => openTaskInProfile(selectedTask)}
-                                >
-                                    Otevřít v Moje úkoly
-                                </button>
-                            </div>
                         )}
                     </section>
 

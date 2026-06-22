@@ -7,6 +7,8 @@ class Ukol(models.Model):
     STAVY = [
         ("novy", "Nový"),
         ("v_procesu", "V procesu"),
+        ("blokovany", "Blokovaný"),
+        ("ceka_schvaleni", "Čeká schválení"),
         ("hotovo", "Hotovo"),
     ]
 
@@ -21,8 +23,13 @@ class Ukol(models.Model):
         ("osobni", "Osobní"),
     ]
 
+    ACTIVE_STAVY = ("novy", "v_procesu", "blokovany")
+
     id = models.AutoField(primary_key=True)
     ukol = models.CharField(max_length=255, db_column="UKOL")
+    vysledek = models.TextField(blank=True, default="", db_column="VYSLEDEK")
+    popis = models.TextField(blank=True, default="", db_column="POPIS")
+    dod_polozky = models.JSONField(default=list, blank=True, db_column="DOD_POLOZKY")
     priorita = models.CharField(
         max_length=50,
         choices=PRIORITY,
@@ -33,6 +40,14 @@ class Ukol(models.Model):
     deadline_cas = models.TimeField(null=True, blank=True, db_column="DEADLINE_CAS")
     stav = models.CharField(max_length=20, choices=STAVY, default="novy", db_column="STAV")
     typ = models.CharField(max_length=20, choices=TYPY, default="osobni", db_column="TYP")
+    blokovano_duvod = models.TextField(blank=True, default="", db_column="BLOKOVANO_DUVOD")
+    vyzaduje_schvaleni = models.BooleanField(default=False, db_column="VYZADUJE_SCHVALENI")
+    schvaleno_v = models.DateTimeField(null=True, blank=True, db_column="SCHVALENO_V")
+    schvalil_id = models.IntegerField(null=True, blank=True, db_column="SCHVALIL_ID")
+    start_potvrzeno_v = models.DateTimeField(null=True, blank=True, db_column="START_POTVRZENO_V")
+    prvni_krok = models.CharField(max_length=500, blank=True, default="", db_column="PRVNI_KROK")
+    mid_kontrola_v = models.DateTimeField(null=True, blank=True, db_column="MID_KONTROLA_V")
+    posledni_aktivita_v = models.DateTimeField(null=True, blank=True, db_column="POSLEDNI_AKTIVITA_V")
     precteno_v = models.DateTimeField(null=True, blank=True, db_column="PRECTENO_V")
     id_prodejce_ukol = models.IntegerField(db_column="ID_PRODEJCE_UKOL")
     id_prodejce_zadal = models.IntegerField(db_column="ID_PRODEJCE_ZADAL")
@@ -52,7 +67,10 @@ class Ukol(models.Model):
         ]
 
     def __str__(self) -> str:
-        return f"Ukol #{self.id}: {self.ukol}"
+        title = (self.vysledek or self.ukol or "").strip()
+        if title:
+            return f"Ukol #{self.id}: {title[:80]}"
+        return f"Ukol #{self.id}"
 
 
 class UkolKomentar(models.Model):
@@ -74,3 +92,31 @@ class UkolKomentar(models.Model):
 
     def __str__(self) -> str:
         return f"Komentář k úkolu #{self.ukol_id}"
+
+
+class UkolSlackNotifikace(models.Model):
+    """Záznam odeslané Slack notifikace k termínu (zabraňuje duplicitám)."""
+
+    TYPY = [
+        ("due_soon", "Blíží se termín"),
+        ("overdue", "Po termínu"),
+    ]
+
+    id = models.AutoField(primary_key=True)
+    ukol = models.ForeignKey(
+        Ukol,
+        related_name="slack_notifikace",
+        on_delete=models.CASCADE,
+        db_column="UKOL_ID",
+    )
+    typ = models.CharField(max_length=20, choices=TYPY, db_column="TYP")
+    odeslano_v = models.DateTimeField(auto_now_add=True, db_column="ODESLANO_V")
+
+    class Meta:
+        db_table = "WEB_UKOLY_SLACK_NOTIF"
+        constraints = [
+            models.UniqueConstraint(fields=["ukol", "typ"], name="uniq_ukol_slack_typ"),
+        ]
+
+    def __str__(self) -> str:
+        return f"Slack {self.typ} pro úkol #{self.ukol_id}"

@@ -160,7 +160,7 @@ export default function SellerDashboard({ user }) {
             <button
               type="button"
               className="btn btn--secondary"
-              onClick={() => navigate('/profile', { state: { profileTab: 'tasks' } })}
+              onClick={() => navigate('/my-tasks')}
             >
               Moje úkoly
             </button>

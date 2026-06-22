@@ -31,13 +31,14 @@ Brána komunikuje jen s **NVR** (ISAPI alertStream). Kamera musí být v NVR př
 cp scripts/zlin-gateway/config.example.json secrets/camera_motion_zlin.json
 # upravte motion_secret, nvr_pass
 
-cp secrets/camera_motion_zlin.json scripts/zlin-gateway/config.json
+cp -R scripts/camera-gateway scripts/zlin-gateway /Volumes/USB/
+cp secrets/camera_motion_zlin.json /Volumes/USB/zlin-gateway/config.json
 ```
 
 Na USB zkopírujte **obě** složky:
 
-- `scripts/camera-gateway/`
-- `scripts/zlin-gateway/` (s `config.json`)
+- `camera-gateway/`
+- `zlin-gateway/` (s `config.json` ze `secrets/`)
 
 Kompletní návod: `scripts/camera-gateway/INSTALL.md`
 

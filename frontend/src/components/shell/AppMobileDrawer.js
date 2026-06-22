@@ -53,6 +53,7 @@ const AppMobileDrawer = ({
                         location={location}
                         navigate={navigate}
                         mobile
+                        profileTaskBadge={profileTaskBadge}
                         onNavigate={onClose}
                         linkClass="app-drawer__link"
                         activeClass="app-drawer__link--active"

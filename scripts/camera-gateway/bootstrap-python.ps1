@@ -112,3 +112,30 @@ function Resolve-GatewayPython {
     Write-Host "System Python not found - downloading portable Python..." -ForegroundColor Yellow
     return Install-EmbeddedPython -TargetDir $InstallDir
 }
+
+function Read-GatewayConfig {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    $utf8 = New-Object System.Text.UTF8Encoding $false
+    $text = [System.IO.File]::ReadAllText($Path, $utf8)
+    if ($text.Length -gt 0 -and [int][char]$text[0] -eq 0xFEFF) {
+        $text = $text.Substring(1)
+    }
+    return ($text | ConvertFrom-Json)
+}
+
+function Write-GatewayConfig {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+        [Parameter(Mandatory = $true)]
+        [object]$Config
+    )
+
+    $json = $Config | ConvertTo-Json -Depth 5
+    $utf8 = New-Object System.Text.UTF8Encoding $false
+    [System.IO.File]::WriteAllText($Path, $json, $utf8)
+}

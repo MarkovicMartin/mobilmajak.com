@@ -5,7 +5,7 @@ import { SHIFTS_SECTIONS } from '../modules/shifts/shiftsSections';
 
 const PROFILE_NAV_CHILDREN = [
     { id: 'calendar', label: 'Můj kalendář', icon: 'fa-calendar' },
-    { id: 'tasks', label: 'Moje úkoly', icon: 'fa-clipboard-list' },
+    { id: 'tasks', label: 'Moje úkoly', path: '/my-tasks', icon: 'fa-clipboard-list' },
     { id: 'analytics', label: 'Moje výsledky', icon: 'fa-chart-line' },
     { id: 'info', label: 'Osobní údaje', icon: 'fa-id-card' },
 ];
@@ -58,8 +58,8 @@ export function getNavChildren(parentItem, auth) {
             return PROFILE_NAV_CHILDREN.map((s) => ({
                 sectionKey: `profile-${s.id}`,
                 label: s.label,
-                path: '/profile',
-                navState: { profileTab: s.id },
+                path: s.path || '/profile',
+                navState: s.path ? undefined : { profileTab: s.id },
                 icon: s.icon,
                 isChild: true,
             }));

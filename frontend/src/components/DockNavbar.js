@@ -10,6 +10,7 @@ import { springHover } from '../constants/motion';
 import './DockNavbar.css';
 
 import { NAV_ITEMS, isNavActive } from '../config/navigation';
+import { MY_TASKS_PATH } from '../utils/taskNavigation';
 
 /** @deprecated Použij config/navigation.js – ponecháno pro zpětnou kompatibilitu. */
 export { NAV_ITEMS, isNavActive };
@@ -267,7 +268,7 @@ const DockNavbar = ({
                                     type="button"
                                     layout
                                     className={`dock-icon-btn ${location.pathname === '/profile' ? 'dock-icon-btn--active dock-icon-btn--with-label' : ''}`}
-                                    onClick={() => navigate('/profile')}
+                                    onClick={() => navigate(profileTaskBadge > 0 ? MY_TASKS_PATH : '/profile')}
                                     data-tooltip={location.pathname === '/profile' ? undefined : 'Můj profil'}
                                     title="Můj profil"
                                     transition={springHover}

@@ -67,7 +67,7 @@ Další prodejny – stejný postup, jiné `-ProdejnaId` / `-ProdejnaNazev`:
 }
 ```
 
-`nvr_host` prázdné = při startu sken sítě. Pokud autodetekce na dané prodejně selže, doplňte IP ručně (jako Senimo `192.168.1.104`).
+`nvr_host` prázdné = při startu sken sítě. Pokud autodetekce na dané prodejně selže, doplňte IP ručně (jako Senimo `192.168.1.109`).
 
 ## Test ručně
 

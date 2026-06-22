@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, Navigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { profileAPI } from '../../services/api';
 import { PageHeader, Tabs } from '../../components/ui';
@@ -7,7 +7,6 @@ import './ProfileModule.css';
 import ProfileInfo from './ProfileInfo';
 import ProfileAnalytics from './ProfileAnalytics';
 import ProfileCalendar from './ProfileCalendar';
-import ProfileTasks from './ProfileTasks';
 
 const PROFILE_TABS = [
     { id: 'calendar', label: 'Můj kalendář', icon: <i className="fas fa-calendar" aria-hidden="true" /> },
@@ -76,13 +75,18 @@ const ProfileModule = () => {
                 activeId={activeTab}
                 onTabChange={setActiveTab}
                 ariaLabel="Sekce profilu"
-                className="profile-module-tabs module-tabs--desktop-only"
+                className="profile-module-tabs"
             />
 
             <div className="profile-content">
                 {activeTab === 'calendar' && <ProfileCalendar />}
                 {activeTab === 'tasks' && (
-                    <ProfileTasks initialTaskId={location.state?.taskId} />
+                    <Navigate
+                        to={location.state?.taskId
+                            ? `/my-tasks?id=${location.state.taskId}`
+                            : '/my-tasks'}
+                        replace
+                    />
                 )}
                 {activeTab === 'analytics' && (
                     <ProfileAnalytics userId={authUser.id} />

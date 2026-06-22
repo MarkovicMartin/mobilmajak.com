@@ -1,0 +1,36 @@
+MOBILMAJAK - Přerov - brána kamer (Windows PC ve prodejně)
+===========================================================
+
+USB musí obsahovat OBĚ složky:
+  camera-gateway\
+  prerov-gateway\   (s config.json)
+
+Vše spouštět v CMD jako SPRÁVCE. Potřeba INTERNET (jen Krok 1, ~25 MB).
+
+--- KROK 1: Python (vždy první!) ---
+  cd C:\Temp\prerov-gateway
+  01-setup-python.cmd
+
+  Vytvoří: C:\ProgramData\Mobilmajak\CameraGateway-Prerov\python-embed\
+
+--- KROK 2: Najít IP NVR a kamery (bez monitoru u NVR) ---
+  02-discover-lan.cmd
+
+  Výstup: JSON s nvr, ipc, nvr_channels.
+  Zapiš IP do config.json v této složce (nvr_host, camera_host).
+
+--- KROK 3: Instalace brány + test ---
+  03-install-gateway.cmd
+
+  Úlohy Plánovače + test ISAPI + motion.
+  Log: C:\ProgramData\Mobilmajak\CameraGateway-Prerov\gateway.log
+
+--- KROK 4: NVR menu (jednou ručně) ---
+  Detekce pohybu -> Propojení -> Upozornit iVMS u kanálu kamery.
+
+--- Ověření ---
+  MOBILMAJAK -> Směny -> Není v práci -> majáček u Přerova.
+
+Při problémech:
+  - "Python nenalezen" = nespustil se Krok 1
+  - "NVR nenalezen" = doplň autodiscover_subnets do config.json nebo nvr_host ručně

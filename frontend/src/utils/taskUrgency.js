@@ -29,7 +29,8 @@ export function urgencyForTask(task, now = new Date()) {
     return URGENCY_NEUTRAL;
 }
 
-export function urgencyLabel(urgency) {
+export function urgencyLabel(urgency, task) {
+    if (task?.at_risk) return 'At risk';
     switch (urgency) {
         case URGENCY_OVERDUE:
             return 'Po termínu';

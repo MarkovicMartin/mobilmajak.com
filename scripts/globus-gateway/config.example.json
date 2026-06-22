@@ -4,7 +4,8 @@
   "prodejna_nazev": "Globus",
   "motion_secret": "DOPLNTE_STEJNY_HEX_JAKO_NA_VPS_SECRETS_JSON_KLIC_1",
   "autodiscover_nvr": true,
-  "nvr_host": "",
+  "nvr_host": "10.0.0.250",
+  "camera_host": "192.168.254.3",
   "nvr_user": "admin",
   "nvr_pass": "DOPLNTE_HESLO_NVR"
 }

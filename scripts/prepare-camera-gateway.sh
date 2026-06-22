@@ -46,8 +46,6 @@ if slug not in stores:
 store = stores[slug]
 gw_dir = store["gateway_dir"]
 secrets_path = os.path.join(root, "secrets", f"camera_motion_{slug}.json")
-gw_scripts = os.path.join(root, "scripts", gw_dir)
-config_dst = os.path.join(gw_scripts, "config.json")
 
 # motion_secret: zachovat existujici, jinak placeholder
 motion_secret = "DOPLNTE_HEX_Z_VPS_CAMERA_MOTION_SECRETS_JSON"
@@ -77,16 +75,10 @@ with open(secrets_path, "w", encoding="utf-8") as f:
     json.dump(cfg, f, indent=2, ensure_ascii=False)
     f.write("\n")
 
-os.makedirs(gw_scripts, exist_ok=True)
-with open(config_dst, "w", encoding="utf-8") as f:
-    json.dump(cfg, f, indent=2, ensure_ascii=False)
-    f.write("\n")
-
 print(f"OK secrets: {secrets_path}")
-print(f"OK config:  {config_dst}")
 print(f"prodejna_id: {store['prodejna_id']}")
 print(f"VPS: pridat \"{store['prodejna_id']}\": \"<stejny motion_secret>\" do camera_motion_secrets.json")
-print(f"USB: zkopirovat scripts/camera-gateway + scripts/{gw_dir}")
+print(f"USB: zkopirovat scripts/camera-gateway + scripts/{gw_dir}, config.json ze secrets/")
 print(f"PC:  {store['install_cmd']} (cmd jako spravce)")
 PY
 
@@ -99,5 +91,9 @@ if [ -n "$USB" ]; then
   echo "Kopiruji na $USB ..."
   cp -R "$ROOT/scripts/camera-gateway" "$USB/"
   cp -R "$ROOT/scripts/$GW_DIR" "$USB/"
+  SECRETS="$ROOT/secrets/camera_motion_${SLUG}.json"
+  if [ -f "$SECRETS" ]; then
+    cp "$SECRETS" "$USB/$GW_DIR/config.json"
+  fi
   echo "Hotovo: $USB/camera-gateway + $USB/$GW_DIR"
 fi

@@ -22,6 +22,7 @@ const OrdersModule = lazy(() => import('../modules/orders/OrdersModule'));
 const PlansModule = lazy(() => import('../modules/plans/PlansModule'));
 const TicketsModule = lazy(() => import('../modules/tickets/TicketsModule'));
 const TasksManageModule = lazy(() => import('../modules/tasks/TasksManageModule'));
+const MyTasksModule = lazy(() => import('../modules/tasks/MyTasksModule'));
 const CoachingModule = lazy(() => import('../modules/coaching/CoachingModule'));
 
 const RouteFallback = () => (
@@ -63,9 +64,10 @@ const Dashboard = () => {
                         <Route path="/plans/*" element={isAdmin() ? <PlansModule /> : <Navigate to="/" />} />
                         <Route path="/leaderboard" element={<LeaderboardModule />} />
                         <Route path="/profile" element={<ProfileModule />} />
+                        <Route path="/my-tasks" element={<MyTasksModule />} />
                         <Route
                             path="/tasks"
-                            element={canManageTasks() ? <TasksManageModule /> : <Navigate to="/" />}
+                            element={canManageTasks() ? <TasksManageModule /> : <Navigate to="/my-tasks" replace />}
                         />
                         <Route
                             path="/coaching/*"

@@ -269,8 +269,9 @@ export const taskAPI = {
         const response = await api.get('/tasks/calendar/', { params: { mesic } });
         return response.data;
     },
-    getAssignees: async (prodejnaId) => {
-        const response = await api.get('/tasks/assignees/', { params: { prodejna_id: prodejnaId } });
+    getAssignees: async (prodejnaId, { storeless = false } = {}) => {
+        const params = storeless ? { storeless: '1' } : { prodejna_id: prodejnaId };
+        const response = await api.get('/tasks/assignees/', { params });
         return response.data;
     },
     listComments: async (taskId) => {

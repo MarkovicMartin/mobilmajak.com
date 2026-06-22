@@ -1,4 +1,4 @@
-from datetime import date, time
+from datetime import date, time, timedelta
 
 from django.test import TestCase
 from django.utils import timezone
@@ -6,6 +6,7 @@ from rest_framework.test import APIClient
 
 from stores.models import Prodejna
 from tasks.models import Ukol
+from tasks.urgency import is_at_risk
 from users.models import WebUser
 
 
@@ -25,6 +26,19 @@ def _make_user(pk, role, prodejna_id=None, **kwargs):
         user.prodejna_id = prodejna_id
         user.save(update_fields=["prodejna_id"])
     return user
+
+
+def _prirazeny_payload(**overrides):
+    data = {
+        "vysledek": "Připravit výlohu",
+        "ukol": "Připravit výlohu",
+        "dod_polozky": [{"text": "Výloha hotová", "splneno": False}],
+        "priorita": "stredni",
+        "typ": "prirazeny",
+        "deadline": date.today().isoformat(),
+    }
+    data.update(overrides)
+    return data
 
 
 class TasksApiTests(TestCase):
@@ -54,19 +68,30 @@ class TasksApiTests(TestCase):
     def _auth(self, user):
         self.client.force_authenticate(user=user)
 
+    def _create_prirazeny(self, **kwargs):
+        defaults = {
+            "ukol": "Připravit výlohu",
+            "vysledek": "Připravit výlohu",
+            "dod_polozky": [{"text": "Výloha hotová", "splneno": False}],
+            "priorita": "stredni",
+            "typ": "prirazeny",
+            "deadline": date.today(),
+            "id_prodejce_ukol": self.prodejce.id,
+            "id_prodejce_zadal": self.vedouci_a.id,
+            "id_prodejny": self.store_a.id,
+        }
+        defaults.update(kwargs)
+        return Ukol.objects.create(**defaults)
+
     def test_vedouci_sees_only_own_store_tasks(self):
-        Ukol.objects.create(
-            ukol="Úkol A",
-            priorita="stredni",
-            typ="prirazeny",
-            id_prodejce_ukol=self.prodejce.id,
-            id_prodejce_zadal=self.vedouci_a.id,
-            id_prodejny=self.store_a.id,
-        )
+        self._create_prirazeny(ukol="Úkol A", vysledek="Úkol A")
         Ukol.objects.create(
             ukol="Úkol B",
+            vysledek="Úkol B",
+            dod_polozky=[{"text": "x", "splneno": False}],
             priorita="stredni",
             typ="prirazeny",
+            deadline=date.today(),
             id_prodejce_ukol=self.prodejce.id,
             id_prodejce_zadal=self.vedouci_b.id,
             id_prodejny=self.store_b.id,
@@ -83,23 +108,15 @@ class TasksApiTests(TestCase):
         self.assertEqual(len(res_admin.data), 2)
 
     def test_prodejce_as_store_vedouci_can_manage_tasks(self):
-        """Vedoucí přiřazený u prodejny (i s rolí PRODEJCE) vidí úkoly pobočky."""
         prodejce_vedouci = _make_user(9011, "PRODEJCE", prodejna_id=101)
         Prodejna.objects.filter(pk=self.store_a.id).update(vedouci_user_id=prodejce_vedouci.id)
-        Ukol.objects.create(
-            ukol="Úkol na A",
-            priorita="stredni",
-            typ="prirazeny",
-            id_prodejce_ukol=self.prodejce.id,
-            id_prodejce_zadal=self.admin.id,
-            id_prodejny=self.store_a.id,
-        )
+        self._create_prirazeny(ukol="Úkol na A", vysledek="Úkol na A")
         self._auth(prodejce_vedouci)
         res = self.client.get("/api/tasks/")
         self.assertEqual(res.status_code, 200)
         self.assertEqual(len(res.data), 1)
 
-    def test_prirazeny_requires_id_prodejny(self):
+    def test_prirazeny_requires_sop_fields(self):
         self._auth(self.vedouci_a)
         res = self.client.post(
             "/api/tasks/",
@@ -113,12 +130,22 @@ class TasksApiTests(TestCase):
         )
         self.assertEqual(res.status_code, 400)
 
+        res_no_dod = self.client.post(
+            "/api/tasks/",
+            {
+                **_prirazeny_payload(),
+                "id_prodejce_ukol": self.prodejce.id,
+                "id_prodejny": self.store_a.id,
+                "dod_polozky": [],
+            },
+            format="json",
+        )
+        self.assertEqual(res_no_dod.status_code, 400)
+
         res_ok = self.client.post(
             "/api/tasks/",
             {
-                "ukol": "S pobočkou",
-                "priorita": "stredni",
-                "typ": "prirazeny",
+                **_prirazeny_payload(),
                 "id_prodejce_ukol": self.prodejce.id,
                 "id_prodejny": self.store_a.id,
             },
@@ -126,24 +153,11 @@ class TasksApiTests(TestCase):
         )
         self.assertEqual(res_ok.status_code, 201)
         self.assertEqual(res_ok.data["id_prodejny"], self.store_a.id)
+        self.assertEqual(res_ok.data["vysledek"], "Připravit výlohu")
 
     def test_scope_mine_for_employee(self):
-        Ukol.objects.create(
-            ukol="Cizí",
-            priorita="stredni",
-            typ="prirazeny",
-            id_prodejce_ukol=self.brigadnik.id,
-            id_prodejce_zadal=self.vedouci_a.id,
-            id_prodejny=self.store_a.id,
-        )
-        Ukol.objects.create(
-            ukol="Můj",
-            priorita="stredni",
-            typ="prirazeny",
-            id_prodejce_ukol=self.prodejce.id,
-            id_prodejce_zadal=self.vedouci_a.id,
-            id_prodejny=self.store_a.id,
-        )
+        self._create_prirazeny(ukol="Cizí", vysledek="Cizí", id_prodejce_ukol=self.brigadnik.id)
+        self._create_prirazeny(ukol="Můj", vysledek="Můj")
 
         self._auth(self.prodejce)
         res = self.client.get("/api/tasks/", {"scope": "mine"})
@@ -152,14 +166,7 @@ class TasksApiTests(TestCase):
         self.assertEqual(res.data[0]["ukol"], "Můj")
 
     def test_notifications_unread_only_prirazeny(self):
-        Ukol.objects.create(
-            ukol="Od vedoucího",
-            priorita="stredni",
-            typ="prirazeny",
-            id_prodejce_ukol=self.prodejce.id,
-            id_prodejce_zadal=self.vedouci_a.id,
-            id_prodejny=self.store_a.id,
-        )
+        self._create_prirazeny(ukol="Od vedoucího", vysledek="Od vedoucího")
         Ukol.objects.create(
             ukol="Osobní",
             priorita="stredni",
@@ -173,6 +180,22 @@ class TasksApiTests(TestCase):
         res = self.client.get("/api/tasks/notifications-summary/")
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res.data["tasks_unread"], 1)
+
+    def test_manager_notifications_include_at_risk_and_approval(self):
+        self._create_prirazeny(
+            stav="ceka_schvaleni",
+            vyzaduje_schvaleni=True,
+            dod_polozky=[{"text": "Hotovo", "splneno": True}],
+        )
+        overdue = self._create_prirazeny(stav="v_procesu", prvni_krok="x", ukol="Po termínu", vysledek="Po termínu")
+        overdue.deadline = date.today() - timedelta(days=1)
+        overdue.save(update_fields=["deadline"])
+
+        self._auth(self.vedouci_a)
+        res = self.client.get("/api/tasks/notifications-summary/")
+        self.assertEqual(res.status_code, 200)
+        self.assertGreaterEqual(res.data["cekajici_schvaleni_count"], 1)
+        self.assertGreaterEqual(res.data["at_risk_count"], 1)
 
     def test_shifts_calendar_scope_mine_for_admin(self):
         from shifts.models import Smena
@@ -231,9 +254,7 @@ class TasksApiTests(TestCase):
         res = self.client.post(
             "/api/tasks/",
             {
-                "ukol": "Výpomoc na A",
-                "priorita": "stredni",
-                "typ": "prirazeny",
+                **_prirazeny_payload(),
                 "id_prodejce_ukol": prodejce_b.id,
                 "id_prodejny": self.store_a.id,
             },
@@ -251,17 +272,11 @@ class TasksApiTests(TestCase):
         ids = [a["id"] for a in assignees]
         self.assertIn(admin_b.id, ids)
         self.assertEqual(assignees[ids.index(admin_b.id)]["skupina"], "admini")
-        admin_indices = [i for i, a in enumerate(assignees) if a.get("skupina") == "admini"]
-        non_admin_indices = [i for i, a in enumerate(assignees) if a.get("skupina") != "admini"]
-        if admin_indices and non_admin_indices:
-            self.assertGreater(min(admin_indices), max(non_admin_indices))
 
         res = self.client.post(
             "/api/tasks/",
             {
-                "ukol": "Úkol pro admina",
-                "priorita": "stredni",
-                "typ": "prirazeny",
+                **_prirazeny_payload(vysledek="Úkol pro admina", ukol="Úkol pro admina"),
                 "id_prodejce_ukol": admin_b.id,
                 "id_prodejny": self.store_a.id,
             },
@@ -301,7 +316,7 @@ class TasksApiTests(TestCase):
         )
         self.assertIsNone(task.dokonceno_v)
         self._auth(self.prodejce)
-        res = self.client.patch(
+        res = self.client.put(
             f"/api/tasks/{task.id}/",
             {"stav": "hotovo"},
             format="json",
@@ -310,3 +325,270 @@ class TasksApiTests(TestCase):
         task.refresh_from_db()
         self.assertIsNotNone(task.dokonceno_v)
         self.assertLessEqual(task.dokonceno_v, timezone.now())
+
+    def test_prirazeny_requires_prvni_krok_to_start(self):
+        task = self._create_prirazeny()
+        self._auth(self.prodejce)
+        res = self.client.put(
+            f"/api/tasks/{task.id}/",
+            {"stav": "v_procesu"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 400)
+
+        res_ok = self.client.put(
+            f"/api/tasks/{task.id}/",
+            {"stav": "v_procesu", "prvni_krok": "Zkontroluju sklad"},
+            format="json",
+        )
+        self.assertEqual(res_ok.status_code, 200)
+        task.refresh_from_db()
+        self.assertEqual(task.stav, "v_procesu")
+        self.assertIsNotNone(task.start_potvrzeno_v)
+
+    def test_assignee_can_toggle_dod_polozky(self):
+        task = self._create_prirazeny(stav="v_procesu", prvni_krok="Start")
+        self._auth(self.prodejce)
+        res = self.client.put(
+            f"/api/tasks/{task.id}/",
+            {"dod_polozky": [{"text": "Výloha hotová", "splneno": True}]},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 200)
+        self.assertTrue(res.data["dod_polozky"][0]["splneno"])
+        task.refresh_from_db()
+        self.assertTrue(task.dod_polozky[0]["splneno"])
+
+    def test_assignee_cannot_edit_task_details(self):
+        task = self._create_prirazeny()
+        self._auth(self.prodejce)
+        res = self.client.put(
+            f"/api/tasks/{task.id}/",
+            {"vysledek": "Změněný výsledek"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 403)
+
+    def test_hotovo_requires_complete_dod(self):
+        task = self._create_prirazeny(stav="v_procesu", prvni_krok="Start")
+        self._auth(self.prodejce)
+        res = self.client.put(
+            f"/api/tasks/{task.id}/",
+            {"stav": "hotovo"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 400)
+
+        res_ok = self.client.put(
+            f"/api/tasks/{task.id}/",
+            {
+                "stav": "hotovo",
+                "dod_polozky": [{"text": "Výloha hotová", "splneno": True}],
+            },
+            format="json",
+        )
+        self.assertEqual(res_ok.status_code, 200)
+        self.assertEqual(res_ok.data["stav"], "hotovo")
+
+    def test_approval_flow_ceka_schvaleni(self):
+        task = self._create_prirazeny(
+            stav="v_procesu",
+            prvni_krok="Start",
+            vyzaduje_schvaleni=True,
+        )
+        self._auth(self.prodejce)
+        res = self.client.put(
+            f"/api/tasks/{task.id}/",
+            {
+                "stav": "hotovo",
+                "dod_polozky": [{"text": "Výloha hotová", "splneno": True}],
+            },
+            format="json",
+        )
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data["stav"], "ceka_schvaleni")
+
+        self._auth(self.vedouci_a)
+        res_approve = self.client.put(
+            f"/api/tasks/{task.id}/",
+            {"stav": "hotovo"},
+            format="json",
+        )
+        self.assertEqual(res_approve.status_code, 200)
+        self.assertEqual(res_approve.data["stav"], "hotovo")
+        self.assertIsNotNone(res_approve.data["schvaleno_v"])
+
+    def test_wip_warning_on_create(self):
+        for i in range(3):
+            self._create_prirazeny(ukol=f"Úkol {i}", vysledek=f"Úkol {i}")
+        self._auth(self.vedouci_a)
+        res = self.client.post(
+            "/api/tasks/",
+            {
+                **_prirazeny_payload(vysledek="Čtvrtý", ukol="Čtvrtý"),
+                "id_prodejce_ukol": self.prodejce.id,
+                "id_prodejny": self.store_a.id,
+            },
+            format="json",
+        )
+        self.assertEqual(res.status_code, 201)
+        self.assertIn("wip_warning", res.data)
+
+    def test_at_risk_overdue(self):
+        task = self._create_prirazeny(stav="v_procesu", prvni_krok="x")
+        task.deadline = date.today() - timedelta(days=1)
+        task.save(update_fields=["deadline"])
+        self.assertTrue(is_at_risk(task))
+
+    def test_filter_at_risk(self):
+        task = self._create_prirazeny(stav="v_procesu", prvni_krok="x")
+        task.deadline = date.today() - timedelta(days=1)
+        task.save(update_fields=["deadline"])
+        self._auth(self.vedouci_a)
+        res = self.client.get("/api/tasks/", {"filter": "at_risk", "typ": "prirazeny"})
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(len(res.data), 1)
+        self.assertTrue(res.data[0]["at_risk"])
+
+    def test_admin_can_create_storeless_prirazeny_task(self):
+        backoffice = _make_user(9030, "VEDOUCI", prodejna_id=None, jmeno="Back", prijmeni="Office")
+        self._auth(self.admin)
+        res = self.client.post(
+            "/api/tasks/",
+            {
+                **_prirazeny_payload(vysledek="Centrální úkol", ukol="Centrální úkol"),
+                "id_prodejce_ukol": backoffice.id,
+                "id_prodejny": None,
+            },
+            format="json",
+        )
+        self.assertEqual(res.status_code, 201)
+        self.assertIsNone(res.data["id_prodejny"])
+        self.assertEqual(res.data["id_prodejce_ukol"], backoffice.id)
+
+    def test_vedouci_cannot_create_storeless_prirazeny_task(self):
+        admin_b = _make_user(9031, "ADMIN", jmeno="Admin", prijmeni="Dva")
+        self._auth(self.vedouci_a)
+        res = self.client.post(
+            "/api/tasks/",
+            {
+                **_prirazeny_payload(),
+                "id_prodejce_ukol": admin_b.id,
+                "id_prodejny": None,
+            },
+            format="json",
+        )
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("administrátor", res.data["error"].lower())
+
+    def test_storeless_assignee_sees_own_task(self):
+        backoffice = _make_user(9032, "PRODEJCE", prodejna_id=None, jmeno="Centr", prijmeni="Staff")
+        task = Ukol.objects.create(
+            ukol="Bez pobočky",
+            vysledek="Bez pobočky",
+            dod_polozky=[{"text": "Hotovo", "splneno": False}],
+            priorita="stredni",
+            typ="prirazeny",
+            deadline=date.today(),
+            id_prodejce_ukol=backoffice.id,
+            id_prodejce_zadal=self.admin.id,
+            id_prodejny=None,
+        )
+        self._auth(backoffice)
+        res = self.client.get("/api/tasks/")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(len(res.data), 1)
+        self.assertEqual(res.data[0]["id"], task.id)
+
+    def test_storeless_assignees_endpoint(self):
+        backoffice = _make_user(9033, "PRODEJCE", prodejna_id=None, jmeno="Centr", prijmeni="Dva")
+        self._auth(self.admin)
+        res = self.client.get("/api/tasks/assignees/", {"storeless": "1"})
+        self.assertEqual(res.status_code, 200)
+        ids = {a["id"] for a in res.data["assignees"]}
+        self.assertIn(self.admin.id, ids)
+        self.assertIn(backoffice.id, ids)
+        self.assertIn(self.prodejce.id, ids)
+
+        admin_entry = next(a for a in res.data["assignees"] if a["id"] == self.admin.id)
+        self.assertEqual(admin_entry["skupina"], "admini")
+        backoffice_entry = next(a for a in res.data["assignees"] if a["id"] == backoffice.id)
+        self.assertEqual(backoffice_entry["skupina"], "backoffice")
+        prodejce_entry = next(a for a in res.data["assignees"] if a["id"] == self.prodejce.id)
+        self.assertEqual(prodejce_entry["skupina"], "prodejna")
+        self.assertEqual(prodejce_entry["prodejna_id"], self.store_a.id)
+
+        assignees = res.data["assignees"]
+        admin_idx = next(i for i, a in enumerate(assignees) if a["id"] == self.admin.id)
+        prodejce_idx = next(i for i, a in enumerate(assignees) if a["id"] == self.prodejce.id)
+        self.assertLess(admin_idx, prodejce_idx)
+
+    def test_admin_can_create_storeless_task_for_store_employee(self):
+        self._auth(self.admin)
+        res = self.client.post(
+            "/api/tasks/",
+            {
+                **_prirazeny_payload(vysledek="Úkol na prodejci", ukol="Úkol na prodejci"),
+                "id_prodejce_ukol": self.prodejce.id,
+                "id_prodejny": None,
+            },
+            format="json",
+        )
+        self.assertEqual(res.status_code, 201)
+        self.assertIsNone(res.data["id_prodejny"])
+        self.assertEqual(res.data["id_prodejce_ukol"], self.prodejce.id)
+
+    def test_admin_can_update_storeless_task(self):
+        backoffice = _make_user(9034, "PRODEJCE", prodejna_id=None)
+        task = Ukol.objects.create(
+            ukol="Původní",
+            vysledek="Původní",
+            dod_polozky=[{"text": "Krok", "splneno": False}],
+            priorita="stredni",
+            typ="prirazeny",
+            deadline=date.today(),
+            id_prodejce_ukol=backoffice.id,
+            id_prodejce_zadal=self.admin.id,
+            id_prodejny=None,
+        )
+        self._auth(self.admin)
+        res = self.client.put(
+            f"/api/tasks/{task.id}/",
+            {"vysledek": "Upravený výsledek", "deadline": date.today().isoformat()},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data["vysledek"], "Upravený výsledek")
+
+    def test_admin_can_toggle_dod_on_assigned_task(self):
+        task = self._create_prirazeny()
+        self._auth(self.admin)
+        res = self.client.put(
+            f"/api/tasks/{task.id}/",
+            {"dod_polozky": [{"text": "Výloha hotová", "splneno": True}]},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 200)
+        self.assertTrue(res.data["dod_polozky"][0]["splneno"])
+
+    def test_vedouci_can_toggle_dod_on_store_task(self):
+        task = self._create_prirazeny()
+        self._auth(self.vedouci_a)
+        res = self.client.put(
+            f"/api/tasks/{task.id}/",
+            {"dod_polozky": [{"text": "Výloha hotová", "splneno": True}]},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 200)
+        self.assertTrue(res.data["dod_polozky"][0]["splneno"])
+
+    def test_prodejce_cannot_toggle_dod_on_others_task(self):
+        task = self._create_prirazeny()
+        other = _make_user(9050, "PRODEJCE", prodejna_id=101)
+        self._auth(other)
+        res = self.client.put(
+            f"/api/tasks/{task.id}/",
+            {"dod_polozky": [{"text": "Výloha hotová", "splneno": True}]},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 403)

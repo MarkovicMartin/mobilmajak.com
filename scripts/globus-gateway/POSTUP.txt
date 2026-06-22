@@ -1,0 +1,52 @@
+MOBILMAJAK - Globus - brana kamer (Windows PC v prodejne)
+==========================================================
+
+Pilot prodejna_id = 1. Stejny model jako Sternberk / Zlin / Senimo.
+
+SIT:
+  NVR:    10.0.0.250
+  Kamera: 192.168.254.3  (v NVR, brana komunikuje jen s NVR)
+
+USB musi obsahovat OBE slozky:
+  camera-gateway\
+  globus-gateway\   (s config.json)
+
+--- PRIPRAVA NA MACU (jednou) ---
+
+  cp -R scripts/camera-gateway scripts/globus-gateway /Volumes/USB/
+  cp secrets/camera_motion_globus.json /Volumes/USB/globus-gateway/config.json
+
+--- NOVA INSTALACE (CMD jako SPRAVCE) ---
+
+  cd C:\Temp\globus-gateway
+  install-globus-camera-gateway.cmd
+
+  Potreba INTERNET pri prvni instalaci (~25 MB Python).
+  V NVR: Detekce -> Propojeni -> Upozornit iVMS u kanalu kamery.
+
+--- OPRAVA / AKTUALIZACE (jiz nainstalovane PC) ---
+
+  cd C:\Temp\globus-gateway
+  fix-and-restart-globus.cmd
+
+  Nebo jen skripty bez prepisu configu:
+  update-installed-gateway.cmd
+
+--- KONTROLA ---
+
+  Log:
+    C:\ProgramData\Mobilmajak\CameraGateway-Globus\gateway.log
+  Ocekavano: Pripojeno HTTP 200, nasloucham, stale nasloucham ~60 s
+
+  Ulohy Planovace:
+    Mobilmajak-CameraGateway-Globus
+    Mobilmajak-CameraGateway-Globus-WakeKick
+    (akce = wscript.exe)
+
+  MOBILMAJAK: Smeny -> Neni v praci -> majacek u Globusu (zdroj gateway).
+
+Doporuceni: vypnout spanek PC.
+
+Test z Macu (VPN do LAN):
+  ./scripts/camera_motion_test_globus.sh isapi
+  ./scripts/camera_motion_test_globus.sh motion true

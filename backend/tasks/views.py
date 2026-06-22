@@ -12,6 +12,7 @@ from users.models import WebUser
 from .models import Ukol, UkolKomentar
 from .permissions import (
     assignees_for_store,
+    assignees_storeless,
     is_task_manager,
     tasks_queryset_for_user,
     user_can_access_task,
@@ -20,11 +21,10 @@ from .permissions import (
     validate_task_create,
     validate_task_update,
     vedouci_store_ids,
+    wip_warning_on_assign,
 )
 from .serializers import UkolKomentarSerializer, UkolSerializer, serialize_tasks_list
-from .urgency import notifications_counts_for_user, urgency_for_task
-
-OPEN_TASK_STATUSES = ('novy', 'v_procesu')
+from .urgency import is_at_risk, notifications_counts_for_user, OPEN_TASK_STATUSES, urgency_for_task
 
 
 def _parse_month(mesic: str):
@@ -67,6 +67,10 @@ def _filter_tasks_queryset(qs, request):
     if prodejna_id:
         qs = qs.filter(id_prodejny=prodejna_id)
 
+    special = request.GET.get("filter")
+    if special == "cekajici_schvaleni":
+        qs = qs.filter(stav="ceka_schvaleni")
+
     return qs
 
 
@@ -78,6 +82,8 @@ def tasks_list_create(request):
         qs = qs.annotate(komentare_count=Count('komentare'))
         limit = min(int(request.GET.get("limit", 200)), 500)
         tasks = list(qs.order_by("-vytvoreno")[:limit])
+        if request.GET.get("filter") == "at_risk":
+            tasks = [t for t in tasks if is_at_risk(t)]
         return Response(serialize_tasks_list(tasks, request))
 
     data = request.data.copy()
@@ -116,7 +122,11 @@ def tasks_list_create(request):
             task.precteno_v = None
             task.save(update_fields=["precteno_v"])
         out = UkolSerializer(task, context={"request": request})
-        return Response(out.data, status=status.HTTP_201_CREATED)
+        response_data = out.data
+        wip_warning = wip_warning_on_assign(task.id_prodejce_ukol)
+        if wip_warning:
+            response_data = {**response_data, "wip_warning": wip_warning}
+        return Response(response_data, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -145,15 +155,17 @@ def task_detail(request, task_id: int):
 
     data = request.data.copy()
     detail_fields = {
-        "ukol", "priorita", "deadline", "deadline_cas",
-        "id_prodejce_ukol", "id_prodejny", "typ",
+        "ukol", "vysledek", "popis", "priorita", "deadline", "deadline_cas",
+        "id_prodejce_ukol", "id_prodejny", "typ", "vyzaduje_schvaleni",
     }
+    state_fields = {"stav", "prvni_krok", "dod_polozky", "blokovano_duvod", "potvrdit_mid_kontrolu"}
     if detail_fields & set(data.keys()):
         if not user_can_edit_task_details(request.user, task):
             return Response(
                 {"error": "Nemáte oprávnění k úpravě úkolu"},
                 status=status.HTTP_403_FORBIDDEN,
             )
+    if (detail_fields | state_fields) & set(data.keys()):
         err = validate_task_update(request.user, task, data)
         if err:
             return Response({"error": err}, status=status.HTTP_400_BAD_REQUEST)
@@ -201,7 +213,7 @@ def tasks_calendar(request):
         kalendar_data[datum_str].append(
             {
                 "id": task.id,
-                "ukol": task.ukol,
+                "ukol": task.vysledek or task.ukol,
                 "stav": task.stav,
                 "priorita": task.priorita,
                 "typ": task.typ,
@@ -239,6 +251,8 @@ def task_comments(request, task_id: int):
         autor_jmeno=jmeno or str(request.user.id),
         text=text,
     )
+    task.posledni_aktivita_v = timezone.now()
+    task.save(update_fields=["posledni_aktivita_v", "upraveno"])
     return Response(UkolKomentarSerializer(comment).data, status=status.HTTP_201_CREATED)
 
 
@@ -276,7 +290,7 @@ def tasks_unread_summary(request):
 def _serialize_dashboard_task(task, assignees_map):
     return {
         'id': task.id,
-        'ukol': task.ukol,
+        'ukol': task.vysledek or task.ukol,
         'stav': task.stav,
         'priorita': task.priorita,
         'deadline': task.deadline.isoformat() if task.deadline else None,
@@ -323,6 +337,10 @@ def tasks_dashboard_snapshot(request):
 def tasks_assignees(request):
     if not is_task_manager(request.user):
         return Response({"error": "Nemáte oprávnění"}, status=status.HTTP_403_FORBIDDEN)
+
+    storeless = request.GET.get("storeless") in ("1", "true", "yes")
+    if storeless:
+        return Response({"assignees": assignees_storeless(request.user)})
 
     prodejna_id = request.GET.get("prodejna_id")
     if not prodejna_id:

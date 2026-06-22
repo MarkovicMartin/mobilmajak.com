@@ -18,6 +18,25 @@ function New-GatewayPeriodicTrigger {
     return $trigger
 }
 
+function New-HiddenGatewayTaskAction {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ScriptPath,
+        [string]$ExtraPsArgs = ""
+    )
+
+    $installDir = Split-Path -Parent $ScriptPath
+    $hiddenVbs = Join-Path $installDir "run-ps-hidden.vbs"
+    if (-not (Test-Path $hiddenVbs)) {
+        throw "Missing run-ps-hidden.vbs in $installDir - reinstall or run fix-and-restart"
+    }
+
+    $psArgs = "-File `"$ScriptPath`"$ExtraPsArgs"
+    return New-ScheduledTaskAction `
+        -Execute "wscript.exe" `
+        -Argument "//B //Nologo `"$hiddenVbs`" `"$psArgs`""
+}
+
 function Register-MobilmajakGatewayTasks {
     param(
         [Parameter(Mandatory = $true)]
@@ -31,9 +50,7 @@ function Register-MobilmajakGatewayTasks {
 
     $wakeKickTaskName = "$TaskName-WakeKick"
 
-    $action = New-ScheduledTaskAction `
-        -Execute "powershell.exe" `
-        -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$RunScript`""
+    $action = New-HiddenGatewayTaskAction -ScriptPath $RunScript
 
     $triggers = @()
 
@@ -42,7 +59,6 @@ function Register-MobilmajakGatewayTasks {
     $triggers += $boot
 
     $triggers += New-ScheduledTaskTrigger -AtLogOn
-    $triggers += New-GatewayPeriodicTrigger -IntervalMinutes 30
 
     $settings = New-ScheduledTaskSettingsSet `
         -AllowStartIfOnBatteries `
@@ -61,12 +77,14 @@ function Register-MobilmajakGatewayTasks {
         -RunLevel Highest `
         -Force | Out-Null
 
-    $kickAction = New-ScheduledTaskAction `
-        -Execute "powershell.exe" `
-        -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$WakeKickScript`" -TaskName `"$TaskName`""
+    $kickAction = New-HiddenGatewayTaskAction `
+        -ScriptPath $WakeKickScript `
+        -ExtraPsArgs " -TaskName `"$TaskName`""
 
     $kickTriggers = @()
     $kickTriggers += New-ScheduledTaskTrigger -AtLogOn
+    # Kazdych 30 min tvrdy restart (hlavni uloha bezi porad -> IgnoreNew by jinak nic nedelal)
+    $kickTriggers += New-GatewayPeriodicTrigger -IntervalMinutes 30
 
     # Wake from sleep: Power-Troubleshooter event ID 1
     try {

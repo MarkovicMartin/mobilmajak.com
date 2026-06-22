@@ -1,0 +1,38 @@
+MOBILMAJAK - Senimo - oprava brany kamer (Windows PC v prodejne)
+================================================================
+
+Stav na serveru: brana neposila udalosti (posledni pohyb starsi nez 12 h).
+Reseni: stejny balicek jako Sternberk/Zlin (scripts/camera-gateway).
+
+USB musi obsahovat OBE slozky:
+  camera-gateway\
+  senimo-gateway\   (config.json nepovinne - na PC uz je v ProgramData)
+
+V CMD jako SPRAVCE:
+
+  cd C:\Temp\senimo-gateway
+  fix-and-restart-senimo.cmd
+
+Co skript udelá:
+  - zkopiruje aktualni skripty z camera-gateway do
+    C:\ProgramData\Mobilmajak\SenimoCameraGateway
+  - PREPÍŠE config.json z USB (senimo-gateway\config.json)  -> nvr_host 192.168.1.109
+  - preregistruje ulohy Plánovače (wscript bez okna + WakeKick kazdych 30 min)
+  - restartuje branu
+
+Ocekavany vystup v logu:
+  C:\ProgramData\Mobilmajak\SenimoCameraGateway\gateway.log
+  -> Supervisor start, nasloucham, stale nasloucham kazdych ~60 s
+
+Ulohy Plánovače:
+  Mobilmajak-Senimo-CameraGateway
+  Mobilmajak-Senimo-CameraGateway-WakeKick
+  (akce = wscript.exe, NE powershell.exe)
+
+Doporuceni: vypnout spanek PC (Napajeni -> nikdy uspat).
+
+Nova instalace (cista):
+  install-senimo-camera-gateway.cmd  (stejne USB, config.json v senimo-gateway)
+
+Ověření v MOBILMAJAK:
+  Směny -> Není v práci -> majáček u Senima (zdroj gateway).

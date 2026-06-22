@@ -8,14 +8,17 @@ param(
     [int]$ProdejnaId,
     [string]$ProdejnaNazev = "Prodejna",
     [switch]$SkipTest,
-    [string]$InstallDir = ""
+    [string]$InstallDir = "",
+    [string]$TaskName = ""
 )
 
 $ErrorActionPreference = "Stop"
 if (-not $InstallDir) {
     $InstallDir = "C:\ProgramData\Mobilmajak\CameraGateway-$ProdejnaNazev"
 }
-$TaskName = "Mobilmajak-CameraGateway-$ProdejnaNazev"
+if (-not $TaskName) {
+    $TaskName = "Mobilmajak-CameraGateway-$ProdejnaNazev"
+}
 $SourceDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 
 . (Join-Path $SourceDir "bootstrap-python.ps1")
@@ -29,7 +32,7 @@ if (-not (Test-Path $InstallDir)) {
 $py = Resolve-GatewayPython -InstallDir $InstallDir
 Write-Host "Python: $py"
 
-foreach ($f in @("camera_motion_gateway.py", "run-gateway.ps1", "wake-kick-gateway.ps1", "register-gateway-tasks.ps1", "config.example.json", "bootstrap-python.ps1")) {
+foreach ($f in @("camera_motion_gateway.py", "run-gateway.ps1", "wake-kick-gateway.ps1", "register-gateway-tasks.ps1", "config.example.json", "bootstrap-python.ps1", "run-ps-hidden.vbs")) {
     Copy-Item (Join-Path $SourceDir $f) (Join-Path $InstallDir $f) -Force
 }
 
@@ -39,23 +42,23 @@ if (Test-Path $sourceConfig) {
     Copy-Item $sourceConfig $configPath -Force
 } elseif (-not (Test-Path $configPath)) {
     Copy-Item (Join-Path $InstallDir "config.example.json") $configPath
-    $cfg = Get-Content $configPath -Raw | ConvertFrom-Json
+    $cfg = Read-GatewayConfig -Path $configPath
     $cfg | Add-Member -NotePropertyName prodejna_id -NotePropertyValue $ProdejnaId -Force
     $cfg | Add-Member -NotePropertyName prodejna_nazev -NotePropertyValue $ProdejnaNazev -Force
-    $cfg | ConvertTo-Json -Depth 5 | Set-Content $configPath -Encoding ASCII
+    Write-GatewayConfig -Path $configPath -Config $cfg
     Write-Host ""
     Write-Host "Edit $configPath :" -ForegroundColor Yellow
     Write-Host "  motion_secret, nvr_pass (leave nvr_host empty for autodiscover)"
     Read-Host "Press Enter after editing config.json"
 }
 
-$cfg = Get-Content $configPath -Raw | ConvertFrom-Json
+$cfg = Read-GatewayConfig -Path $configPath
 $cfg | Add-Member -NotePropertyName prodejna_id -NotePropertyValue $ProdejnaId -Force
 $cfg | Add-Member -NotePropertyName prodejna_nazev -NotePropertyValue $ProdejnaNazev -Force
 if (-not $cfg.PSObject.Properties.Match('autodiscover_nvr')) {
     $cfg | Add-Member -NotePropertyName autodiscover_nvr -NotePropertyValue $true -Force
 }
-$cfg | ConvertTo-Json -Depth 5 | Set-Content $configPath -Encoding ASCII
+Write-GatewayConfig -Path $configPath -Config $cfg
 
 foreach ($key in @("motion_secret", "nvr_pass")) {
     if ($cfg.$key -match "DOPLNTE") { throw "Missing value in config.json: $key" }
