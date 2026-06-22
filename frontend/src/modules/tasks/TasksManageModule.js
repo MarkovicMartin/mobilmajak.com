@@ -176,12 +176,13 @@ const TasksManageModule = () => {
     }, []);
 
     useEffect(() => {
-        if (form.bezPobocky && isAdmin()) {
+        const adminUser = user?.role === 'ADMIN';
+        if (form.bezPobocky && adminUser) {
             loadAssignees(null, true);
         } else {
             loadAssignees(form.id_prodejny);
         }
-    }, [form.id_prodejny, form.bezPobocky, isAdmin, loadAssignees]);
+    }, [form.id_prodejny, form.bezPobocky, user?.role, loadAssignees]);
 
     const updateDod = (index, text) => {
         setForm((f) => {
@@ -258,8 +259,8 @@ const TasksManageModule = () => {
             await taskAPI.delete(selected.id);
             setSelected(null);
             await load(listParams);
-        } catch {
-            /* tiché */
+        } catch (err) {
+            window.alert(err?.response?.data?.error || 'Smazání se nezdařilo.');
         }
     };
 

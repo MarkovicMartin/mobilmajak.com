@@ -239,6 +239,7 @@ export default function PlansModule() {
   const [totalLock, setTotalLock] = useState(false);
   const [planovaciRezim, setPlanovaciRezim] = useState('top_down'); // 'top_down' | 'bottom_up'
   const [rustProcent, setRustProcent] = useState('10');
+  const [rustProcentDebounced, setRustProcentDebounced] = useState('10');
   const [prodejny, setProdejny] = useState([]);
   const [prepocet, setPrepocet] = useState(null);
   const [onboardingDismissed, setOnboardingDismissed] = useState(() => {
@@ -441,9 +442,14 @@ export default function PlansModule() {
     loadPlan(vybraneMesic.rok, vybraneMesic.mesic);
   }, [vybraneMesic, loadPlan]);
 
+  useEffect(() => {
+    const t = setTimeout(() => setRustProcentDebounced(rustProcent), 500);
+    return () => clearTimeout(t);
+  }, [rustProcent]);
+
   const loadForecast = useCallback(async (options = {}) => {
     const { force = false } = options;
-    const rust = Number(String(rustProcent).replace(',', '.'));
+    const rust = Number(String(rustProcentDebounced).replace(',', '.'));
     if (Number.isNaN(rust) || rust < -100) {
       setChyba('Zadejte platné procento růstu.');
       return;
@@ -454,7 +460,7 @@ export default function PlansModule() {
       forecastCompareRoky,
       vyhledFirma,
       vyhledProdejny,
-      rustProcent,
+      rustProcent: rustProcentDebounced,
     });
     const seq = ++forecastFetchSeq.current;
     const cached = force ? null : readOutlookCache(paramsKey);
@@ -503,7 +509,7 @@ export default function PlansModule() {
         setForecastLoading(false);
       }
     }
-  }, [forecastRok, forecastCompareRoky, vyhledFirma, vyhledProdejny, rustProcent]);
+  }, [forecastRok, forecastCompareRoky, vyhledFirma, vyhledProdejny, rustProcentDebounced]);
 
   useEffect(() => {
     if (viewMode === 'vyhled') loadForecast();

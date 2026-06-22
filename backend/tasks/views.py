@@ -82,9 +82,11 @@ def tasks_list_create(request):
         qs = _filter_tasks_queryset(tasks_queryset_for_user(request.user), request)
         qs = qs.annotate(komentare_count=Count('komentare'))
         limit = min(int(request.GET.get("limit", 200)), 500)
-        tasks = list(qs.order_by("-vytvoreno")[:limit])
         if request.GET.get("filter") == "at_risk":
-            tasks = [t for t in tasks if is_at_risk(t)]
+            scanned = list(qs.order_by("-vytvoreno")[:2000])
+            tasks = [t for t in scanned if is_at_risk(t)][:limit]
+        else:
+            tasks = list(qs.order_by("-vytvoreno")[:limit])
         return Response(serialize_tasks_list(tasks, request))
 
     data = request.data.copy()

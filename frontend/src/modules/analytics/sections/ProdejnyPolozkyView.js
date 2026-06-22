@@ -53,6 +53,7 @@ const ProdejnyPolozkyView = ({
     onSellerClick,
     visibleMetrics,
     compactDetail = false,
+    onDataLoaded,
 }) => {
     const [filters, setFilters] = useState(() => mergePolozkyScope(
         filtersFromParent || buildInitialPolozkyFilters(),
@@ -78,12 +79,10 @@ const ProdejnyPolozkyView = ({
     useEffect(() => {
         if (filtersFromParent) {
             setFilters(mergePolozkyScope(filtersFromParent, scopeFilters));
+        } else {
+            setFilters((prev) => mergePolozkyScope(prev, scopeFilters));
         }
     }, [filtersFromParent, scopeFilters]);
-
-    useEffect(() => {
-        setFilters((prev) => mergePolozkyScope(prev, scopeFilters));
-    }, [scopeFilters]);
 
     const updateFilters = (next) => {
         const merged = mergePolozkyScope(next, scopeFilters);
@@ -128,6 +127,7 @@ const ProdejnyPolozkyView = ({
             const result = await analyticsGet('web-prodeje/polozky/', params);
             if (result.success && Array.isArray(result.data)) {
                 setSalesData(result.data);
+                onDataLoaded?.(result.data);
                 setLastUpdate(result.lastUpdate || result.generated_at || new Date().toISOString());
             } else {
                 throw new Error(result.error || 'Chyba při načítání dat');

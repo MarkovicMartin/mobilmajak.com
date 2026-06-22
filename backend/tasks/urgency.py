@@ -59,9 +59,9 @@ def is_at_risk(task: Ukol, now: datetime | None = None) -> bool:
         ref = task.posledni_aktivita_v or task.upraveno or task.vytvoreno
         if ref and (now - ref) >= timedelta(hours=AT_RISK_BLOCKED_HOURS):
             return True
-        return True
+        return False
 
-    if task.stav in ("v_procesu", "blokovany"):
+    if task.stav == "v_procesu":
         ref = task.posledni_aktivita_v or task.start_potvrzeno_v or task.upraveno
         if ref and (now - ref) >= timedelta(hours=AT_RISK_INACTIVITY_HOURS):
             return True
@@ -78,11 +78,14 @@ def is_task_unread(task: Ukol, user) -> bool:
     )
 
 
+WIP_STAVY = Ukol.ACTIVE_STAVY + ("ceka_schvaleni",)
+
+
 def active_task_count_for_assignee(assignee_id: int) -> int:
     return Ukol.objects.filter(
         typ="prirazeny",
         id_prodejce_ukol=assignee_id,
-        stav__in=Ukol.ACTIVE_STAVY,
+        stav__in=WIP_STAVY,
     ).count()
 
 
@@ -138,7 +141,7 @@ def notifications_counts_for_user(user) -> dict:
         return result
 
     at_risk_count = 0
-    for task in manager_qs:
+    for task in manager_qs.order_by("-vytvoreno")[:2000]:
         if is_at_risk(task, now):
             at_risk_count += 1
 

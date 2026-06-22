@@ -62,6 +62,7 @@ const AppSidebar = ({
                             collapsed={collapsed}
                             linkClass="app-sidebar__link"
                             activeClass="app-sidebar__link--active"
+                            childClass="app-sidebar__link--child"
                         />
                     </div>
                     <button

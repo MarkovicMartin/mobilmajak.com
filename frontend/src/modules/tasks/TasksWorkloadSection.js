@@ -15,6 +15,7 @@ const TasksWorkloadSection = () => {
     const [scopeFilters, setScopeFilters] = useState(() => pickPolozkyScope(buildInitialPolozkyFilters()));
     const [stores, setStores] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [refreshKey, setRefreshKey] = useState(0);
     const [quickKey, setQuickKey] = useState(() =>
         detectQuickRangePreset(
             buildInitialPolozkyFilters().start_date,
@@ -93,7 +94,7 @@ const TasksWorkloadSection = () => {
                 onPeriodChange={handlePeriodChange}
                 onDateApply={handleDateApply}
                 onQuickPreset={handleQuickPreset}
-                onRefresh={() => setFilters((f) => ({ ...f }))}
+                onRefresh={() => setRefreshKey((k) => k + 1)}
                 loading={loading}
                 className="tasks-workload-filters"
             >
@@ -130,6 +131,7 @@ const TasksWorkloadSection = () => {
                 filters={workloadFilters}
                 variant="page"
                 onLoadingChange={setLoading}
+                refreshKey={refreshKey}
             />
         </div>
     );

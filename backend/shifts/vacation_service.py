@@ -136,23 +136,35 @@ def deficit_fondu_rok(user_id, rok, referencni_datum=None, hours_cache=None):
     return round(celkem, 2)
 
 
-def celkove_cerpano_rok(user_id, rok, ignorovat_smena_id=None, referencni_datum=None):
+def celkove_cerpano_rok(user_id, rok, ignorovat_smena_id=None, referencni_datum=None, hours_cache=None):
     """Čerpání fondu: směny dovolené + automatický deficit z nesplněného měsíčního fondu."""
     smeny_h = cerpana_dovolena_rok(user_id, rok, ignorovat_smena_id=ignorovat_smena_id)
-    deficit_h = deficit_fondu_rok(user_id, rok, referencni_datum=referencni_datum)
+    deficit_h = deficit_fondu_rok(
+        user_id, rok, referencni_datum=referencni_datum, hours_cache=hours_cache,
+    )
     return round(smeny_h + deficit_h, 2)
 
 
-def prevod_z_predchoziho_roku(user_id, rok):
+def prevod_z_predchoziho_roku(user_id, rok, _memo=None, hours_cache=None):
     if rok <= 2000:
         return 0.0
+    if _memo is None:
+        _memo = {}
+    key = (user_id, rok)
+    if key in _memo:
+        return _memo[key]
     prev_rok = rok - 1
     if not mel_fond_v_roce(user_id, prev_rok):
+        _memo[key] = 0.0
         return 0.0
-    fond_prev = DOVOLENA_ROCNI_FOND + prevod_z_predchoziho_roku(user_id, prev_rok)
-    cerpano_prev = celkove_cerpano_rok(user_id, prev_rok)
+    fond_prev = DOVOLENA_ROCNI_FOND + prevod_z_predchoziho_roku(
+        user_id, prev_rok, _memo=_memo, hours_cache=hours_cache,
+    )
+    cerpano_prev = celkove_cerpano_rok(user_id, prev_rok, hours_cache=hours_cache)
     nevyuzito = max(0.0, fond_prev - cerpano_prev)
-    return min(float(DOVOLENA_PREVOD_MAX), nevyuzito)
+    result = min(float(DOVOLENA_PREVOD_MAX), nevyuzito)
+    _memo[key] = result
+    return result
 
 
 def fond_extra_h(user):
@@ -165,9 +177,11 @@ def korekce_cerpano_h(user):
     return float(val) if val is not None else 0.0
 
 
-def dovolena_fond_rok(user_id, rok, fond_extra=0.0):
+def dovolena_fond_rok(user_id, rok, fond_extra=0.0, hours_cache=None):
     return round(
-        DOVOLENA_ROCNI_FOND + prevod_z_predchoziho_roku(user_id, rok) + float(fond_extra or 0),
+        DOVOLENA_ROCNI_FOND
+        + prevod_z_predchoziho_roku(user_id, rok, hours_cache=hours_cache)
+        + float(fond_extra or 0),
         2,
     )
 
@@ -181,8 +195,8 @@ def dovolena_stav(user, rok=None, hours_cache=None, referencni_datum=None):
         referencni_datum = date.today()
     extra = fond_extra_h(user)
     korekce = korekce_cerpano_h(user)
-    prevod = prevod_z_predchoziho_roku(user.id, rok)
-    fond = dovolena_fond_rok(user.id, rok, fond_extra=extra)
+    prevod = prevod_z_predchoziho_roku(user.id, rok, hours_cache=hours_cache)
+    fond = dovolena_fond_rok(user.id, rok, fond_extra=extra, hours_cache=hours_cache)
     cerpano_smeny = cerpana_dovolena_rok(user.id, rok)
     odeceno_deficit = deficit_fondu_rok(
         user.id, rok, referencni_datum=referencni_datum, hours_cache=hours_cache,

@@ -29,7 +29,7 @@ from analytics.receipt_metrics import (
     qualifying_polozka_q,
     sum_obrat_s_dph,
 )
-from analytics.sunshine_config import sunshine_kusy_sum, sunshine_row_q
+from analytics.sunshine_config import sunshine_bonus_kusy_sum, sunshine_row_q
 from analytics.service_commission import service_metrics_count_annotations
 from analytics.viceprace_config import (
     polozky_nad_100_q,
@@ -262,7 +262,7 @@ def parse_polozky_params(get_params) -> PolozkyParams:
     prodejna_id = get_params.get('prodejna_id') or None
     segment = get_params.get('segment', 'vse') or 'vse'
     include_hours = get_params.get('include_hours') in ('1', 'true', 'True')
-    include_profit = get_params.get('include_profit', '1') not in ('0', 'false', 'False')
+    include_profit = get_params.get('include_profit', '0') not in ('0', 'false', 'False')
 
     user_ids = None
     raw_users = get_params.get('user_ids', '')
@@ -395,7 +395,7 @@ def aggregate_polozky_by_salesperson(
         polozky_nad_100=Sum('pocet_kusu', filter=polozky_nad_100_q(), default=0),
         viceprace_obrat=viceprace_obrat_sum(),
         **service_metrics_count_annotations(),
-        sunshine=sunshine_kusy_sum(),
+        sunshine=sunshine_bonus_kusy_sum(),
         sklicka=Count('id', filter=Q(kategorie_1='Skla a fólie')),
         lepeni=Count('id', filter=Q(kod='LOS')),
         polozky_nad_29=Count('id', filter=qualifying_polozka_q()),

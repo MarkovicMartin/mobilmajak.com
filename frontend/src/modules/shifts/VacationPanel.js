@@ -53,15 +53,21 @@ function mergeUserRows(cachedUsers, freshUsers, rok, now = new Date()) {
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth() + 1;
     const freshById = new Map((freshUsers || []).map((u) => [u.user_id, u]));
+    const cachedById = new Map((cachedUsers || []).map((u) => [u.user_id, u]));
 
     if (rok < currentYear) {
         return cachedUsers;
     }
 
-    const source = cachedUsers?.length ? cachedUsers : freshUsers;
-    return (source || []).map((cachedUser) => {
-        const freshUser = freshById.get(cachedUser.user_id);
+    const allIds = new Set([
+        ...(cachedUsers || []).map((u) => u.user_id),
+        ...(freshUsers || []).map((u) => u.user_id),
+    ]);
+    return [...allIds].map((userId) => {
+        const cachedUser = cachedById.get(userId);
+        const freshUser = freshById.get(userId);
         if (!freshUser) return cachedUser;
+        if (!cachedUser) return freshUser;
         if (rok > currentYear) return freshUser;
 
         const cachedMesice = cachedUser.mesice || [];
@@ -85,7 +91,7 @@ function mergeUserRows(cachedUsers, freshUsers, rok, now = new Date()) {
             mesice,
             cerpano_rok_z_mesicu_h: mesice.reduce((s, m) => s + (Number(m.cerpano_h) || 0), 0),
         };
-    });
+    }).filter(Boolean);
 }
 
 function needsBackgroundRefresh(rok, cached, now = new Date()) {

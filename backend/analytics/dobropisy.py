@@ -11,6 +11,7 @@ from collections import defaultdict
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 
+from django.db import transaction
 from django.db.models import Count, F, Q, Sum
 
 DOBROPIS_EXCLUDED_KODY = ('SLEVA', 'BODY')
@@ -200,10 +201,11 @@ def _load_pairing_cache(sale_ids: list[int]) -> dict[int, dict]:
     from analytics.models import DobropisPairingCache
 
     out = {}
-    for row in DobropisPairingCache.objects.filter(
-        sale_id__in=sale_ids,
-        pairing_version=PAIRING_VERSION,
-    ):
+    stale_ids = []
+    for row in DobropisPairingCache.objects.filter(sale_id__in=sale_ids):
+        if row.pairing_version != PAIRING_VERSION:
+            stale_ids.append(row.sale_id)
+            continue
         puvodni_datum = row.puvodni_datum.isoformat() if row.puvodni_datum else None
         puvodni_cas = row.puvodni_cas.isoformat() if row.puvodni_cas else None
         out[row.sale_id] = {
@@ -216,6 +218,8 @@ def _load_pairing_cache(sale_ids: list[int]) -> dict[int, dict]:
             'puvodni_stredisko': row.puvodni_stredisko,
             'minut_po_prodeji': row.minut_po_prodeji,
         }
+    if stale_ids:
+        DobropisPairingCache.objects.filter(sale_id__in=stale_ids).delete()
     return out
 
 
@@ -276,9 +280,10 @@ def _ensure_pairing_cached(
     from analytics.models import DobropisPairingCache
 
     uncached_ids = [sale['id'] for sale in uncached]
-    if uncached_ids:
-        DobropisPairingCache.objects.filter(sale_id__in=uncached_ids).delete()
-    DobropisPairingCache.objects.bulk_create(to_store)
+    with transaction.atomic():
+        if uncached_ids:
+            DobropisPairingCache.objects.filter(sale_id__in=uncached_ids).delete()
+        DobropisPairingCache.objects.bulk_create(to_store, ignore_conflicts=True)
     return cached
 
 

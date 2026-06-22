@@ -3,7 +3,6 @@ import ConfirmModal from '../../components/ConfirmModal';
 import Modal from '../../components/Modal';
 import './ShiftCalendar.css';
 import UnifiedCalendar from './UnifiedCalendar';
-import AdminShiftRoster from './AdminShiftRoster';
 import { shiftRoleLabel } from './shiftRoleLabels';
 import { groupDayShiftsByStore } from './shiftRosterUtils';
 import { format, parse, startOfMonth, endOfMonth, eachDayOfInterval, isBefore } from 'date-fns';
@@ -136,10 +135,11 @@ function ShiftCalendar({
 
     const monthCoverage = useMemo(() => {
         if (!showStaffingGaps) {
-            return { gapDays: 0, allEmptyDays: 0, partialDays: 0 };
+            return { gapDays: 0, allEmptyDays: 0, partialDays: 0, gapsByDate: {} };
         }
         const monthStart = startOfMonth(parse(`${month}-01`, 'yyyy-MM-dd', new Date()));
         const days = eachDayOfInterval({ start: monthStart, end: endOfMonth(monthStart) });
+        const gapsByDate = {};
         let gapDays = 0;
         let allEmptyDays = 0;
         let partialDays = 0;
@@ -148,12 +148,15 @@ function ShiftCalendar({
             if (svatky[dateStr]) return;
             const gap = getStaffingGap(getShiftsForDate(dateStr), stores, allStores, dateStr, prodejna);
             if (!gap) return;
+            gapsByDate[dateStr] = gap;
             gapDays += 1;
             if (gap.kind === 'all-empty') allEmptyDays += 1;
             else partialDays += 1;
         });
-        return { gapDays, allEmptyDays, partialDays };
+        return { gapDays, allEmptyDays, partialDays, gapsByDate };
     }, [showStaffingGaps, month, kalendarData, stores, allStores, svatky, prodejna]);
+
+    const staffingGapsByDate = monthCoverage.gapsByDate;
 
     const getExtraCellClass = useCallback((dateStr) => {
         const classes = [];
@@ -161,10 +164,10 @@ function ShiftCalendar({
         if (!dateStr.startsWith(month) || !showStaffingGaps || svatky[dateStr]) {
             return classes.join(' ');
         }
-        const gap = getStaffingGap(kalendarData[dateStr] || [], stores, allStores, dateStr, prodejna);
+        const gap = staffingGapsByDate[dateStr];
         if (gap) classes.push(gap.kind === 'all-empty' ? 'staffing-empty' : 'staffing-partial');
         return classes.join(' ');
-    }, [month, svatky, showStaffingGaps, kalendarData, stores, allStores, prodejna]);
+    }, [month, svatky, showStaffingGaps, staffingGapsByDate]);
 
     const formatTime = (timeStr) => {
         return timeStr.substring(0, 5);
@@ -487,7 +490,7 @@ function ShiftCalendar({
                         const isSvatek = svatky[dateStr];
                         const inMonth = dateStr.startsWith(month);
                         const staffingGap = inMonth && !isSvatek && showStaffingGaps
-                            ? getStaffingGap(workShifts, stores, allStores, dateStr, prodejna)
+                            ? staffingGapsByDate[dateStr]
                             : null;
                         return (
                             <>
@@ -534,14 +537,6 @@ function ShiftCalendar({
                     }}
                 />
             </div>
-
-            {isAdminAllStores && (
-                <AdminShiftRoster
-                    kalendarData={kalendarData}
-                    stores={stores}
-                    month={month}
-                />
-            )}
 
             {showActionModal && selectedShift && (
                 <Modal

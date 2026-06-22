@@ -5,6 +5,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
+from django.db import transaction
 from django.db.models import Q, Sum, Count
 from django.http import HttpResponse
 from datetime import datetime, timedelta, date
@@ -224,52 +225,56 @@ def smeny_list(request):
             elif is_absence_shift(typ_smeny):
                 cas_od, cas_do = normalize_dovolena_casy(shift_datum, cas_od, cas_do)
 
-            existing_smena = find_overlapping_shift(
-                user, shift_datum, prodejna_obj, typ_smeny, cas_od, cas_do,
-            )
-            if existing_smena:
-                store_hint = (
-                    'dovolená/nemoc'
-                    if is_absence_shift(typ_smeny)
-                    else (prodejna_obj.nazev_kratkiy if prodejna_obj else data.get('prodejna'))
+            with transaction.atomic():
+                Smena.objects.select_for_update().filter(
+                    user=user, datum=shift_datum, aktivni=True,
                 )
-                if is_absence_shift(typ_smeny):
-                    err_msg = (
-                        f'Na datum {data["datum"]} už máte záznam ({store_hint}). '
-                        'Chcete-li změnit čas, upravte stávající směnu.'
+                existing_smena = find_overlapping_shift(
+                    user, shift_datum, prodejna_obj, typ_smeny, cas_od, cas_do,
+                )
+                if existing_smena:
+                    store_hint = (
+                        'dovolená/nemoc'
+                        if is_absence_shift(typ_smeny)
+                        else (prodejna_obj.nazev_kratkiy if prodejna_obj else data.get('prodejna'))
                     )
-                else:
-                    err_msg = (
-                        f'Na datum {data["datum"]} na prodejně {store_hint} už máte směnu '
-                        f'{existing_smena.cas_od.strftime("%H:%M")}–{existing_smena.cas_do.strftime("%H:%M")}, '
-                        'která se časově překrývá. Pro druhý úsek (např. výpomoc → prodej) zvolte jiný čas.'
-                    )
-                return Response({
-                    'error': err_msg,
-                    'existing_shift_id': existing_smena.id,
-                    'existing_shift': {
-                        'cas_od': existing_smena.cas_od.strftime('%H:%M'),
-                        'cas_do': existing_smena.cas_do.strftime('%H:%M'),
-                        'typ_smeny': existing_smena.typ_smeny,
-                        'brigadnik_rezim': existing_smena.brigadnik_rezim,
-                    }
-                }, status=status.HTTP_409_CONFLICT)
+                    if is_absence_shift(typ_smeny):
+                        err_msg = (
+                            f'Na datum {data["datum"]} už máte záznam ({store_hint}). '
+                            'Chcete-li změnit čas, upravte stávající směnu.'
+                        )
+                    else:
+                        err_msg = (
+                            f'Na datum {data["datum"]} na prodejně {store_hint} už máte směnu '
+                            f'{existing_smena.cas_od.strftime("%H:%M")}–{existing_smena.cas_do.strftime("%H:%M")}, '
+                            'která se časově překrývá. Pro druhý úsek (např. výpomoc → prodej) zvolte jiný čas.'
+                        )
+                    return Response({
+                        'error': err_msg,
+                        'existing_shift_id': existing_smena.id,
+                        'existing_shift': {
+                            'cas_od': existing_smena.cas_od.strftime('%H:%M'),
+                            'cas_do': existing_smena.cas_do.strftime('%H:%M'),
+                            'typ_smeny': existing_smena.typ_smeny,
+                            'brigadnik_rezim': existing_smena.brigadnik_rezim,
+                        }
+                    }, status=status.HTTP_409_CONFLICT)
 
-            smena = Smena.objects.create(
-                user=user,
-                prodejna=prodejna_obj,
-                datum=data['datum'],
-                cas_od=cas_od,
-                cas_do=cas_do,
-                typ_smeny=typ_smeny,
-                brigadnik_rezim=_normalize_brigadnik_rezim(
-                    user, typ_smeny, data.get('brigadnik_rezim'),
-                ),
-                pozice_smeny=_normalize_pozice_smeny(
-                    prodejna_obj, typ_smeny, data.get('pozice_smeny'),
-                ),
-                poznamka=data.get('poznamka', '')
-            )
+                smena = Smena.objects.create(
+                    user=user,
+                    prodejna=prodejna_obj,
+                    datum=data['datum'],
+                    cas_od=cas_od,
+                    cas_do=cas_do,
+                    typ_smeny=typ_smeny,
+                    brigadnik_rezim=_normalize_brigadnik_rezim(
+                        user, typ_smeny, data.get('brigadnik_rezim'),
+                    ),
+                    pozice_smeny=_normalize_pozice_smeny(
+                        prodejna_obj, typ_smeny, data.get('pozice_smeny'),
+                    ),
+                    poznamka=data.get('poznamka', '')
+                )
             
             return Response({
                 'id': smena.id,
@@ -419,22 +424,30 @@ def smena_detail(request, smena_id):
             if is_absence_shift(smena.typ_smeny):
                 smena.prodejna = None
             elif 'prodejna' in data:
-                smena.prodejna = data['prodejna']
+                try:
+                    smena.prodejna = resolve_prodejna(data['prodejna'], smena.typ_smeny)
+                except Prodejna.DoesNotExist:
+                    return Response(
+                        {'error': f"Prodejna '{data['prodejna']}' nebyla nalezena"},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                except ValueError as exc:
+                    return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
             if 'datum' in data:
-                smena.datum = data['datum']
+                smena.datum = new_datum
             if is_absence_shift(smena.typ_smeny):
                 cas_od, cas_do = normalize_dovolena_casy(
                     new_datum,
-                    data.get('cas_od', smena.cas_od),
-                    data.get('cas_do', smena.cas_do),
+                    parse_shift_time(data.get('cas_od', smena.cas_od)),
+                    parse_shift_time(data.get('cas_do', smena.cas_do)),
                 )
                 smena.cas_od = cas_od
                 smena.cas_do = cas_do
             else:
                 if 'cas_od' in data:
-                    smena.cas_od = data['cas_od']
+                    smena.cas_od = parse_shift_time(data['cas_od'])
                 if 'cas_do' in data:
-                    smena.cas_do = data['cas_do']
+                    smena.cas_do = parse_shift_time(data['cas_do'])
             if 'brigadnik_rezim' in data or 'typ_smeny' in data:
                 smena.brigadnik_rezim = _normalize_brigadnik_rezim(
                     smena.user,
@@ -720,9 +733,13 @@ def vacation_overview(request):
         rok = date.today().year
 
     if user_id:
-        if request.user.role != 'ADMIN' and int(user_id) != request.user.id:
+        try:
+            uid = int(user_id)
+        except (TypeError, ValueError):
+            return Response({'error': 'Neplatné user_id'}, status=status.HTTP_400_BAD_REQUEST)
+        if request.user.role != 'ADMIN' and uid != request.user.id:
             return Response({'error': 'Nemáte oprávnění'}, status=status.HTTP_403_FORBIDDEN)
-        users = [get_object_or_404(WebUser, id=user_id)]
+        users = [get_object_or_404(WebUser, id=uid)]
     elif request.user.role == 'ADMIN':
         users = list(real_sales_staff_queryset().order_by('jmeno', 'prijmeni'))
     else:

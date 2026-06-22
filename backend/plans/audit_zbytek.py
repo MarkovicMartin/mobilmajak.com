@@ -8,6 +8,16 @@ from .category_mapping import PRACOVNI_KATEGORIE, is_pracovni_kategorie, kategor
 MAX_POLOZKY_LIMIT = 2000
 
 
+def _zbytek_total_where_sql(case_sql: str) -> str:
+    return f"""
+        Vystaveno >= %s AND Vystaveno < %s
+        AND (Cena_ks_vcl_DPH > 14 OR Cena_ks_vcl_DPH < 0)
+        AND KATEGORIE IS NOT NULL AND TRIM(COALESCE(KATEGORIE, '')) != ''
+        AND COALESCE(KATEGORIE, '') != 'Nezařazeno'
+        AND ({case_sql}) = 'PRISLUSENSTVI_OSTATNI'
+    """
+
+
 def _zbytek_audit_where_sql(case_sql: str) -> str:
     pracovni_in = ', '.join("'" + k.replace("'", "''") + "'" for k in PRACOVNI_KATEGORIE)
     return f"""
@@ -67,7 +77,18 @@ def audit_zbytek_mesic(rok: int, mesic: int) -> dict:
             else:
                 ostatni_kusy += kusy_i
 
-    total_zbytek = sum(r['kusy'] for r in rows)
+    total_sql = f"""
+        SELECT SUM(
+            CASE WHEN COALESCE(Cena_ks_vcl_DPH, 0) >= 0
+            THEN COALESCE(NULLIF(Pocet_kusu, 0), 1)
+            ELSE -COALESCE(NULLIF(Pocet_kusu, 0), 1) END
+        ) AS kusy
+        FROM WEB_PRODEJE_ALL
+        WHERE {_zbytek_total_where_sql(case_sql)}
+    """
+    with connection.cursor() as cursor:
+        cursor.execute(total_sql, [start_d, end_d])
+        total_zbytek = int((cursor.fetchone() or [0])[0] or 0)
 
     return {
         'rok': rok,

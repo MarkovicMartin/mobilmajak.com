@@ -178,6 +178,7 @@ function PayrollPanel({ month, onExport }) {
         if (!month) return;
         setDiscountedError('');
         discountedRowsLoadedRef.current = false;
+        setDiscountedOpen(false);
         setDiscountedRows([]);
         try {
             const res = await fetch(
@@ -191,9 +192,6 @@ function PayrollPanel({ month, onExport }) {
             const data = await res.json();
             setDiscountedCount(Number(data.count) || 0);
             setDiscountedExcluded(Number(data.vyloucene_body_celkem) || 0);
-            if ((data.count || 0) > 0) {
-                setDiscountedOpen(true);
-            }
         } catch (e) {
             setDiscountedError(e.message);
             setDiscountedCount(0);
@@ -241,6 +239,7 @@ function PayrollPanel({ month, onExport }) {
         if (!month) return;
         setDobropisyError('');
         dobropisyRowsLoadedRef.current = false;
+        setDobropisyOpen(false);
         setDobropisyRows([]);
         setDobropisyPairingTotals({ zrcadlo: 0, par: 0, bez_paru: 0 });
         try {
@@ -256,9 +255,6 @@ function PayrollPanel({ month, onExport }) {
             setDobropisySummary(data.summary || []);
             setDobropisyTotals(data.totals || { polozky: 0, doklady: 0, castka: 0 });
             setDobropisyFilterUser('');
-            if ((data.totals?.polozky || 0) > 0) {
-                setDobropisyOpen(true);
-            }
         } catch (e) {
             setDobropisyError(e.message);
             setDobropisySummary([]);

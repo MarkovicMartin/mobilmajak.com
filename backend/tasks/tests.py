@@ -443,6 +443,10 @@ class TasksApiTests(TestCase):
         self.assertEqual(res.status_code, 201)
         self.assertIn("wip_warning", res.data)
 
+    def test_at_risk_blocked_not_immediate(self):
+        task = self._create_prirazeny(stav="blokovany", blokovano_duvod="čekám")
+        self.assertFalse(is_at_risk(task))
+
     def test_at_risk_overdue(self):
         task = self._create_prirazeny(stav="v_procesu", prvni_krok="x")
         task.deadline = date.today() - timedelta(days=1)

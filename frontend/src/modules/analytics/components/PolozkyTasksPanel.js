@@ -9,6 +9,7 @@ const PolozkyTasksPanel = ({
     defaultOpen = false,
     variant = 'collapsible',
     onLoadingChange,
+    refreshKey = 0,
 }) => {
     const isPage = variant === 'page';
     const [open, setOpen] = useState(isPage || defaultOpen);
@@ -47,7 +48,7 @@ const PolozkyTasksPanel = ({
         };
         load();
         return () => { cancelled = true; };
-    }, [active, JSON.stringify(filters), onLoadingChange]);
+    }, [active, JSON.stringify(filters), onLoadingChange, refreshKey]);
 
     const body = (
         <div className={isPage ? 'polozky-tasks-panel__body polozky-tasks-panel__body--page' : 'polozky-tasks-panel__body'}>

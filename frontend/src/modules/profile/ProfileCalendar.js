@@ -19,6 +19,7 @@ const ProfileCalendar = () => {
     const [shiftData, setShiftData] = useState({});
     const [taskData, setTaskData] = useState({});
     const [loading, setLoading] = useState(false);
+    const [loadError, setLoadError] = useState('');
     const [vacationBalance, setVacationBalance] = useState(null);
     const [selectedDate, setSelectedDate] = useState(null);
     const [focusShiftId, setFocusShiftId] = useState(null);
@@ -26,6 +27,7 @@ const ProfileCalendar = () => {
 
     const load = useCallback(async () => {
         setLoading(true);
+        setLoadError('');
         try {
             const [shiftsRes, tasksRes] = await Promise.all([
                 api.get('/shifts/calendar/', { params: { mesic: month, scope: 'mine' } }),
@@ -33,9 +35,10 @@ const ProfileCalendar = () => {
             ]);
             setShiftData(shiftsRes.data?.kalendar_data || {});
             setTaskData(tasksRes.kalendar_data || tasksRes?.data?.kalendar_data || {});
-        } catch {
+        } catch (err) {
             setShiftData({});
             setTaskData({});
+            setLoadError(err?.response?.data?.error || err?.message || 'Nepodařilo se načíst kalendář.');
         } finally {
             setLoading(false);
         }
@@ -142,6 +145,12 @@ const ProfileCalendar = () => {
 
     return (
         <div className="profile-calendar">
+            {loadError && (
+                <p className="celkova-cisla-error">
+                    {loadError}{' '}
+                    <button type="button" className="btn-link" onClick={load}>Zkusit znovu</button>
+                </p>
+            )}
             {vacationBalance?.eligible && (
                 <div className="profile-vacation-banner">
                     🏖️ Dovolená {vacationBalance.rok}: zbývá{' '}

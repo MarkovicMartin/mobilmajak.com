@@ -51,9 +51,10 @@ def _plan_castka_prodejny(rok, mesic, prodejna_ids):
     total = sum(float(ps.castka_prodejna or 0) for ps in qs)
     return total if total > 0 else None
 
-# Cache uzavřených měsíců (minulé roky se nemění) – TTL 24 h
+# Cache uzavřených měsíců (minulé roky se nemění) – TTL 24 h, max 64 klíčů
 _OBRAT_MESICNE_CACHE = {}
 _OBRAT_CACHE_TTL = 86400
+_OBRAT_CACHE_MAX = 64
 
 TREND_MIN = -0.05
 TREND_MAX = 0.25
@@ -154,6 +155,9 @@ def _obrat_mesicne_map_cached(rok_od, mesic_od, rok_do, mesic_do, reference=None
         rok_od, mesic_od, rok_do, mesic_do, prodejna_ids=prodejna_ids,
     )
     if immutable:
+        if len(_OBRAT_MESICNE_CACHE) >= _OBRAT_CACHE_MAX:
+            oldest_key = min(_OBRAT_MESICNE_CACHE, key=lambda k: _OBRAT_MESICNE_CACHE[k][0])
+            del _OBRAT_MESICNE_CACHE[oldest_key]
         _OBRAT_MESICNE_CACHE[key] = (time.time() + _OBRAT_CACHE_TTL, data)
     return data
 

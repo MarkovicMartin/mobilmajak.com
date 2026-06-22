@@ -70,6 +70,7 @@ const AppMobileDrawer = ({
                         onNavigate={onClose}
                         linkClass="app-drawer__link"
                         activeClass="app-drawer__link--active"
+                        childClass="app-drawer__link--child"
                     />
                     <button
                         type="button"

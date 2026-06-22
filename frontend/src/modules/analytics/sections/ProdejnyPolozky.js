@@ -11,25 +11,10 @@ import {
     mergePolozkyScope,
     pickPolozkyScope,
 } from './polozkyFilters';
-import { analyticsGet } from '../../../utils/analyticsRequest';
 import { storeAPI } from '../../../services/api';
 import './CelkovaCisla.css';
 import './Polozky.css';
 import './ProdejnyPolozky.css';
-
-const fetchPolozkyData = async (filters, visibleMetrics) => {
-    const params = new URLSearchParams();
-    Object.keys(filters).forEach((key) => {
-        if (filters[key] != null && filters[key] !== '') params.append(key, filters[key]);
-    });
-    const hourly = ['odpracovane_hodiny', 'polozky_nad_100_za_hodinu', 'celkovy_obrat_za_hodinu'];
-    if ([...visibleMetrics].some((m) => hourly.includes(m))) {
-        params.set('include_hours', '1');
-    }
-    params.set('include_profit', '1');
-    const result = await analyticsGet('web-prodeje/polozky/', params);
-    return result.success && Array.isArray(result.data) ? result.data : [];
-};
 
 const mesicFromFilters = (filters) => {
     if (filters?.period === 'monthly_select' && filters.selected_month) {
@@ -50,9 +35,9 @@ const ProdejnyPolozky = () => {
     const [isComparison, setIsComparison] = useState(false);
     const [rightFilters, setRightFilters] = useState(() => shiftFiltersOneYearBack(buildInitialPolozkyFilters()));
     const [rightFiltersTouched, setRightFiltersTouched] = useState(false);
-    const [leftData, setLeftData] = useState([]);
-    const [rightData, setRightData] = useState([]);
     const [visibleMetrics, setVisibleMetrics] = useState(() => new Set(DEFAULT_VISIBLE_METRICS));
+    const [leftPaneData, setLeftPaneData] = useState(null);
+    const [rightPaneData, setRightPaneData] = useState(null);
     const [compactDetail, setCompactDetail] = useState(false);
     const [sharedFilters, setSharedFilters] = useState(buildInitialPolozkyFilters());
     const [scopeFilters, setScopeFilters] = useState(() => pickPolozkyScope(buildInitialPolozkyFilters()));
@@ -86,15 +71,6 @@ const ProdejnyPolozky = () => {
             return nextScope;
         });
     }, []);
-
-    useEffect(() => {
-        if (!isComparison) return;
-        fetchPolozkyData(rightFilters, visibleMetrics).then(setRightData).catch(() => setRightData([]));
-    }, [isComparison, rightFilters, visibleMetrics]);
-
-    useEffect(() => {
-        fetchPolozkyData(leftFiltersRef.current, visibleMetrics).then(setLeftData).catch(() => setLeftData([]));
-    }, [sharedFilters, visibleMetrics, isComparison]);
 
     const toggleComparison = () => {
         setIsComparison((v) => {
@@ -182,7 +158,8 @@ const ProdejnyPolozky = () => {
                             paneRole="left"
                             scopeFilters={scopeFilters}
                             onFiltersChange={handleLeftFiltersChange}
-                            compareData={isComparison ? rightData : null}
+                            compareData={isComparison ? rightPaneData : null}
+                            onDataLoaded={setLeftPaneData}
                             onSellerClick={openSellerCoaching}
                             visibleMetrics={visibleMetrics}
                             compactDetail={compactDetail}
@@ -196,7 +173,8 @@ const ProdejnyPolozky = () => {
                                 scopeFilters={scopeFilters}
                                 filtersFromParent={rightFilters}
                                 onFiltersChange={handleRightFiltersChange}
-                                compareData={leftData}
+                                compareData={leftPaneData}
+                                onDataLoaded={setRightPaneData}
                                 onSellerClick={openSellerCoaching}
                                 visibleMetrics={visibleMetrics}
                                 compactDetail={compactDetail}
