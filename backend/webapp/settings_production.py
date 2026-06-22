@@ -215,7 +215,8 @@ TICKET_WEBHOOK_URLS = [
     'https://80-211-198-189.sslip.io/webhook-test/e06d3356-c8d9-4bbd-bf15-2f9701962278',
 ]
 
-# Slack webhook pro notifikace termínů úkolů (volitelné – prázdné = no-op)
+# Slack notifikace úkolů (volitelné – prázdné = no-op)
+SLACK_BOT_TOKEN = os.getenv('SLACK_BOT_TOKEN', '')
 SLACK_TASKS_WEBHOOK_URL = os.getenv('SLACK_TASKS_WEBHOOK_URL', '')
 MOBILMAJAK_APP_URL = os.getenv('MOBILMAJAK_APP_URL', 'https://mobilmajak.com')
 

@@ -24,6 +24,7 @@ from .permissions import (
     wip_warning_on_assign,
 )
 from .serializers import UkolKomentarSerializer, UkolSerializer, serialize_tasks_list
+from .slack_notify import notify_task_lifecycle_change
 from .urgency import is_at_risk, notifications_counts_for_user, OPEN_TASK_STATUSES, urgency_for_task
 
 
@@ -121,6 +122,7 @@ def tasks_list_create(request):
         if task.typ == "prirazeny" and task.id_prodejce_ukol != request.user.id:
             task.precteno_v = None
             task.save(update_fields=["precteno_v"])
+        notify_task_lifecycle_change(task, is_new=True)
         out = UkolSerializer(task, context={"request": request})
         response_data = out.data
         wip_warning = wip_warning_on_assign(task.id_prodejce_ukol)
@@ -173,6 +175,7 @@ def task_detail(request, task_id: int):
     serializer = UkolSerializer(task, data=data, partial=True, context={"request": request})
     if serializer.is_valid():
         old_assignee = task.id_prodejce_ukol
+        old_stav = task.stav
         updated = serializer.save()
         if (
             updated.typ == "prirazeny"
@@ -181,6 +184,11 @@ def task_detail(request, task_id: int):
         ):
             updated.precteno_v = None
             updated.save(update_fields=["precteno_v", "upraveno"])
+        notify_task_lifecycle_change(
+            updated,
+            old_stav=old_stav,
+            old_assignee=old_assignee,
+        )
         return Response(UkolSerializer(updated, context={"request": request}).data)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 

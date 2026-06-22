@@ -296,6 +296,7 @@ function ShiftCalendar({
 
     const isSellerView = user?.role === 'PRODEJCE' || user?.role === 'VEDOUCI';
     const isAdminAllStores = user?.role === 'ADMIN' && allStores && seeAllEmployees;
+    const showCounterShiftLabel = ['ADMIN', 'VEDOUCI'].includes(user?.role);
 
     const renderShiftRow = (shift, dateStr, { hideStoreName = false } = {}) => {
         const isOwnShift = String(shift.user_id) === String(user?.id);
@@ -311,7 +312,7 @@ function ShiftCalendar({
         const roleLabel = shiftRoleLabel(shift, { short: true });
         const titleParts = [
             !hideStoreName && allStores && shift.prodejna_nazev ? shift.prodejna_nazev : null,
-            isCounterShift ? `Protisměna: ${shift.user_jmeno}` : shift.user_jmeno,
+            isCounterShift && showCounterShiftLabel ? `Protisměna: ${shift.user_jmeno}` : shift.user_jmeno,
             roleLabel,
             `${formatTime(shift.cas_od)}-${formatTime(shift.cas_do)}`,
         ].filter(Boolean);
@@ -329,7 +330,7 @@ function ShiftCalendar({
                         <div className="shift-store">{shift.prodejna_nazev}</div>
                     )}
                     <div className="shift-name">
-                        {isCounterShift && (
+                        {isCounterShift && showCounterShiftLabel && (
                             <span className="counter-shift-badge">Protisměna</span>
                         )}
                         {shift.user_jmeno}
@@ -454,10 +455,12 @@ function ShiftCalendar({
                         <span className="legend-swatch legend-swatch--mine" />
                         Moje směna
                     </span>
-                    <span className="legend-item">
-                        <span className="legend-swatch legend-swatch--counter" />
-                        Protisměna
-                    </span>
+                    {showCounterShiftLabel && (
+                        <span className="legend-item">
+                            <span className="legend-swatch legend-swatch--counter" />
+                            Protisměna
+                        </span>
+                    )}
                 </div>
             )}
 

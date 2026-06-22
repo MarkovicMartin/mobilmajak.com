@@ -95,11 +95,17 @@ class UkolKomentar(models.Model):
 
 
 class UkolSlackNotifikace(models.Model):
-    """Záznam odeslané Slack notifikace k termínu (zabraňuje duplicitám)."""
+    """Záznam odeslané Slack notifikace (zabraňuje duplicitám)."""
 
     TYPY = [
-        ("due_soon", "Blíží se termín"),
-        ("overdue", "Po termínu"),
+        ("due_soon", "Blíží se termín (webhook)"),
+        ("overdue", "Po termínu (webhook)"),
+        ("dm_assigned", "DM – přiřazení"),
+        ("dm_due_soon", "DM – blíží se termín"),
+        ("dm_overdue", "DM – po termínu"),
+        ("dm_completed", "DM – hotovo"),
+        ("dm_awaiting_approval", "DM – čeká schválení"),
+        ("dm_created", "DM – potvrzení zadavateli"),
     ]
 
     id = models.AutoField(primary_key=True)
@@ -109,14 +115,24 @@ class UkolSlackNotifikace(models.Model):
         on_delete=models.CASCADE,
         db_column="UKOL_ID",
     )
-    typ = models.CharField(max_length=20, choices=TYPY, db_column="TYP")
+    typ = models.CharField(max_length=30, choices=TYPY, db_column="TYP")
+    recipient_user_id = models.IntegerField(
+        null=True,
+        blank=True,
+        db_column="RECIPIENT_USER_ID",
+        help_text="WebUser ID příjemce DM; null u webhook notifikací.",
+    )
     odeslano_v = models.DateTimeField(auto_now_add=True, db_column="ODESLANO_V")
 
     class Meta:
         db_table = "WEB_UKOLY_SLACK_NOTIF"
         constraints = [
-            models.UniqueConstraint(fields=["ukol", "typ"], name="uniq_ukol_slack_typ"),
+            models.UniqueConstraint(
+                fields=["ukol", "typ", "recipient_user_id"],
+                name="uniq_ukol_slack_typ_recipient",
+            ),
         ]
 
     def __str__(self) -> str:
-        return f"Slack {self.typ} pro úkol #{self.ukol_id}"
+        who = f" → user #{self.recipient_user_id}" if self.recipient_user_id else ""
+        return f"Slack {self.typ}{who} pro úkol #{self.ukol_id}"

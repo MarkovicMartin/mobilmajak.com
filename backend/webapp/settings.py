@@ -275,5 +275,6 @@ TICKET_WEBHOOK_URLS = [
 ]
 
 # Slack webhook pro notifikace termínů úkolů (volitelné – prázdné = no-op)
+SLACK_BOT_TOKEN = os.getenv('SLACK_BOT_TOKEN', '')
 SLACK_TASKS_WEBHOOK_URL = os.getenv('SLACK_TASKS_WEBHOOK_URL', '')
 MOBILMAJAK_APP_URL = os.getenv('MOBILMAJAK_APP_URL', 'http://localhost:3000')

@@ -5,7 +5,6 @@ import { SHIFTS_SECTIONS } from '../modules/shifts/shiftsSections';
 
 const PROFILE_NAV_CHILDREN = [
     { id: 'calendar', label: 'Můj kalendář', icon: 'fa-calendar' },
-    { id: 'shifts', label: 'Směny', path: '/shifts', icon: 'fa-calendar-alt' },
     { id: 'analytics', label: 'Moje výsledky', icon: 'fa-chart-line' },
     { id: 'info', label: 'Osobní údaje', icon: 'fa-id-card' },
 ];

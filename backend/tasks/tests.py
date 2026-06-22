@@ -1,11 +1,20 @@
 from datetime import date, time, timedelta
+from io import StringIO
+from unittest.mock import MagicMock, patch
 
-from django.test import TestCase
+from django.core.management import call_command
+from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
 
 from stores.models import Prodejna
-from tasks.models import Ukol
+from tasks.models import Ukol, UkolSlackNotifikace
+from tasks.slack_notify import (
+    _slack_user_cache,
+    notify_task_event,
+    slack_user_id_for_web_user,
+    tasks_needing_slack_notify,
+)
 from tasks.urgency import is_at_risk
 from users.models import WebUser
 
@@ -592,3 +601,257 @@ class TasksApiTests(TestCase):
             format="json",
         )
         self.assertEqual(res.status_code, 403)
+
+
+@override_settings(
+    SLACK_BOT_TOKEN="xoxb-test",
+    MOBILMAJAK_APP_URL="https://staging.mobilmajak.com",
+)
+class TasksSlackNotifyTests(TestCase):
+    def setUp(self):
+        _slack_user_cache.clear()
+        self.client = APIClient()
+        self.admin = _make_user(9101, "ADMIN", email="admin@example.com")
+        self.vedouci = _make_user(9102, "VEDOUCI", email="vedouci@example.com")
+        self.prodejce = _make_user(9103, "PRODEJCE", prodejna_id=201, email="prodejce@example.com")
+        self.store = Prodejna.objects.create(
+            id=201,
+            nazev="Prodejna Slack",
+            nazev_kratkiy="S",
+            vedouci_user_id=self.vedouci.id,
+            aktivni=True,
+        )
+
+    def _auth(self, user):
+        self.client.force_authenticate(user=user)
+
+    def _mock_slack_api(self, lookup_id="UASSIGNEE", post_ok=True):
+        def side_effect(method, payload):
+            if method == "users.lookupByEmail":
+                return {"ok": True, "user": {"id": lookup_id}}
+            if method == "chat.postMessage":
+                return {"ok": post_ok}
+            return {"ok": False, "error": "unknown_method"}
+
+        return patch("tasks.slack_notify._slack_api", side_effect=side_effect)
+
+    def test_slack_user_lookup_caches_by_web_user_id(self):
+        with self._mock_slack_api(lookup_id="UCACHED"):
+            first = slack_user_id_for_web_user(self.prodejce)
+            second = slack_user_id_for_web_user(self.prodejce)
+        self.assertEqual(first, "UCACHED")
+        self.assertEqual(second, "UCACHED")
+
+    def test_notify_assigned_sends_dm_to_assignee(self):
+        task = Ukol.objects.create(
+            ukol="Úkol",
+            vysledek="Úkol",
+            dod_polozky=[],
+            priorita="stredni",
+            typ="prirazeny",
+            deadline=date.today(),
+            id_prodejce_ukol=self.prodejce.id,
+            id_prodejce_zadal=self.vedouci.id,
+            id_prodejny=self.store.id,
+        )
+        with self._mock_slack_api(lookup_id="UASSIGNEE"):
+            sent = notify_task_event(task, "assigned")
+        self.assertEqual(sent, 1)
+        self.assertTrue(
+            UkolSlackNotifikace.objects.filter(
+                ukol=task,
+                typ="dm_assigned",
+                recipient_user_id=self.prodejce.id,
+            ).exists()
+        )
+
+    def test_notify_due_soon_dm_to_assignee_and_zadavatel(self):
+        task = Ukol.objects.create(
+            ukol="Termín",
+            vysledek="Termín",
+            dod_polozky=[],
+            priorita="stredni",
+            typ="prirazeny",
+            stav="v_procesu",
+            deadline=date.today(),
+            id_prodejce_ukol=self.prodejce.id,
+            id_prodejce_zadal=self.vedouci.id,
+            id_prodejny=self.store.id,
+        )
+        with self._mock_slack_api(lookup_id="URECIPIENT"):
+            sent = notify_task_event(task, "due_soon")
+        self.assertEqual(sent, 2)
+        self.assertEqual(
+            UkolSlackNotifikace.objects.filter(ukol=task, typ="dm_due_soon").count(),
+            2,
+        )
+
+    def test_notify_dedup_per_recipient(self):
+        task = Ukol.objects.create(
+            ukol="Dedup",
+            vysledek="Dedup",
+            dod_polozky=[],
+            priorita="stredni",
+            typ="prirazeny",
+            deadline=date.today(),
+            id_prodejce_ukol=self.prodejce.id,
+            id_prodejce_zadal=self.vedouci.id,
+            id_prodejny=self.store.id,
+        )
+        with self._mock_slack_api():
+            self.assertEqual(notify_task_event(task, "assigned"), 1)
+            self.assertEqual(notify_task_event(task, "assigned"), 0)
+
+    def test_create_prirazeny_task_triggers_assigned_dm(self):
+        with self._mock_slack_api(lookup_id="UASSIGNEE"):
+            self._auth(self.vedouci)
+            res = self.client.post(
+                "/api/tasks/",
+                {
+                    **_prirazeny_payload(),
+                    "id_prodejce_ukol": self.prodejce.id,
+                    "id_prodejny": self.store.id,
+                },
+                format="json",
+            )
+        self.assertEqual(res.status_code, 201)
+        task_id = res.data["id"]
+        self.assertTrue(
+            UkolSlackNotifikace.objects.filter(
+                ukol_id=task_id,
+                typ="dm_assigned",
+                recipient_user_id=self.prodejce.id,
+            ).exists()
+        )
+
+    def test_completed_state_triggers_dm_to_zadavatel(self):
+        task = Ukol.objects.create(
+            ukol="Hotovo",
+            vysledek="Hotovo",
+            dod_polozky=[{"text": "x", "splneno": True}],
+            priorita="stredni",
+            typ="prirazeny",
+            stav="v_procesu",
+            vyzaduje_schvaleni=True,
+            deadline=date.today(),
+            id_prodejce_ukol=self.prodejce.id,
+            id_prodejce_zadal=self.vedouci.id,
+            id_prodejny=self.store.id,
+        )
+        with self._mock_slack_api(lookup_id="UZADAVATEL"):
+            self._auth(self.prodejce)
+            res = self.client.put(
+                f"/api/tasks/{task.id}/",
+                {"stav": "ceka_schvaleni"},
+                format="json",
+            )
+        self.assertEqual(res.status_code, 200)
+        self.assertTrue(
+            UkolSlackNotifikace.objects.filter(
+                ukol=task,
+                typ="dm_awaiting_approval",
+                recipient_user_id=self.vedouci.id,
+            ).exists()
+        )
+
+        with self._mock_slack_api(lookup_id="UZADAVATEL"):
+            self._auth(self.vedouci)
+            res = self.client.put(
+                f"/api/tasks/{task.id}/",
+                {"stav": "hotovo"},
+                format="json",
+            )
+        self.assertEqual(res.status_code, 200)
+        self.assertTrue(
+            UkolSlackNotifikace.objects.filter(
+                ukol=task,
+                typ="dm_completed",
+                recipient_user_id=self.vedouci.id,
+            ).exists()
+        )
+
+    def test_awaiting_approval_dm_includes_store_vedouci(self):
+        task = Ukol.objects.create(
+            ukol="Schválení",
+            vysledek="Schválení",
+            dod_polozky=[],
+            priorita="stredni",
+            typ="prirazeny",
+            stav="v_procesu",
+            deadline=date.today(),
+            id_prodejce_ukol=self.prodejce.id,
+            id_prodejce_zadal=self.admin.id,
+            id_prodejny=self.store.id,
+        )
+        with self._mock_slack_api(lookup_id="UVED"):
+            sent = notify_task_event(task, "awaiting_approval")
+        self.assertEqual(sent, 2)
+        recipient_ids = set(
+            UkolSlackNotifikace.objects.filter(
+                ukol=task,
+                typ="dm_awaiting_approval",
+            ).values_list("recipient_user_id", flat=True)
+        )
+        self.assertEqual(recipient_ids, {self.admin.id, self.vedouci.id})
+
+    def test_tasks_needing_slack_notify_per_recipient(self):
+        task = Ukol.objects.create(
+            ukol="Brzy",
+            vysledek="Brzy",
+            dod_polozky=[],
+            priorita="stredni",
+            typ="prirazeny",
+            stav="novy",
+            deadline=timezone.localdate(),
+            id_prodejce_ukol=self.prodejce.id,
+            id_prodejce_zadal=self.vedouci.id,
+            id_prodejny=self.store.id,
+        )
+        pending = tasks_needing_slack_notify()
+        pairs = {(t.id, rid) for t, _typ, rid in pending}
+        self.assertIn((task.id, self.prodejce.id), pairs)
+        self.assertIn((task.id, self.vedouci.id), pairs)
+
+    def test_notify_task_deadlines_command_sends_dm(self):
+        task = Ukol.objects.create(
+            ukol="Cron",
+            vysledek="Cron",
+            dod_polozky=[],
+            priorita="stredni",
+            typ="prirazeny",
+            stav="novy",
+            deadline=timezone.localdate(),
+            id_prodejce_ukol=self.prodejce.id,
+            id_prodejce_zadal=self.vedouci.id,
+            id_prodejny=self.store.id,
+        )
+        with self._mock_slack_api(lookup_id="UCRON"):
+            out = StringIO()
+            call_command("notify_task_deadlines", stdout=out)
+        self.assertIn("Odesláno", out.getvalue())
+        self.assertTrue(
+            UkolSlackNotifikace.objects.filter(ukol=task, typ="dm_due_soon").exists()
+        )
+
+    @override_settings(SLACK_BOT_TOKEN="", SLACK_TASKS_WEBHOOK_URL="https://hooks.example.com")
+    @patch("tasks.slack_notify.requests.post")
+    def test_webhook_fallback_when_no_bot_token(self, mock_post):
+        mock_post.return_value = MagicMock(status_code=200, raise_for_status=MagicMock())
+        task = Ukol.objects.create(
+            ukol="Webhook",
+            vysledek="Webhook",
+            dod_polozky=[],
+            priorita="stredni",
+            typ="prirazeny",
+            stav="novy",
+            deadline=timezone.localdate(),
+            id_prodejce_ukol=self.prodejce.id,
+            id_prodejce_zadal=self.vedouci.id,
+            id_prodejny=self.store.id,
+        )
+        out = StringIO()
+        call_command("notify_task_deadlines", stdout=out)
+        mock_post.assert_called_once()
+        self.assertTrue(
+            UkolSlackNotifikace.objects.filter(ukol=task, typ="due_soon").exists()
+        )

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useLocation, Navigate, useNavigate } from 'react-router-dom';
+import { useLocation, Navigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { profileAPI } from '../../services/api';
 import { PageHeader, Tabs } from '../../components/ui';
@@ -10,7 +10,6 @@ import ProfileCalendar from './ProfileCalendar';
 
 const PROFILE_TABS = [
     { id: 'calendar', label: 'Můj kalendář', icon: <i className="fas fa-calendar" aria-hidden="true" /> },
-    { id: 'shifts', label: 'Směny', icon: <i className="fas fa-calendar-alt" aria-hidden="true" /> },
     { id: 'analytics', label: 'Moje výsledky', icon: <i className="fas fa-chart-line" aria-hidden="true" /> },
     { id: 'info', label: 'Osobní údaje', icon: <i className="fas fa-user" aria-hidden="true" /> },
 ];
@@ -18,7 +17,6 @@ const PROFILE_TABS = [
 const ProfileModule = () => {
     const { user: authUser } = useAuth();
     const location = useLocation();
-    const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState(
         () => location.state?.profileTab || 'calendar',
     );
@@ -76,17 +74,9 @@ const ProfileModule = () => {
         );
     }
 
-    if (location.state?.profileTab === 'shifts') {
-        return <Navigate to="/shifts" replace />;
-    }
-
     const infoUser = profileUser || authUser;
 
     const handleTabChange = (tabId) => {
-        if (tabId === 'shifts') {
-            navigate('/shifts');
-            return;
-        }
         setActiveTab(tabId);
     };
 

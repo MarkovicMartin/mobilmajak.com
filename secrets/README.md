@@ -43,13 +43,37 @@ Nastaví u uživatele `webmajak`: 1. den v měsíci 6:00 `ensure_monthly_plans -
 
 Po „Založit plány na rok“ z UI se prodejci přepočítají hned; denní cron od 15. doplňuje směny.
 
-**Slack notifikace termínů úkolů (volitelné):**
+**Slack notifikace úkolů (volitelné):**
 
 V `backend/.env` na stagingu / produkci:
 
 ```
-SLACK_TASKS_WEBHOOK_URL=https://hooks.slack.com/services/...
+SLACK_BOT_TOKEN=xoxb-...
 MOBILMAJAK_APP_URL=https://staging.mobilmajak.com
+```
+
+Volitelně kanálový webhook (fallback bez bota):
+
+```
+SLACK_TASKS_WEBHOOK_URL=https://hooks.slack.com/services/...
+```
+
+### Slack app – nastavení bota pro DM
+
+1. Na [api.slack.com/apps](https://api.slack.com/apps) vytvořte **From scratch** appku (workspace MOBILMAJAK).
+2. **OAuth & Permissions** → Bot Token Scopes:
+   - `chat:write` – odesílání DM
+   - `users:read.email` – vyhledání uživatele podle e-mailu
+3. **Install App** do workspace → zkopírujte **Bot User OAuth Token** (`xoxb-...`) do `SLACK_BOT_TOKEN`.
+4. V **Manage Distribution** / nastavení appky povolte instalaci do workspace (pokud je appka jen pro jeden workspace, stačí Install).
+5. Uživatelé musí mít v MOBILMAJAK vyplněný **e-mail shodný se Slack účtem** (lookup přes `users.lookupByEmail`).
+6. Bota není nutné přidávat do kanálů pro DM – DM jdou přímo na uživatele.
+
+Test lookupu (na serveru s tokenem v env):
+
+```bash
+curl -s -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
+  "https://slack.com/api/users.lookupByEmail?email=vas@email.cz"
 ```
 
 Cron (např. každou hodinu u uživatele `webmajak`):
@@ -60,7 +84,9 @@ Cron (např. každou hodinu u uživatele `webmajak`):
 
 Test bez odeslání: `python manage.py notify_task_deadlines --dry-run`
 
-Bez `SLACK_TASKS_WEBHOOK_URL` příkaz jen vypíše úkoly a nic neodešle.
+Bez `SLACK_BOT_TOKEN` (a bez webhooku) příkaz jen vypíše úkoly a nic neodešle.
+
+**Události s DM:** nové přiřazení, blížící se termín, po termínu, čeká schválení, dokončení, potvrzení zadavateli při založení.
 
 **Pilot pohybu kamer (bez obrazu na serveru):**
 
