@@ -4,6 +4,7 @@
 import { getNavChildren, PARENTS_WITH_CHILDREN } from './navChildren';
 import { getAnalyticsSection } from '../modules/analytics/analyticsSections';
 import { plansIdFromPath, PLANS_SECTIONS } from '../modules/plans/plansSections';
+import { TASKS_SECTIONS } from '../modules/tasks/tasksSections';
 
 export const NAV_GROUPS = [
     {
@@ -35,8 +36,7 @@ export const NAV_GROUPS = [
         label: 'Operativa',
         items: [
             { sectionKey: 'shifts', label: 'Směny', path: '/shifts', icon: 'fa-calendar-alt' },
-            { sectionKey: 'my-tasks', label: 'Moje úkoly', path: '/my-tasks', icon: 'fa-clipboard-list' },
-            { sectionKey: 'tasks', label: 'Správa úkolů', path: '/tasks', managerOnly: true, icon: 'fa-tasks' },
+            { sectionKey: 'tasks', label: 'Úkoly', path: '/tasks', icon: 'fa-clipboard-list' },
             { sectionKey: 'coaching', label: 'Výkony', path: '/coaching', coachingOnly: true, icon: 'fa-user-check' },
         ],
     },
@@ -136,6 +136,13 @@ export const getRouteLabel = (pathname) => {
     if (pathname.startsWith('/plans/')) {
         const section = PLANS_SECTIONS.find((s) => s.id === plansIdFromPath(pathname));
         return section?.tabLabel || 'Plány';
+    }
+    if (pathname.startsWith('/tasks/')) {
+        const section = TASKS_SECTIONS.find((s) => s.path === pathname.replace(/^\/tasks\/?/, '').split('/')[0]);
+        return section ? `Úkoly – ${section.tabLabel}` : 'Úkoly';
+    }
+    if (pathname === '/tasks' || pathname === '/my-tasks') {
+        return 'Úkoly';
     }
     if (pathname.startsWith('/coaching')) {
         if (pathname.includes('/compare')) return 'Analýza výkonu';

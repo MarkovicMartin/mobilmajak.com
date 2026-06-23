@@ -105,7 +105,7 @@ const ShellNavLinks = ({
                 {(!collapsed || showLabel) && (
                     <span className="shell-nav__label">{item.label}</span>
                 )}
-                {item.sectionKey === 'my-tasks' && profileTaskBadge > 0 && (!collapsed || showLabel) && (
+                {item.sectionKey === 'tasks' && profileTaskBadge > 0 && (!collapsed || showLabel) && (
                     <span className="shell-nav__badge" aria-label={`${profileTaskBadge} upozornění`}>
                         {profileTaskBadge > 99 ? '99+' : profileTaskBadge}
                     </span>

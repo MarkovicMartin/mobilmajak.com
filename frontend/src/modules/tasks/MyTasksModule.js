@@ -7,7 +7,7 @@ import TaskDetailPanel from './TaskDetailPanel';
 import TaskUrgencyBadge from './TaskUrgencyBadge';
 import TaskStatusIcon from '../../components/TaskStatusIcon';
 import { urgencyForTask, URGENCY_OVERDUE } from '../../utils/taskUrgency';
-import { parseTaskId } from '../../utils/taskNavigation';
+import { parseTaskId, TASKS_MINE_PATH } from '../../utils/taskNavigation';
 import {
     taskDisplayTitle,
     isPrirazenySop,
@@ -18,7 +18,7 @@ import './TasksModule.css';
 
 const WIP_LIMIT = 3;
 
-const MyTasksModule = () => {
+const MyTasksModule = ({ embedded = false }) => {
     const location = useLocation();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
@@ -42,14 +42,14 @@ const MyTasksModule = () => {
         setSelected(task);
         setMobileDetail(true);
         if (task?.id) {
-            navigate(`/my-tasks?id=${task.id}`, { replace: true, state: { taskId: task.id } });
+            navigate(`${TASKS_MINE_PATH}?id=${task.id}`, { replace: true, state: { taskId: task.id } });
         }
     }, [navigate]);
 
     const clearSelection = useCallback(() => {
         setSelected(null);
         setMobileDetail(false);
-        navigate('/my-tasks', { replace: true });
+        navigate(TASKS_MINE_PATH, { replace: true });
     }, [navigate]);
 
     useEffect(() => {
@@ -105,8 +105,8 @@ const MyTasksModule = () => {
     const showListOnMobile = !mobileDetail || !selected;
 
     return (
-        <div className="tasks-module my-tasks-module">
-            <PageHeader title="Moje úkoly" />
+        <div className={`tasks-module my-tasks-module${embedded ? ' my-tasks-module--embedded' : ''}`}>
+            {!embedded && <PageHeader title="Moje úkoly" />}
 
             {activePrirazeny.length > 0 && showListOnMobile && (
                 <div className="profile-tasks-wip">

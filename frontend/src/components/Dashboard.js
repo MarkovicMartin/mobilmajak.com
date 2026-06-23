@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import AppShell from './shell/AppShell';
@@ -21,8 +21,7 @@ const LeaderboardModule = lazy(() => import('../modules/leaderboard/LeaderboardM
 const OrdersModule = lazy(() => import('../modules/orders/OrdersModule'));
 const PlansModule = lazy(() => import('../modules/plans/PlansModule'));
 const TicketsModule = lazy(() => import('../modules/tickets/TicketsModule'));
-const TasksManageModule = lazy(() => import('../modules/tasks/TasksManageModule'));
-const MyTasksModule = lazy(() => import('../modules/tasks/MyTasksModule'));
+const TasksModule = lazy(() => import('../modules/tasks/TasksModule'));
 const CoachingModule = lazy(() => import('../modules/coaching/CoachingModule'));
 
 const RouteFallback = () => (
@@ -30,6 +29,11 @@ const RouteFallback = () => (
         Načítám modul…
     </div>
 );
+
+const LegacyMyTasksRedirect = () => {
+    const location = useLocation();
+    return <Navigate to={`/tasks/mine${location.search}`} replace />;
+};
 
 const Dashboard = () => {
     const { user, logout, isAdmin, canManageTasks, canAccessCoaching } = useAuth();
@@ -64,11 +68,8 @@ const Dashboard = () => {
                         <Route path="/plans/*" element={isAdmin() ? <PlansModule /> : <Navigate to="/" />} />
                         <Route path="/leaderboard" element={<LeaderboardModule />} />
                         <Route path="/profile" element={<ProfileModule />} />
-                        <Route path="/my-tasks" element={<MyTasksModule />} />
-                        <Route
-                            path="/tasks"
-                            element={canManageTasks() ? <TasksManageModule /> : <Navigate to="/my-tasks" replace />}
-                        />
+                        <Route path="/tasks/*" element={<TasksModule />} />
+                        <Route path="/my-tasks" element={<LegacyMyTasksRedirect />} />
                         <Route
                             path="/coaching/*"
                             element={canAccessCoaching() ? <CoachingModule /> : <Navigate to="/" />}

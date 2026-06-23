@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useLocation, Navigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { profileAPI } from '../../services/api';
-import { PageHeader, Tabs } from '../../components/ui';
+import { PageHeader, Tabs, MODULE_PAGE_TABS_CLASS } from '../../components/ui';
+import { TASKS_MINE_PATH } from '../../utils/taskNavigation';
 import './ProfileModule.css';
 import ProfileInfo from './ProfileInfo';
 import ProfileAnalytics from './ProfileAnalytics';
@@ -67,8 +68,8 @@ const ProfileModule = () => {
         return (
             <Navigate
                 to={location.state?.taskId
-                    ? `/my-tasks?id=${location.state.taskId}`
-                    : '/my-tasks'}
+                    ? `${TASKS_MINE_PATH}?id=${location.state.taskId}`
+                    : TASKS_MINE_PATH}
                 replace
             />
         );
@@ -89,7 +90,7 @@ const ProfileModule = () => {
                 activeId={activeTab}
                 onTabChange={handleTabChange}
                 ariaLabel="Sekce profilu"
-                className="profile-module-tabs"
+                className={MODULE_PAGE_TABS_CLASS}
             />
 
             <div className="profile-content">

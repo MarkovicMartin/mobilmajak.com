@@ -12,6 +12,7 @@ import PayrollPanel from './PayrollPanel';
 import AttendanceLogPanel from './AttendanceLogPanel';
 import AbsentStoresPanel from './AbsentStoresPanel';
 import VacationPanel from './VacationPanel';
+import ShiftsNav from './ShiftsNav';
 import './ShiftsModule.css';
 
 const ALL_PRODEJNY = 'vse';
@@ -178,6 +179,12 @@ function ShiftsModule() {
     return (
         <div className="shifts-module">
             <PageHeader title="Směny" />
+
+            <ShiftsNav
+                activeView={activeView}
+                onViewChange={setActiveView}
+                isAdmin={isAdmin}
+            />
 
             {showMonthControls && (
                 <div className="shifts-controls">

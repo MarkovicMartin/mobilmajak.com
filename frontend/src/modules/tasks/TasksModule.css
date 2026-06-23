@@ -13,6 +13,28 @@
     padding: 1.25rem 1rem 2rem;
 }
 
+.tasks-module-shell {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 1.25rem 1rem 2rem;
+}
+
+.tasks-module-shell .tasks-module,
+.tasks-module-shell .my-tasks-module {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+}
+
+.tasks-module--embedded > .tasks-filters,
+.my-tasks-module--embedded {
+    margin-bottom: var(--space-3, 12px);
+}
+
+.tasks-module-content {
+    min-height: 0;
+}
+
 .profile-tasks {
     padding: 0;
 }

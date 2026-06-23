@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { Tabs, Select, SegmentControl } from '../../components/ui';
+import { MODULE_PAGE_TABS_CLASS, sectionsToUrlTabs } from '../../components/ui/moduleTabs';
 import { PLANS_SECTIONS } from './plansSections';
 import './PlansNav.css';
 
@@ -19,13 +20,10 @@ const PlansNav = ({
   onPlanovaciRezimChange,
   vyhledFilters,
 }) => {
-  const tabs = PLANS_SECTIONS.map((section) => ({
-    id: section.id,
-    label: section.tabLabel,
-    icon: section.icon,
-    to: `/plans/${section.path}`,
-    end: section.path === 'vyhled',
-  }));
+  const tabs = sectionsToUrlTabs(PLANS_SECTIONS, {
+    pathFor: (section) => `/plans/${section.path}`,
+    endFor: (section) => section.path === 'vyhled',
+  });
 
   const monthSelectOptions = useMemo(
     () => monthOptions.map((o) => ({
@@ -68,8 +66,8 @@ const PlansNav = ({
       meta={meta}
       accent="blue"
       ariaLabel="Sekce plánů"
-      className="plans-nav module-tabs--desktop-only"
-      legacy
+      className={`plans-nav ${MODULE_PAGE_TABS_CLASS}`}
+      legacy={false}
     />
   );
 };

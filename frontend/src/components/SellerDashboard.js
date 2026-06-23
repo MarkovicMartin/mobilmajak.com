@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { formatNewsAge } from '../utils/formatNewsAge';
 import { plansAPI, newsAPI, shiftsAPI } from '../services/api';
-import { useAuth } from '../context/AuthContext';
 import { useSalespersonMetrics } from '../hooks/useSalespersonMetrics';
 import { PageHeader, Select, SegmentControl } from './ui';
 import DashboardModuleHub from './DashboardModuleHub';
@@ -35,7 +34,6 @@ function MetricCard({ title, value, sub, delta }) {
 
 export default function SellerDashboard({ user }) {
   const navigate = useNavigate();
-  const { canManageTasks } = useAuth();
   const {
     today,
     month,
@@ -160,15 +158,10 @@ export default function SellerDashboard({ user }) {
             <button
               type="button"
               className="btn btn--secondary"
-              onClick={() => navigate('/my-tasks')}
+              onClick={() => navigate('/tasks')}
             >
-              Moje úkoly
+              Úkoly
             </button>
-            {canManageTasks() && (
-              <button type="button" className="btn btn--secondary" onClick={() => navigate('/tasks')}>
-                Správa úkolů
-              </button>
-            )}
             <button type="button" className="btn btn--primary" onClick={() => navigate('/shifts')}>
               Plán směn
             </button>

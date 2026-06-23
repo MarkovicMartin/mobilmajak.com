@@ -1,5 +1,4 @@
-import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { TASKS_PATH } from '../utils/taskNavigation';
 import { taskAPI } from '../services/api';
 
 const PRIORITY_LABEL = { vysoka: 'Vysoká', stredni: 'Střední', nizka: 'Nízká' };
@@ -40,7 +39,7 @@ export default function DashboardTasksSnapshot() {
                 <div className="card-title" id="dashboard-tasks-heading">
                     Úkoly k dokončení
                 </div>
-                <Link to="/tasks" className="dashboard-tasks-link">Správa úkolů →</Link>
+                <Link to={`${TASKS_PATH}/manage`} className="dashboard-tasks-link">Úkoly →</Link>
             </div>
 
             {loading ? (
@@ -53,7 +52,7 @@ export default function DashboardTasksSnapshot() {
                 <ul className="dashboard-tasks-list">
                     {today.map((task) => (
                         <li key={task.id} className={`dashboard-task-item urgency-${task.urgency}`}>
-                            <Link to="/tasks" className="dashboard-task-link">
+                            <Link to={`${TASKS_PATH}/manage?id=${task.id}`} className="dashboard-task-link">
                                 <span className="dashboard-task-title">{task.ukol}</span>
                                 <span className="dashboard-task-meta">
                                     {task.assignee && <span>{task.assignee}</span>}

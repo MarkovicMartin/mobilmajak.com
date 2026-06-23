@@ -156,11 +156,11 @@ def _task_title(task: Ukol) -> str:
 
 
 def _task_link_for_assignee(task: Ukol) -> str:
-    return f"{_app_base_url()}/my-tasks?id={task.id}"
+    return f"{_app_base_url()}/tasks/mine?id={task.id}"
 
 
 def _task_link_for_manager(task: Ukol) -> str:
-    return f"{_app_base_url()}/tasks"
+    return f"{_app_base_url()}/tasks/manage?id={task.id}"
 
 
 def _format_deadline(task: Ukol) -> str:

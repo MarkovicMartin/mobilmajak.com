@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { Tabs, Select } from '../../components/ui';
+import { MODULE_PAGE_TABS_CLASS, sectionsToUrlTabs } from '../../components/ui/moduleTabs';
 import { COACHING_SECTIONS } from './coachingSections';
 import './CoachingNav.css';
 
@@ -11,13 +12,10 @@ const CoachingNav = ({
     prodejny,
     onProdejnaChange,
 }) => {
-    const tabs = COACHING_SECTIONS.map((section) => ({
-        id: section.id,
-        label: section.tabLabel,
-        icon: section.icon,
-        to: section.path ? `/coaching/${section.path}` : '/coaching',
-        end: !section.path,
-    }));
+    const tabs = sectionsToUrlTabs(COACHING_SECTIONS, {
+        pathFor: (section) => (section.path ? `/coaching/${section.path}` : '/coaching'),
+        endFor: (section) => !section.path,
+    });
 
     const storeOptions = useMemo(
         () => [
@@ -60,8 +58,8 @@ const CoachingNav = ({
             meta={meta}
             accent="pink"
             ariaLabel="Navigace výkonů"
-            className="coaching-nav module-tabs--desktop-only"
-            legacy
+            className={`coaching-nav ${MODULE_PAGE_TABS_CLASS}`}
+            legacy={false}
         />
     );
 };

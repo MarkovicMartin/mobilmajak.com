@@ -67,28 +67,17 @@ body.app-drawer-open .app-drawer-backdrop {
     }
 }
 
-/* Modulové záložky – navigace jen v sidebaru / draweru */
-.module-tabs--desktop-only:not(:has(.module-subnav-meta, .ui-tabs__meta)) {
-    display: none;
-}
+/* Modulové záložky – meta pod záložkami na úzkých obrazovkách */
+@media (max-width: 900px) {
+    .module-page-tabs.ui-tabs {
+        flex-direction: column;
+        align-items: stretch;
+    }
 
-.module-tabs--desktop-only .ui-tabs__list,
-.module-tabs--desktop-only .module-subnav-tabs {
-    display: none !important;
-}
-
-.module-tabs--desktop-only {
-    flex-direction: column;
-    align-items: stretch;
-    padding: var(--space-2) var(--space-3);
-    margin-bottom: var(--space-3);
-    gap: var(--space-2);
-}
-
-.module-tabs--desktop-only .ui-tabs__meta,
-.module-tabs--desktop-only .module-subnav-meta {
-    width: 100%;
-    justify-content: flex-start;
+    .module-page-tabs .ui-tabs__meta {
+        width: 100%;
+        justify-content: flex-start;
+    }
 }
 
 /* Tabs – horizontální scroll místo zalomení (desktop/tablet) */

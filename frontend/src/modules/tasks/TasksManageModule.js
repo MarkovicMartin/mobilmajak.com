@@ -9,7 +9,6 @@ import TaskEditForm from './TaskEditForm';
 import TaskUrgencyBadge from './TaskUrgencyBadge';
 import TaskStatusIcon from '../../components/TaskStatusIcon';
 import { buildAssigneeSelectOptions } from './TaskAssigneeOptions';
-import TasksWorkloadSection from './TasksWorkloadSection';
 import { taskDisplayTitle, ACTIVE_TASK_STAVY } from '../../utils/taskDisplay';
 import './TasksModule.css';
 
@@ -38,9 +37,8 @@ const WIP_LIMIT = 3;
 
 const emptyDodRow = () => ({ text: '', splneno: false });
 
-const TasksManageModule = () => {
+const TasksManageModule = ({ embedded = false }) => {
     const { user, isAdmin, canManageTasks } = useAuth();
-    const [adminTab, setAdminTab] = useState('manage');
     const [stores, setStores] = useState([]);
     const [assignees, setAssignees] = useState([]);
     const [filterStav, setFilterStav] = useState('vse');
@@ -266,78 +264,52 @@ const TasksManageModule = () => {
 
     const storeLocked = user?.role === 'VEDOUCI' && vedouciStores.length <= 1;
     const showFilterStore = isAdmin() || vedouciStores.length > 1;
-    const showWorkloadTab = isAdmin();
 
     const selectedAssigneeWip = selected?.id_prodejce_ukol
         ? wipByAssignee[selected.id_prodejce_ukol] || 0
         : 0;
 
-    return (
-        <div className="tasks-module">
-            <PageHeader
-                title={showWorkloadTab && adminTab === 'workload' ? 'Úkoly – vytížení' : 'Správa úkolů'}
-                actions={(!showWorkloadTab || adminTab === 'manage') ? (
-                    <div className="tasks-filters">
-                        <Select
-                            options={FILTER_OPTIONS}
-                            value={filterSpecial}
-                            onChange={(v) => {
-                                setFilterSpecial(v);
-                                if (v === 'cekajici_schvaleni') setFilterStav('vse');
-                            }}
-                            aria-label="Speciální filtr"
-                        />
-                        <Select
-                            options={STAV_OPTIONS}
-                            value={filterStav}
-                            onChange={setFilterStav}
-                            aria-label="Filtr stavu"
-                        />
-                        {showFilterStore && (
-                            <Select
-                                options={filterStoreOptions}
-                                value={filterStore}
-                                onChange={setFilterStore}
-                                aria-label="Filtr pobočky"
-                            />
-                        )}
-                        <Select
-                            options={assigneeFilterOptions}
-                            value={filterAssignee}
-                            onChange={setFilterAssignee}
-                            aria-label="Filtr zaměstnance"
-                        />
-                    </div>
-                ) : undefined}
+    const filterBar = (
+        <div className="tasks-filters">
+            <Select
+                options={FILTER_OPTIONS}
+                value={filterSpecial}
+                onChange={(v) => {
+                    setFilterSpecial(v);
+                    if (v === 'cekajici_schvaleni') setFilterStav('vse');
+                }}
+                aria-label="Speciální filtr"
             />
-
-            {showWorkloadTab && (
-                <div className="tasks-admin-tabs" role="tablist" aria-label="Sekce úkolů">
-                    <button
-                        type="button"
-                        role="tab"
-                        aria-selected={adminTab === 'manage'}
-                        className={`tasks-admin-tabs__btn${adminTab === 'manage' ? ' is-active' : ''}`}
-                        onClick={() => setAdminTab('manage')}
-                    >
-                        Správa úkolů
-                    </button>
-                    <button
-                        type="button"
-                        role="tab"
-                        aria-selected={adminTab === 'workload'}
-                        className={`tasks-admin-tabs__btn${adminTab === 'workload' ? ' is-active' : ''}`}
-                        onClick={() => setAdminTab('workload')}
-                    >
-                        Vytížení
-                    </button>
-                </div>
+            <Select
+                options={STAV_OPTIONS}
+                value={filterStav}
+                onChange={setFilterStav}
+                aria-label="Filtr stavu"
+            />
+            {showFilterStore && (
+                <Select
+                    options={filterStoreOptions}
+                    value={filterStore}
+                    onChange={setFilterStore}
+                    aria-label="Filtr pobočky"
+                />
             )}
+            <Select
+                options={assigneeFilterOptions}
+                value={filterAssignee}
+                onChange={setFilterAssignee}
+                aria-label="Filtr zaměstnance"
+            />
+        </div>
+    );
 
-            {adminTab === 'workload' && showWorkloadTab ? (
-                <TasksWorkloadSection />
+    return (
+        <div className={`tasks-module${embedded ? ' tasks-module--embedded' : ''}`}>
+            {!embedded ? (
+                <PageHeader title="Správa úkolů" actions={filterBar} />
             ) : (
-                <>
+                filterBar
+            )}
             {assignees.length > 0 && (
                 <div className="tasks-wip-bar">
                     {assignees.map((a) => {
@@ -589,8 +561,6 @@ const TasksManageModule = () => {
                     )}
                 </div>
             </div>
-                </>
-            )}
         </div>
     );
 };

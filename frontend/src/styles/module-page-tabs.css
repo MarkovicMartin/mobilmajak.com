@@ -1,0 +1,8 @@
+/* Sdílené záložky modulů – navigace v hlavičce stránky, ne v sidebaru */
+.module-page-tabs.ui-tabs {
+    margin-bottom: var(--space-4, 16px);
+}
+
+.module-page-tabs .ui-tabs__meta {
+    justify-content: flex-start;
+}

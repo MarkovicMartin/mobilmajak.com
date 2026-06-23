@@ -6,3 +6,4 @@ export { default as DatePicker } from './DatePicker';
 export { default as DateRangePicker } from './DateRangePicker';
 export { default as FilterBar } from './FilterBar';
 export { default as Modal } from './Modal';
+export { MODULE_PAGE_TABS_CLASS, sectionTabIcon, sectionsToUrlTabs, sectionsToStateTabs } from './moduleTabs';

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { analyticsAPI } from '../../services/api';
 import { Tabs } from '../../components/ui';
+import { MODULE_PAGE_TABS_CLASS, sectionsToUrlTabs } from '../../components/ui/moduleTabs';
 import { ANALYTICS_SECTIONS } from './analyticsSections';
 import './AnalyticsNav.css';
 
@@ -72,12 +73,9 @@ const AnalyticsNav = () => {
         return () => window.clearInterval(intervalId);
     }, [fetchActorStatus]);
 
-    const tabs = ANALYTICS_SECTIONS.map((section) => ({
-        id: section.id,
-        label: section.tabLabel,
-        icon: section.icon,
-        to: `/analytics/${section.id}`,
-    }));
+    const tabs = sectionsToUrlTabs(ANALYTICS_SECTIONS, {
+        pathFor: (section) => `/analytics/${section.id}`,
+    });
 
     const meta = (
         <>
@@ -105,8 +103,8 @@ const AnalyticsNav = () => {
             meta={meta}
             accent="pink"
             ariaLabel="Navigace analytiky"
-            className="analytics-nav module-tabs--desktop-only"
-            legacy
+            className={`analytics-nav ${MODULE_PAGE_TABS_CLASS}`}
+            legacy={false}
         />
     );
 };

@@ -68,9 +68,5 @@ export function getNavChildren(parentItem, auth) {
     }
 }
 
-export const PARENTS_WITH_CHILDREN = new Set([
-    'analytics',
-    'plans',
-    'coaching',
-    'shifts',
-]);
+/** Podsekce modulů jsou jen jako záložky na stránce (module-page-tabs), ne v sidebaru. */
+export const PARENTS_WITH_CHILDREN = new Set();

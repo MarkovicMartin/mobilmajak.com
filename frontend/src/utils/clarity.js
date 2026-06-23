@@ -20,8 +20,8 @@ const ROUTE_SCREEN = {
     '/coaching': 'coaching',
     '/leaderboard': 'leaderboard',
     '/profile': 'profile',
-    '/my-tasks': 'my-tasks',
     '/tasks': 'tasks',
+    '/my-tasks': 'tasks',
     '/my-tickets': 'my-tickets',
     '/users': 'users',
     '/categories': 'categories',
@@ -40,8 +40,8 @@ const ROUTE_LABEL = {
     '/coaching': 'Výkony',
     '/leaderboard': 'Žebříček',
     '/profile': 'Profil',
-    '/my-tasks': 'Moje úkoly',
-    '/tasks': 'Správa úkolů',
+    '/tasks': 'Úkoly',
+    '/my-tasks': 'Úkoly',
     '/my-tickets': 'Tickety',
     '/users': 'Uživatelé',
     '/categories': 'Kategorie',
@@ -105,6 +105,10 @@ export function routeToScreen(pathname) {
         const section = pathname.replace(/^\/analytics\/?/, '').split('/')[0];
         return section ? `analytics:${section}` : 'analytics';
     }
+    if (pathname.startsWith('/tasks')) {
+        const segment = pathname.replace(/^\/tasks\/?/, '').split('/')[0];
+        return segment ? `tasks:${segment}` : 'tasks';
+    }
     if (pathname.startsWith('/coaching')) {
         const section = pathname.replace(/^\/coaching\/?/, '').split('/')[0];
         return section ? `coaching:${section}` : 'coaching';
@@ -129,6 +133,13 @@ export function routeToLabel(pathname) {
         const segment = pathname.replace(/^\/plans\/?/, '').split('/')[0];
         const section = PLANS_SECTIONS.find((s) => s.path === segment);
         return section ? `Plány – ${section.tabLabel}` : ROUTE_LABEL['/plans'];
+    }
+    if (pathname.startsWith('/tasks')) {
+        const segment = pathname.replace(/^\/tasks\/?/, '').split('/')[0];
+        if (segment === 'manage') return 'Úkoly – správa';
+        if (segment === 'workload') return 'Úkoly – vytížení';
+        if (segment === 'mine') return 'Úkoly – moje';
+        return ROUTE_LABEL['/tasks'];
     }
     const base = `/${pathname.split('/').filter(Boolean)[0]}`;
     return ROUTE_LABEL[base] || base.replace(/^\//, '');
