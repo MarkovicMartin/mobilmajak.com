@@ -9,17 +9,17 @@ UKOLY_BOT_INTRO_MESSAGE = """Ahoj! 👋
 V MOBILMAJAK teď funguje Slack bot *Úkoly* – posílá ti přehledné zprávy do soukromých zpráv ve Slacku (ne do kanálů).
 
 *Co ti může chodit:*
-• přiřazen nový úkol
-• ranní přehled úkolů 10 minut po začátku směny
+• nový úkol ti někdo přiřadí
+• ranní přehled úkolů *10 minut po začátku směny* (termíny, co hoří, poslední dokončení)
 • blížící se nebo po termínu
 • nový komentář u úkolu, který řešíš (vždy, když píše někdo jiný)
 • dokončení, schválení – pokud úkoly zadáváš ty
 
 *Kde to nastavit:*
-Profil → Osobní údaje → Slack – úkoly (u adminů víc voleb pro dohled nad celou firmou).
+Profil v MOBILMAJAK → Osobní údaje → *Slack – úkoly* (u adminů víc voleb pro dohled nad celou firmou).
 
 *Důležité:*
-E-mail v profilu MOBILMAJAK musí sedět se Slack účtem.
+E-mail v profilu MOBILMAJAK musí sedět se Slack účtem, jinak bot tě nenajde.
 
 Odkaz: {app_url}/tasks/mine
 
