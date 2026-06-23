@@ -125,12 +125,9 @@ TIME_ZONE = 'Europe/Prague'
 USE_I18N = True
 USE_TZ = True
 
-# Static files (CSS, JavaScript, Images) - pro Nginx
+# Static files – collectstatic → staticfiles/ (Django admin); React /static/ servíruje nginx
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_DIRS = [
-    BASE_DIR / 'static',
-]
 
 # Media files (uploaded files)
 MEDIA_URL = '/media/'
