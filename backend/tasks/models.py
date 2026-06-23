@@ -106,6 +106,7 @@ class UkolSlackNotifikace(models.Model):
         ("dm_completed", "DM – hotovo"),
         ("dm_awaiting_approval", "DM – čeká schválení"),
         ("dm_created", "DM – potvrzení zadavateli"),
+        ("dm_comment", "DM – nový komentář"),
     ]
 
     id = models.AutoField(primary_key=True)
@@ -123,16 +124,40 @@ class UkolSlackNotifikace(models.Model):
         help_text="WebUser ID příjemce DM; null u webhook notifikací.",
     )
     odeslano_v = models.DateTimeField(auto_now_add=True, db_column="ODESLANO_V")
+    ref_id = models.IntegerField(
+        default=0,
+        db_column="REF_ID",
+        help_text="ID komentáře u dm_comment; u ostatních typů 0.",
+    )
 
     class Meta:
         db_table = "WEB_UKOLY_SLACK_NOTIF"
         constraints = [
             models.UniqueConstraint(
-                fields=["ukol", "typ", "recipient_user_id"],
-                name="uniq_ukol_slack_typ_recipient",
+                fields=["ukol", "typ", "recipient_user_id", "ref_id"],
+                name="uniq_ukol_slack_typ_recipient_ref",
             ),
         ]
 
     def __str__(self) -> str:
         who = f" → user #{self.recipient_user_id}" if self.recipient_user_id else ""
         return f"Slack {self.typ}{who} pro úkol #{self.ukol_id}"
+
+
+class UkolShiftRecapNotifikace(models.Model):
+    """Odeslaný ranní recap úkolů ke směně (jednou za směnu)."""
+
+    id = models.AutoField(primary_key=True)
+    smena_id = models.IntegerField(unique=True, db_column="SMENA_ID")
+    user_id = models.IntegerField(db_column="USER_ID")
+    datum = models.DateField(db_column="DATUM")
+    odeslano_v = models.DateTimeField(auto_now_add=True, db_column="ODESLANO_V")
+
+    class Meta:
+        db_table = "WEB_UKOLY_SHIFT_RECAP"
+        indexes = [
+            models.Index(fields=["datum"], name="idx_ukoly_recap_datum"),
+        ]
+
+    def __str__(self) -> str:
+        return f"Shift recap směna #{self.smena_id} → user #{self.user_id}"

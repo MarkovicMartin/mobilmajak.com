@@ -10,6 +10,9 @@ Přehled – co je provozní, co plánované rozšíření. Nepřidávejte jedno
 | `deploy-staging.ps1` | Totéž pro Windows |
 | `frontend-build-vps.sh` | `npm ci` + aktualizace browserslist + build (volá deploy) |
 | `post-deploy-smoke.sh` | Health + `manage.py check` + shifts import (volá deploy) |
+| `local-predeploy-check.sh` | Lokální `manage.py check` přes `backend/.venv` |
+| `backend-run.sh` | Libovolný příkaz v `backend/.venv` (check, test, …) |
+| `setup-backend-venv.sh` | Vytvoření/obnova `backend/.venv` (Python 3.12+) |
 | `staging-post-deploy.sh` | Migrace, collectstatic, restart (volá deploy) |
 | `deploy-production.sh` / `.ps1` | Produkce (až po OK stagingu) |
 | `production-post-deploy.sh` | Post-deploy produkce |
@@ -54,7 +57,9 @@ Tajemství: `secrets/camera_motion_secrets.json` – viz `secrets/README.md`.
 
 | Skript | Účel |
 |--------|------|
-| `run-local.cmd` / `run-local.ps1` | Plná lokální relace (skill mobilmajak-local-test) |
+| `run-local.cmd` / `run-local.ps1` / `run-local.sh` | Plná lokální relace (skill mobilmajak-local-test) |
+| `setup-backend-venv.sh` | Python 3.12+ venv v `backend/.venv` |
+| `backend-run.sh` | Django příkazy v venv: `./scripts/backend-run.sh manage.py check` |
 
 ## Symplio / integrace (samostatná oblast)
 

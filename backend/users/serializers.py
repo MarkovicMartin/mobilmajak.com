@@ -9,6 +9,23 @@ from .mzda_utils import (
 from stores.models import Prodejna
 from tickets.permissions import can_manage_tickets
 from users.vedouci_utils import is_task_manager
+from tasks.slack_prefs import (
+    PREF_COMMENT_ALL,
+    PREF_COMMENT_MINE,
+    PREF_CREATED_ALL,
+    PREF_DUE_SOON_ALL,
+    PREF_OVERDUE_ALL,
+    get_slack_ukoly_prefs,
+    normalize_slack_ukoly_prefs,
+)
+
+ADMIN_ONLY_SLACK_UKOLY_PREFS = frozenset({
+    PREF_CREATED_ALL,
+    PREF_DUE_SOON_ALL,
+    PREF_OVERDUE_ALL,
+    PREF_COMMENT_MINE,
+    PREF_COMMENT_ALL,
+})
 
 class WebUserSerializer(serializers.ModelSerializer):
     """Serializer pro zobrazení uživatelů (bez hesla)"""
@@ -63,11 +80,40 @@ class WebUserSerializer(serializers.ModelSerializer):
 
 class WebUserProfileSerializer(serializers.ModelSerializer):
     """Serializer pro profil uživatele (včetně možnosti úpravy)"""
-    
+    slack_ukoly_prefs = serializers.JSONField(required=False)
+
     class Meta:
         model = WebUser
-        fields = ['id', 'uzivatelske_jmeno', 'jmeno', 'prijmeni', 'telefon', 'email', 'adresa', 'poznamka', 'prodejna_id']
+        fields = [
+            'id', 'uzivatelske_jmeno', 'jmeno', 'prijmeni', 'telefon', 'email',
+            'adresa', 'poznamka', 'prodejna_id', 'slack_ukoly_prefs',
+        ]
         read_only_fields = ['id', 'uzivatelske_jmeno']
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        ret['slack_ukoly_prefs'] = get_slack_ukoly_prefs(instance)
+        return ret
+
+    def validate_slack_ukoly_prefs(self, value):
+        normalized = normalize_slack_ukoly_prefs(value)
+        request = self.context.get("request")
+        user = getattr(request, "user", None) if request else None
+        if user and getattr(user, "role", None) != "ADMIN" and self.instance:
+            existing = get_slack_ukoly_prefs(self.instance)
+            for key in ADMIN_ONLY_SLACK_UKOLY_PREFS:
+                normalized[key] = existing[key]
+        return normalized
+
+    def update(self, instance, validated_data):
+        prefs = validated_data.pop('slack_ukoly_prefs', None)
+        user = super().update(instance, validated_data)
+        if prefs is not None:
+            user.slack_ukoly_prefs = prefs
+            user.save(update_fields=['slack_ukoly_prefs', 'datum_upravy'])
+            from tasks.slack_prefs import invalidate_global_watcher_cache
+            invalidate_global_watcher_cache()
+        return user
 
 
 class WebUserPasswordChangeSerializer(serializers.Serializer):

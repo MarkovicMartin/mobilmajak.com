@@ -1,46 +1,36 @@
 #!/usr/bin/env bash
-# Recreate backend/.venv with Python 3.12+ (required for PEP 604 types in coaching/, plans/, …)
+# Backend venv: Python 3.12+ + requirements.txt → backend/.venv
+# Usage:
+#   ./scripts/setup-backend-venv.sh           # vytvoří jen pokud chybí / je neplatné
+#   ./scripts/setup-backend-venv.sh --recreate # smazat a znovu
+
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-BACKEND="$REPO_ROOT/backend"
-MIN_MAJOR=3
-MIN_MINOR=12
+# shellcheck source=lib/backend-venv.sh
+source "$REPO_ROOT/scripts/lib/backend-venv.sh"
 
-pick_python() {
-    if command -v uv >/dev/null 2>&1; then
-        uv python install "$MIN_MAJOR.$MIN_MINOR" >/dev/null 2>&1 || true
-        uv python find "$MIN_MAJOR.$MIN_MINOR"
-        return
-    fi
-    for py in python3.12 python3.13 python3; do
-        if command -v "$py" >/dev/null 2>&1; then
-            ver="$("$py" -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')"
-            major="${ver%%.*}"
-            minor="${ver#*.}"
-            if [ "$major" -gt "$MIN_MAJOR" ] || { [ "$major" -eq "$MIN_MAJOR" ] && [ "$minor" -ge "$MIN_MINOR" ]; }; then
-                command -v "$py"
-                return
-            fi
-        fi
-    done
-    echo "ERROR: Python $MIN_MAJOR.$MIN_MINOR+ not found. Install via https://www.python.org/downloads/ or: curl -LsSf https://astral.sh/uv/install.sh | sh" >&2
-    exit 1
-}
+RECREATE=0
+for arg in "$@"; do
+    case "$arg" in
+        --recreate) RECREATE=1 ;;
+        -h|--help)
+            echo "Usage: $0 [--recreate]"
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $arg" >&2
+            exit 1
+            ;;
+    esac
+done
 
-PYTHON="$(pick_python)"
-echo "==> Using $PYTHON ($("$PYTHON" --version))"
-
-rm -rf "$BACKEND/.venv"
-if command -v uv >/dev/null 2>&1; then
-    uv venv "$BACKEND/.venv" --python "$PYTHON"
-    uv pip install -r "$BACKEND/requirements.txt" --python "$BACKEND/.venv/bin/python"
+if [[ "$RECREATE" -eq 1 ]]; then
+    ensure_backend_venv --recreate
 else
-    "$PYTHON" -m venv "$BACKEND/.venv"
-    "$BACKEND/.venv/bin/pip" install -q --upgrade pip
-    "$BACKEND/.venv/bin/pip" install -r "$BACKEND/requirements.txt"
+    ensure_backend_venv
 fi
 
 echo "==> Django check"
-"$BACKEND/.venv/bin/python" "$BACKEND/manage.py" check
+"$BACKEND_PYTHON" "$BACKEND/manage.py" check
 echo "OK  backend/.venv ready (activate: source backend/.venv/bin/activate)"

@@ -44,14 +44,10 @@ find_node() {
 }
 
 find_python() {
-  if [[ -x "$BACKEND/.venv/bin/python" ]]; then
-    echo "$BACKEND/.venv/bin/python"
-  elif [[ -x "$BACKEND/venv/bin/python" ]]; then
-    echo "$BACKEND/venv/bin/python"
-  else
-    echo "ERROR: No backend venv. Run: ./scripts/setup-backend-venv.sh" >&2
-    exit 1
-  fi
+  # shellcheck source=lib/backend-venv.sh
+  source "$REPO_ROOT/scripts/lib/backend-venv.sh"
+  ensure_backend_venv
+  echo "$BACKEND_PYTHON"
 }
 
 stop_port() {

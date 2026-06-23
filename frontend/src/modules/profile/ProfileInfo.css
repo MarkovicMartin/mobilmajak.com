@@ -297,4 +297,53 @@
     .info-section h3 {
         font-size: 1.2rem;
     }
-} 
+}
+
+.slack-prefs-section .slack-prefs-hint {
+    margin: 0 0 14px;
+    font-size: 0.9rem;
+    color: var(--text-muted, #6c757d);
+    line-height: 1.45;
+}
+
+.slack-prefs-group {
+    margin-bottom: 16px;
+}
+
+.slack-prefs-group h4 {
+    margin: 0 0 8px;
+    font-size: 0.95rem;
+    color: var(--text-heading);
+}
+
+.slack-prefs-subtitle {
+    margin: 0 0 8px;
+    font-size: 0.85rem;
+    color: var(--text-muted, #6c757d);
+}
+
+.slack-prefs-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 8px;
+}
+
+.slack-pref-label {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+.slack-pref-label input {
+    margin-top: 3px;
+    flex-shrink: 0;
+}
+
+.slack-prefs-save {
+    margin-top: 4px;
+}

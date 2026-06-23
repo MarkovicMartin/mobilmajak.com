@@ -47,6 +47,13 @@ class WebUser(models.Model):
     # Moduly - JSON pole pro uložení povolených modulů
     moduly = models.JSONField(default=list, verbose_name="Povolené moduly")
 
+    # Slack DM k úkolům – volby v profilu (viz tasks.slack_prefs)
+    slack_ukoly_prefs = models.JSONField(
+        default=dict,
+        blank=True,
+        verbose_name="Slack notifikace úkolů",
+    )
+
     # Mzdové údaje (body) – viditelné jen pro ADMIN v administraci a exportu
     mzda_zaklad = models.DecimalField(
         max_digits=10, decimal_places=2, null=True, blank=True,

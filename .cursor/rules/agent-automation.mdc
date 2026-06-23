@@ -9,8 +9,9 @@ alwaysApply: true
 
 - **Čtení projektu:** `Read`, `Grep`, `Glob`, prohlížení struktury repa, `git status` / `git diff` / `git log` / `git show` / `git branch`
 - **Kontroly a testy:** lint, typecheck, unit/integration testy, build v režimu kontroly (`--dry-run`, `check`, `validate`), migrace jen s `--plan` / `--dry-run`
-- **Diagnostika:** `manage.py check`, health endpointy lokálně, čtení logů v projektu
-- **Lokální testovací relace:** `.\scripts\run-local.ps1`, `run-local.cmd`, `npm run build`, `npm run serve:build` v tomto repu (skill `mobilmajak-local-test`) – spustit hned, bez ptání na potvrzení
+- **Diagnostika:** `./scripts/backend-run.sh manage.py check` (nikdy systémový `python`/`python3`), health endpointy lokálně, čtení logů v projektu
+- **Lokální testovací relace:** `.\scripts\run-local.ps1`, `./scripts/run-local.sh`, `run-local.cmd`, `npm run build`, `npm run serve:build` v tomto repu (skill `mobilmajak-local-test`) – spustit hned, bez ptání na potvrzení
+- **Backend venv:** `backend/.venv` (Python 3.12+). Chybí-li: `./scripts/setup-backend-venv.sh`. Příkazy: `./scripts/backend-run.sh manage.py …`
 
 Neptat se uživatele „mohu přečíst soubor X“, „mohu spustit testy“ ani „mohu spustit lokální build“ – tyto kroky jsou vždy v pořádku.
 
