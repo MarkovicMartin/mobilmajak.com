@@ -22,6 +22,14 @@ Z kořene repozitáře (PowerShell):
 .\scripts\run-local.ps1
 ```
 
+macOS / Linux:
+
+```bash
+./scripts/run-local.sh
+```
+
+První běh nebo po změně requirements: `./scripts/setup-backend-venv.sh`
+
 Po změnách ve frontendu (servis, analytics, profil, …):
 
 ```powershell
@@ -33,7 +41,8 @@ Po změnách ve frontendu (servis, analytics, profil, …):
 | Krok | Výsledek |
 |------|----------|
 | `backend/.env` | Z `.env.example` pokud chybí; heslo z `DB_PASSWORD` v souboru **nebo** proměnné prostředí `$env:DB_PASSWORD` |
-| Python venv + `pip install` | Django na `127.0.0.1:8000` |
+| `backend/.venv` | Python 3.12+ (`setup-backend-venv.sh` / automaticky v `run-local`) |
+| Django | `127.0.0.1:8000` přes venv |
 | `npm run build` (pokud chybí build / `-Rebuild`) | Statický build |
 | `npm run serve:build` | UI na `http://localhost:8001`, `/api` → lokální Django |
 | Prohlížeč | Otevře `http://localhost:8001` |
@@ -63,6 +72,8 @@ Výchozí pro „testovací relaci“ je vždy **`run-local.ps1`**.
 
 ## Související soubory
 
-- `scripts/run-local.ps1` – hlavní orchestrátor
+- `scripts/run-local.ps1` / `run-local.sh` – hlavní orchestrátor
+- `scripts/setup-backend-venv.sh` – Python 3.12+ venv
+- `scripts/backend-run.sh` – Django příkazy v venv
 - `scripts/run-local.cmd` – zástupce pro dvojklik
 - `frontend/scripts/serve-build.js` – build server + proxy (`API_PROXY`)

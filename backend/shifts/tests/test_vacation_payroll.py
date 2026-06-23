@@ -18,6 +18,7 @@ from shifts.vacation_service import (
     DOVOLENA_HODINY_ZA_DEN,
     DOVOLENA_PREVOD_MAX,
     DOVOLENA_ROCNI_FOND,
+    build_hours_cache_for_overview,
     build_vacation_overview_user,
     celkove_cerpano_rok,
     cerpana_dovolena_rok,
@@ -227,13 +228,22 @@ class VacationServiceTests(TestCase):
         self.assertEqual(row['dovolena_smeny_h'], DOVOLENA_HODINY_ZA_DEN)
         self.assertEqual(row['cerpano_h'], DOVOLENA_HODINY_ZA_DEN)
 
+    def test_build_hours_cache_for_overview(self):
+        cache = build_hours_cache_for_overview(2026, referencni_datum=date(2026, 6, 15))
+        self.assertIn((2026, 6), cache)
+        self.assertIn((2026, 5), cache)
+        self.assertIsInstance(cache[(2026, 6)], dict)
+
     def test_build_vacation_overview_user(self):
         user = WebUser.objects.create(
             id=9020, uzivatelske_jmeno='test_over', jmeno='Over', prijmeni='Test',
             heslo='x', role='PRODEJCE', aktivni=True, prodejna_id=self.prodejna.id,
             mzda_zaklad=Decimal('14000'),
         )
-        overview = build_vacation_overview_user(user, 2026, referencni_datum=date(2026, 6, 15))
+        overview = build_vacation_overview_user(
+            user, 2026, referencni_datum=date(2026, 6, 15),
+            hours_cache=build_hours_cache_for_overview(2026, referencni_datum=date(2026, 6, 15)),
+        )
         self.assertIsNotNone(overview)
         self.assertEqual(overview['rok'], 2026)
         self.assertEqual(len(overview['mesice']), 12)

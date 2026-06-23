@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import './ProfileInfo.css';
 import ProfileImage from './ProfileImage';
+import ProfileSlackPrefs from './ProfileSlackPrefs';
 
 const ProfileInfo = ({ user, onProfileUpdate, onImageUpdate }) => {
     const [isEditing, setIsEditing] = useState(false);
@@ -272,6 +273,8 @@ const ProfileInfo = ({ user, onProfileUpdate, onImageUpdate }) => {
                         </div>
                     )}
                 </div>
+
+                <ProfileSlackPrefs user={user} onSaved={onProfileUpdate} />
 
                 {/* Změna hesla */}
                 <div className="info-section">

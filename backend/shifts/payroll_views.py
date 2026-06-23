@@ -192,6 +192,60 @@ def payroll_dobropisy(request):
     })
 
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def payroll_vydejky(request):
+    """Skladové výdejky (ruční / spotřeba / reklamace) – přehled za měsíc (ADMIN)."""
+    denied = _require_admin(request)
+    if denied:
+        return denied
+    mesic = request.GET.get('mesic')
+    if not mesic:
+        return Response({'error': 'Chybí parametr mesic'}, status=status.HTTP_400_BAD_REQUEST)
+    parsed = _parse_mesic(mesic)
+    if not parsed:
+        return Response({'error': 'Neplatný formát měsíce'}, status=status.HTTP_400_BAD_REQUEST)
+    rok, mesic_cislo, _mesic_date = parsed
+    from analytics.vydejky import (
+        duvod_totals_from_rows,
+        list_vydejky,
+        vydejky_queryset_for_month,
+        vydejky_summary_by_spravce,
+        vydejky_totals,
+    )
+
+    qs = vydejky_queryset_for_month(rok, mesic_cislo)
+    duvod_kategorie = request.GET.get('duvod')
+    sklad_typ = request.GET.get('sklad_typ')
+    spravce = request.GET.get('spravce')
+    subtype_raw = request.GET.get('subtype')
+    if spravce:
+        qs = qs.filter(spravce=spravce)
+    if subtype_raw:
+        try:
+            qs = qs.filter(symplio_subtype=int(subtype_raw))
+        except (TypeError, ValueError):
+            pass
+
+    rows_only = request.GET.get('rows_only') in ('1', 'true', 'True')
+    if rows_only:
+        rows = list_vydejky(qs, duvod_kategorie=duvod_kategorie or None, sklad_typ=sklad_typ or None)
+        return Response({
+            'mesic': mesic,
+            'rows': rows,
+            'duvod_totals': duvod_totals_from_rows(rows),
+        })
+
+    totals = vydejky_totals(qs)
+    summary = vydejky_summary_by_spravce(qs)
+    return Response({
+        'mesic': mesic,
+        'totals': totals,
+        'summary': summary,
+        'rows': [],
+    })
+
+
 @api_view(['PUT'])
 @permission_classes([IsAuthenticated])
 def payroll_odmena(request):

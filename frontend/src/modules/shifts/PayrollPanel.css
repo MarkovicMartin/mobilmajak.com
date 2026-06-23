@@ -464,6 +464,87 @@
     margin: 0.5rem 0 0.75rem;
 }
 
+.payroll-returns-tabs {
+    display: flex;
+    gap: 0.35rem;
+    margin: 0.75rem 0 0.5rem;
+    border-bottom: 1px solid #fecdd3;
+    padding-bottom: 0.35rem;
+}
+
+.payroll-returns-tab {
+    border: 1px solid transparent;
+    background: transparent;
+    color: #9f1239;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 0.35rem 0.65rem;
+    border-radius: 8px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.payroll-returns-tab--active {
+    background: #ffe4e6;
+    border-color: #fda4af;
+}
+
+.payroll-returns-tab .tab-count {
+    font-size: 0.75rem;
+    background: #fff;
+    border-radius: 999px;
+    padding: 0.05rem 0.4rem;
+}
+
+.payroll-vydejky-table .vydejka-duvod-label {
+    display: inline-block;
+    font-weight: 600;
+    margin-right: 0.35rem;
+}
+
+.payroll-vydejky-table .vydejka-duvod-detail {
+    display: block;
+    font-size: 0.8rem;
+    color: #78716c;
+    max-width: 280px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.vydejka-expand-btn {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    color: #9f1239;
+    padding: 0;
+}
+
+.vydejka-polozky-row td {
+    background: #fff7f8;
+    padding-top: 0;
+    padding-bottom: 0.75rem;
+}
+
+.payroll-vydejky-polozky {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.payroll-vydejky-polozky th,
+.payroll-vydejky-polozky td {
+    border: 1px solid #fecdd3;
+    padding: 0.35rem 0.5rem;
+}
+
+.vydejka-vazba-hint {
+    font-size: 0.8rem;
+    color: #78716c;
+}
+
 .pairing-chip {
     font-size: 0.8rem;
     font-weight: 600;

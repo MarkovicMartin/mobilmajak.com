@@ -14,7 +14,7 @@ $RepoRoot = Split-Path -Parent $PSScriptRoot
 $BackendDir = Join-Path $RepoRoot 'backend'
 $FrontendDir = Join-Path $RepoRoot 'frontend'
 $BuildDir = Join-Path $FrontendDir 'build'
-$VenvDir = Join-Path $BackendDir 'venv'
+$VenvDir = Join-Path $BackendDir '.venv'
 $EnvFile = Join-Path $BackendDir '.env'
 $EnvExample = Join-Path $BackendDir '.env.example'
 $PythonExe = Join-Path $VenvDir 'Scripts\python.exe'
@@ -82,28 +82,48 @@ Set it once in backend\.env or run:
     }
 }
 
-function Ensure-PythonVenv {
-    if (-not (Test-Path $PythonExe)) {
-        Write-Step 'Creating Python venv ...'
-        $py = Get-Command python -ErrorAction SilentlyContinue
-        if (-not $py) { $py = Get-Command py -ErrorAction SilentlyContinue }
-        if (-not $py) { throw 'Python not in PATH. Install Python 3.10+.' }
+function Test-BackendVenvOk {
+    if (-not (Test-Path $PythonExe)) { return $false }
+    try {
+        $ok = & $PythonExe -c "import sys; assert sys.version_info >= (3, 12); import django" 2>$null
+        return $LASTEXITCODE -eq 0
+    } catch {
+        return $false
+    }
+}
 
-        if ($py.Name -eq 'py') {
-            $py312 = & py -3.12 -c "import sys; print(sys.version_info >= (3,12))" 2>$null
-            if ($py312 -eq 'True') {
-                & py -3.12 -m venv $VenvDir
-            } else {
-                & py -3 -m venv $VenvDir
-            }
-        } else {
-            & python -m venv $VenvDir
+function Ensure-PythonVenv {
+    if (Test-BackendVenvOk) { return }
+
+    if (Test-Path $VenvDir) {
+        Write-Warn "Removing incomplete backend\.venv"
+        Remove-Item -Recurse -Force $VenvDir
+    }
+
+    Write-Step 'Creating Python 3.12+ venv in backend\.venv ...'
+    $created = $false
+    if (Get-Command py -ErrorAction SilentlyContinue) {
+        $py312 = & py -3.12 -c "import sys; print(sys.version_info >= (3,12))" 2>$null
+        if ($py312 -eq 'True') {
+            & py -3.12 -m venv $VenvDir
+            $created = $true
         }
+    }
+    if (-not $created) {
+        $py = Get-Command python3.12 -ErrorAction SilentlyContinue
+        if (-not $py) { $py = Get-Command python -ErrorAction SilentlyContinue }
+        if (-not $py) { throw 'Python 3.12+ not in PATH. Install Python or run: py -3.12' }
+        & $py.Source -m venv $VenvDir
+    }
+
+    if (-not (Test-Path $PythonExe)) {
+        throw "Failed to create venv at $VenvDir"
     }
 
     Write-Step 'Installing Python dependencies (may take a while) ...'
     & $PythonExe -m pip install -q --upgrade pip
     & $PythonExe -m pip install -q -r (Join-Path $BackendDir 'requirements.txt')
+    & $PythonExe (Join-Path $BackendDir 'manage.py') check | Out-Host
 }
 
 function Ensure-FrontendBuild {

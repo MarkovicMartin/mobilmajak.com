@@ -11,7 +11,18 @@ from django.utils import timezone
 from stores.models import Prodejna
 from users.models import WebUser
 
-from .models import Ukol, UkolSlackNotifikace
+from .models import Ukol, UkolKomentar, UkolSlackNotifikace
+from .slack_prefs import (
+    PREF_COMMENT_ALL,
+    PREF_COMMENT_MINE,
+    PREF_CREATED_ALL,
+    PREF_DUE_SOON_ALL,
+    PREF_OVERDUE_ALL,
+    get_slack_ukoly_prefs,
+    global_watcher_ids,
+    is_task_mine_for_user,
+    user_wants_slack_notification,
+)
 from .urgency import URGENCY_OVERDUE, URGENCY_URGENT, urgency_for_task
 
 logger = logging.getLogger(__name__)
@@ -24,6 +35,7 @@ DM_EVENT_TYPES = (
     "awaiting_approval",
     "completed",
     "created",
+    "comment",
 )
 
 _slack_user_cache: dict[int, str | None] = {}
@@ -184,6 +196,7 @@ def _dm_typ_for_event(event_type: str) -> str:
         "awaiting_approval": "dm_awaiting_approval",
         "completed": "dm_completed",
         "created": "dm_created",
+        "comment": "dm_comment",
     }
     return mapping[event_type]
 
@@ -199,32 +212,45 @@ def _store_vedouci_user_id(store_id: int | None) -> int | None:
 
 
 def _recipient_user_ids(task: Ukol, event_type: str) -> list[int]:
-    """Vrátí seznam WebUser ID příjemců DM pro danou událost."""
+    """Vrátí seznam WebUser ID příjemců DM pro danou událost (dle preferencí)."""
     assignee_id = task.id_prodejce_ukol
     zadavatel_id = task.id_prodejce_zadal
     vedouci_id = _store_vedouci_user_id(task.id_prodejny)
 
-    if event_type == "assigned":
-        return [assignee_id] if assignee_id else []
-    if event_type in ("due_soon", "overdue"):
-        ids = []
+    candidates: set[int] = set()
+
+    if event_type == "assigned" and assignee_id:
+        candidates.add(assignee_id)
+    elif event_type in ("due_soon", "overdue"):
         if assignee_id:
-            ids.append(assignee_id)
-        if zadavatel_id and zadavatel_id != assignee_id:
-            ids.append(zadavatel_id)
-        return ids
-    if event_type == "awaiting_approval":
-        ids = []
+            candidates.add(assignee_id)
         if zadavatel_id:
-            ids.append(zadavatel_id)
-        if vedouci_id and vedouci_id not in ids:
-            ids.append(vedouci_id)
-        return ids
-    if event_type == "completed":
-        return [zadavatel_id] if zadavatel_id else []
-    if event_type == "created":
-        return [zadavatel_id] if zadavatel_id else []
-    return []
+            candidates.add(zadavatel_id)
+        global_key = PREF_DUE_SOON_ALL if event_type == "due_soon" else PREF_OVERDUE_ALL
+        candidates.update(global_watcher_ids(global_key))
+    elif event_type == "awaiting_approval":
+        if zadavatel_id:
+            candidates.add(zadavatel_id)
+        if vedouci_id:
+            candidates.add(vedouci_id)
+    elif event_type == "completed":
+        if zadavatel_id:
+            candidates.add(zadavatel_id)
+    elif event_type == "created":
+        if zadavatel_id:
+            candidates.add(zadavatel_id)
+        candidates.update(global_watcher_ids(PREF_CREATED_ALL))
+
+    out: list[int] = []
+    for user_id in candidates:
+        if user_wants_slack_notification(
+            user_id,
+            task,
+            event_type,
+            vedouci_id=vedouci_id,
+        ):
+            out.append(user_id)
+    return out
 
 
 def _is_manager_recipient(task: Ukol, recipient_id: int) -> bool:
@@ -233,7 +259,13 @@ def _is_manager_recipient(task: Ukol, recipient_id: int) -> bool:
     return True
 
 
-def build_dm_message(task: Ukol, event_type: str, recipient_id: int) -> str:
+def build_dm_message(
+    task: Ukol,
+    event_type: str,
+    recipient_id: int,
+    *,
+    comment: UkolKomentar | None = None,
+) -> str:
     title = _escape_slack(_task_title(task))
     assignee = _escape_slack(_assignee_name(task))
     deadline = _format_deadline(task)
@@ -259,8 +291,22 @@ def build_dm_message(task: Ukol, event_type: str, recipient_id: int) -> str:
         headline = ":white_check_mark: Úkol dokončen"
         body = f"*{title}*\nPřiřazeno: {assignee}"
     elif event_type == "created":
-        headline = ":inbox_tray: Úkol založen"
-        body = f"Založili jste úkol *{title}* pro {assignee}.\nTermín: {deadline}"
+        if recipient_id == task.id_prodejce_zadal:
+            headline = ":inbox_tray: Úkol založen"
+            body = f"Založili jste úkol *{title}* pro {assignee}.\nTermín: {deadline}"
+        else:
+            zadavatel = _escape_slack(
+                _user_display_name(_web_user(task.id_prodejce_zadal), task.id_prodejce_zadal)
+            )
+            headline = ":new: Nový úkol v systému"
+            body = f"*{title}*\nPřiřazeno: {assignee}\nZadal: {zadavatel}\nTermín: {deadline}"
+    elif event_type == "comment" and comment:
+        author = _escape_slack(comment.autor_jmeno or f"Uživatel #{comment.autor_id}")
+        excerpt = _escape_slack((comment.text or "").strip())
+        if len(excerpt) > 280:
+            excerpt = excerpt[:277] + "…"
+        headline = ":speech_balloon: Nový komentář k úkolu"
+        body = f"*{title}*\nOd: {author}\n>{excerpt}"
     else:
         headline = "Úkol"
         body = title
@@ -268,14 +314,55 @@ def build_dm_message(task: Ukol, event_type: str, recipient_id: int) -> str:
     return f"*{headline}*\n{body}\n<{link}|Otevřít v MOBILMAJAK>"
 
 
-def _already_sent_dm(task: Ukol, dm_typ: str, recipient_id: int) -> bool:
-    return task.slack_notifikace.filter(typ=dm_typ, recipient_user_id=recipient_id).exists()
+def _already_sent_dm(
+    task: Ukol,
+    dm_typ: str,
+    recipient_id: int,
+    *,
+    ref_id: int = 0,
+) -> bool:
+    return task.slack_notifikace.filter(
+        typ=dm_typ,
+        recipient_user_id=recipient_id,
+        ref_id=ref_id,
+    ).exists()
 
 
-def send_slack_dm_to_web_user(task: Ukol, event_type: str, recipient_id: int) -> bool:
+def _recipient_user_ids_for_comment(task: Ukol, comment: UkolKomentar) -> list[int]:
+    """Příjemci DM u nového komentáře – řešitel vždy (kromě vlastního), admini dle preferencí."""
+    autor_id = comment.autor_id
+    vedouci_id = _store_vedouci_user_id(task.id_prodejny)
+    recipients: set[int] = set()
+
+    assignee_id = task.id_prodejce_ukol
+    if task.typ == "prirazeny" and assignee_id and assignee_id != autor_id:
+        recipients.add(assignee_id)
+
+    for user in WebUser.objects.filter(aktivni=True, role="ADMIN").only("id", "slack_ukoly_prefs"):
+        if user.id == autor_id or user.id in recipients:
+            continue
+        prefs = get_slack_ukoly_prefs(user)
+        if prefs.get(PREF_COMMENT_ALL):
+            recipients.add(user.id)
+        elif prefs.get(PREF_COMMENT_MINE) and is_task_mine_for_user(
+            task, user.id, vedouci_id=vedouci_id
+        ):
+            recipients.add(user.id)
+
+    return list(recipients)
+
+
+def send_slack_dm_to_web_user(
+    task: Ukol,
+    event_type: str,
+    recipient_id: int,
+    *,
+    comment: UkolKomentar | None = None,
+) -> bool:
     """Odešle DM jednomu WebUser; vrací True pokud odesláno."""
     dm_typ = _dm_typ_for_event(event_type)
-    if _already_sent_dm(task, dm_typ, recipient_id):
+    ref_id = comment.id if event_type == "comment" and comment else 0
+    if _already_sent_dm(task, dm_typ, recipient_id, ref_id=ref_id):
         return False
 
     user = _web_user(recipient_id)
@@ -289,7 +376,7 @@ def send_slack_dm_to_web_user(task: Ukol, event_type: str, recipient_id: int) ->
         )
         return False
 
-    text = build_dm_message(task, event_type, recipient_id)
+    text = build_dm_message(task, event_type, recipient_id, comment=comment)
     if not send_slack_dm(slack_id, text):
         return False
 
@@ -297,6 +384,7 @@ def send_slack_dm_to_web_user(task: Ukol, event_type: str, recipient_id: int) ->
         ukol=task,
         typ=dm_typ,
         recipient_user_id=recipient_id,
+        ref_id=ref_id,
     )
     logger.info(
         "Slack DM %s odesláno pro úkol #%s → WebUser #%s",
@@ -318,6 +406,19 @@ def notify_task_event(task: Ukol, event_type: str) -> int:
     sent = 0
     for recipient_id in _recipient_user_ids(task, event_type):
         if send_slack_dm_to_web_user(task, event_type, recipient_id):
+            sent += 1
+    return sent
+
+
+def notify_task_comment(task: Ukol, comment: UkolKomentar) -> int:
+    """Odešle Slack DM k novému komentáři. Vrací počet odeslaných."""
+    if not _bot_token():
+        logger.debug("SLACK_BOT_TOKEN není nastaven – přeskočeno (comment)")
+        return 0
+
+    sent = 0
+    for recipient_id in _recipient_user_ids_for_comment(task, comment):
+        if send_slack_dm_to_web_user(task, "comment", recipient_id, comment=comment):
             sent += 1
     return sent
 
@@ -421,8 +522,16 @@ def notify_typ_for_task(task: Ukol, now=None) -> str | None:
 def _deadline_already_notified(task: Ukol, notify_typ: str, recipient_id: int | None) -> bool:
     if _bot_token():
         dm_typ = _dm_typ_for_event(notify_typ)
-        return task.slack_notifikace.filter(typ=dm_typ, recipient_user_id=recipient_id).exists()
-    return task.slack_notifikace.filter(typ=notify_typ, recipient_user_id__isnull=True).exists()
+        return task.slack_notifikace.filter(
+            typ=dm_typ,
+            recipient_user_id=recipient_id,
+            ref_id=0,
+        ).exists()
+    return task.slack_notifikace.filter(
+        typ=notify_typ,
+        recipient_user_id__isnull=True,
+        ref_id=0,
+    ).exists()
 
 
 def send_deadline_notifications(task: Ukol, notify_typ: str) -> int:

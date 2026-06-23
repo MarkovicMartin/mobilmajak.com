@@ -24,7 +24,7 @@ from .permissions import (
     wip_warning_on_assign,
 )
 from .serializers import UkolKomentarSerializer, UkolSerializer, serialize_tasks_list
-from .slack_notify import notify_task_lifecycle_change
+from .slack_notify import notify_task_comment, notify_task_lifecycle_change
 from .urgency import is_at_risk, notifications_counts_for_user, OPEN_TASK_STATUSES, urgency_for_task
 
 
@@ -263,6 +263,7 @@ def task_comments(request, task_id: int):
     )
     task.posledni_aktivita_v = timezone.now()
     task.save(update_fields=["posledni_aktivita_v", "upraveno"])
+    notify_task_comment(task, comment)
     return Response(UkolKomentarSerializer(comment).data, status=status.HTTP_201_CREATED)
 
 

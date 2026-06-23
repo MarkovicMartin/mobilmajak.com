@@ -7,7 +7,7 @@ alwaysApply: true
 
 ## Kroky (v tomto pořadí)
 
-1. Lokálně: `cd backend && python manage.py check` (+ `python manage.py test <dotčené>` pokud backend)
+1. Lokálně: `./scripts/local-predeploy-check.sh` (+ `./scripts/backend-run.sh manage.py test <dotčené>` pokud backend)
 2. `./scripts/deploy-staging.sh`
 3. `./scripts/post-deploy-smoke.sh staging` → **FAIL = STOP**
 4. Uživatel ověří UI na stagingu

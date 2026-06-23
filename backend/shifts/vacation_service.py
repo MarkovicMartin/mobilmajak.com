@@ -301,7 +301,7 @@ def build_hours_cache_for_overview(rok, referencni_datum=None) -> dict:
     for i in range(1, 4):
         month_keys.add(_subtract_months(rok, ref_mesic, i))
     return {
-        key: aggregate_hours_by_user(y, m)
+        (y, m): aggregate_hours_by_user(y, m)
         for (y, m) in month_keys
     }
 

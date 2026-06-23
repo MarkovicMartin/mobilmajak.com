@@ -633,3 +633,57 @@ class DobropisPairingCache(models.Model):
 
     def __str__(self):
         return f'{self.sale_id} → {self.pairing}'
+
+
+class SkladVydejka(models.Model):
+    """Skladová výdejka ze Symplia (mimo WEB_PRODEJE_ALL)."""
+
+    doklad = models.CharField(max_length=100, primary_key=True, verbose_name='Číslo dokladu')
+    vystaveno = models.DateField(verbose_name='Datum vystavení', db_index=True)
+    symplio_subtype = models.PositiveSmallIntegerField(verbose_name='Symplio subtype')
+    duvod_vyskladneni = models.CharField(max_length=255, verbose_name='Důvod vyskladnění')
+    sklad_typ = models.CharField(max_length=16, verbose_name='Typ skladu')  # hlavni | komisni
+    duvod_kategorie = models.CharField(max_length=16, verbose_name='Kategorie důvodu')  # rucni | spotreba | reklamace
+    spravce = models.CharField(max_length=100, null=True, blank=True, verbose_name='Správce')
+    vazba = models.CharField(max_length=255, null=True, blank=True, verbose_name='Vazba')
+    castka_s_dph = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    castka_bez_dph = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    imported_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'WEB_SKLAD_VYDEJKY'
+        verbose_name = 'Skladová výdejka'
+        verbose_name_plural = 'Skladové výdejky'
+        ordering = ['-vystaveno', 'doklad']
+
+    def __str__(self):
+        return f'{self.doklad} ({self.duvod_kategorie})'
+
+
+class SkladVydejkaPolozka(models.Model):
+    """Položka skladové výdejky."""
+
+    doklad = models.ForeignKey(
+        SkladVydejka,
+        on_delete=models.CASCADE,
+        related_name='polozky',
+        db_column='doklad',
+    )
+    kod = models.CharField(max_length=100, null=True, blank=True, verbose_name='Kód')
+    nazev = models.TextField(null=True, blank=True, verbose_name='Název')
+    pocet_kusu = models.IntegerField(default=0, verbose_name='Počet kusů')
+    cena_ks_bez_dph = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    cena_celkem_bez_dph = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    stredisko = models.CharField(max_length=100, null=True, blank=True)
+    spravce = models.CharField(max_length=100, null=True, blank=True)
+    vystaveno = models.DateField(null=True, blank=True, db_index=True)
+    cas_prodeje = models.TimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'WEB_SKLAD_VYDEJKA_POLOZKY'
+        verbose_name = 'Položka skladové výdejky'
+        verbose_name_plural = 'Položky skladových výdejek'
+        ordering = ['doklad_id', 'id']
+
+    def __str__(self):
+        return f'{self.doklad_id} / {self.kod}'
