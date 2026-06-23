@@ -89,6 +89,25 @@ class DobropisyTests(TestCase):
         rows = list_dobropisy(qs)
         self.assertEqual(rows[0]['pairing'], 'bez_paru')
         self.assertIsNone(rows[0]['puvodni_doklad'])
+        self.assertEqual(rows[0]['bez_paru_duvod'], 'kod_nenalezen')
+
+    def test_bez_paru_hint_jiny_prodejce(self):
+        self._row(doklad='UCT400', kod='P400', cena=400, prodejce=self.prodejce_a)
+        self._row(doklad='DOB400', kod='P400', cena=-400, prodejce=self.prodejce_b)
+        qs = WebProdejeAll.objects.filter(typ=self.den)
+        rows = list_dobropisy(qs, search_qs=WebProdejeAll.objects.all())
+        dob = next(r for r in rows if r['doklad'] == 'DOB400')
+        self.assertEqual(dob['pairing'], 'bez_paru')
+        self.assertEqual(dob['bez_paru_duvod'], 'jiny_prodejce')
+        self.assertEqual(dob['kandidat_doklad'], 'UCT400')
+
+    def test_bez_paru_hint_mimo_okno(self):
+        self._row(doklad='UCT500', kod='P500', cena=500, prodejce=self.prodejce_a, den='2026-05-01')
+        self._row(doklad='DOB500', kod='P500', cena=-500, prodejce=self.prodejce_a)
+        qs = WebProdejeAll.objects.filter(typ=self.den)
+        rows = list_dobropisy(qs, search_qs=WebProdejeAll.objects.all())
+        self.assertEqual(rows[0]['bez_paru_duvod'], 'mimo_okno')
+        self.assertEqual(rows[0]['kandidat_doklad'], 'UCT500')
 
     def test_pairing_other_day(self):
         self._row(doklad='UCT300', kod='P300', cena=300, prodejce=self.prodejce_a, den='2026-06-09')

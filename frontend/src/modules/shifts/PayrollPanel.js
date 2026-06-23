@@ -833,6 +833,7 @@ function PayrollPanel({ month, onExport }) {
                             Skutečné vratky produktů (záporná cena). Nezapočítáváme slevy BODY/SLEVA ani zaokrouhlení.
                             {' '}<strong>Zrcadlo</strong> = stejný den, stejná cena/ks, do 3 h po prodeji.
                             {' '}<strong>Jiný prodej</strong> = starší prodej stejné položky u stejného prodejce.
+                            {' '}U <strong>Bez páru</strong> se zobrazí důvod a případný nalezený kandidát.
                         </p>
                         {dobropisyPairingTotals.zrcadlo + dobropisyPairingTotals.par + dobropisyPairingTotals.bez_paru > 0 && (
                             <div className="payroll-dobropisy-chips">
@@ -933,6 +934,7 @@ function PayrollPanel({ month, onExport }) {
                                                 <th>Původní doklad</th>
                                                 <th>Původní den</th>
                                                 <th>Po prodeji</th>
+                                                <th>Důvod / kandidát</th>
                                                 <th>Částka</th>
                                             </tr>
                                         </thead>
@@ -958,6 +960,26 @@ function PayrollPanel({ month, onExport }) {
                                                         {row.minut_po_prodeji != null
                                                             ? `${formatNumber(row.minut_po_prodeji)} min`
                                                             : '—'}
+                                                    </td>
+                                                    <td className="col-bez-paru-hint">
+                                                        {row.pairing === 'bez_paru' && row.bez_paru_duvod_label ? (
+                                                            <div className="bez-paru-hint">
+                                                                <span className="bez-paru-hint__duvod">
+                                                                    {row.bez_paru_duvod_label}
+                                                                </span>
+                                                                {row.kandidat_doklad && (
+                                                                    <span className="bez-paru-hint__kandidat">
+                                                                        {row.kandidat_prodejce
+                                                                            ? `${row.kandidat_prodejce}, `
+                                                                            : ''}
+                                                                        {row.kandidat_doklad}
+                                                                        {row.kandidat_datum
+                                                                            ? ` (${row.kandidat_datum})`
+                                                                            : ''}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        ) : '—'}
                                                     </td>
                                                     <td className="col-negative">{formatNumber(row.castka)} Kč</td>
                                                 </tr>

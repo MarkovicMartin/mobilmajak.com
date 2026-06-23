@@ -121,6 +121,7 @@ const AppShell = ({
             />
             <div className="app-shell__body">
                 <AppTopBar
+                    user={user}
                     isDarkMode={isDarkMode}
                     toggleTheme={toggleTheme}
                     drawerOpen={drawerOpen}

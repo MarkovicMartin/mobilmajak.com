@@ -10,7 +10,7 @@ import { showAppToast } from './AppToast';
 import { springHover } from '../constants/motion';
 import './BugButton.css';
 
-const BugButton = ({ user, onOpen }) => {
+const BugButton = ({ user, onOpen, variant = 'dock' }) => {
     const { canManageTickets } = useAuth();
     const isTicketManager = canManageTickets();
     const [isOpen, setIsOpen] = useState(false);
@@ -60,17 +60,17 @@ const BugButton = ({ user, onOpen }) => {
     }, [location.pathname]);
 
     useEffect(() => {
-        if (isOpen) {
+        if (!isOpen) return undefined;
+        if (variant !== 'shell') {
             document.body.style.overflow = 'hidden';
-            const handleEscape = (e) => { if (e.key === 'Escape') setIsOpen(false); };
-            document.addEventListener('keydown', handleEscape);
-            return () => {
-                document.body.style.overflow = '';
-                document.removeEventListener('keydown', handleEscape);
-            };
         }
-        document.body.style.overflow = '';
-    }, [isOpen]);
+        const handleEscape = (e) => { if (e.key === 'Escape') setIsOpen(false); };
+        document.addEventListener('keydown', handleEscape);
+        return () => {
+            document.body.style.overflow = '';
+            document.removeEventListener('keydown', handleEscape);
+        };
+    }, [isOpen, variant]);
 
     const handleToggle = () => {
         if (!isOpen) {
@@ -156,73 +156,122 @@ const BugButton = ({ user, onOpen }) => {
         </ul>
     );
 
+    const isShell = variant === 'shell';
+    const toggleBtnClass = isShell
+        ? `app-topbar__icon-btn bug-toggle-shell ${isOpen ? 'bug-toggle-shell--open' : ''} ${unreadCount > 0 && !onTicketsPage ? 'bug-toggle-has-unread' : ''}`
+        : `dock-icon-btn bug-toggle-dock ${isOpen ? 'bug-toggle-dock--open' : ''} ${showExpandedLabel ? 'dock-icon-btn--active dock-icon-btn--with-label' : ''} ${unreadCount > 0 && !onTicketsPage ? 'bug-toggle-has-unread' : ''}`;
+
+    const toggleButton = (
+        <button
+            type="button"
+            className={toggleBtnClass}
+            onClick={handleToggle}
+            data-tooltip={!isShell && !showExpandedLabel ? 'Tikety' : undefined}
+            title="Tikety / nahlásit problém"
+            aria-label={unreadCount > 0 ? `Tikety, ${unreadCount} nepřečtených` : 'Tikety / nahlásit problém'}
+            aria-expanded={isOpen}
+        >
+            <i className="fas fa-bug" />
+            {!isShell && showExpandedLabel && (
+                <motion.span
+                    className="dock-nav-label"
+                    initial={{ opacity: 0, maxWidth: 0 }}
+                    animate={{ opacity: 1, maxWidth: 160 }}
+                    transition={{ duration: 0.22, ease: 'easeOut' }}
+                >
+                    {expandedLabel}
+                </motion.span>
+            )}
+            {!isShell && showExpandedLabel && (
+                <motion.span
+                    layoutId="dock-active-dot-bug"
+                    className="dock-active-dot"
+                    transition={springHover}
+                />
+            )}
+            {unreadCount > 0 && (
+                <span className="bug-unread-badge" aria-hidden="true" />
+            )}
+        </button>
+    );
+
     return (
         <>
-            <div className="bug-dropdown" ref={dropdownRef}>
-                <motion.div
-                    className={`dock-nav-item-wrap ${showExpandedLabel ? 'dock-nav-item-wrap--expanded' : ''}`}
-                    whileHover={showExpandedLabel ? { scale: 1.04 } : { scale: 1.08 }}
-                    transition={springHover}
-                >
-                    <motion.button
-                        type="button"
-                        layout
-                        className={`dock-icon-btn bug-toggle-dock ${isOpen ? 'bug-toggle-dock--open' : ''} ${showExpandedLabel ? 'dock-icon-btn--active dock-icon-btn--with-label' : ''} ${unreadCount > 0 && !onTicketsPage ? 'bug-toggle-has-unread' : ''}`}
-                        onClick={handleToggle}
-                        data-tooltip={showExpandedLabel ? undefined : 'Tikety'}
-                        title="Tikety / nahlásit problém"
-                        aria-label={unreadCount > 0 ? `Tikety, ${unreadCount} nepřečtených` : 'Tikety / nahlásit problém'}
+            <div className={`bug-dropdown ${isShell ? 'bug-dropdown--shell' : ''}`} ref={dropdownRef}>
+                {isShell ? (
+                    toggleButton
+                ) : (
+                    <motion.div
+                        className={`dock-nav-item-wrap ${showExpandedLabel ? 'dock-nav-item-wrap--expanded' : ''}`}
+                        whileHover={showExpandedLabel ? { scale: 1.04 } : { scale: 1.08 }}
                         transition={springHover}
-                        aria-expanded={isOpen}
                     >
-                        <i className="fas fa-bug" />
-                        {showExpandedLabel && (
-                            <motion.span
-                                className="dock-nav-label"
-                                initial={{ opacity: 0, maxWidth: 0 }}
-                                animate={{ opacity: 1, maxWidth: 160 }}
-                                transition={{ duration: 0.22, ease: 'easeOut' }}
-                            >
-                                {expandedLabel}
-                            </motion.span>
-                        )}
-                        {showExpandedLabel && (
-                            <motion.span
-                                layoutId="dock-active-dot-bug"
-                                className="dock-active-dot"
-                                transition={springHover}
-                            />
-                        )}
-                        {unreadCount > 0 && (
-                            <span className="bug-unread-badge" aria-hidden="true" />
-                        )}
-                    </motion.button>
-                </motion.div>
+                        <motion.button
+                            type="button"
+                            layout
+                            className={toggleBtnClass}
+                            onClick={handleToggle}
+                            data-tooltip={showExpandedLabel ? undefined : 'Tikety'}
+                            title="Tikety / nahlásit problém"
+                            aria-label={unreadCount > 0 ? `Tikety, ${unreadCount} nepřečtených` : 'Tikety / nahlásit problém'}
+                            transition={springHover}
+                            aria-expanded={isOpen}
+                        >
+                            <i className="fas fa-bug" />
+                            {showExpandedLabel && (
+                                <motion.span
+                                    className="dock-nav-label"
+                                    initial={{ opacity: 0, maxWidth: 0 }}
+                                    animate={{ opacity: 1, maxWidth: 160 }}
+                                    transition={{ duration: 0.22, ease: 'easeOut' }}
+                                >
+                                    {expandedLabel}
+                                </motion.span>
+                            )}
+                            {showExpandedLabel && (
+                                <motion.span
+                                    layoutId="dock-active-dot-bug"
+                                    className="dock-active-dot"
+                                    transition={springHover}
+                                />
+                            )}
+                            {unreadCount > 0 && (
+                                <span className="bug-unread-badge" aria-hidden="true" />
+                            )}
+                        </motion.button>
+                    </motion.div>
+                )}
 
                 {isOpen && (
                     <>
-                        {createPortal(
-                            <div className="bug-mobile-drawer-root" ref={mobileDrawerRef}>
-                                <div
-                                    className={`bug-drawer-backdrop bug-mobile-only ${isOpen ? 'open' : ''}`}
-                                    onClick={() => setIsOpen(false)}
-                                    aria-hidden="true"
-                                />
-                                <div className={`bug-drawer-panel bug-mobile-only ${isOpen ? 'open' : ''}`}>
-                                    <button
-                                        className="mobile-nav-close"
-                                        onClick={() => setIsOpen(false)}
-                                        aria-label="Zavřít menu"
-                                        type="button"
-                                    >
-                                        ×
-                                    </button>
-                                    {mobileMenuContent}
-                                </div>
-                            </div>,
-                            document.body
+                        {isShell ? (
+                            <div className="bug-dropdown-menu">{menuContent}</div>
+                        ) : (
+                            <>
+                                {createPortal(
+                                    <div className="bug-mobile-drawer-root" ref={mobileDrawerRef}>
+                                        <div
+                                            className={`bug-drawer-backdrop bug-mobile-only ${isOpen ? 'open' : ''}`}
+                                            onClick={() => setIsOpen(false)}
+                                            aria-hidden="true"
+                                        />
+                                        <div className={`bug-drawer-panel bug-mobile-only ${isOpen ? 'open' : ''}`}>
+                                            <button
+                                                className="mobile-nav-close"
+                                                onClick={() => setIsOpen(false)}
+                                                aria-label="Zavřít menu"
+                                                type="button"
+                                            >
+                                                ×
+                                            </button>
+                                            {mobileMenuContent}
+                                        </div>
+                                    </div>,
+                                    document.body
+                                )}
+                                <div className="bug-dropdown-menu bug-desktop-only">{menuContent}</div>
+                            </>
                         )}
-                        <div className="bug-dropdown-menu bug-desktop-only">{menuContent}</div>
                     </>
                 )}
             </div>

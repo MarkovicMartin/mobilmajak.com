@@ -32,6 +32,11 @@ except ImportError:
     print('Chybí balíček requests: pip install requests', file=sys.stderr)
     sys.exit(1)
 
+MOTION_EVENT_TYPES = re.compile(
+    r'^(VMD|motion|fielddetection|linedetection|intrusion|human|humanBody|alarm)$',
+    re.IGNORECASE,
+)
+
 MOTION_KEYWORDS = re.compile(
     r'(motion|vmd|linedetection|fielddetection|intrusion|human|body|alarm)',
     re.IGNORECASE,
@@ -100,19 +105,41 @@ def _event_type_from_chunk(chunk: str) -> Optional[str]:
     return None
 
 
-def parse_alert_xml(chunk: str) -> bool:
+def parse_alert_xml(chunk: str) -> Optional[bool]:
+    """
+    True = začátek pohybu, False = konec pohybu, None = ignorovat (heartbeat / jiná událost).
+    """
     if not chunk.strip():
-        return False
+        return None
     try:
         root = ElementTree.fromstring(chunk)
     except ElementTree.ParseError:
-        return bool(MOTION_KEYWORDS.search(chunk))
-    blob = chunk
+        return True if MOTION_KEYWORDS.search(chunk) else None
+
+    fields = {}
     for el in root.iter():
         tag = el.tag.split('}')[-1] if '}' in el.tag else el.tag
-        if tag in ('eventType', 'eventDescription', 'eventState') and el.text:
-            blob += ' ' + el.text
-    return bool(MOTION_KEYWORDS.search(blob))
+        if tag in ('eventType', 'eventState', 'eventDescription') and el.text:
+            fields[tag] = el.text.strip()
+
+    event_type = fields.get('eventType', '')
+    event_state = (fields.get('eventState') or '').lower()
+    blob = chunk + ' ' + ' '.join(fields.values())
+
+    if event_type and not MOTION_EVENT_TYPES.match(event_type):
+        if not MOTION_KEYWORDS.search(blob):
+            return None
+
+    if event_state in ('inactive', 'stop', 'stopped', 'off'):
+        return False
+    if event_state in ('active', 'start', 'started', 'on'):
+        return True
+
+    if event_type and MOTION_EVENT_TYPES.match(event_type):
+        return True
+    if MOTION_KEYWORDS.search(blob):
+        return True
+    return None
 
 
 def subscribe_nvr_events(device_base: str, auth: HTTPDigestAuth) -> None:
@@ -298,24 +325,50 @@ def run_alert_stream(
                 part, buffer = buffer.split('</EventNotificationAlert>', 1)
                 part += '</EventNotificationAlert>'
                 event_type = _event_type_from_chunk(part)
+                event_state = None
+                try:
+                    _root = ElementTree.fromstring(part)
+                    for _el in _root.iter():
+                        _tag = _el.tag.split('}')[-1] if '}' in _el.tag else _el.tag
+                        if _tag == 'eventState' and _el.text:
+                            event_state = _el.text.strip()
+                            break
+                except ElementTree.ParseError:
+                    pass
                 if event_type:
+                    detail = f'{event_type}' + (f' ({event_state})' if event_state else '')
                     print(
-                        f'[{datetime.now().isoformat(timespec="seconds")}] událost: {event_type}',
+                        f'[{datetime.now().isoformat(timespec="seconds")}] událost: {detail}',
                         flush=True,
                     )
-                if parse_alert_xml(part):
-                    now = time.time()
-                    last_any_motion = now
-                    if now - last_motion_post >= motion_cooldown_seconds:
-                        post_motion(
-                            api_base=api_base,
-                            prodejna_id=prodejna_id,
-                            secret=secret,
-                            motion=True,
-                            source='gateway',
-                        )
-                        last_motion_post = now
-                        print(f'[{datetime.now().isoformat(timespec="seconds")}] → pohyb (odesláno)', flush=True)
+                motion_flag = parse_alert_xml(part)
+                if motion_flag is None:
+                    continue
+                now = time.time()
+                if motion_flag is False:
+                    post_motion(
+                        api_base=api_base,
+                        prodejna_id=prodejna_id,
+                        secret=secret,
+                        motion=False,
+                        source='gateway',
+                    )
+                    last_quiet_post = now
+                    last_any_motion = 0.0
+                    print(f'[{datetime.now().isoformat(timespec="seconds")}] → klid (NVR stop)', flush=True)
+                    continue
+
+                last_any_motion = now
+                if now - last_motion_post >= motion_cooldown_seconds:
+                    post_motion(
+                        api_base=api_base,
+                        prodejna_id=prodejna_id,
+                        secret=secret,
+                        motion=True,
+                        source='gateway',
+                    )
+                    last_motion_post = now
+                    print(f'[{datetime.now().isoformat(timespec="seconds")}] → pohyb (odesláno)', flush=True)
 
             now = time.time()
             if (

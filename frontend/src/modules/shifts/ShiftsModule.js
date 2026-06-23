@@ -308,6 +308,7 @@ function ShiftsModule() {
 
             {showForm && (
                 <ShiftForm
+                    key={editShift?.id ?? `new-${formInitialDatum || 'blank'}`}
                     user={user}
                     initialDatum={formInitialDatum}
                     editShift={editShift}

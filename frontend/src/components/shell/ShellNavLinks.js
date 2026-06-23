@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
     getVisibleNavGroups,
-    getProfileNavChildren,
     isNavItemLinkActive,
     navigateNavItem,
 } from '../../config/navigation';
@@ -261,76 +260,27 @@ export const ShellProfileLinks = ({
     navigate,
     linkClass,
     activeClass,
-    childClass,
     collapsed = false,
     onNavigate,
 }) => {
-    const { pathname, state: locationState } = location;
-    const profileChildren = useMemo(() => getProfileNavChildren({ isAdmin: () => false }), []);
-    const profileActive = pathname === '/profile';
-    const childActive = profileChildren.some((c) =>
-        isNavItemLinkActive(c, pathname, locationState),
-    );
-    const [open, setOpen] = useState(profileActive || childActive);
+    const profileActive = location.pathname === '/profile';
 
-    useEffect(() => {
-        if (profileActive || childActive) setOpen(true);
-    }, [profileActive, childActive]);
-
-    const go = (item) => {
-        navigateNavItem(navigate, item);
+    const goProfile = () => {
+        navigate('/profile');
         onNavigate?.();
     };
 
-    const renderChild = (item) => {
-        const active = isNavItemLinkActive(item, pathname, locationState);
-        return (
-            <button
-                key={item.sectionKey}
-                type="button"
-                className={`${linkClass} ${childClass || ''} ${active ? activeClass : ''}`.trim()}
-                onClick={() => go(item)}
-                aria-current={active ? 'page' : undefined}
-            >
-                <i className={`fas ${item.icon}`} aria-hidden="true" />
-                <span className="shell-nav__label">{item.label}</span>
-            </button>
-        );
-    };
-
-    if (collapsed) {
-        return (
-            <div className="shell-nav__branch shell-nav__branch--collapsed">
-                <button
-                    type="button"
-                    className={`${linkClass} ${profileActive || childActive ? activeClass : ''}`.trim()}
-                    onClick={() => go({ path: '/profile', navState: { profileTab: 'calendar' } })}
-                    title="Můj profil"
-                >
-                    <i className="fas fa-user" aria-hidden="true" />
-                </button>
-            </div>
-        );
-    }
-
     return (
-        <div className={`shell-nav__branch ${profileActive || childActive ? 'shell-nav__branch--active' : ''}`}>
-            <button
-                type="button"
-                className={`${linkClass} shell-nav__branch-toggle ${open ? 'shell-nav__branch-toggle--open' : ''} ${profileActive || childActive ? activeClass : ''}`.trim()}
-                onClick={() => setOpen((v) => !v)}
-                aria-expanded={open}
-            >
-                <i className="fas fa-user" aria-hidden="true" />
-                <span className="shell-nav__label">Můj profil</span>
-                <i className={`fas fa-chevron-${open ? 'up' : 'down'} shell-nav__chevron`} aria-hidden="true" />
-            </button>
-            {open && (
-                <div className="shell-nav__children">
-                    {profileChildren.map(renderChild)}
-                </div>
-            )}
-        </div>
+        <button
+            type="button"
+            className={`${linkClass} ${profileActive ? activeClass : ''}`.trim()}
+            onClick={goProfile}
+            aria-current={profileActive ? 'page' : undefined}
+            title={collapsed ? 'Můj profil' : undefined}
+        >
+            <i className="fas fa-user" aria-hidden="true" />
+            {!collapsed && <span className="shell-nav__label">Můj profil</span>}
+        </button>
     );
 };
 

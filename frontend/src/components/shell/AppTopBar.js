@@ -1,8 +1,9 @@
 import React from 'react';
 import { useLocation } from 'react-router-dom';
+import BugButton from '../BugButton';
 import { routeToLabel } from '../../utils/clarity';
 
-const AppTopBar = ({ onMenuClick, isDarkMode, toggleTheme, drawerOpen = false, onDrawerClose }) => {
+const AppTopBar = ({ user, onMenuClick, isDarkMode, toggleTheme, drawerOpen = false, onDrawerClose }) => {
     const location = useLocation();
     const pageTitle = routeToLabel(location.pathname);
 
@@ -20,6 +21,9 @@ const AppTopBar = ({ onMenuClick, isDarkMode, toggleTheme, drawerOpen = false, o
             </button>
             <h1 className="app-topbar__title">{pageTitle}</h1>
             <div className="app-topbar__actions">
+                {user && (
+                    <BugButton user={user} variant="shell" />
+                )}
                 <button
                     type="button"
                     className="app-topbar__icon-btn"

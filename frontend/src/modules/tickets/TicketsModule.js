@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { ticketAPI } from '../../services/api';
 import { PageHeader, Select } from '../../components/ui';
 import TicketCommentRow from './TicketCommentRow';
+import TicketForm from './TicketForm';
 import './TicketsModule.css';
 import './MyTickets.css';
 
@@ -68,6 +69,7 @@ const TicketsModule = () => {
     const [editCommentText, setEditCommentText] = useState('');
     const [savingCommentId, setSavingCommentId] = useState(null);
     const [deletingCommentId, setDeletingCommentId] = useState(null);
+    const [showCreateForm, setShowCreateForm] = useState(false);
 
     useEffect(() => {
         loadTickets();
@@ -246,6 +248,13 @@ const TicketsModule = () => {
                 subtitle={avgSubtitle}
                 actions={(
                     <div className="tickets-filter">
+                        <button
+                            type="button"
+                            className="btn btn--primary btn--sm btn-new-ticket"
+                            onClick={() => setShowCreateForm(true)}
+                        >
+                            Nový ticket
+                        </button>
                         <Select
                             value={filterStav}
                             onChange={setFilterStav}
@@ -388,6 +397,16 @@ const TicketsModule = () => {
                     </div>
                 ))}
             </div>
+
+            {showCreateForm && (
+                <TicketForm
+                    onSuccess={() => {
+                        setShowCreateForm(false);
+                        loadTickets();
+                    }}
+                    onCancel={() => setShowCreateForm(false)}
+                />
+            )}
         </div>
     );
 };

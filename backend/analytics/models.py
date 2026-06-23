@@ -616,6 +616,14 @@ class DobropisPairingCache(models.Model):
     )
     puvodni_stredisko = models.CharField(max_length=100, null=True, blank=True)
     minut_po_prodeji = models.FloatField(null=True, blank=True)
+    bez_paru_duvod = models.CharField(max_length=32, null=True, blank=True, verbose_name='Důvod bez páru')
+    kandidat_doklad = models.CharField(max_length=100, null=True, blank=True, verbose_name='Kandidát doklad')
+    kandidat_datum = models.DateField(null=True, blank=True, verbose_name='Kandidát datum')
+    kandidat_cas = models.TimeField(null=True, blank=True, verbose_name='Kandidát čas')
+    kandidat_id_prodejce = models.IntegerField(null=True, blank=True, verbose_name='Kandidát ID prodejce')
+    kandidat_cena = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True, verbose_name='Kandidát cena',
+    )
     pairing_version = models.PositiveSmallIntegerField(default=1)
     computed_at = models.DateTimeField(auto_now=True)
 
