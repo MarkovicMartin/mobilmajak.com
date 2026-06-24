@@ -71,9 +71,13 @@ class VacationServiceTests(TestCase):
         smena = self._make_smena(date(2026, 6, 3))  # středa
         self.assertEqual(dovolena_hodin_ze_smeny(smena), DOVOLENA_HODINY_ZA_DEN)
 
-    def test_dovolena_0h_weekend(self):
+    def test_dovolena_8h_weekend(self):
         smena = self._make_smena(date(2026, 6, 6))  # sobota
-        self.assertEqual(dovolena_hodin_ze_smeny(smena), 0)
+        self.assertEqual(dovolena_hodin_ze_smeny(smena), DOVOLENA_HODINY_ZA_DEN)
+
+    def test_dovolena_8h_holiday(self):
+        smena = self._make_smena(date(2026, 5, 1))  # svátek práce
+        self.assertEqual(dovolena_hodin_ze_smeny(smena), DOVOLENA_HODINY_ZA_DEN)
 
     def test_fond_a_validace(self):
         user = WebUser.objects.create(

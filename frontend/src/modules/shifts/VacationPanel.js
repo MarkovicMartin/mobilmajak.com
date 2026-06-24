@@ -7,8 +7,8 @@ const MONTH_NAMES = [
     'Červenec', 'Srpen', 'Září', 'Říjen', 'Listopad', 'Prosinec',
 ];
 
-const CACHE_PREFIX = 'vacation-overview-v3';
-const CURRENT_MONTH_STALE_MS = 5 * 60 * 1000;
+const CACHE_PREFIX = 'vacation-overview-v4';
+const CURRENT_YEAR_STALE_MS = 5 * 60 * 1000;
 const memoryCache = new Map();
 
 function cacheKey(rok) {
@@ -49,57 +49,14 @@ function applyOverviewPayload(data, setEligible, setMessage, setUsers, setExpand
     }
 }
 
-function mergeUserRows(cachedUsers, freshUsers, rok, now = new Date()) {
-    const currentYear = now.getFullYear();
-    const currentMonth = now.getMonth() + 1;
-    const freshById = new Map((freshUsers || []).map((u) => [u.user_id, u]));
-    const cachedById = new Map((cachedUsers || []).map((u) => [u.user_id, u]));
-
-    if (rok < currentYear) {
-        return cachedUsers;
-    }
-
-    const allIds = new Set([
-        ...(cachedUsers || []).map((u) => u.user_id),
-        ...(freshUsers || []).map((u) => u.user_id),
-    ]);
-    return [...allIds].map((userId) => {
-        const cachedUser = cachedById.get(userId);
-        const freshUser = freshById.get(userId);
-        if (!freshUser) return cachedUser;
-        if (!cachedUser) return freshUser;
-        if (rok > currentYear) return freshUser;
-
-        const cachedMesice = cachedUser.mesice || [];
-        const freshMesice = freshUser.mesice || [];
-        const mesice = cachedMesice.map((cachedMonth) => {
-            if (cachedMonth.mesic < currentMonth) {
-                return cachedMonth;
-            }
-            const freshMonth = freshMesice.find((m) => m.mesic === cachedMonth.mesic);
-            return freshMonth || cachedMonth;
-        });
-        for (const freshMonth of freshMesice) {
-            if (freshMonth.mesic >= currentMonth && !mesice.some((m) => m.mesic === freshMonth.mesic)) {
-                mesice.push(freshMonth);
-            }
-        }
-        mesice.sort((a, b) => a.mesic - b.mesic);
-
-        return {
-            ...freshUser,
-            mesice,
-            cerpano_rok_z_mesicu_h: mesice.reduce((s, m) => s + (Number(m.cerpano_h) || 0), 0),
-        };
-    }).filter(Boolean);
-}
-
 function needsBackgroundRefresh(rok, cached, now = new Date()) {
     if (!cached) return true;
     const currentYear = now.getFullYear();
+    // Uzavřené roky se nemění – stačí cache ze session.
     if (rok < currentYear) return false;
     if (rok > currentYear) return true;
-    return Date.now() - (cached.fetchedAt || 0) > CURRENT_MONTH_STALE_MS;
+    // Běžící rok: na pozadí max. jednou za 5 min (hlavička + měsíční tabulka z API).
+    return Date.now() - (cached.fetchedAt || 0) > CURRENT_YEAR_STALE_MS;
 }
 
 function VacationPanel({ user }) {
@@ -140,10 +97,7 @@ function VacationPanel({ user }) {
             const data = await res.json();
             if (seq !== fetchSeq.current) return;
 
-            const mergedUsers = cached?.data?.users?.length
-                ? mergeUserRows(cached.data.users, data.users || [], rok)
-                : (data.users || []);
-            const merged = { ...data, users: mergedUsers };
+            const merged = { ...data, users: data.users || [] };
 
             writeCache(rok, { data: merged });
             applyOverviewPayload(merged, setEligible, setMessage, setUsers, setExpandedId);
@@ -214,7 +168,7 @@ function VacationPanel({ user }) {
                             </div>
                         </div>
 
-                        {(row.odeceno_deficit_h > 0 || row.prevod_h > 0) && (
+                        {(row.cerpano_smeny_h > 0 || row.odeceno_deficit_h > 0 || row.prevod_h > 0 || row.korekce_cerpano_h) && (
                             <div className="vacation-meta">
                                 {row.cerpano_smeny_h > 0 && (
                                     <span>Směny dovolené: <strong>{formatNumber(row.cerpano_smeny_h)} h</strong></span>
@@ -222,6 +176,9 @@ function VacationPanel({ user }) {
                                 {row.odeceno_deficit_h > 0 && (
                                     <span>Deficit fondu: <strong>{formatNumber(row.odeceno_deficit_h)} h</strong></span>
                                 )}
+                                {row.korekce_cerpano_h ? (
+                                    <span>Korekce (sync): <strong>{formatNumber(row.korekce_cerpano_h)} h</strong></span>
+                                ) : null}
                                 {row.prevod_h > 0 && (
                                     <span>Převod z minulého roku: <strong>{formatNumber(row.prevod_h)} h</strong></span>
                                 )}

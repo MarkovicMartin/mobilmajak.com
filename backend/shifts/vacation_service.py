@@ -43,12 +43,8 @@ def is_pracovni_den(datum, svatky_set=None):
 
 
 def dovolena_hodin_ze_smeny(smena, svatky=None):
+    """Každý kalendářní den označený jako dovolená = 8 h (provoz 7 dní v týdnu)."""
     if smena.typ_smeny != 'dovolena':
-        return 0.0
-    if svatky is not None and isinstance(next(iter(svatky), None), date):
-        if not is_pracovni_den(smena.datum, {(d.year, d.month, d.day) for d in svatky}):
-            return 0.0
-    elif not is_pracovni_den(smena.datum):
         return 0.0
     return float(DOVOLENA_HODINY_ZA_DEN)
 
@@ -221,9 +217,7 @@ def dovolena_stav(user, rok=None, hours_cache=None, referencni_datum=None):
 def validate_dovolena_kapacita(user, datum, typ_smeny, ignorovat_smena_id=None):
     if typ_smeny != 'dovolena' or not is_dovolena_eligible(user):
         return None
-    nove_h = DOVOLENA_HODINY_ZA_DEN if is_pracovni_den(datum) else 0.0
-    if nove_h <= 0:
-        return None
+    nove_h = float(DOVOLENA_HODINY_ZA_DEN)
     rok = datum.year if isinstance(datum, date) else datum
     fond = dovolena_fond_rok(user.id, rok, fond_extra=fond_extra_h(user))
     cerpano = celkove_cerpano_rok(user.id, rok, ignorovat_smena_id=ignorovat_smena_id) + korekce_cerpano_h(user)
@@ -237,10 +231,8 @@ def validate_dovolena_kapacita(user, datum, typ_smeny, ignorovat_smena_id=None):
 
 
 def normalize_dovolena_casy(datum, cas_od='08:00', cas_do='16:00'):
-    """Pro dovolenou v pracovní den nastaví 8h; jinak ponechá vstup."""
-    if is_pracovni_den(datum):
-        return '08:00', '16:00'
-    return cas_od, cas_do
+    """Pro dovolenou vždy 8h – bez ohledu na den v týdnu."""
+    return '08:00', '16:00'
 
 
 def _reference_month_for_prumer(rok, referencni_datum=None):
