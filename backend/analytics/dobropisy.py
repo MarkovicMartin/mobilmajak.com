@@ -14,6 +14,8 @@ from decimal import Decimal
 from django.db import transaction
 from django.db.models import Count, F, Q, Sum
 
+from analytics.symplio_urls import symplio_doklad_pdf_url
+
 DOBROPIS_EXCLUDED_KODY = ('SLEVA', 'BODY')
 MIRROR_MAX_MINUTES = 180
 ORIGINAL_SALE_LOOKBACK_DAYS = 30
@@ -190,6 +192,7 @@ def _kandidat_payload(sale: dict | None) -> dict:
         'kandidat_cas': cas.isoformat() if cas else None,
         'kandidat_id_prodejce': sale.get('id_prodejce'),
         'kandidat_cena': float(sale['cena_ks_vcl_dph'] or 0),
+        'symplio_kandidat_url': symplio_doklad_pdf_url(sale.get('doklad')),
     }
 
 
@@ -638,6 +641,8 @@ def list_dobropisy(
             'datum': typ.isoformat() if typ else None,
             'cas': sale['cas_prodeje'].isoformat() if sale.get('cas_prodeje') else None,
             'doklad': sale['doklad'],
+            'symplio_doklad_url': symplio_doklad_pdf_url(sale['doklad']),
+            'symplio_puvodni_doklad_url': symplio_doklad_pdf_url(pairing_data.get('puvodni_doklad')),
             'kod': sale['kod'],
             'nazev': (sale['nazev'] or '')[:100],
             'kusy': kusy,

@@ -10,6 +10,7 @@ from analytics.sklad_vydejky_parse import (
     SKLAD_TYP_LABELS,
     VYDEJKA_ALLOWED_SUBTYPES,
 )
+from analytics.symplio_urls import symplio_doklad_pdf_url, symplio_sklad_doklady_day_url
 
 
 def _month_bounds(rok: int, mesic: int) -> tuple[date, date]:
@@ -28,6 +29,7 @@ def vydejky_queryset_for_month(rok: int, mesic: int):
             vystaveno__lte=end,
             symplio_subtype__in=VYDEJKA_ALLOWED_SUBTYPES,
         )
+        .defer('imported_at')
         .prefetch_related('polozky')
     )
 
@@ -45,25 +47,51 @@ def _resolve_spravce_ids(spravce_names: set[str]) -> dict[str, int]:
     return out
 
 
-def _vazba_prodej_info(vazba: str | None) -> dict:
-    if not vazba:
-        return {'vazba_nalezena': False, 'vazba_doklad': None, 'vazba_datum': None}
+def _vazba_prodej_info_batch(vazby: set[str]) -> dict[str, dict]:
+    clean = {v.strip() for v in vazby if v and str(v).strip()}
+    if not clean:
+        return {}
     from analytics.models import WebProdejeAll
 
-    vazba = vazba.strip()
-    row = (
-        WebProdejeAll.objects.filter(doklad=vazba)
-        .order_by('-typ')
+    found: dict[str, dict] = {}
+    for row in (
+        WebProdejeAll.objects.filter(doklad__in=clean)
+        .order_by('doklad', '-typ')
         .values('doklad', 'typ')
-        .first()
-    )
-    if not row:
-        return {'vazba_nalezena': False, 'vazba_doklad': vazba, 'vazba_datum': None}
-    return {
-        'vazba_nalezena': True,
-        'vazba_doklad': row['doklad'],
-        'vazba_datum': row['typ'].isoformat() if row.get('typ') else None,
-    }
+    ):
+        doklad = row['doklad']
+        if doklad not in found:
+            found[doklad] = row
+
+    out: dict[str, dict] = {}
+    for vazba in clean:
+        row = found.get(vazba)
+        if row:
+            out[vazba] = {
+                'vazba_nalezena': True,
+                'vazba_doklad': row['doklad'],
+                'vazba_datum': row['typ'].isoformat() if row.get('typ') else None,
+                'symplio_vazba_url': symplio_doklad_pdf_url(vazba),
+            }
+        else:
+            out[vazba] = {
+                'vazba_nalezena': False,
+                'vazba_doklad': vazba,
+                'vazba_datum': None,
+                'symplio_vazba_url': symplio_doklad_pdf_url(vazba),
+            }
+    return out
+
+
+def _vazba_prodej_info(vazba: str | None) -> dict:
+    if not vazba:
+        return {'vazba_nalezena': False, 'vazba_doklad': None, 'vazba_datum': None, 'symplio_vazba_url': None}
+    return _vazba_prodej_info_batch({vazba}).get(vazba.strip(), {
+        'vazba_nalezena': False,
+        'vazba_doklad': vazba,
+        'vazba_datum': None,
+        'symplio_vazba_url': symplio_doklad_pdf_url(vazba),
+    })
 
 
 def vydejky_totals(qs) -> dict:
@@ -117,8 +145,12 @@ def list_vydejky(qs, *, duvod_kategorie: str | None = None, sklad_typ: str | Non
     if sklad_typ:
         qs = qs.filter(sklad_typ=sklad_typ)
 
-    spravce_names = {v.spravce for v in qs if v.spravce}
+    spravce_names = set(
+        qs.exclude(spravce__isnull=True).exclude(spravce='').values_list('spravce', flat=True)
+    )
     spravce_ids = _resolve_spravce_ids(spravce_names)
+    vazby = {doc.vazba.strip() for doc in qs if doc.vazba}
+    vazba_info_map = _vazba_prodej_info_batch(vazby)
 
     rows = []
     for doc in qs.order_by('-vystaveno', 'doklad'):
@@ -132,10 +164,19 @@ def list_vydejky(qs, *, duvod_kategorie: str | None = None, sklad_typ: str | Non
                 'castka': float(p.cena_celkem_bez_dph) if p.cena_celkem_bez_dph is not None else None,
                 'stredisko': p.stredisko,
             })
-        vazba_info = _vazba_prodej_info(doc.vazba)
+        vazba_key = doc.vazba.strip() if doc.vazba else None
+        vazba_info = vazba_info_map.get(vazba_key, {
+            'vazba_nalezena': False,
+            'vazba_doklad': vazba_key,
+            'vazba_datum': None,
+            'symplio_vazba_url': symplio_doklad_pdf_url(vazba_key) if vazba_key else None,
+        })
+        datum_iso = doc.vystaveno.isoformat()
         rows.append({
-            'datum': doc.vystaveno.isoformat(),
+            'datum': datum_iso,
             'doklad': doc.doklad,
+            'symplio_doklad_url': symplio_doklad_pdf_url(doc.doklad),
+            'symplio_den_url': symplio_sklad_doklady_day_url(datum_iso),
             'duvod_vyskladneni': doc.duvod_vyskladneni,
             'duvod_kategorie': doc.duvod_kategorie,
             'duvod_kategorie_label': DUVOD_KATEGORIE_LABELS.get(doc.duvod_kategorie, doc.duvod_kategorie),

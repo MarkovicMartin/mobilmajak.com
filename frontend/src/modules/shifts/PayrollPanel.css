@@ -545,6 +545,153 @@
     color: #78716c;
 }
 
+.symplio-doc-link {
+    color: #1d4ed8;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.symplio-doc-link:hover {
+    color: #1e40af;
+}
+
+.symplio-doc-link--code code {
+    color: inherit;
+}
+
+.payroll-returns-person-table .returns-person-row--open td {
+    background: #fff7f8;
+}
+
+.returns-person-name {
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    font-weight: 600;
+    color: #1c1917;
+    cursor: pointer;
+    text-align: left;
+}
+
+.returns-person-name:hover {
+    color: #be123c;
+}
+
+.returns-person-detail-row td {
+    background: #fffafb;
+    padding: 0.75rem 0.5rem 1rem;
+    border-top: none;
+}
+
+.returns-person-detail {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.returns-person-detail-section + .returns-person-detail-section {
+    border-top: 1px solid #fecdd3;
+    padding-top: 0.75rem;
+}
+
+.returns-person-detail-title {
+    margin: 0 0 0.5rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #57534e;
+}
+
+.payroll-vydejky-spravce-table .vydejka-spravce-row--open td {
+    background: #fff7f8;
+}
+
+.vydejka-spravce-name {
+    border: none;
+    background: transparent;
+    padding: 0;
+    font: inherit;
+    font-weight: 600;
+    color: #9f1239;
+    cursor: pointer;
+    text-align: left;
+}
+
+.vydejka-spravce-name:hover {
+    text-decoration: underline;
+}
+
+.vydejka-spravce-detail-row td {
+    padding: 0 0 0.75rem;
+    background: #fffafb;
+    border-bottom: 1px solid #fecdd3;
+}
+
+.vydejka-spravce-detail {
+    padding: 0.5rem 0.75rem 0.25rem 2rem;
+}
+
+.vydejka-doklad-block {
+    margin-bottom: 0.35rem;
+}
+
+.vydejka-doklad-header {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    border: 1px solid #fecdd3;
+    border-radius: 8px;
+    background: #fff;
+    padding: 0.45rem 0.65rem;
+    cursor: pointer;
+    text-align: left;
+    font-size: 0.85rem;
+}
+
+.vydejka-doklad-header:hover {
+    background: #fff1f2;
+}
+
+.vydejka-doklad-header__toggle {
+    color: #9f1239;
+    flex: 0 0 auto;
+}
+
+.vydejka-doklad-header__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.vydejka-doklad-header__castka {
+    font-weight: 600;
+    margin-left: auto;
+}
+
+.vydejka-doklad-header__count {
+    font-size: 0.8rem;
+    color: #78716c;
+}
+
+.vydejka-polozky-wrap {
+    margin: 0.35rem 0 0.5rem 1.25rem;
+}
+
+.payroll-vydejky-polozky-flat {
+    font-size: 0.85rem;
+}
+
+.vydejka-polozky-empty {
+    margin: 0.35rem 0 0.5rem 1.25rem;
+    font-size: 0.85rem;
+    color: #78716c;
+}
+
 .pairing-chip {
     font-size: 0.8rem;
     font-weight: 600;

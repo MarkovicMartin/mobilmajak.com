@@ -8,11 +8,15 @@ import {
 } from '../../constants/productCommissions';
 import { formatPoints, formatNumber } from '../../utils/formatBody';
 import { manualNumberInputClass, preventNumberInputWheel } from '../../utils/manualNumberInput';
+import SymplioDocLink from '../../components/SymplioDocLink';
 import './PayrollPanel.css';
 
 const CACHE_PREFIX = 'payroll-overview-v1';
 const CURRENT_MONTH_STALE_MS = 5 * 60 * 1000;
+const RETURNS_CACHE_PREFIX = 'payroll-returns-v1';
+const RETURNS_STALE_MS = 10 * 60 * 1000;
 const memoryCache = new Map();
+const returnsMemoryCache = new Map();
 
 function cacheKey(month) {
     return `${CACHE_PREFIX}:${month}`;
@@ -59,6 +63,42 @@ function needsBackgroundRefresh(month, cached, now = new Date()) {
     return Date.now() - (cached.fetchedAt || 0) > CURRENT_MONTH_STALE_MS;
 }
 
+function returnsCacheKey(month, part) {
+    return `${RETURNS_CACHE_PREFIX}:${month}:${part}`;
+}
+
+function readReturnsCache(month, part) {
+    const memKey = `${month}:${part}`;
+    if (returnsMemoryCache.has(memKey)) return returnsMemoryCache.get(memKey);
+    try {
+        const raw = sessionStorage.getItem(returnsCacheKey(month, part));
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        returnsMemoryCache.set(memKey, parsed);
+        return parsed;
+    } catch {
+        return null;
+    }
+}
+
+function writeReturnsCache(month, part, data) {
+    const entry = { data, fetchedAt: Date.now() };
+    returnsMemoryCache.set(`${month}:${part}`, entry);
+    try {
+        sessionStorage.setItem(returnsCacheKey(month, part), JSON.stringify(entry));
+    } catch {
+        // sessionStorage plné – modulová cache stačí
+    }
+}
+
+function returnsNeedsRefresh(month, cached) {
+    if (!cached) return true;
+    const current = currentMonthStr();
+    if (month < current) return false;
+    if (month > current) return true;
+    return Date.now() - (cached.fetchedAt || 0) > RETURNS_STALE_MS;
+}
+
 function applyPayrollPayload(data, setRows, setFonduH) {
     setRows(data.rows || []);
     const fond = data.fondu_h ?? data.rows?.[0]?.fondu_h ?? null;
@@ -73,6 +113,11 @@ const MONTH_NAMES = [
 function formatMonthName(monthStr) {
     const [year, month] = monthStr.split('-').map(Number);
     return `${MONTH_NAMES[month - 1]} ${year}`;
+}
+
+function returnsPersonKey(id, name) {
+    if (id != null && id !== '') return `id:${id}`;
+    return `name:${String(name || '—').trim().toLowerCase()}`;
 }
 
 function currentMonthStr() {
@@ -105,23 +150,18 @@ function PayrollPanel({ month, onExport }) {
     const [dobropisyLoading, setDobropisyLoading] = useState(false);
     const [dobropisyError, setDobropisyError] = useState('');
     const [dobropisyOpen, setDobropisyOpen] = useState(false);
-    const [dobropisyFilterUser, setDobropisyFilterUser] = useState('');
-    const [dobropisyFilterPairing, setDobropisyFilterPairing] = useState('');
     const [dobropisyPairingTotals, setDobropisyPairingTotals] = useState({
         zrcadlo: 0, par: 0, bez_paru: 0,
     });
     const dobropisyRowsLoadedRef = useRef(false);
-    const [returnsTab, setReturnsTab] = useState('dobropisy');
     const [vydejkySummary, setVydejkySummary] = useState([]);
     const [vydejkyRows, setVydejkyRows] = useState([]);
     const [vydejkyTotals, setVydejkyTotals] = useState({ polozky: 0, doklady: 0, castka: 0 });
     const [vydejkyDuvodTotals, setVydejkyDuvodTotals] = useState({ rucni: 0, spotreba: 0, reklamace: 0 });
     const [vydejkyLoading, setVydejkyLoading] = useState(false);
     const [vydejkyError, setVydejkyError] = useState('');
-    const [vydejkyFilterUser, setVydejkyFilterUser] = useState('');
-    const [vydejkyFilterDuvod, setVydejkyFilterDuvod] = useState('');
-    const [vydejkyFilterSklad, setVydejkyFilterSklad] = useState('');
     const [vydejkyExpanded, setVydejkyExpanded] = useState({});
+    const [returnsExpandedPerson, setReturnsExpandedPerson] = useState({});
     const vydejkyRowsLoadedRef = useRef(false);
     const odmenaFormRef = useRef(null);
     const penalizaceFormRef = useRef(null);
@@ -250,10 +290,33 @@ function PayrollPanel({ month, onExport }) {
     const loadDobropisySummary = useCallback(async () => {
         if (!month) return;
         setDobropisyError('');
-        dobropisyRowsLoadedRef.current = false;
         setDobropisyOpen(false);
-        setDobropisyRows([]);
-        setDobropisyPairingTotals({ zrcadlo: 0, par: 0, bez_paru: 0 });
+        setReturnsExpandedPerson({});
+
+        const cachedSummary = readReturnsCache(month, 'dobropisy-summary');
+        if (cachedSummary?.data) {
+            setDobropisySummary(cachedSummary.data.summary || []);
+            setDobropisyTotals(cachedSummary.data.totals || { polozky: 0, doklady: 0, castka: 0 });
+        } else {
+            setDobropisySummary([]);
+            setDobropisyTotals({ polozky: 0, doklady: 0, castka: 0 });
+        }
+
+        const cachedRows = readReturnsCache(month, 'dobropisy-rows');
+        if (cachedRows?.data) {
+            setDobropisyRows(cachedRows.data.rows || []);
+            setDobropisyPairingTotals(cachedRows.data.pairing_totals || { zrcadlo: 0, par: 0, bez_paru: 0 });
+            dobropisyRowsLoadedRef.current = true;
+        } else {
+            dobropisyRowsLoadedRef.current = false;
+            setDobropisyRows([]);
+            setDobropisyPairingTotals({ zrcadlo: 0, par: 0, bez_paru: 0 });
+        }
+
+        if (!returnsNeedsRefresh(month, cachedSummary)) {
+            return;
+        }
+
         try {
             const res = await fetch(
                 `/api/shifts/payroll/dobropisy/?mesic=${month}`,
@@ -264,19 +327,37 @@ function PayrollPanel({ month, onExport }) {
                 throw new Error(data.error || 'Chyba při načítání dobropisů');
             }
             const data = await res.json();
+            writeReturnsCache(month, 'dobropisy-summary', data);
             setDobropisySummary(data.summary || []);
             setDobropisyTotals(data.totals || { polozky: 0, doklady: 0, castka: 0 });
-            setDobropisyFilterUser('');
         } catch (e) {
             setDobropisyError(e.message);
-            setDobropisySummary([]);
-            setDobropisyTotals({ polozky: 0, doklady: 0, castka: 0 });
+            if (!cachedSummary?.data) {
+                setDobropisySummary([]);
+                setDobropisyTotals({ polozky: 0, doklady: 0, castka: 0 });
+            }
         }
     }, [month]);
 
-    const loadDobropisyRows = useCallback(async () => {
-        if (!month || dobropisyRowsLoadedRef.current) return;
-        setDobropisyLoading(true);
+    const loadDobropisyRows = useCallback(async (opts = {}) => {
+        const { background = false, force = false } = opts;
+        if (!month) return;
+
+        const cached = readReturnsCache(month, 'dobropisy-rows');
+        if (!force && cached?.data) {
+            setDobropisyRows(cached.data.rows || []);
+            setDobropisyPairingTotals(cached.data.pairing_totals || { zrcadlo: 0, par: 0, bez_paru: 0 });
+            dobropisyRowsLoadedRef.current = true;
+            if (!returnsNeedsRefresh(month, cached)) {
+                return;
+            }
+        } else if (!force && dobropisyRowsLoadedRef.current) {
+            return;
+        }
+
+        if (!background) {
+            setDobropisyLoading(true);
+        }
         setDobropisyError('');
         try {
             const res = await fetch(
@@ -288,15 +369,19 @@ function PayrollPanel({ month, onExport }) {
                 throw new Error(data.error || 'Chyba při načítání položek dobropisů');
             }
             const data = await res.json();
+            writeReturnsCache(month, 'dobropisy-rows', data);
             setDobropisyRows(data.rows || []);
             setDobropisyPairingTotals(data.pairing_totals || { zrcadlo: 0, par: 0, bez_paru: 0 });
-            setDobropisyFilterPairing('');
             dobropisyRowsLoadedRef.current = true;
         } catch (e) {
             setDobropisyError(e.message);
-            setDobropisyRows([]);
+            if (!cached?.data) {
+                setDobropisyRows([]);
+            }
         } finally {
-            setDobropisyLoading(false);
+            if (!background) {
+                setDobropisyLoading(false);
+            }
         }
     }, [month]);
 
@@ -307,9 +392,33 @@ function PayrollPanel({ month, onExport }) {
     const loadVydejkySummary = useCallback(async () => {
         if (!month) return;
         setVydejkyError('');
-        vydejkyRowsLoadedRef.current = false;
-        setVydejkyRows([]);
         setVydejkyExpanded({});
+        setReturnsExpandedPerson({});
+
+        const cachedSummary = readReturnsCache(month, 'vydejky-summary');
+        if (cachedSummary?.data) {
+            setVydejkySummary(cachedSummary.data.summary || []);
+            setVydejkyTotals(cachedSummary.data.totals || { polozky: 0, doklady: 0, castka: 0 });
+        } else {
+            setVydejkySummary([]);
+            setVydejkyTotals({ polozky: 0, doklady: 0, castka: 0 });
+        }
+
+        const cachedRows = readReturnsCache(month, 'vydejky-rows');
+        if (cachedRows?.data) {
+            setVydejkyRows(cachedRows.data.rows || []);
+            setVydejkyDuvodTotals(cachedRows.data.duvod_totals || { rucni: 0, spotreba: 0, reklamace: 0 });
+            vydejkyRowsLoadedRef.current = true;
+        } else {
+            vydejkyRowsLoadedRef.current = false;
+            setVydejkyRows([]);
+            setVydejkyDuvodTotals({ rucni: 0, spotreba: 0, reklamace: 0 });
+        }
+
+        if (!returnsNeedsRefresh(month, cachedSummary)) {
+            return;
+        }
+
         try {
             const res = await fetch(
                 `/api/shifts/payroll/vydejky/?mesic=${month}`,
@@ -320,21 +429,37 @@ function PayrollPanel({ month, onExport }) {
                 throw new Error(data.error || 'Chyba při načítání skladových výdejek');
             }
             const data = await res.json();
+            writeReturnsCache(month, 'vydejky-summary', data);
             setVydejkySummary(data.summary || []);
             setVydejkyTotals(data.totals || { polozky: 0, doklady: 0, castka: 0 });
-            setVydejkyFilterUser('');
-            setVydejkyFilterDuvod('');
-            setVydejkyFilterSklad('');
         } catch (e) {
             setVydejkyError(e.message);
-            setVydejkySummary([]);
-            setVydejkyTotals({ polozky: 0, doklady: 0, castka: 0 });
+            if (!cachedSummary?.data) {
+                setVydejkySummary([]);
+                setVydejkyTotals({ polozky: 0, doklady: 0, castka: 0 });
+            }
         }
     }, [month]);
 
-    const loadVydejkyRows = useCallback(async () => {
-        if (!month || vydejkyRowsLoadedRef.current) return;
-        setVydejkyLoading(true);
+    const loadVydejkyRows = useCallback(async (opts = {}) => {
+        const { background = false, force = false } = opts;
+        if (!month) return;
+
+        const cached = readReturnsCache(month, 'vydejky-rows');
+        if (!force && cached?.data) {
+            setVydejkyRows(cached.data.rows || []);
+            setVydejkyDuvodTotals(cached.data.duvod_totals || { rucni: 0, spotreba: 0, reklamace: 0 });
+            vydejkyRowsLoadedRef.current = true;
+            if (!returnsNeedsRefresh(month, cached)) {
+                return;
+            }
+        } else if (!force && vydejkyRowsLoadedRef.current) {
+            return;
+        }
+
+        if (!background) {
+            setVydejkyLoading(true);
+        }
         setVydejkyError('');
         try {
             const res = await fetch(
@@ -346,57 +471,104 @@ function PayrollPanel({ month, onExport }) {
                 throw new Error(data.error || 'Chyba při načítání položek výdejek');
             }
             const data = await res.json();
+            writeReturnsCache(month, 'vydejky-rows', data);
             setVydejkyRows(data.rows || []);
             setVydejkyDuvodTotals(data.duvod_totals || { rucni: 0, spotreba: 0, reklamace: 0 });
             vydejkyRowsLoadedRef.current = true;
         } catch (e) {
             setVydejkyError(e.message);
-            setVydejkyRows([]);
+            if (!cached?.data) {
+                setVydejkyRows([]);
+            }
         } finally {
-            setVydejkyLoading(false);
+            if (!background) {
+                setVydejkyLoading(false);
+            }
         }
     }, [month]);
 
-    const switchReturnsTab = useCallback((tab) => {
-        setReturnsTab(tab);
-        if (!dobropisyOpen) return;
-        if (tab === 'dobropisy' && !dobropisyRowsLoadedRef.current) {
-            loadDobropisyRows();
-        }
-        if (tab === 'vydejky' && !vydejkyRowsLoadedRef.current) {
-            loadVydejkyRows();
-        }
-    }, [dobropisyOpen, loadDobropisyRows, loadVydejkyRows]);
+    const toggleReturnsPerson = useCallback((personKey) => {
+        setReturnsExpandedPerson((prev) => ({ ...prev, [personKey]: !prev[personKey] }));
+    }, []);
 
     const toggleVydejkaExpanded = useCallback((doklad) => {
         setVydejkyExpanded((prev) => ({ ...prev, [doklad]: !prev[doklad] }));
     }, []);
 
-    const filteredVydejkyRows = useMemo(() => {
-        let out = vydejkyRows;
-        if (vydejkyFilterUser) {
-            out = out.filter((r) => r.spravce === vydejkyFilterUser);
-        }
-        if (vydejkyFilterDuvod) {
-            out = out.filter((r) => r.duvod_kategorie === vydejkyFilterDuvod);
-        }
-        if (vydejkyFilterSklad) {
-            out = out.filter((r) => r.sklad_typ === vydejkyFilterSklad);
-        }
-        return out;
-    }, [vydejkyRows, vydejkyFilterUser, vydejkyFilterDuvod, vydejkyFilterSklad]);
+    const returnsPersonGroups = useMemo(() => {
+        const map = new Map();
 
-    const filteredDobropisyRows = useMemo(() => {
-        let out = dobropisyRows;
-        if (dobropisyFilterUser) {
-            const uid = Number(dobropisyFilterUser);
-            out = out.filter((r) => Number(r.id_prodejce) === uid);
+        const ensure = (key, name) => {
+            if (!map.has(key)) {
+                map.set(key, {
+                    key,
+                    name,
+                    dobropisy: [],
+                    vydejky: { rucni: [], spotreba: [], reklamace: [] },
+                    counts: { dobropisy: 0, rucni: 0, spotreba: 0, reklamace: 0 },
+                    castky: { dobropisy: 0, rucni: 0, spotreba: 0, reklamace: 0, celkem: 0 },
+                });
+            }
+            const group = map.get(key);
+            if (name && name !== '—' && group.name === '—') {
+                group.name = name;
+            }
+            return group;
+        };
+
+        for (const row of dobropisyRows) {
+            const key = returnsPersonKey(row.id_prodejce, row.prodejce);
+            const group = ensure(key, row.prodejce || '—');
+            group.dobropisy.push(row);
+            group.counts.dobropisy += 1;
+            group.castky.dobropisy += Number(row.castka) || 0;
         }
-        if (dobropisyFilterPairing) {
-            out = out.filter((r) => r.pairing === dobropisyFilterPairing);
+
+        for (const row of vydejkyRows) {
+            const key = returnsPersonKey(row.id_spravce, row.spravce);
+            const group = ensure(key, row.spravce || '—');
+            const cat = row.duvod_kategorie;
+            if (cat === 'rucni' || cat === 'spotreba' || cat === 'reklamace') {
+                group.vydejky[cat].push(row);
+                group.counts[cat] += 1;
+                group.castky[cat] += Number(row.castka_s_dph) || 0;
+            }
         }
-        return out;
-    }, [dobropisyRows, dobropisyFilterUser, dobropisyFilterPairing]);
+
+        for (const group of map.values()) {
+            group.castky.celkem = group.castky.dobropisy
+                + group.castky.rucni
+                + group.castky.spotreba
+                + group.castky.reklamace;
+            group.vydejkyAll = [
+                ...group.vydejky.rucni,
+                ...group.vydejky.spotreba,
+                ...group.vydejky.reklamace,
+            ].sort((a, b) => (b.datum || '').localeCompare(a.datum || '') || (a.doklad || '').localeCompare(b.doklad || ''));
+        }
+
+        return Array.from(map.values()).sort(
+            (a, b) => Math.abs(b.castky.celkem) - Math.abs(a.castky.celkem)
+                || a.name.localeCompare(b.name, 'cs'),
+        );
+    }, [dobropisyRows, vydejkyRows]);
+
+    const returnsGrandTotals = useMemo(() => ({
+        dobropisy: dobropisyTotals.polozky || 0,
+        rucni: vydejkyDuvodTotals.rucni || 0,
+        spotreba: vydejkyDuvodTotals.spotreba || 0,
+        reklamace: vydejkyDuvodTotals.reklamace || 0,
+        castka: (Number(dobropisyTotals.castka) || 0) + (Number(vydejkyTotals.castka) || 0),
+    }), [dobropisyTotals, vydejkyTotals, vydejkyDuvodTotals]);
+
+    const returnsHasData = returnsGrandTotals.dobropisy > 0
+        || returnsGrandTotals.rucni > 0
+        || returnsGrandTotals.spotreba > 0
+        || returnsGrandTotals.reklamace > 0;
+
+    const returnsLoading = (dobropisyLoading || vydejkyLoading)
+        && returnsPersonGroups.length === 0
+        && returnsHasData;
 
     useEffect(() => {
         loadPayroll();
@@ -406,6 +578,20 @@ function PayrollPanel({ month, onExport }) {
     }, [loadPayroll, loadDiscountedSummary, loadDobropisySummary, loadVydejkySummary]);
 
     useEffect(() => {
+        if (!month) return;
+        if (dobropisyTotals.polozky > 0) {
+            loadDobropisyRows({ background: true });
+        }
+    }, [month, dobropisyTotals.polozky, loadDobropisyRows]);
+
+    useEffect(() => {
+        if (!month) return;
+        if (vydejkyTotals.doklady > 0) {
+            loadVydejkyRows({ background: true });
+        }
+    }, [month, vydejkyTotals.doklady, loadVydejkyRows]);
+
+    useEffect(() => {
         if (discountedOpen && discountedCount > 0 && !discountedRowsLoadedRef.current) {
             loadDiscountedRows();
         }
@@ -413,15 +599,14 @@ function PayrollPanel({ month, onExport }) {
 
     useEffect(() => {
         if (!dobropisyOpen) return;
-        if (returnsTab === 'dobropisy' && dobropisyTotals.polozky > 0 && !dobropisyRowsLoadedRef.current) {
+        if (dobropisyTotals.polozky > 0 && !dobropisyRowsLoadedRef.current) {
             loadDobropisyRows();
         }
-        if (returnsTab === 'vydejky' && vydejkyTotals.doklady > 0 && !vydejkyRowsLoadedRef.current) {
+        if (vydejkyTotals.doklady > 0 && !vydejkyRowsLoadedRef.current) {
             loadVydejkyRows();
         }
     }, [
         dobropisyOpen,
-        returnsTab,
         dobropisyTotals.polozky,
         vydejkyTotals.doklady,
         loadDobropisyRows,
@@ -935,375 +1120,272 @@ function PayrollPanel({ month, onExport }) {
                 </button>
                 {dobropisyOpen && (
                     <div className="payroll-dobropisy-body">
-                        <div className="payroll-returns-tabs" role="tablist">
-                            <button
-                                type="button"
-                                role="tab"
-                                className={`payroll-returns-tab${returnsTab === 'dobropisy' ? ' payroll-returns-tab--active' : ''}`}
-                                aria-selected={returnsTab === 'dobropisy'}
-                                onClick={() => switchReturnsTab('dobropisy')}
-                            >
-                                Prodejní dobropisy
-                                {dobropisyTotals.polozky > 0 && (
-                                    <span className="tab-count">{dobropisyTotals.polozky}</span>
-                                )}
-                            </button>
-                            <button
-                                type="button"
-                                role="tab"
-                                className={`payroll-returns-tab${returnsTab === 'vydejky' ? ' payroll-returns-tab--active' : ''}`}
-                                aria-selected={returnsTab === 'vydejky'}
-                                onClick={() => switchReturnsTab('vydejky')}
-                            >
-                                Skladové výdejky
-                                {vydejkyTotals.doklady > 0 && (
-                                    <span className="tab-count">{vydejkyTotals.doklady}</span>
-                                )}
-                            </button>
-                        </div>
-
-                        {returnsTab === 'dobropisy' && (
-                        <>
                         <p className="payroll-dobropisy-hint">
-                            Skutečné vratky produktů (záporná cena). Nezapočítáváme slevy BODY/SLEVA ani zaokrouhlení.
-                            {' '}<strong>Zrcadlo</strong> = stejný den, stejná cena/ks, do 3 h po prodeji.
-                            {' '}<strong>Jiný prodej</strong> = starší prodej stejné položky u stejného prodejce.
-                            {' '}U <strong>Bez páru</strong> se zobrazí důvod a případný nalezený kandidát.
+                            Přehled dobropisů a skladových výdejek podle osoby. Rozkliknutím uvidíte jednotlivé doklady.
+                            {' '}Dobropisy = vratky z pokladny. Výdejky = ruční / spotřeba / reklamace ze skladu.
+                            {' '}Pouze informativní – bez dopadu na body výplaty.
                         </p>
-                        {dobropisyPairingTotals.zrcadlo + dobropisyPairingTotals.par + dobropisyPairingTotals.bez_paru > 0 && (
+                        {(dobropisyPairingTotals.zrcadlo + dobropisyPairingTotals.par + dobropisyPairingTotals.bez_paru > 0
+                            || returnsGrandTotals.rucni + returnsGrandTotals.spotreba + returnsGrandTotals.reklamace > 0) && (
                             <div className="payroll-dobropisy-chips">
-                                <span className="pairing-chip pairing-chip--mirror">
-                                    Zrcadlo: {dobropisyPairingTotals.zrcadlo}
-                                </span>
-                                <span className="pairing-chip pairing-chip--par">
-                                    Jiný prodej: {dobropisyPairingTotals.par}
-                                </span>
-                                <span className="pairing-chip pairing-chip--none">
-                                    Bez páru: {dobropisyPairingTotals.bez_paru}
-                                </span>
+                                {dobropisyPairingTotals.zrcadlo + dobropisyPairingTotals.par + dobropisyPairingTotals.bez_paru > 0 && (
+                                    <>
+                                        <span className="pairing-chip pairing-chip--mirror">
+                                            Zrcadlo: {dobropisyPairingTotals.zrcadlo}
+                                        </span>
+                                        <span className="pairing-chip pairing-chip--par">
+                                            Jiný prodej: {dobropisyPairingTotals.par}
+                                        </span>
+                                        <span className="pairing-chip pairing-chip--none">
+                                            Bez páru: {dobropisyPairingTotals.bez_paru}
+                                        </span>
+                                    </>
+                                )}
+                                {returnsGrandTotals.rucni > 0 && (
+                                    <span className="pairing-chip">Ruční: {returnsGrandTotals.rucni}</span>
+                                )}
+                                {returnsGrandTotals.spotreba > 0 && (
+                                    <span className="pairing-chip">Spotřeba: {returnsGrandTotals.spotreba}</span>
+                                )}
+                                {returnsGrandTotals.reklamace > 0 && (
+                                    <span className="pairing-chip">Reklamace: {returnsGrandTotals.reklamace}</span>
+                                )}
                             </div>
                         )}
-                        {dobropisyLoading && (
-                            <p className="payroll-loading-inline">Načítám dobropisy…</p>
+                        {returnsLoading && (
+                            <p className="payroll-loading-inline">Načítám přehled…</p>
                         )}
-                        {dobropisyError && (
-                            <div className="error-message">{dobropisyError}</div>
+                        {(dobropisyError || vydejkyError) && (
+                            <div className="error-message">{dobropisyError || vydejkyError}</div>
                         )}
-                        {!dobropisyLoading && !dobropisyError && dobropisyTotals.polozky === 0 && (
+                        {!returnsLoading && !dobropisyError && !vydejkyError && !returnsHasData && (
                             <p className="payroll-dobropisy-empty">V tomto měsíci žádné.</p>
                         )}
-                        {!dobropisyLoading && !dobropisyError && dobropisyTotals.polozky > 0 && (
-                            <>
-                                <div className="payroll-dobropisy-summary-wrap">
-                                    <table className="payroll-dobropisy-table payroll-dobropisy-summary">
-                                        <thead>
-                                            <tr>
-                                                <th>Prodejce</th>
-                                                <th>Položky</th>
-                                                <th>Doklady</th>
-                                                <th>Částka</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {dobropisySummary.map((row) => (
-                                                <tr key={row.id_prodejce}>
-                                                    <td>{row.prodejce}</td>
-                                                    <td>{row.polozky}</td>
-                                                    <td>{row.doklady}</td>
-                                                    <td className="col-negative">{formatNumber(row.castka)} Kč</td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                        <tfoot>
-                                            <tr>
-                                                <td className="tfoot-label">Celkem</td>
-                                                <td>{dobropisyTotals.polozky}</td>
-                                                <td>{dobropisyTotals.doklady}</td>
-                                                <td className="col-negative">
-                                                    <strong>{formatNumber(dobropisyTotals.castka)} Kč</strong>
-                                                </td>
-                                            </tr>
-                                        </tfoot>
-                                    </table>
-                                </div>
-
-                                <div className="payroll-dobropisy-filter">
-                                    <label>
-                                        Prodejce
-                                        <select
-                                            value={dobropisyFilterUser}
-                                            onChange={(e) => setDobropisyFilterUser(e.target.value)}
-                                        >
-                                            <option value="">Všichni prodejci</option>
-                                            {dobropisySummary.map((row) => (
-                                                <option key={row.id_prodejce} value={row.id_prodejce}>
-                                                    {row.prodejce} ({row.polozky})
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </label>
-                                    <label>
-                                        Typ páru
-                                        <select
-                                            value={dobropisyFilterPairing}
-                                            onChange={(e) => setDobropisyFilterPairing(e.target.value)}
-                                        >
-                                            <option value="">Vše</option>
-                                            <option value="zrcadlo">Zrcadlo ({dobropisyPairingTotals.zrcadlo})</option>
-                                            <option value="par">Jiný prodej ({dobropisyPairingTotals.par})</option>
-                                            <option value="bez_paru">Bez páru ({dobropisyPairingTotals.bez_paru})</option>
-                                        </select>
-                                    </label>
-                                </div>
-
-                                <div className="payroll-dobropisy-table-wrap">
-                                    <table className="payroll-dobropisy-table">
-                                        <thead>
-                                            <tr>
-                                                <th>Typ</th>
-                                                <th>Datum</th>
-                                                <th>Doklad</th>
-                                                <th>Kód</th>
-                                                <th>Název</th>
-                                                <th>Prodejce</th>
-                                                <th>Původní doklad</th>
-                                                <th>Původní den</th>
-                                                <th>Po prodeji</th>
-                                                <th>Důvod / kandidát</th>
-                                                <th>Částka</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {filteredDobropisyRows.map((row, idx) => (
+                        {!returnsLoading && returnsHasData && returnsPersonGroups.length > 0 && (
+                            <div className="payroll-dobropisy-summary-wrap">
+                                <table className="payroll-dobropisy-table payroll-dobropisy-summary payroll-returns-person-table">
+                                    <thead>
+                                        <tr>
+                                            <th aria-label="Rozbalit" />
+                                            <th>Osoba</th>
+                                            <th>Dobropisy</th>
+                                            <th>Ruční</th>
+                                            <th>Spotřeba</th>
+                                            <th>Reklamace</th>
+                                            <th>Hodnota celkem</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {returnsPersonGroups.map((group) => (
+                                            <React.Fragment key={group.key}>
                                                 <tr
-                                                    key={`${row.doklad}-${row.kod}-${idx}`}
-                                                    className={`pairing-row pairing-row--${row.pairing || 'bez_paru'}`}
+                                                    className={`returns-person-row${returnsExpandedPerson[group.key] ? ' returns-person-row--open' : ''}`}
                                                 >
                                                     <td>
-                                                        <span className={`pairing-badge pairing-badge--${row.pairing}`}>
-                                                            {row.pairing_label || '—'}
-                                                        </span>
+                                                        <button
+                                                            type="button"
+                                                            className="vydejka-expand-btn"
+                                                            onClick={() => toggleReturnsPerson(group.key)}
+                                                            aria-expanded={Boolean(returnsExpandedPerson[group.key])}
+                                                            aria-label={`Rozbalit ${group.name}`}
+                                                        >
+                                                            {returnsExpandedPerson[group.key] ? '▼' : '▶'}
+                                                        </button>
                                                     </td>
-                                                    <td>{row.datum || '—'}</td>
-                                                    <td>{row.doklad || '—'}</td>
-                                                    <td><code>{row.kod}</code></td>
-                                                    <td className="col-nazev" title={row.nazev}>{row.nazev || '—'}</td>
-                                                    <td>{row.prodejce || '—'}</td>
-                                                    <td>{row.puvodni_doklad || '—'}</td>
-                                                    <td>{row.puvodni_datum || '—'}</td>
                                                     <td>
-                                                        {row.minut_po_prodeji != null
-                                                            ? `${formatNumber(row.minut_po_prodeji)} min`
+                                                        <button
+                                                            type="button"
+                                                            className="returns-person-name"
+                                                            onClick={() => toggleReturnsPerson(group.key)}
+                                                        >
+                                                            {group.name}
+                                                        </button>
+                                                    </td>
+                                                    <td>{group.counts.dobropisy || '—'}</td>
+                                                    <td>{group.counts.rucni || '—'}</td>
+                                                    <td>{group.counts.spotreba || '—'}</td>
+                                                    <td>{group.counts.reklamace || '—'}</td>
+                                                    <td className="col-negative">
+                                                        {group.castky.celkem
+                                                            ? `${formatNumber(group.castky.celkem)} Kč`
                                                             : '—'}
                                                     </td>
-                                                    <td className="col-bez-paru-hint">
-                                                        {row.pairing === 'bez_paru' && row.bez_paru_duvod_label ? (
-                                                            <div className="bez-paru-hint">
-                                                                <span className="bez-paru-hint__duvod">
-                                                                    {row.bez_paru_duvod_label}
-                                                                </span>
-                                                                {row.kandidat_doklad && (
-                                                                    <span className="bez-paru-hint__kandidat">
-                                                                        {row.kandidat_prodejce
-                                                                            ? `${row.kandidat_prodejce}, `
-                                                                            : ''}
-                                                                        {row.kandidat_doklad}
-                                                                        {row.kandidat_datum
-                                                                            ? ` (${row.kandidat_datum})`
-                                                                            : ''}
-                                                                    </span>
+                                                </tr>
+                                                {returnsExpandedPerson[group.key] && (
+                                                    <tr className="returns-person-detail-row">
+                                                        <td colSpan={7}>
+                                                            <div className="returns-person-detail">
+                                                                {group.dobropisy.length > 0 && (
+                                                                    <div className="returns-person-detail-section">
+                                                                        <h4 className="returns-person-detail-title">
+                                                                            Dobropisy ({group.dobropisy.length})
+                                                                        </h4>
+                                                                        <div className="payroll-dobropisy-table-wrap">
+                                                                            <table className="payroll-dobropisy-table">
+                                                                                <thead>
+                                                                                    <tr>
+                                                                                        <th>Typ</th>
+                                                                                        <th>Datum</th>
+                                                                                        <th>Doklad</th>
+                                                                                        <th>Kód</th>
+                                                                                        <th>Název</th>
+                                                                                        <th>Původní doklad</th>
+                                                                                        <th>Po prodeji</th>
+                                                                                        <th>Částka</th>
+                                                                                    </tr>
+                                                                                </thead>
+                                                                                <tbody>
+                                                                                    {group.dobropisy.map((row, idx) => (
+                                                                                        <tr
+                                                                                            key={`${row.doklad}-${row.kod}-${idx}`}
+                                                                                            className={`pairing-row pairing-row--${row.pairing || 'bez_paru'}`}
+                                                                                        >
+                                                                                            <td>
+                                                                                                <span className={`pairing-badge pairing-badge--${row.pairing}`}>
+                                                                                                    {row.pairing_label || '—'}
+                                                                                                </span>
+                                                                                            </td>
+                                                                                            <td>{row.datum || '—'}</td>
+                                                                                            <td>
+                                                                                                <SymplioDocLink
+                                                                                                    doklad={row.doklad}
+                                                                                                    url={row.symplio_doklad_url}
+                                                                                                />
+                                                                                            </td>
+                                                                                            <td><code>{row.kod}</code></td>
+                                                                                            <td className="col-nazev" title={row.nazev}>{row.nazev || '—'}</td>
+                                                                                            <td>
+                                                                                                <SymplioDocLink
+                                                                                                    doklad={row.puvodni_doklad}
+                                                                                                    url={row.symplio_puvodni_doklad_url}
+                                                                                                />
+                                                                                            </td>
+                                                                                            <td>
+                                                                                                {row.minut_po_prodeji != null
+                                                                                                    ? `${formatNumber(row.minut_po_prodeji)} min`
+                                                                                                    : '—'}
+                                                                                            </td>
+                                                                                            <td className="col-negative">{formatNumber(row.castka)} Kč</td>
+                                                                                        </tr>
+                                                                                    ))}
+                                                                                </tbody>
+                                                                            </table>
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                                {group.vydejkyAll.length > 0 && (
+                                                                    <div className="returns-person-detail-section">
+                                                                        <h4 className="returns-person-detail-title">
+                                                                            Skladové výdejky ({group.vydejkyAll.length})
+                                                                        </h4>
+                                                                        <div className="vydejka-spravce-detail">
+                                                                            {group.vydejkyAll.map((doc) => (
+                                                                                <div key={doc.doklad} className="vydejka-doklad-block">
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        className="vydejka-doklad-header"
+                                                                                        onClick={() => toggleVydejkaExpanded(doc.doklad)}
+                                                                                        aria-expanded={Boolean(vydejkyExpanded[doc.doklad])}
+                                                                                    >
+                                                                                        <span className="vydejka-doklad-header__toggle">
+                                                                                            {vydejkyExpanded[doc.doklad] ? '▼' : '▶'}
+                                                                                        </span>
+                                                                                        <span className="vydejka-doklad-header__meta">
+                                                                                            <SymplioDocLink
+                                                                                                doklad={doc.doklad}
+                                                                                                url={doc.symplio_doklad_url}
+                                                                                                className="symplio-doc-link symplio-doc-link--code"
+                                                                                                label={<code>{doc.doklad}</code>}
+                                                                                            />
+                                                                                            <span>{doc.datum}</span>
+                                                                                            <span className="vydejka-duvod-label">{doc.duvod_kategorie_label}</span>
+                                                                                            {doc.vazba && (
+                                                                                                <span className="vydejka-vazba-hint">
+                                                                                                    vazba{' '}
+                                                                                                    <SymplioDocLink
+                                                                                                        doklad={doc.vazba}
+                                                                                                        url={doc.symplio_vazba_url}
+                                                                                                    />
+                                                                                                </span>
+                                                                                            )}
+                                                                                        </span>
+                                                                                        <span className="vydejka-doklad-header__castka col-negative">
+                                                                                            {formatNumber(doc.castka_s_dph)} Kč
+                                                                                        </span>
+                                                                                        <span className="vydejka-doklad-header__count">
+                                                                                            {(doc.polozky || []).length} pol.
+                                                                                        </span>
+                                                                                    </button>
+                                                                                    {vydejkyExpanded[doc.doklad] && (
+                                                                                        <div className="payroll-dobropisy-table-wrap vydejka-polozky-wrap">
+                                                                                            {(doc.polozky || []).length > 0 ? (
+                                                                                                <table className="payroll-dobropisy-table payroll-vydejky-polozky-flat">
+                                                                                                    <thead>
+                                                                                                        <tr>
+                                                                                                            <th>Kód</th>
+                                                                                                            <th>Název</th>
+                                                                                                            <th>Kusy</th>
+                                                                                                            <th>Cena/ks</th>
+                                                                                                            <th>Částka</th>
+                                                                                                        </tr>
+                                                                                                    </thead>
+                                                                                                    <tbody>
+                                                                                                        {doc.polozky.map((p, idx) => (
+                                                                                                            <tr key={`${doc.doklad}-${p.kod}-${idx}`}>
+                                                                                                                <td><code>{p.kod}</code></td>
+                                                                                                                <td className="col-nazev" title={p.nazev}>{p.nazev || '—'}</td>
+                                                                                                                <td>{p.kusy}</td>
+                                                                                                                <td>
+                                                                                                                    {p.cena_ks_bez_dph != null
+                                                                                                                        ? `${formatNumber(p.cena_ks_bez_dph)} Kč`
+                                                                                                                        : '—'}
+                                                                                                                </td>
+                                                                                                                <td className="col-negative">
+                                                                                                                    {p.castka != null
+                                                                                                                        ? `${formatNumber(p.castka)} Kč`
+                                                                                                                        : '—'}
+                                                                                                                </td>
+                                                                                                            </tr>
+                                                                                                        ))}
+                                                                                                    </tbody>
+                                                                                                </table>
+                                                                                            ) : (
+                                                                                                <p className="vydejka-polozky-empty">
+                                                                                                    Žádné položky v importu
+                                                                                                    <span className="vydejka-duvod-detail" title={doc.duvod_vyskladneni}>
+                                                                                                        {' '}({doc.duvod_vyskladneni})
+                                                                                                    </span>
+                                                                                                </p>
+                                                                                            )}
+                                                                                        </div>
+                                                                                    )}
+                                                                                </div>
+                                                                            ))}
+                                                                        </div>
+                                                                    </div>
                                                                 )}
                                                             </div>
-                                                        ) : '—'}
-                                                    </td>
-                                                    <td className="col-negative">{formatNumber(row.castka)} Kč</td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </>
-                        )}
-                        </>
-                        )}
-
-                        {returnsTab === 'vydejky' && (
-                        <>
-                        <p className="payroll-dobropisy-hint">
-                            Skladové výdejky ze Symplia (ruční, spotřeba, reklamace). Oddělené od prodejních dobropisů.
-                            {' '}Pouze přehled – bez dopadu na body výplaty.
-                        </p>
-                        {vydejkyDuvodTotals.rucni + vydejkyDuvodTotals.spotreba + vydejkyDuvodTotals.reklamace > 0 && (
-                            <div className="payroll-dobropisy-chips">
-                                <span className="pairing-chip">Ruční: {vydejkyDuvodTotals.rucni}</span>
-                                <span className="pairing-chip">Spotřeba: {vydejkyDuvodTotals.spotreba}</span>
-                                <span className="pairing-chip">Reklamace: {vydejkyDuvodTotals.reklamace}</span>
-                            </div>
-                        )}
-                        {vydejkyLoading && (
-                            <p className="payroll-loading-inline">Načítám skladové výdejky…</p>
-                        )}
-                        {vydejkyError && (
-                            <div className="error-message">{vydejkyError}</div>
-                        )}
-                        {!vydejkyLoading && !vydejkyError && vydejkyTotals.doklady === 0 && (
-                            <p className="payroll-dobropisy-empty">V tomto měsíci žádné.</p>
-                        )}
-                        {!vydejkyLoading && !vydejkyError && vydejkyTotals.doklady > 0 && (
-                            <>
-                                <div className="payroll-dobropisy-summary-wrap">
-                                    <table className="payroll-dobropisy-table payroll-dobropisy-summary">
-                                        <thead>
-                                            <tr>
-                                                <th>Správce</th>
-                                                <th>Doklady</th>
-                                                <th>Položky</th>
-                                                <th>Částka</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {vydejkySummary.map((row) => (
-                                                <tr key={row.spravce}>
-                                                    <td>{row.spravce}</td>
-                                                    <td>{row.doklady}</td>
-                                                    <td>{row.polozky}</td>
-                                                    <td className="col-negative">{formatNumber(row.castka)} Kč</td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                        <tfoot>
-                                            <tr>
-                                                <td className="tfoot-label">Celkem</td>
-                                                <td>{vydejkyTotals.doklady}</td>
-                                                <td>{vydejkyTotals.polozky}</td>
-                                                <td className="col-negative">
-                                                    <strong>{formatNumber(vydejkyTotals.castka)} Kč</strong>
-                                                </td>
-                                            </tr>
-                                        </tfoot>
-                                    </table>
-                                </div>
-
-                                <div className="payroll-dobropisy-filter">
-                                    <label>
-                                        Správce
-                                        <select
-                                            value={vydejkyFilterUser}
-                                            onChange={(e) => setVydejkyFilterUser(e.target.value)}
-                                        >
-                                            <option value="">Všichni</option>
-                                            {vydejkySummary.map((row) => (
-                                                <option key={row.spravce} value={row.spravce}>
-                                                    {row.spravce} ({row.doklady})
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </label>
-                                    <label>
-                                        Důvod
-                                        <select
-                                            value={vydejkyFilterDuvod}
-                                            onChange={(e) => setVydejkyFilterDuvod(e.target.value)}
-                                        >
-                                            <option value="">Vše</option>
-                                            <option value="rucni">Ruční ({vydejkyDuvodTotals.rucni})</option>
-                                            <option value="spotreba">Spotřeba ({vydejkyDuvodTotals.spotreba})</option>
-                                            <option value="reklamace">Reklamace ({vydejkyDuvodTotals.reklamace})</option>
-                                        </select>
-                                    </label>
-                                    <label>
-                                        Sklad
-                                        <select
-                                            value={vydejkyFilterSklad}
-                                            onChange={(e) => setVydejkyFilterSklad(e.target.value)}
-                                        >
-                                            <option value="">Vše</option>
-                                            <option value="hlavni">Hlavní sklad</option>
-                                            <option value="komisni">Komisní sklad</option>
-                                        </select>
-                                    </label>
-                                </div>
-
-                                <div className="payroll-dobropisy-table-wrap">
-                                    <table className="payroll-dobropisy-table payroll-vydejky-table">
-                                        <thead>
-                                            <tr>
-                                                <th aria-label="Rozbalit" />
-                                                <th>Datum</th>
-                                                <th>Doklad</th>
-                                                <th>Důvod vyskladnění</th>
-                                                <th>Správce</th>
-                                                <th>Vazba</th>
-                                                <th>Částka</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {filteredVydejkyRows.map((row) => (
-                                                <React.Fragment key={row.doklad}>
-                                                    <tr key={row.doklad} className="vydejka-row">
-                                                        <td>
-                                                            <button
-                                                                type="button"
-                                                                className="vydejka-expand-btn"
-                                                                onClick={() => toggleVydejkaExpanded(row.doklad)}
-                                                                aria-expanded={Boolean(vydejkyExpanded[row.doklad])}
-                                                            >
-                                                                {vydejkyExpanded[row.doklad] ? '▼' : '▶'}
-                                                            </button>
                                                         </td>
-                                                        <td>{row.datum || '—'}</td>
-                                                        <td><code>{row.doklad}</code></td>
-                                                        <td>
-                                                            <span className="vydejka-duvod-label">{row.duvod_kategorie_label}</span>
-                                                            <span className="vydejka-duvod-detail" title={row.duvod_vyskladneni}>
-                                                                {row.duvod_vyskladneni}
-                                                            </span>
-                                                        </td>
-                                                        <td>{row.spravce || '—'}</td>
-                                                        <td>
-                                                            {row.vazba || '—'}
-                                                            {row.vazba_nalezena && row.vazba_datum && (
-                                                                <span className="vydejka-vazba-hint"> ({row.vazba_datum})</span>
-                                                            )}
-                                                        </td>
-                                                        <td className="col-negative">{formatNumber(row.castka_s_dph)} Kč</td>
                                                     </tr>
-                                                    {vydejkyExpanded[row.doklad] && row.polozky?.length > 0 && (
-                                                        <tr key={`${row.doklad}-polozky`} className="vydejka-polozky-row">
-                                                            <td colSpan={7}>
-                                                                <table className="payroll-vydejky-polozky">
-                                                                    <thead>
-                                                                        <tr>
-                                                                            <th>Kód</th>
-                                                                            <th>Název</th>
-                                                                            <th>Kusy</th>
-                                                                            <th>Cena/ks</th>
-                                                                            <th>Celkem</th>
-                                                                        </tr>
-                                                                    </thead>
-                                                                    <tbody>
-                                                                        {row.polozky.map((p, idx) => (
-                                                                            <tr key={`${row.doklad}-${p.kod}-${idx}`}>
-                                                                                <td><code>{p.kod}</code></td>
-                                                                                <td className="col-nazev">{p.nazev || '—'}</td>
-                                                                                <td>{p.kusy}</td>
-                                                                                <td>{p.cena_ks_bez_dph != null ? `${formatNumber(p.cena_ks_bez_dph)} Kč` : '—'}</td>
-                                                                                <td>{p.castka != null ? `${formatNumber(p.castka)} Kč` : '—'}</td>
-                                                                            </tr>
-                                                                        ))}
-                                                                    </tbody>
-                                                                </table>
-                                                            </td>
-                                                        </tr>
-                                                    )}
-                                                </React.Fragment>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </>
-                        )}
-                        </>
+                                                )}
+                                            </React.Fragment>
+                                        ))}
+                                    </tbody>
+                                    <tfoot>
+                                        <tr>
+                                            <td />
+                                            <td className="tfoot-label">Celkem</td>
+                                            <td>{returnsGrandTotals.dobropisy || '—'}</td>
+                                            <td>{returnsGrandTotals.rucni || '—'}</td>
+                                            <td>{returnsGrandTotals.spotreba || '—'}</td>
+                                            <td>{returnsGrandTotals.reklamace || '—'}</td>
+                                            <td className="col-negative">
+                                                <strong>{formatNumber(returnsGrandTotals.castka)} Kč</strong>
+                                            </td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
                         )}
                     </div>
                 )}
