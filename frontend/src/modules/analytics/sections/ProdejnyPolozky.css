@@ -155,6 +155,30 @@
     color: #fff;
 }
 
+.polozky-view .seller-hourly-row {
+    display: grid;
+    grid-template-columns: minmax(72px, 1fr) minmax(120px, 1.6fr);
+    gap: 10px;
+    grid-column: 1 / -1;
+}
+
+.polozky-view .seller-hourly-row:has(.metric-item:only-child) {
+    grid-template-columns: minmax(120px, 1fr);
+    max-width: 55%;
+}
+
+.polozky-view .seller-hourly-row .metric-item--marze-h {
+    padding: 12px 10px;
+}
+
+.polozky-view .seller-hourly-row .metric-item--marze-h .metric-label {
+    font-size: 0.68rem;
+}
+
+.polozky-view .seller-hourly-row .metric-item--marze-h .metric-value {
+    font-size: 1.1rem;
+}
+
 .polozky-view .seller-profit-metrics {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));

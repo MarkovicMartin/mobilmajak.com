@@ -502,7 +502,7 @@ def aggregate_polozky_by_salesperson(
         if params.metrics:
             keep = wanted | {
                 'id_prodejce', 'prodejce', 'prodejna', 'servisni_prace', 'servis_provize',
-                'marze_vytvorena', 'marze_prodej', 'marze_servis',
+                'marze_vytvorena', 'marze_prodej', 'marze_servis', 'marze_vytvorena_za_hodinu',
                 'vyplata_body', 'vynos_firmy', 'profit_payroll_month',
             }
             row = {

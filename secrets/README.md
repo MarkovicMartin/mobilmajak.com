@@ -92,6 +92,8 @@ Bez `SLACK_BOT_TOKEN` (a bez webhooku) příkaz jen vypíše úkoly a nic neode�
 
 | Soubor | Účel |
 |--------|------|
+| `secrets/mobilmajak-finance.json` | Finance modul – Fio token, Packeta admin loginy per prodejna, Google Sheets náklady. Šablona: `mobilmajak-finance.example.json` |
+| `secrets/google-sheets-service-account.json` | Service account pro import tabulky nákladů. Šablona: `google-sheets-service-account.example.json` |
 | `secrets/camera_motion_secrets.json` | `{"ID_PRODEJNY":"hex_secret"}` – jeden secret na pilotní prodejnu |
 
 Na produkčním VPS v `/home/webmajak/webapp/.env`:

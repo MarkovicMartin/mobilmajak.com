@@ -131,6 +131,7 @@ class PolozkyAggregateTests(TestCase):
         row = next(r for r in rows if r['id_prodejce'] == self.domaci.id)
         self.assertEqual(row['odpracovane_hodiny'], 8.0)
         self.assertAlmostEqual(row['polozky_nad_100_za_hodinu'], 0.25, places=2)
+        self.assertAlmostEqual(row['marze_vytvorena_za_hodinu'], 12.5, places=2)
 
 
 class PolozkyProfitTests(TestCase):

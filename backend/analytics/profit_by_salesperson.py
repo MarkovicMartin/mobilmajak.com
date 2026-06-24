@@ -181,4 +181,10 @@ def attach_profit_fields(
             row['vynos_firmy'] = None
             row['profit_payroll_month'] = None
 
+        hod = row.get('odpracovane_hodiny')
+        if hod and hod > 0:
+            row['marze_vytvorena_za_hodinu'] = round(marze_celkem / float(hod), 2)
+        else:
+            row['marze_vytvorena_za_hodinu'] = None
+
     return rows

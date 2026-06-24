@@ -54,6 +54,7 @@ export const POLOZKY_METRIC_GROUPS = [
             { key: 'odpracovane_hodiny', label: 'Odpracované hodiny' },
             { key: 'polozky_nad_100_za_hodinu', label: 'Položky / hod' },
             { key: 'celkovy_obrat_za_hodinu', label: 'Obrat / hod' },
+            { key: 'marze_vytvorena_za_hodinu', label: 'Marže / hod' },
         ],
     },
 ];

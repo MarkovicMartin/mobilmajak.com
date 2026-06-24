@@ -10,6 +10,7 @@ const CORE_COMPARE_KEYS = [
     { key: 'celkovy_obrat', label: 'Obrat s DPH' },
     { key: 'odpracovane_hodiny', label: 'Hodiny' },
     { key: 'polozky_nad_100_za_hodinu', label: 'Položky / hod' },
+    { key: 'marze_vytvorena_za_hodinu', label: 'Marže / hod' },
 ];
 
 const PolozkySellerCompare = ({ rows, visibleMetrics, compareUserA, compareUserB }) => {

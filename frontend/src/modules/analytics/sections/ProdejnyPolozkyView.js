@@ -27,15 +27,12 @@ const losPctProlepenost = (los, skla, sunshine) => {
     return Math.round((100 * l) / zaklad);
 };
 
-const buildApiParams = (filters, visibleMetrics) => {
+const buildApiParams = (filters) => {
     const params = new URLSearchParams();
     Object.keys(filters).forEach((key) => {
         if (filters[key] != null && filters[key] !== '') params.append(key, filters[key]);
     });
-    const hourly = ['odpracovane_hodiny', 'polozky_nad_100_za_hodinu', 'celkovy_obrat_za_hodinu'];
-    if ([...visibleMetrics].some((m) => hourly.includes(m))) {
-        params.set('include_hours', '1');
-    }
+    params.set('include_hours', '1');
     params.set('include_profit', '1');
     return params;
 };
@@ -123,7 +120,7 @@ const ProdejnyPolozkyView = ({
         setLoading(true);
         setError(null);
         try {
-            const params = buildApiParams(effectiveFilters, visibleMetrics);
+            const params = buildApiParams(effectiveFilters);
             const result = await analyticsGet('web-prodeje/polozky/', params);
             if (result.success && Array.isArray(result.data)) {
                 setSalesData(result.data);
@@ -378,14 +375,27 @@ const ProdejnyPolozkyView = ({
                                                     <span className="metric-value">{(item.pol_dok || 0).toFixed(2)}</span>
                                                 </div>
                                             )}
-                                            {showMetric('polozky_nad_100_za_hodinu') && (
-                                                <div className="metric-item">
-                                                    <span className="metric-label">Položky/h</span>
-                                                    <span className="metric-value">
-                                                        {item.polozky_nad_100_za_hodinu ?? '—'}
+                                            <div className="seller-hourly-row">
+                                                {showMetric('polozky_nad_100_za_hodinu') && (
+                                                    <div className="metric-item">
+                                                        <span className="metric-label">Položky/h</span>
+                                                        <span className="metric-value">
+                                                            {item.polozky_nad_100_za_hodinu ?? '—'}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                                <div
+                                                    className="metric-item metric-item--marze-h"
+                                                    title="Marže vytvořená ÷ odpracované hodiny"
+                                                >
+                                                    <span className="metric-label">Marže/h</span>
+                                                    <span className="metric-value highlight-profit">
+                                                        {item.marze_vytvorena_za_hodinu != null
+                                                            ? formatCurrency(item.marze_vytvorena_za_hodinu)
+                                                            : '—'}
                                                     </span>
                                                 </div>
-                                            )}
+                                            </div>
                                         </div>
                                         <div className="seller-profit-metrics">
                                             <div
