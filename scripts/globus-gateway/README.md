@@ -25,11 +25,13 @@ Brána komunikuje jen s **NVR** (ISAPI alertStream). U kanálu kamery: **Detekce
 ## Příprava na Macu
 
 ```bash
-cp -R scripts/camera-gateway scripts/globus-gateway /Volumes/USB/
-cp secrets/camera_motion_globus.json /Volumes/USB/globus-gateway/config.json
+cp secrets/camera_motion_globus.json scripts/globus-gateway/config.json
 ```
 
-Na USB **obě** složky: `camera-gateway/` + `globus-gateway/` (s `config.json` ze `secrets/`)
+Na USB zkopírovat **obě** složky:
+
+- `scripts/camera-gateway/`
+- `scripts/globus-gateway/` (s `config.json`)
 
 Podrobný postup: `POSTUP.txt`
 

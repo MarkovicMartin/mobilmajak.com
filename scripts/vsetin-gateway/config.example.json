@@ -1,0 +1,11 @@
+{
+  "mobilmajak_api": "https://mobilmajak.com",
+  "prodejna_id": 5,
+  "prodejna_nazev": "Vsetin",
+  "motion_secret": "DOPLNTE_STEJNY_HEX_JAKO_NA_VPS_SECRETS_JSON_KLIC_5",
+  "autodiscover_nvr": true,
+  "nvr_host": "DOPLNTE_IP_NVR",
+  "camera_host": "DOPLNTE_IP_KAMERY",
+  "nvr_user": "admin",
+  "nvr_pass": "DOPLNTE_HESLO_NVR"
+}

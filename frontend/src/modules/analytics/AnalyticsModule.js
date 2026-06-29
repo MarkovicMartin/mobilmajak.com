@@ -9,6 +9,7 @@ import Servis from './sections/Servis';
 import Eshop from './sections/Eshop';
 import CelkovaCisla from './sections/CelkovaCisla';
 import ProdejniAnalytika from './sections/ProdejniAnalytika';
+import ZasilkovnaKonverze from './sections/ZasilkovnaKonverze';
 import './AnalyticsModule.css';
 import './AnalyticsDensity.css';
 
@@ -25,6 +26,7 @@ const AnalyticsModule = ({ currentUser }) => {
                     />
                     <Route path="prodejny-polozky" element={<ProdejnyPolozky currentUser={currentUser} />} />
                     <Route path="prodejny-traffic" element={<ProdejnyTraffic currentUser={currentUser} />} />
+                    <Route path="zasilkovna-konverze" element={<ZasilkovnaKonverze currentUser={currentUser} />} />
                     <Route path="servis" element={<Servis currentUser={currentUser} />} />
                     <Route path="eshop" element={<Eshop currentUser={currentUser} />} />
                     <Route path="celkova-cisla" element={<CelkovaCisla currentUser={currentUser} />} />

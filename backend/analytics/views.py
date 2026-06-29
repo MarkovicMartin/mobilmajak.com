@@ -6666,6 +6666,17 @@ def web_prodeje_leaderboard_points(request):
         from .vykupy_config import vykupy_counts_map
         vykupy_map = vykupy_counts_map(typ_month_prefix=ym)
 
+        month_start = today.replace(day=1)
+        month_end = today - timedelta(days=1)
+        if month_end < month_start:
+            month_end = today
+        zasilkovna_map = {}
+        try:
+            from analytics.zasilkovna_konverze import zasilkovna_leaderboard_map
+            zasilkovna_map = zasilkovna_leaderboard_map(month_start, month_end)
+        except Exception:
+            pass
+
         from users.exclusions import get_leaderboard_excluded_prodejce_ids
         excluded_ids = get_leaderboard_excluded_prodejce_ids()
 
@@ -6718,6 +6729,9 @@ def web_prodeje_leaderboard_points(request):
                 'vykupy': vykupy,
                 'prumer_polozek_uctu': _leaderboard_prumer_polozek(item),
                 'prumer_hodnota_uctenky': _leaderboard_prumer_hodnota_uctenky(item),
+                'zasilkovna_prodeje': (zasilkovna_map.get(prodejce_id) or {}).get('zasilkovna_prodeje', 0),
+                'zasilkovna_oznaceno': (zasilkovna_map.get(prodejce_id) or {}).get('zasilkovna_oznaceno', 0),
+                'zasilkovna_konverze_pct': (zasilkovna_map.get(prodejce_id) or {}).get('zasilkovna_konverze_pct'),
             })
             seen_ids.add(row_id)
 

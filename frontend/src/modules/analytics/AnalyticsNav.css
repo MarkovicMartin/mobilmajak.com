@@ -1,4 +1,9 @@
 /* Meta styly analytiky – záložky jsou v ModuleSubnav */
+.analytics-nav.module-subnav,
+.analytics-nav.module-page-tabs {
+    flex-wrap: nowrap;
+}
+
 .analytics-nav .analytics-nav-meta,
 .analytics-nav .module-subnav-meta {
     gap: 0.5rem;
@@ -8,14 +13,15 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    padding: 5px 9px;
+    padding: 4px 8px;
     border-radius: 8px;
-    font-size: 12px;
+    font-size: 11px;
     line-height: 1.2;
     background: #f8f9fa;
     border: 1px solid #e9ecef;
     color: #495057;
-    max-width: min(280px, 38vw);
+    max-width: none;
+    flex-shrink: 0;
 }
 
 .analytics-nav .actor-text {

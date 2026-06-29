@@ -18,6 +18,7 @@
 .tile-title { font-size: 12px; color: var(--text-label); margin-bottom: 6px; }
 .tile-value { font-size: 22px; font-weight: 700; color: var(--text-strong); font-variant-numeric: tabular-nums; }
 .tile-sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+.tile-sub--hint { font-size: 11px; opacity: 0.85; }
 
 /* Dlaždice plnění plánu (nad finančními statistikami) */
 .plan-tiles-row {

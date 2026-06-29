@@ -34,9 +34,17 @@
   "prerov": {
     "prodejna_id": 4,
     "prodejna_nazev": "Prerov",
-    "nvr_host": "DOPLNTE_IP_NVR",
-    "camera_host": "DOPLNTE_IP_KAMERY",
+    "nvr_host": "10.0.0.90",
+    "camera_host": "10.0.0.3",
     "install_cmd": "install-prerov-camera-gateway.cmd",
     "gateway_dir": "prerov-gateway"
+  },
+  "vsetin": {
+    "prodejna_id": 5,
+    "prodejna_nazev": "Vsetin",
+    "nvr_host": "10.0.0.23",
+    "camera_host": "192.168.254.11",
+    "install_cmd": "install-vsetin-camera-gateway.cmd",
+    "gateway_dir": "vsetin-gateway"
   }
 }

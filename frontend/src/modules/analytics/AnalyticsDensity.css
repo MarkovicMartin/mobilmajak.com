@@ -204,10 +204,20 @@
     padding: 0.55rem 0.75rem;
 }
 
+.analytics-module .analytics-nav .module-subnav-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.analytics-module .analytics-nav .module-subnav-tabs::-webkit-scrollbar {
+    display: none;
+}
+
 .analytics-module .analytics-nav .module-subnav-tab,
 .analytics-module .coaching-nav .module-subnav-tab {
-    padding: 0.4rem 0.7rem;
-    font-size: 0.82rem;
+    padding: 0.35rem 0.55rem;
+    font-size: 0.78rem;
 }
 
 .analytics-module .analytics-content {

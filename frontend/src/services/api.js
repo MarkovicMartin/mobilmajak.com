@@ -416,6 +416,31 @@ export const analyticsAPI = {
     },
 };
 
+export const financeAPI = {
+    getStatus: async () => (await api.get('/finance/status/')).data,
+    getKategorie: async () => (await api.get('/finance/kategorie/')).data,
+    getNezarazene: async () => (await api.get('/finance/naklady/nezarazene/')).data,
+    createManualNaklad: async (payload) => (
+        await api.post('/finance/naklady/manual/', payload)
+    ).data,
+    updateNaklad: async (id, payload) => (
+        await api.patch(`/finance/naklady/${id}/`, payload)
+    ).data,
+    createPravidlo: async (payload) => (await api.post('/finance/pravidla/', payload)).data,
+    importPacketaCsv: async (file, prodejnaId) => {
+        const form = new FormData();
+        form.append('file', file);
+        form.append('prodejna_id', String(prodejnaId));
+        const response = await api.post('/finance/packeta/import-csv/', form, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        return response.data;
+    },
+    fetchPacketaAll: async (days = 1) => (
+        await api.post('/finance/packeta/fetch/', { days })
+    ).data,
+};
+
 export const coachingAPI = {
     getFilters: async () => (await api.get('/coaching/filters/options/')).data,
     getRoster: async (params = {}) => (await api.get('/coaching/roster/', { params })).data,

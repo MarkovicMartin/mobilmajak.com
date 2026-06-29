@@ -4,8 +4,8 @@
   "prodejna_nazev": "Prerov",
   "motion_secret": "DOPLNTE_STEJNY_HEX_JAKO_NA_VPS_SECRETS_JSON_KLIC_4",
   "autodiscover_nvr": true,
-  "nvr_host": "DOPLNTE_IP_NVR",
-  "camera_host": "DOPLNTE_IP_KAMERY",
+  "nvr_host": "10.0.0.90",
+  "camera_host": "10.0.0.3",
   "nvr_user": "admin",
   "nvr_pass": "DOPLNTE_HESLO_NVR"
 }

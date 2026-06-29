@@ -122,7 +122,8 @@ MOBILMAJAK → Směny → Není v práci → majáček u prodejny.
 | Senimo | `senimo` | 2 | 192.168.1.109 |
 | Čepkov / Zlín | `zlin` | 3 | 10.0.0.250 |
 | Šternberk | `sternberk` | 6 | 10.0.1.112 |
-| Přerov | `prerov` | 4 | *(doplnit)* |
+| Přerov | `prerov` | 4 | NVR `10.0.0.90`, kamera `10.0.0.3` |
+| Vsetín | `vsetin` | 5 | NVR `10.0.0.23`, kamera `192.168.254.11` |
 
 Nová prodejna = zkopírovat blok v `prodejny.json` + zkopírovat složku `*-gateway` z existující (jen přejmenovat `install-*.ps1`).
 

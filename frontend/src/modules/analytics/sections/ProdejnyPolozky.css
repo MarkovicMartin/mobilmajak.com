@@ -155,38 +155,14 @@
     color: #fff;
 }
 
-.polozky-view .seller-hourly-row {
-    display: grid;
-    grid-template-columns: minmax(72px, 1fr) minmax(120px, 1.6fr);
-    gap: 10px;
-    grid-column: 1 / -1;
-}
-
-.polozky-view .seller-hourly-row:has(.metric-item:only-child) {
-    grid-template-columns: minmax(120px, 1fr);
-    max-width: 55%;
-}
-
-.polozky-view .seller-hourly-row .metric-item--marze-h {
-    padding: 12px 10px;
-}
-
-.polozky-view .seller-hourly-row .metric-item--marze-h .metric-label {
-    font-size: 0.68rem;
-}
-
-.polozky-view .seller-hourly-row .metric-item--marze-h .metric-value {
-    font-size: 1.1rem;
-}
-
-.polozky-view .seller-profit-metrics {
+.polozky-view .seller-large-metrics {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
     margin-bottom: 12px;
 }
 
-.polozky-view .seller-profit-metrics .metric-item {
+.polozky-view .seller-large-metrics .metric-item--large {
     padding: 10px 8px;
     border-radius: 6px;
     background: var(--bg-inset);
@@ -194,11 +170,11 @@
     text-align: center;
 }
 
-.polozky-view .seller-profit-metrics .metric-item--profit-muted {
+.polozky-view .seller-large-metrics .metric-item--large-muted {
     opacity: 0.75;
 }
 
-.polozky-view .seller-profit-metrics .metric-label {
+.polozky-view .seller-large-metrics .metric-label {
     display: block;
     font-size: 0.62rem;
     font-weight: 600;
@@ -206,22 +182,22 @@
     margin-bottom: 4px;
 }
 
-.polozky-view .seller-profit-metrics .metric-value {
+.polozky-view .seller-large-metrics .metric-value {
     display: block;
     font-size: 1rem;
     font-weight: 700;
     color: var(--text-strong);
 }
 
-.polozky-view .seller-profit-metrics .metric-value.highlight-profit {
+.polozky-view .seller-large-metrics .metric-value.highlight-profit {
     color: #0f766e;
 }
 
-.polozky-view .seller-profit-metrics .metric-value.highlight-negative {
+.polozky-view .seller-large-metrics .metric-value.highlight-negative {
     color: #b91c1c;
 }
 
-.polozky-view .seller-profit-metrics .metric-sublabel {
+.polozky-view .seller-large-metrics .metric-sublabel {
     display: block;
     margin-top: 4px;
     font-size: 0.62rem;

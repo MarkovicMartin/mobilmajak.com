@@ -27,6 +27,7 @@ export const NAV_GROUPS = [
         items: [
             { sectionKey: 'analytics', label: 'Analytika', path: '/analytics', adminOnly: true, icon: 'fa-chart-bar' },
             { sectionKey: 'plans', label: 'Plány', path: '/plans', adminOnly: true, icon: 'fa-tasks' },
+            { sectionKey: 'finance', label: 'Finance', path: '/finance', adminOnly: true, icon: 'fa-coins' },
             { sectionKey: 'orders', label: 'Objednávky', path: '/orders', icon: 'fa-shopping-cart' },
             { sectionKey: 'leaderboard', label: 'Žebříček', path: '/leaderboard', icon: 'fa-trophy' },
         ],
@@ -76,6 +77,9 @@ export const isNavActive = (path, locationPath) => {
     }
     if (path === '/analytics') {
         return locationPath === '/analytics' || locationPath.startsWith('/analytics/');
+    }
+    if (path === '/finance') {
+        return locationPath === '/finance' || locationPath.startsWith('/finance/');
     }
     return locationPath === path || locationPath.startsWith(`${path}/`);
 };
@@ -136,6 +140,9 @@ export const getRouteLabel = (pathname) => {
     if (pathname.startsWith('/plans/')) {
         const section = PLANS_SECTIONS.find((s) => s.id === plansIdFromPath(pathname));
         return section?.tabLabel || 'Plány';
+    }
+    if (pathname.startsWith('/finance')) {
+        return 'Finance';
     }
     if (pathname.startsWith('/tasks/')) {
         const section = TASKS_SECTIONS.find((s) => s.path === pathname.replace(/^\/tasks\/?/, '').split('/')[0]);

@@ -123,20 +123,29 @@ export default function AdminDashboard() {
         const firma = plneni.firma;
         const planObrat = parseFloat(String(firma.plan_obrat ?? '0'));
         const planObratBezDph = castkaBezDphZCelkem(planObrat);
+        const monthObratBezDph = Number(monthStats?.celkovy_obrat_bez_dph) || 0;
         const daysInMonth = getDaysInMonth(today);
+        const daysElapsed = today.getDate();
         const dailyTarget =
             planObratBezDph > 0 && daysInMonth > 0 ? planObratBezDph / daysInMonth : null;
 
-        const todayActual = Number(todayStats?.celkovy_obrat_bez_dph) || 0;
+        const todayObratBezDph = Number(todayStats?.celkovy_obrat_bez_dph) || 0;
         let dailyPct = null;
         if (dailyTarget != null && dailyTarget > 0) {
-            dailyPct = (todayActual / dailyTarget) * 100;
+            dailyPct = (todayObratBezDph / dailyTarget) * 100;
         }
         const dailyDeltaVs100 = dailyPct != null ? dailyPct - 100 : null;
 
-        const monthPct = typeof firma.plneni_procent === 'number' ? firma.plneni_procent : null;
-        const monthTrendPct =
-            firma.trend_procent != null ? firma.trend_procent : monthPct;
+        let monthPct = null;
+        let monthTrendPct = null;
+        if (planObratBezDph > 0) {
+            monthPct = (monthObratBezDph / planObratBezDph) * 100;
+            if (daysElapsed >= 2) {
+                monthTrendPct = ((monthObratBezDph / daysElapsed) * daysInMonth / planObratBezDph) * 100;
+            } else {
+                monthTrendPct = monthPct;
+            }
+        }
 
         let worstStore = null;
         const prodejnyMap = plneni.prodejny || {};
@@ -177,13 +186,15 @@ export default function AdminDashboard() {
             dailyTarget,
             dailyPct,
             dailyDeltaVs100,
+            todayObratBezDph,
             monthPct,
             monthTrendPct,
             planObratMonth: planObratBezDph,
+            monthObratBezDph,
             worstStore,
             worstSeller,
         };
-    }, [planDashboardBundle, todayStats, today, planProdejciList]);
+    }, [planDashboardBundle, todayStats, monthStats, today, planProdejciList]);
 
     const goPlansProdejny = () => navigate('/plans/plneni-prodejny');
     const goPlansProdejci = () => navigate('/plans/plneni-prodejci');
@@ -238,13 +249,16 @@ export default function AdminDashboard() {
                                 {planMetrics.dailyDeltaVs100 != null
                                     ? `${planMetrics.dailyDeltaVs100 >= 0 ? '+' : ''}${planMetrics.dailyDeltaVs100.toFixed(
                                           1
-                                      )} % k dennímu cíli (bez DPH)`
+                                      )} % k dennímu cíli`
                                     : '–'}
                             </div>
                             <div className="tile-sub">
-                                Cíl dne (bez DPH):{' '}
+                                Obrat dnes: {currency(planMetrics.todayObratBezDph)} bez DPH
+                            </div>
+                            <div className="tile-sub">
+                                Cíl dne:{' '}
                                 {planMetrics.dailyTarget != null
-                                    ? currency(planMetrics.dailyTarget)
+                                    ? `${currency(planMetrics.dailyTarget)} bez DPH`
                                     : '–'}
                             </div>
                         </div>
@@ -255,7 +269,7 @@ export default function AdminDashboard() {
                             onClick={goPlansProdejny}
                             onKeyDown={tileKeyActivate(goPlansProdejny)}
                         >
-                            <div className="tile-title">Plnění měsíce (obrat bez DPH)</div>
+                            <div className="tile-title">Plnění měsíce (bez DPH)</div>
                             <div
                                 className={`tile-value plan-tile-pct ${planPctClass(planMetrics.monthPct)}`}
                             >
@@ -274,10 +288,13 @@ export default function AdminDashboard() {
                                 {planMetrics.monthTrendPct != null
                                     ? `${planMetrics.monthTrendPct.toFixed(1)} %`
                                     : '–'}{' '}
-                                na konec měsíce (bez DPH)
+                                na konec měsíce
                             </div>
                             <div className="tile-sub">
-                                Plán měsíce (bez DPH): {currency(planMetrics.planObratMonth)}
+                                Obrat měsíc: {currency(planMetrics.monthObratBezDph)} bez DPH
+                            </div>
+                            <div className="tile-sub">
+                                Plán měsíce: {currency(planMetrics.planObratMonth)} bez DPH
                             </div>
                         </div>
                         <div
@@ -287,7 +304,7 @@ export default function AdminDashboard() {
                             onClick={goPlansProdejny}
                             onKeyDown={tileKeyActivate(goPlansProdejny)}
                         >
-                            <div className="tile-title">Nejslabší prodejna (trend, obrat bez DPH)</div>
+                            <div className="tile-title">Nejslabší prodejna (trend)</div>
                             <div
                                 className={`tile-value plan-tile-pct ${
                                     planMetrics.worstStore ? planPctClass(planMetrics.worstStore.score) : ''

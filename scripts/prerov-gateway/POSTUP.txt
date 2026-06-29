@@ -1,36 +1,44 @@
-MOBILMAJAK - Přerov - brána kamer (Windows PC ve prodejně)
-===========================================================
+MOBILMAJAK - Prerov - brana kamer (Windows PC v prodejne)
+=========================================================
 
-USB musí obsahovat OBĚ složky:
+Pilot prodejna_id = 4. Stejny model jako Globus / Vsetin.
+
+SIT:
+  NVR:    10.0.0.90
+  Kamera: 10.0.0.3  (brana komunikuje jen s NVR)
+
+USB musi obsahovat OBE slozky:
   camera-gateway\
   prerov-gateway\   (s config.json)
 
-Vše spouštět v CMD jako SPRÁVCE. Potřeba INTERNET (jen Krok 1, ~25 MB).
+--- PRIPRAVA NA MACU ---
 
---- KROK 1: Python (vždy první!) ---
+  cp secrets/camera_motion_prerov.json scripts/prerov-gateway/config.json
+
+  Na USB zkopirovat:
+    scripts/camera-gateway/
+    scripts/prerov-gateway/
+
+--- INSTALACE (CMD jako SPRAVCE) ---
+
   cd C:\Temp\prerov-gateway
-  01-setup-python.cmd
+  install-prerov-camera-gateway.cmd
 
-  Vytvoří: C:\ProgramData\Mobilmajak\CameraGateway-Prerov\python-embed\
+  Potreba INTERNET pri prvni instalaci (~25 MB Python).
+  V NVR: Detekce -> Propojeni -> Upozornit iVMS u kanalu kamery.
 
---- KROK 2: Najít IP NVR a kamery (bez monitoru u NVR) ---
-  02-discover-lan.cmd
+  Volitelne (overeni IP): 02-discover-lan.cmd
 
-  Výstup: JSON s nvr, ipc, nvr_channels.
-  Zapiš IP do config.json v této složce (nvr_host, camera_host).
+--- OPRAVA POZDĚJI ---
 
---- KROK 3: Instalace brány + test ---
-  03-install-gateway.cmd
+  fix-and-restart-prerov.cmd
 
-  Úlohy Plánovače + test ISAPI + motion.
+--- KONTROLA ---
+
   Log: C:\ProgramData\Mobilmajak\CameraGateway-Prerov\gateway.log
+  Ulohy: Mobilmajak-CameraGateway-Prerov (+ WakeKick, akce wscript.exe)
+  MOBILMAJAK: Smeny -> Neni v praci -> majacek u Prerova
 
---- KROK 4: NVR menu (jednou ručně) ---
-  Detekce pohybu -> Propojení -> Upozornit iVMS u kanálu kamery.
+  Vypnout spanek PC.
 
---- Ověření ---
-  MOBILMAJAK -> Směny -> Není v práci -> majáček u Přerova.
-
-Při problémech:
-  - "Python nenalezen" = nespustil se Krok 1
-  - "NVR nenalezen" = doplň autodiscover_subnets do config.json nebo nvr_host ručně
+Pokud instalace selze: smazat C:\ProgramData\Mobilmajak\CameraGateway-Prerov a zkusit znovu.

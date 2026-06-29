@@ -8,6 +8,7 @@ export const METRIC_KEYS = {
     PRUMER_POLOZEK: 'prumer_polozek',
     PRUMER_HODNOTA: 'prumer_hodnota',
     LAST_PERIOD: 'last_period',
+    ZASILKOVNA: 'zasilkovna_prodeje',
 };
 
 export const METRICS = {
@@ -54,6 +55,12 @@ export const METRICS = {
         scoreLabel: 'BODŮ',
         rankSubtitle: 'skóre z minulého měsíce',
         rankSubtitleDay: 'bodů z minulé směny',
+    },
+    [METRIC_KEYS.ZASILKOVNA]: {
+        sortKey: 'zasilkovna_prodeje',
+        label: 'Zásilkovna prodeje',
+        scoreLabel: 'KS',
+        rankSubtitle: 'propojených prodejů po balíku (Z v poznámce)',
     },
 };
 
@@ -115,8 +122,7 @@ export const sortByMetric = (data, metricKey, isDay = false) => {
 export const getOppositeMetric = (metricKey) => OPPOSITE_METRIC[metricKey] || null;
 
 export const isExpandableMetric = (metricKey) =>
-    metricKey === METRIC_KEYS.TOTAL_POINTS
-    || metricKey === METRIC_KEYS.PRUMER_POLOZEK
+    metricKey === METRIC_KEYS.PRUMER_POLOZEK
     || metricKey === METRIC_KEYS.PRUMER_HODNOTA;
 
 /** Nejlepší řádek podle metriky (pro stat karty). */
@@ -146,4 +152,5 @@ export const STAT_CARD_META = {
         titleMonth: 'Nejlepší skóre minulý měsíc',
         titleDay: 'Nejlepší výkon včera',
     },
+    [METRIC_KEYS.ZASILKOVNA]: { icon: '📦', title: 'Top Zásilkovna prodeje' },
 };

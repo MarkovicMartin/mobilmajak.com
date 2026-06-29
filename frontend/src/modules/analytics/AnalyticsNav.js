@@ -17,7 +17,7 @@ const pickLastIso = (data) =>
 const AnalyticsNav = () => {
     const [actorStatus, setActorStatus] = useState({
         level: 'loading',
-        text: 'Načítám stav…',
+        text: '…',
     });
 
     const fetchActorStatus = useCallback(async () => {
@@ -25,7 +25,7 @@ const AnalyticsNav = () => {
             const data = await analyticsAPI.getActorStatus();
             const lastIso = pickLastIso(data);
             if (!lastIso) {
-                setActorStatus({ level: 'error', text: 'Actor: žádná data' });
+                setActorStatus({ level: 'error', text: 'bez dat', title: 'Actor: žádná data' });
                 return;
             }
             const last = new Date(lastIso);
@@ -44,10 +44,10 @@ const AnalyticsNav = () => {
 
             const rel =
                 diffMin < 1
-                    ? 'před méně než minutou'
+                    ? '<1 min'
                     : diffMin < 60
-                      ? `před ${diffMin} min`
-                      : `před ${Math.round(diffMin / 60)} h`;
+                      ? `${diffMin} min`
+                      : `${Math.round(diffMin / 60)} h`;
 
             const timeLabel = last.toLocaleString('cs-CZ', {
                 hour: '2-digit',
@@ -57,13 +57,14 @@ const AnalyticsNav = () => {
                 timeZoneName: 'short',
             });
             const sourceLabel = data?.data_source ? ` • zdroj ${data.data_source}` : '';
+            const title = `Actor: ${label} • naposledy ${timeLabel}${sourceLabel}`;
             setActorStatus({
                 level,
-                text: `Actor: ${label} • ${rel}${sourceLabel}`,
-                title: `Naposledy ${timeLabel}`,
+                text: rel,
+                title,
             });
         } catch {
-            setActorStatus({ level: 'error', text: 'Actor: chyba při načítání' });
+            setActorStatus({ level: 'error', text: 'chyba', title: 'Actor: chyba při načítání' });
         }
     }, []);
 

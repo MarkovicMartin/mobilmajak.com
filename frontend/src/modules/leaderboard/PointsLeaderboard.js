@@ -31,11 +31,11 @@ const PointsLeaderboard = ({
     emptyTitle = '📊 Žádná data k zobrazení',
     emptyMessage = null,
 }) => {
-    const [rankMetric, setRankMetric] = useState(METRIC_KEYS.TOTAL_POINTS);
+    const [rankMetric, setRankMetric] = useState(METRIC_KEYS.SERVIS);
     const [expandedMetric, setExpandedMetric] = useState(null);
 
     useEffect(() => {
-        setRankMetric(METRIC_KEYS.TOTAL_POINTS);
+        setRankMetric(METRIC_KEYS.SERVIS);
         setExpandedMetric(null);
     }, [period]);
 
@@ -43,7 +43,7 @@ const PointsLeaderboard = ({
     const periodLabel = isDay ? 'dnešek' : 'aktuální měsíc';
     const defaultEmptyMessage = `Pro ${periodLabel} nejsou k dispozici žádná data o bodovém hodnocení.`;
     const tableShiftLabel = isDay ? 'Body minulou směnu' : 'Skóre minulý měsíc';
-    const metricConfig = METRICS[rankMetric] || METRICS[METRIC_KEYS.TOTAL_POINTS];
+    const metricConfig = METRICS[rankMetric] || METRICS[METRIC_KEYS.SERVIS];
 
     const getLastShiftPoints = (seller) =>
         isDay ? (seller.last_shift_points || 0) : (seller.last_month_points || 0);
@@ -150,7 +150,6 @@ const PointsLeaderboard = ({
     const showVykupy = !hideStoreColumn;
     const statCardKeys = (hideLastPeriodColumn
         ? [
-            METRIC_KEYS.TOTAL_POINTS,
             METRIC_KEYS.SERVIS,
             ...(showVykupy ? [METRIC_KEYS.VYKUPY] : []),
             METRIC_KEYS.VICEPRACE,
@@ -158,19 +157,14 @@ const PointsLeaderboard = ({
             METRIC_KEYS.PRUMER_HODNOTA,
         ]
         : [
-            METRIC_KEYS.TOTAL_POINTS,
             METRIC_KEYS.SERVIS,
             ...(showVykupy ? [METRIC_KEYS.VYKUPY] : []),
             METRIC_KEYS.VICEPRACE,
             METRIC_KEYS.PRUMER_POLOZEK,
             METRIC_KEYS.PRUMER_HODNOTA,
-            METRIC_KEYS.LAST_PERIOD,
         ]);
 
     const renderStatCardValue = (metricKey) => {
-        if (metricKey === METRIC_KEYS.TOTAL_POINTS) {
-            return data.reduce((sum, row) => sum + row.total_points, 0).toLocaleString('cs-CZ');
-        }
         if (metricKey === METRIC_KEYS.VICEPRACE) {
             return formatVicepraceObrat(vicepraceTopObrat);
         }
@@ -185,7 +179,7 @@ const PointsLeaderboard = ({
     };
 
     const renderStatCardFoot = (metricKey) => {
-        if (metricKey === METRIC_KEYS.TOTAL_POINTS || STAT_CARD_META[metricKey]?.showSum) {
+        if (STAT_CARD_META[metricKey]?.showSum) {
             return null;
         }
         if (metricKey === METRIC_KEYS.VICEPRACE) {
@@ -220,27 +214,6 @@ const PointsLeaderboard = ({
 
     const renderTopThreeBreakdown = (seller) => {
         if (!showBreakdown) return null;
-
-        if (rankMetric === METRIC_KEYS.TOTAL_POINTS) {
-            return (
-                <div className="metric-breakdown">
-                    <div className="breakdown-cell breakdown-servis">
-                        <span className="breakdown-label">Servis</span>
-                        <span className="breakdown-value">{(seller.servis_provize ?? 0).toLocaleString('cs-CZ')}</span>
-                    </div>
-                    {showVykupy && (
-                        <div className="breakdown-cell breakdown-vykupy">
-                            <span className="breakdown-label">Výkupy</span>
-                            <span className="breakdown-value">{seller.vykupy ?? 0}</span>
-                        </div>
-                    )}
-                    <div className="breakdown-cell breakdown-viceprace">
-                        <span className="breakdown-label">{VICEPRACE_LABEL}</span>
-                        <span className="breakdown-value">{formatVicepraceObrat(seller.viceprace_obrat)}</span>
-                    </div>
-                </div>
-            );
-        }
 
         if (oppositeMetric) {
             return (
@@ -339,7 +312,7 @@ const PointsLeaderboard = ({
             {!isDay && sortedData.length === 0 && data.length > 0 && rankMetric !== METRIC_KEYS.LAST_PERIOD && (
                 <p className="leaderboard-filter-hint">
                     V aktuálním měsíci zatím není evidovaný prodej. Pro srovnání podle minulého měsíce
-                    (včetně všech prodejců) klikněte na kartu „Nejlepší skóre minulý měsíc“.
+                    (včetně všech prodejců) klikněte na sloupec „Min. měsíc“.
                 </p>
             )}
 
@@ -353,12 +326,12 @@ const PointsLeaderboard = ({
                                     <th className="col-position">Poz.</th>
                                     <th className="col-seller">{sellerColumnLabel}</th>
                                     {!hideStoreColumn && <th className="col-store">Prodejna</th>}
-                                    {renderSortableHeader(METRIC_KEYS.TOTAL_POINTS, 'Body')}
                                     {renderSortableHeader(METRIC_KEYS.SERVIS, 'Servis')}
                                     {showVykupy && renderSortableHeader(METRIC_KEYS.VYKUPY, 'Výkupy')}
                                     {renderSortableHeader(METRIC_KEYS.VICEPRACE, VICEPRACE_LABEL)}
                                     {renderSortableHeader(METRIC_KEYS.PRUMER_POLOZEK, 'Pol./účt.')}
                                     {renderSortableHeader(METRIC_KEYS.PRUMER_HODNOTA, 'Hodn. účt.')}
+                                    {renderSortableHeader(METRIC_KEYS.ZASILKOVNA, 'Zásilkovna')}
                                     {!hideLastPeriodColumn && renderSortableHeader(
                                         METRIC_KEYS.LAST_PERIOD,
                                         isDay ? 'Min. směna' : 'Min. měsíc',
@@ -385,11 +358,6 @@ const PointsLeaderboard = ({
                                         {!hideStoreColumn && (
                                             <td className="col-store" title={seller.prodejna}>{seller.prodejna}</td>
                                         )}
-                                        <td className={`col-num ${rankMetric === METRIC_KEYS.TOTAL_POINTS ? 'cell-active' : ''}`}>
-                                            <span className="points-value">
-                                                {seller.total_points.toLocaleString('cs-CZ')}
-                                            </span>
-                                        </td>
                                         <td className={`col-num ${rankMetric === METRIC_KEYS.SERVIS ? 'cell-active' : ''}`}>
                                             <span className="servis-value">
                                                 {(seller.servis_provize ?? 0).toLocaleString('cs-CZ')}
@@ -408,6 +376,9 @@ const PointsLeaderboard = ({
                                         </td>
                                         <td className={`col-num ${rankMetric === METRIC_KEYS.PRUMER_HODNOTA ? 'cell-active' : ''}`}>
                                             {formatPrumerHodnotaUctenky(seller.prumer_hodnota_uctenky)}
+                                        </td>
+                                        <td className={`col-num ${rankMetric === METRIC_KEYS.ZASILKOVNA ? 'cell-active' : ''}`}>
+                                            {seller.zasilkovna_prodeje ?? 0}
                                         </td>
                                         {!hideLastPeriodColumn && (
                                             <td className={`col-num ${rankMetric === METRIC_KEYS.LAST_PERIOD ? 'cell-active' : ''}`}>
@@ -431,8 +402,7 @@ const PointsLeaderboard = ({
                         <span className="position">{currentUserPosition}. místo</span>
                         <span className="points">
                             {formatMetricValue(currentUserRow, rankMetric, isDay)}
-                            {(rankMetric === METRIC_KEYS.TOTAL_POINTS
-                                || rankMetric === METRIC_KEYS.SERVIS
+                            {(rankMetric === METRIC_KEYS.SERVIS
                                 || rankMetric === METRIC_KEYS.LAST_PERIOD) ? ' bodů' : ''}
                             {rankMetric === METRIC_KEYS.VYKUPY ? ' ks' : ''}
                         </span>

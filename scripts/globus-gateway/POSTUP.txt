@@ -11,18 +11,27 @@ USB musi obsahovat OBE slozky:
   camera-gateway\
   globus-gateway\   (s config.json)
 
---- PRIPRAVA NA MACU (jednou) ---
+--- PRIPRAVA NA MACU ---
 
-  cp -R scripts/camera-gateway scripts/globus-gateway /Volumes/USB/
-  cp secrets/camera_motion_globus.json /Volumes/USB/globus-gateway/config.json
+  cp secrets/camera_motion_globus.json scripts/globus-gateway/config.json
 
---- NOVA INSTALACE (CMD jako SPRAVCE) ---
+  Na USB zkopirovat:
+    scripts/camera-gateway/
+    scripts/globus-gateway/
+
+--- INSTALACE (CMD jako SPRAVCE) ---
 
   cd C:\Temp\globus-gateway
   install-globus-camera-gateway.cmd
 
+  Volitelne (overeni IP): 02-discover-lan.cmd
+
   Potreba INTERNET pri prvni instalaci (~25 MB Python).
   V NVR: Detekce -> Propojeni -> Upozornit iVMS u kanalu kamery.
+
+  Pri selhani instalace: smazat
+    C:\ProgramData\Mobilmajak\CameraGateway-Globus
+  a spustit znovu (rozbitý python-embed z prvniho pokusu).
 
 --- OPRAVA / AKTUALIZACE (jiz nainstalovane PC) ---
 

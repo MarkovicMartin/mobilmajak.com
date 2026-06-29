@@ -78,6 +78,7 @@ urlpatterns = [
     path('api/plans/', include('plans.urls')),
     path('api/coaching/', include('coaching.urls')),
     path('api/tickets/', include('tickets.urls')),
+    path('api/finance/', include('finance.urls')),
     path('', include('web_pristupy.urls')),
 ]
 

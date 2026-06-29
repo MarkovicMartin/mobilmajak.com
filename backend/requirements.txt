@@ -50,3 +50,6 @@ psutil==5.9.5
 
 # Excel export
 openpyxl==3.1.2
+
+# Packeta auto-fetch (volitelné – jen pro import_packeta_provize --fetch)
+playwright>=1.40.0

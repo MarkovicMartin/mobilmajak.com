@@ -92,7 +92,7 @@ Bez `SLACK_BOT_TOKEN` (a bez webhooku) příkaz jen vypíše úkoly a nic neode�
 
 | Soubor | Účel |
 |--------|------|
-| `secrets/mobilmajak-finance.json` | Finance modul – Fio token, Packeta admin loginy per prodejna, Google Sheets náklady. Šablona: `mobilmajak-finance.example.json` |
+| `secrets/mobilmajak-finance.json` | Finance modul – Fio token, Packeta admin loginy per prodejna, Google Sheets náklady. Šablona: `mobilmajak-finance.example.json`. V `backend/.env`: `FINANCE_SECRETS_FILE=../secrets/mobilmajak-finance.json`, `FINANCE_FIO_ENABLED=0` (Fio až po admin účtu) |
 | `secrets/google-sheets-service-account.json` | Service account pro import tabulky nákladů. Šablona: `google-sheets-service-account.example.json` |
 | `secrets/camera_motion_secrets.json` | `{"ID_PRODEJNY":"hex_secret"}` – jeden secret na pilotní prodejnu |
 
@@ -121,13 +121,15 @@ Ručně v NVR: **Configuration → Network → Advanced → HTTP(S) alarm** (neb
 
 **Windows instalátor (Senimo):** složka `scripts/senimo-gateway/` – zkopírovat na USB, `config.json` z `camera_motion_senimo.json`, spustit `install-senimo-camera-gateway.ps1` jako správce.
 
-**Windows instalátor (Globus, ID 1):** šablona `secrets/camera_motion_globus.example.json` → `camera_motion_globus.json`; složky `scripts/camera-gateway/` + `scripts/globus-gateway/` na USB, `install-globus-camera-gateway.cmd` jako správce. Checklist: `scripts/globus-gateway/README.md`.
+**Windows instalátor (Globus, ID 1):** `secrets/camera_motion_globus.json`; složky `scripts/camera-gateway/` + `scripts/globus-gateway/` na USB, `install-globus-camera-gateway.cmd` jako správce. Checklist: `scripts/globus-gateway/README.md`.
 
 **Windows instalátor (Čepkov / Zlín, ID 3):** `scripts/zlin-gateway/config.example.json` → `secrets/camera_motion_zlin.json`; složky `scripts/camera-gateway/` + `scripts/zlin-gateway/` na USB, `install-zlin-camera-gateway.cmd` jako správce. Checklist: `scripts/zlin-gateway/README.md`.
 
 **Windows instalátor (Šternberk, ID 6):** `scripts/sternberk-gateway/config.example.json` → `secrets/camera_motion_sternberk.json`; složky `scripts/camera-gateway/` + `scripts/sternberk-gateway/` na USB, `install-sternberk-camera-gateway.cmd` jako správce. Checklist: `scripts/sternberk-gateway/README.md`.
 
 **Windows instalátor (Přerov, ID 4):** `scripts/prerov-gateway/config.example.json` → `secrets/camera_motion_prerov.json`; složky `scripts/camera-gateway/` + `scripts/prerov-gateway/` na USB, `install-prerov-camera-gateway.cmd` jako správce. Checklist: `scripts/prerov-gateway/README.md`.
+
+**Windows instalátor (Vsetín, ID 5):** `secrets/camera_motion_vsetin.json`; složky `scripts/camera-gateway/` + `scripts/vsetin-gateway/` na USB, `install-vsetin-camera-gateway.cmd` jako správce. Checklist: `scripts/vsetin-gateway/README.md`.
 
 **Kompletní záloha serveru + actoři (lokálně, mimo git projektu):**
 

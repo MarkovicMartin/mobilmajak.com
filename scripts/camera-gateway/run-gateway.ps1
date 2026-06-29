@@ -34,24 +34,28 @@ if (-not (Test-Path $script)) {
     exit 1
 }
 
+function Test-PythonGatewayUsable {
+    param([string]$Exe)
+
+    if (-not $Exe -or -not (Test-Path -LiteralPath $Exe)) { return $false }
+    $prev = $ErrorActionPreference
+    $ErrorActionPreference = "SilentlyContinue"
+    & $Exe -c "import sys; sys.exit(0 if sys.version_info[:2] >= (3, 8) else 1)" 2>$null | Out-Null
+    $ok = ($LASTEXITCODE -eq 0)
+    $ErrorActionPreference = $prev
+    return $ok
+}
+
 $pythonExe = $null
 $marker = Join-Path $InstallDir "python-path.txt"
 if (Test-Path $marker) {
-    $pythonExe = (Get-Content $marker -Raw).Trim()
+    $candidate = (Get-Content $marker -Raw).Trim()
+    if (Test-PythonGatewayUsable $candidate) { $pythonExe = $candidate }
 }
-if (-not $pythonExe -or -not (Test-Path $pythonExe)) {
-    $embedded = Join-Path $InstallDir "python-embed\python.exe"
-    if (Test-Path $embedded) { $pythonExe = $embedded }
-}
-if (-not $pythonExe -or -not (Test-Path $pythonExe)) {
-    if (Get-Command py -ErrorAction SilentlyContinue) {
-        $pythonExe = (& py -3 -c "import sys; print(sys.executable)" 2>$null).Trim()
-    } elseif (Get-Command python -ErrorAction SilentlyContinue) {
-        $pythonExe = (& python -c "import sys; print(sys.executable)" 2>$null).Trim()
-    }
-}
+$embedded = Join-Path $InstallDir "python-embed\python.exe"
+if (Test-PythonGatewayUsable $embedded) { $pythonExe = $embedded }
 
-if (-not $pythonExe -or -not (Test-Path $pythonExe)) {
+if (-not $pythonExe) {
     Write-Log "ERROR: Python not found"
     exit 1
 }

@@ -1,0 +1,48 @@
+MOBILMAJAK - Vsetin - brana kamer (Windows PC v prodejne)
+==========================================================
+
+Pilot prodejna_id = 5. Stejny model jako Globus / Sternberk.
+
+USB musi obsahovat OBE slozky:
+  camera-gateway\
+  vsetin-gateway\   (s config.json)
+
+--- PRIPRAVA NA MACU ---
+
+  1. Secret na VPS (jednou):
+     "5": "7f5b49e326a981f2338ffa87e4cc26ac11ae7ea331a3e70bceaa652fe924a345"
+     do /home/webmajak/secrets/camera_motion_secrets.json
+     systemctl restart webmajak
+
+  2. Config na USB:
+     cp secrets/camera_motion_vsetin.json scripts/vsetin-gateway/config.json
+     (doplnit nvr_host, camera_host po skenu)
+
+--- KROK 1: Sken site (bez monitoru u NVR) ---
+
+  cd C:\Temp\vsetin-gateway
+  02-discover-lan.cmd
+
+  Vystup: IP NVR + kamery -> zapis do config.json (nvr_host, camera_host)
+
+--- KROK 2: Instalace (CMD jako SPRAVCE) ---
+
+  install-vsetin-camera-gateway.cmd
+
+  Potreba INTERNET pri prvni instalaci (~25 MB Python).
+  V NVR: Detekce -> Propojeni -> Upozornit iVMS u kanalu kamery.
+
+--- OPRAVA POZDĚJI ---
+
+  fix-and-restart-vsetin.cmd
+
+--- KONTROLA ---
+
+  Log: C:\ProgramData\Mobilmajak\CameraGateway-Vsetin\gateway.log
+  Ulohy: Mobilmajak-CameraGateway-Vsetin (+ WakeKick, akce wscript.exe)
+  MOBILMAJAK: Smeny -> Neni v praci -> majacek u Vsetina
+
+  Vypnout spanek PC.
+
+Test z Macu (VPN):
+  ./scripts/camera_motion_test_vsetin.sh isapi

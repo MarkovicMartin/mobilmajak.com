@@ -71,6 +71,7 @@ secrets/id_*
 !secrets/README.md
 secrets/camera_motion*.json
 secrets/slacktoken.json
+secrets/mobilmajak-finance.json
 secrets/*token*.json
 scripts/*-gateway/config.json
 

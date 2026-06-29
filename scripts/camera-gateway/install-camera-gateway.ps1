@@ -30,6 +30,12 @@ if (-not (Test-Path $InstallDir)) {
 }
 
 $py = Resolve-GatewayPython -InstallDir $InstallDir
+if (-not (Ensure-GatewayPythonDeps -PythonExe $py -InstallDir $InstallDir)) {
+    $py = Install-EmbeddedPython -TargetDir $InstallDir
+    if (-not (Ensure-GatewayPythonDeps -PythonExe $py -InstallDir $InstallDir)) {
+        throw "Gateway Python setup failed (requests)"
+    }
+}
 Write-Host "Python: $py"
 
 foreach ($f in @("camera_motion_gateway.py", "run-gateway.ps1", "wake-kick-gateway.ps1", "register-gateway-tasks.ps1", "config.example.json", "bootstrap-python.ps1", "run-ps-hidden.vbs")) {

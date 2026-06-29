@@ -195,14 +195,13 @@ def iter_stream_events(buffer: str, boundary: Optional[str]):
             break
 
         part = buffer[:split_len if markers[0] and split_at == 0 else split_at]
-        if marker := '</EventNotificationAlert>':
-            if '</EventNotificationAlert>' in buffer[:split_len + 20]:
-                end_idx = buffer.find('</EventNotificationAlert>')
-                part = buffer[: end_idx + len('</EventNotificationAlert>')]
-                buffer = buffer[end_idx + len('</EventNotificationAlert>') :]
-                if part.strip():
-                    yield part
-                continue
+        if '</EventNotificationAlert>' in buffer[:split_len + 20]:
+            end_idx = buffer.find('</EventNotificationAlert>')
+            part = buffer[: end_idx + len('</EventNotificationAlert>')]
+            buffer = buffer[end_idx + len('</EventNotificationAlert>') :]
+            if part.strip():
+                yield part
+            continue
 
         buffer = buffer[split_len:]
         if part.strip() and '<' in part:
@@ -285,8 +284,9 @@ def run_alert_stream(
     url = f'{device_base}/ISAPI/Event/notification/alertStream'
     auth = HTTPDigestAuth(nvr_user, nvr_pass)
     last_motion_post = 0.0
-    last_any_motion = 0.0
     last_quiet_post = 0.0
+    motion_session_active = False
+    last_motion_signal_at = 0.0
 
     subscribe_nvr_events(device_base, auth)
     print(f'Připojuji alertStream {url} …', flush=True)
@@ -346,34 +346,43 @@ def run_alert_stream(
                     continue
                 now = time.time()
                 if motion_flag is False:
-                    post_motion(
-                        api_base=api_base,
-                        prodejna_id=prodejna_id,
-                        secret=secret,
-                        motion=False,
-                        source='gateway',
-                    )
-                    last_quiet_post = now
-                    last_any_motion = 0.0
-                    print(f'[{datetime.now().isoformat(timespec="seconds")}] → klid (NVR stop)', flush=True)
+                    if motion_session_active:
+                        post_motion(
+                            api_base=api_base,
+                            prodejna_id=prodejna_id,
+                            secret=secret,
+                            motion=False,
+                            source='gateway',
+                        )
+                        last_quiet_post = now
+                        print(f'[{datetime.now().isoformat(timespec="seconds")}] → klid (NVR stop)', flush=True)
+                    motion_session_active = False
+                    last_motion_signal_at = 0.0
                     continue
 
-                last_any_motion = now
-                if now - last_motion_post >= motion_cooldown_seconds:
-                    post_motion(
-                        api_base=api_base,
-                        prodejna_id=prodejna_id,
-                        secret=secret,
-                        motion=True,
-                        source='gateway',
-                    )
-                    last_motion_post = now
-                    print(f'[{datetime.now().isoformat(timespec="seconds")}] → pohyb (odesláno)', flush=True)
+                if motion_session_active:
+                    continue
+
+                if now - last_motion_post < motion_cooldown_seconds:
+                    continue
+
+                post_motion(
+                    api_base=api_base,
+                    prodejna_id=prodejna_id,
+                    secret=secret,
+                    motion=True,
+                    source='gateway',
+                )
+                last_motion_post = now
+                last_motion_signal_at = now
+                motion_session_active = True
+                print(f'[{datetime.now().isoformat(timespec="seconds")}] → pohyb (odesláno)', flush=True)
 
             now = time.time()
             if (
-                last_any_motion
-                and now - last_any_motion >= quiet_after_seconds
+                motion_session_active
+                and last_motion_signal_at
+                and now - last_motion_signal_at >= quiet_after_seconds
                 and now - last_quiet_post >= quiet_after_seconds
             ):
                 post_motion(
@@ -381,10 +390,12 @@ def run_alert_stream(
                     prodejna_id=prodejna_id,
                     secret=secret,
                     motion=False,
+                    source='gateway',
                 )
                 last_quiet_post = now
-                last_any_motion = 0.0
-                print(f'[{datetime.now().isoformat(timespec="seconds")}] → klid', flush=True)
+                motion_session_active = False
+                last_motion_signal_at = 0.0
+                print(f'[{datetime.now().isoformat(timespec="seconds")}] → klid (timeout)', flush=True)
 
 
 ISAPI_PROBE_PATHS = (

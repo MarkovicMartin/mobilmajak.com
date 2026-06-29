@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from . import zasilkovna_views
 
 app_name = 'analytics'
 
@@ -77,6 +78,9 @@ urlpatterns = [
     
     # NOVÝ MODUL - TRAFFIC ANALYTICS
     path('prodejny-zakaznici/traffic/', views.StoreTrafficView.as_view(), name='store_traffic'),
+
+    # ZÁSILKOVNA – konverze balíků ↔ prodeje (Z + číslo v poznámce)
+    path('zasilkovna-konverze/', zasilkovna_views.zasilkovna_konverze_view, name='zasilkovna_konverze'),
     
     # E-SHOP - Nové endpointy pro analýzu e-shop dat z WEB_PRODEJE
     path('eshop/', views.eshop_data_view, name='eshop_data'),

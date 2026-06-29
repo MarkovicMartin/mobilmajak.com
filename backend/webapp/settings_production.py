@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     'plans',
     'coaching',
     'tickets',
+    'finance',
     'vallora',
 ]
 

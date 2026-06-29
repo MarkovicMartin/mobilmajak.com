@@ -1,7 +1,10 @@
 import { analyticsGet } from '../../../utils/analyticsRequest';
 import React, { useState, useEffect, useMemo } from 'react';
 import AnalyticsPeriodFilterPanel from '../../../components/analytics/AnalyticsPeriodFilterPanel';
-import { computeQuickRange, detectQuickRangePreset } from '../../../utils/analyticsQuickRange';
+import {
+    applyQuickRangePreset,
+    detectQuickRangeFromFilters,
+} from '../../../utils/analyticsQuickRange';
 import { PolozkyDeltaBadge } from '../components/PolozkyComparisonDelta';
 import PolozkySellerDetailChips from '../components/PolozkySellerDetailChips';
 import { formatPrumerHodnotaUctenky } from '../../leaderboard/leaderboardMetrics';
@@ -62,10 +65,7 @@ const ProdejnyPolozkyView = ({
     const [lastUpdate, setLastUpdate] = useState(null);
     const [dateError, setDateError] = useState('');
     const [quickKey, setQuickKey] = useState(() =>
-        detectQuickRangePreset(
-            (filtersFromParent || buildInitialPolozkyFilters()).start_date,
-            (filtersFromParent || buildInitialPolozkyFilters()).end_date,
-        ),
+        detectQuickRangeFromFilters(filtersFromParent || buildInitialPolozkyFilters()),
     );
 
     const effectiveFilters = useMemo(
@@ -111,9 +111,15 @@ const ProdejnyPolozkyView = ({
     };
 
     const handleQuickPreset = (id) => {
-        const range = computeQuickRange(id);
-        if (!range) return;
-        applyDateRange({ ...range, preset: id });
+        const patch = applyQuickRangePreset(id);
+        if (!patch) return;
+        setDateError('');
+        if (patch.period === 'monthly_select') {
+            updateFilters({ ...filters, ...patch });
+            setQuickKey(id);
+        } else {
+            applyDateRange({ start_date: patch.start_date, end_date: patch.end_date, preset: id });
+        }
     };
 
     const fetchData = async () => {
@@ -375,31 +381,29 @@ const ProdejnyPolozkyView = ({
                                                     <span className="metric-value">{(item.pol_dok || 0).toFixed(2)}</span>
                                                 </div>
                                             )}
-                                            <div className="seller-hourly-row">
-                                                {showMetric('polozky_nad_100_za_hodinu') && (
-                                                    <div className="metric-item">
-                                                        <span className="metric-label">Položky/h</span>
-                                                        <span className="metric-value">
-                                                            {item.polozky_nad_100_za_hodinu ?? '—'}
-                                                        </span>
-                                                    </div>
-                                                )}
-                                                <div
-                                                    className="metric-item metric-item--marze-h"
-                                                    title="Marže vytvořená ÷ odpracované hodiny"
-                                                >
-                                                    <span className="metric-label">Marže/h</span>
-                                                    <span className="metric-value highlight-profit">
-                                                        {item.marze_vytvorena_za_hodinu != null
-                                                            ? formatCurrency(item.marze_vytvorena_za_hodinu)
-                                                            : '—'}
+                                        </div>
+                                        <div className="seller-large-metrics">
+                                            {showMetric('polozky_nad_100_za_hodinu') && (
+                                                <div className="metric-item metric-item--large">
+                                                    <span className="metric-label">Položky/h</span>
+                                                    <span className="metric-value">
+                                                        {item.polozky_nad_100_za_hodinu ?? '—'}
                                                     </span>
                                                 </div>
-                                            </div>
-                                        </div>
-                                        <div className="seller-profit-metrics">
+                                            )}
                                             <div
-                                                className="metric-item primary metric-item--profit"
+                                                className="metric-item metric-item--large"
+                                                title="Marže vytvořená ÷ odpracované hodiny"
+                                            >
+                                                <span className="metric-label">Marže/h</span>
+                                                <span className="metric-value highlight-profit">
+                                                    {item.marze_vytvorena_za_hodinu != null
+                                                        ? formatCurrency(item.marze_vytvorena_za_hodinu)
+                                                        : '—'}
+                                                </span>
+                                            </div>
+                                            <div
+                                                className="metric-item metric-item--large"
                                                 title="Marže bez DPH z prodeje + servisní práce (servis přiřazen technikovi, který je provedl)"
                                             >
                                                 <span className="metric-label">Marže vytvořená</span>
@@ -414,7 +418,7 @@ const ProdejnyPolozkyView = ({
                                             </div>
                                             {item.vynos_firmy != null && item.vynos_firmy !== undefined ? (
                                                 <div
-                                                    className="metric-item primary metric-item--profit"
+                                                    className="metric-item metric-item--large"
                                                     title={`Marže − výplata (${item.vyplata_body ?? 0} bodů)`}
                                                 >
                                                     <span className="metric-label">Výnos pro firmu</span>
@@ -427,7 +431,7 @@ const ProdejnyPolozkyView = ({
                                                 </div>
                                             ) : (
                                                 <div
-                                                    className="metric-item metric-item--profit-muted"
+                                                    className="metric-item metric-item--large metric-item--large-muted"
                                                     title="Výnos pro firmu lze zobrazit jen za celý kalendářní měsíc"
                                                 >
                                                     <span className="metric-label">Výnos pro firmu</span>

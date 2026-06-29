@@ -1,6 +1,91 @@
 # Portable Python 3.12 for gateway (no system Python install)
 # ASCII only
 
+function Get-GatewayCacheDir {
+    param([string]$InstallDir = "C:\ProgramData\Mobilmajak\CameraGateway-Cache")
+
+    if ($InstallDir) {
+        $cache = Join-Path $InstallDir "_cache"
+    } else {
+        $cache = "C:\ProgramData\Mobilmajak\CameraGateway-Cache"
+    }
+    if (-not (Test-Path $cache)) {
+        New-Item -ItemType Directory -Path $cache -Force | Out-Null
+    }
+    return $cache
+}
+
+function Remove-GatewayTempFile {
+    param([string]$Path)
+    if (-not $Path) { return }
+    try {
+        if ([System.IO.File]::Exists($Path)) {
+            [System.IO.File]::Delete($Path)
+        }
+    } catch {
+        Write-Host "Warning: could not delete temp file $Path" -ForegroundColor Yellow
+    }
+}
+
+function Invoke-GatewayPythonQuiet {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$PythonExe,
+        [Parameter(Mandatory = $true)]
+        [string[]]$PyArgs
+    )
+
+    $prev = $ErrorActionPreference
+    $ErrorActionPreference = 'SilentlyContinue'
+    $null = & $PythonExe @PyArgs 2>&1
+    $code = $LASTEXITCODE
+    if ($null -eq $code) { $code = 1 }
+    $ErrorActionPreference = $prev
+    return $code
+}
+
+function Test-GatewayPythonImport {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$PythonExe,
+        [string]$ModuleName = 'requests'
+    )
+
+    return (Invoke-GatewayPythonQuiet -PythonExe $PythonExe -PyArgs @('-c', "import $ModuleName")) -eq 0
+}
+
+function Ensure-GatewayPythonDeps {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$PythonExe,
+        [string]$InstallDir = ""
+    )
+
+    if (Test-GatewayPythonImport -PythonExe $PythonExe) { return $true }
+
+    Write-Host "Installing requests for gateway Python..."
+    $prev = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    & $PythonExe -m pip install --upgrade pip requests | Out-Host
+    $pipCode = $LASTEXITCODE
+    $ErrorActionPreference = $prev
+
+    if ($pipCode -eq 0 -and (Test-GatewayPythonImport -PythonExe $PythonExe)) {
+        return $true
+    }
+
+    if ($InstallDir) {
+        $embedDir = Join-Path $InstallDir "python-embed"
+        Write-Host "Broken embedded Python - removing $embedDir" -ForegroundColor Yellow
+        if (Test-Path -LiteralPath $embedDir) {
+            Remove-Item -LiteralPath $embedDir -Recurse -Force -ErrorAction SilentlyContinue
+        }
+        return $false
+    }
+
+    throw "pip install requests failed"
+}
+
 function Install-EmbeddedPython {
     param(
         [Parameter(Mandatory = $true)]
@@ -9,7 +94,8 @@ function Install-EmbeddedPython {
 
     $version = "3.12.8"
     $embedDir = Join-Path $TargetDir "python-embed"
-    $zipPath = Join-Path $env:TEMP "mobilmajak-python-embed.zip"
+    $cacheDir = Get-GatewayCacheDir -InstallDir $TargetDir
+    $zipPath = Join-Path $cacheDir "mobilmajak-python-embed.zip"
     $url = "https://www.python.org/ftp/python/$version/python-$version-embed-amd64.zip"
 
     if (-not (Test-Path $embedDir)) {
@@ -17,16 +103,19 @@ function Install-EmbeddedPython {
     }
 
     $pythonExe = Join-Path $embedDir "python.exe"
-    if (Test-Path $pythonExe) {
+    if (Test-Path -LiteralPath $pythonExe) {
         Write-Host "Reusing embedded Python: $pythonExe" -ForegroundColor Green
-        return $pythonExe
+        if (Ensure-GatewayPythonDeps -PythonExe $pythonExe -InstallDir $TargetDir) {
+            return $pythonExe
+        }
+        Write-Host "Re-downloading embedded Python..." -ForegroundColor Yellow
     }
 
     Write-Host "Downloading portable Python $version (~25 MB)..." -ForegroundColor Yellow
     Write-Host "URL: $url"
     Invoke-WebRequest -Uri $url -OutFile $zipPath -UseBasicParsing
-    Expand-Archive -Path $zipPath -DestinationPath $embedDir -Force
-    Remove-Item $zipPath -Force -ErrorAction SilentlyContinue
+    Expand-Archive -LiteralPath $zipPath -DestinationPath $embedDir -Force
+    Remove-GatewayTempFile -Path $zipPath
 
     if (-not (Test-Path $pythonExe)) {
         throw "Missing $pythonExe after extract"
@@ -47,11 +136,12 @@ function Install-EmbeddedPython {
 
     New-Item -ItemType Directory -Path (Join-Path $embedDir "Lib\site-packages") -Force | Out-Null
 
-    $getPip = Join-Path $env:TEMP "get-pip.py"
+    $getPip = Join-Path $cacheDir "get-pip.py"
     Write-Host "Installing pip..."
     Invoke-WebRequest -Uri "https://bootstrap.pypa.io/get-pip.py" -OutFile $getPip -UseBasicParsing
     & $pythonExe $getPip --no-warn-script-location | Out-Host
     if ($LASTEXITCODE -ne 0) { throw "get-pip.py failed" }
+    Remove-GatewayTempFile -Path $getPip
 
     Write-Host "Installing requests..."
     & $pythonExe -m pip install --upgrade pip requests | Out-Host
@@ -83,33 +173,33 @@ function Test-GatewayPythonExe {
     return $null
 }
 
+function Test-GatewayPythonMinVersion {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$PythonExe,
+        [int]$MinMajor = 3,
+        [int]$MinMinor = 8
+    )
+
+    $check = "import sys; sys.exit(0 if sys.version_info[:2] >= ($MinMajor, $MinMinor) else 1)"
+    return (Invoke-GatewayPythonQuiet -PythonExe $PythonExe -PyArgs @('-c', $check)) -eq 0
+}
+
 function Resolve-GatewayPython {
     param(
         [Parameter(Mandatory = $true)]
         [string]$InstallDir
     )
 
-    if (Get-Command py -ErrorAction SilentlyContinue) {
-        try {
-            $prev = $ErrorActionPreference
-            $ErrorActionPreference = 'SilentlyContinue'
-            $v = (& py -3 -c "import sys; print(sys.executable)" 2>$null)
-            $ErrorActionPreference = $prev
-            if ($LASTEXITCODE -eq 0 -and $v) {
-                $path = $v.Trim()
-                if (Test-Path -LiteralPath $path) { return $path }
-            }
-        } catch {}
+    $embedExe = Join-Path $InstallDir "python-embed\python.exe"
+    if (Test-Path -LiteralPath $embedExe) {
+        if ((Test-GatewayPythonMinVersion -PythonExe $embedExe) -and
+            (Test-GatewayPythonImport -PythonExe $embedExe)) {
+            return $embedExe
+        }
     }
 
-    foreach ($name in @("python3", "python")) {
-        $cmd = Get-Command $name -ErrorAction SilentlyContinue
-        if (-not $cmd) { continue }
-        $v = Test-GatewayPythonExe -Exe $cmd.Source
-        if ($v) { return $v }
-    }
-
-    Write-Host "System Python not found - downloading portable Python..." -ForegroundColor Yellow
+    Write-Host "Using portable Python 3.12 (system Python < 3.8 is not supported)..." -ForegroundColor Yellow
     return Install-EmbeddedPython -TargetDir $InstallDir
 }
 

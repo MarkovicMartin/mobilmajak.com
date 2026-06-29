@@ -23,6 +23,7 @@ const PlansModule = lazy(() => import('../modules/plans/PlansModule'));
 const TicketsModule = lazy(() => import('../modules/tickets/TicketsModule'));
 const TasksModule = lazy(() => import('../modules/tasks/TasksModule'));
 const CoachingModule = lazy(() => import('../modules/coaching/CoachingModule'));
+const FinanceModule = lazy(() => import('../modules/finance/FinanceModule'));
 
 const RouteFallback = () => (
     <div className="dashboard-loading" role="status" aria-live="polite">
@@ -66,6 +67,7 @@ const Dashboard = () => {
                         <Route path="/access" element={<AccessModule />} />
                         <Route path="/orders" element={<OrdersModule />} />
                         <Route path="/plans/*" element={isAdmin() ? <PlansModule /> : <Navigate to="/" />} />
+                        <Route path="/finance/*" element={isAdmin() ? <FinanceModule /> : <Navigate to="/" />} />
                         <Route path="/leaderboard" element={<LeaderboardModule />} />
                         <Route path="/profile" element={<ProfileModule />} />
                         <Route path="/tasks/*" element={<TasksModule />} />
