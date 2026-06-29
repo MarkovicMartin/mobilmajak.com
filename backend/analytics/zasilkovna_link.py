@@ -12,8 +12,8 @@ from django.utils import timezone
 
 from analytics.models import WebProdejeAll
 from analytics.receipt_metrics import active_receipt_filter_q, leaderboard_doklad_q
-from finance.models import PacketaProvizePolozka
-from finance.packeta_parser import PACKETA_MAIN_VISIT_TYPES, normalize_zasilka
+from packeta.models import PacketaProvizePolozka
+from packeta.packeta_parser import PACKETA_MAIN_VISIT_TYPES, normalize_zasilka
 
 # Z123456789 nebo ZS: Z 236 9101 479 – ne ZZS (Zlínský kraj)
 ZASILKA_NOTE_RE = re.compile(
@@ -350,6 +350,27 @@ def prodeje_by_prodejce(linked: Iterable[LinkedSale]) -> dict[int, dict]:
         result[pid] = {
             'zasilkovna_prodeje': propojene,
             'zasilkovna_oznaceno': oznacene,
-            'zasilkovna_konverze_pct': round(100 * propojene / oznacene, 1) if oznacene else None,
+            'zasilkovna_konverze_z_pct': round(100 * propojene / oznacene, 1) if oznacene else None,
         }
     return result
+
+
+def baliky_vydane_by_prodejce(
+    date_from: date,
+    date_to: date,
+    prodejna_id: int | None = None,
+) -> dict[int, int]:
+    """Vydané balíky přiřazené prodejci ze směny (DISTINCT zásilka, typ vydání)."""
+    qs = PacketaProvizePolozka.objects.filter(
+        cas__date__gte=date_from,
+        cas__date__lte=date_to,
+        typ_provize__in=VYDANE_TYPY,
+        id_prodejce__isnull=False,
+    )
+    if prodejna_id:
+        qs = qs.filter(prodejna_id=prodejna_id)
+
+    by_prodejce: dict[int, set[str]] = defaultdict(set)
+    for row in qs.values('id_prodejce', 'zasilka'):
+        by_prodejce[row['id_prodejce']].add(row['zasilka'])
+    return {pid: len(zasilky) for pid, zasilky in by_prodejce.items()}

@@ -11,14 +11,15 @@ from datetime import date, timedelta
 
 from django.utils import timezone
 
-from finance.models import PacketaProvizePolozka
-from finance.packeta_parser import (
+from packeta.models import PacketaProvizePolozka
+from packeta.packeta_parser import (
     PACKETA_TYPE_LABELS,
     count_distinct_visits,
     parse_packeta_csv,
     type_values_for_preset,
 )
-from finance.secrets import get_packeta_admin_for_fetch
+from packeta.secrets import get_packeta_admin_for_fetch
+from packeta.shift_assign import resolve_prodejce_for_packeta
 
 logger = logging.getLogger(__name__)
 
@@ -139,12 +140,15 @@ def import_packeta_rows(
     dry_run: bool = False,
 ) -> dict:
     batch = batch or timezone.now().strftime('%Y%m%d%H%M%S')
-    created = skipped = 0
+    created = skipped = assigned = 0
     for row in rows:
+        id_prodejce = resolve_prodejce_for_packeta(prodejna_id, row['cas'])
         if dry_run:
             created += 1
+            if id_prodejce:
+                assigned += 1
             continue
-        _, was_created = PacketaProvizePolozka.objects.get_or_create(
+        obj, was_created = PacketaProvizePolozka.objects.get_or_create(
             prodejna_id=prodejna_id,
             zasilka=row['zasilka'],
             typ_provize=row['typ_provize'],
@@ -155,16 +159,24 @@ def import_packeta_rows(
                 'mena': row['mena'],
                 'poznamka': row['poznamka'],
                 'import_batch': batch,
+                'id_prodejce': id_prodejce,
             },
         )
         if was_created:
             created += 1
+            if id_prodejce:
+                assigned += 1
         else:
             skipped += 1
+            if id_prodejce and obj.id_prodejce is None:
+                obj.id_prodejce = id_prodejce
+                obj.save(update_fields=['id_prodejce'])
+                assigned += 1
     stats = count_distinct_visits(rows)
     return {
         'created': created,
         'skipped': skipped,
+        'assigned': assigned,
         'stats': stats,
         'import_batch': batch,
         'warning': None,

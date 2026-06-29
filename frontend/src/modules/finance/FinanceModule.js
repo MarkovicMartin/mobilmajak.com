@@ -32,13 +32,6 @@ const FinanceModule = () => {
         poznamka_admin: '',
     });
 
-    const [packetaProdejna, setPacketaProdejna] = useState('5');
-    const [packetaFile, setPacketaFile] = useState(null);
-    const [packetaResult, setPacketaResult] = useState(null);
-    const [packetaFetchDays, setPacketaFetchDays] = useState('7');
-    const [packetaFetching, setPacketaFetching] = useState(false);
-    const [packetaFetchResult, setPacketaFetchResult] = useState(null);
-
     const loadAll = useCallback(async () => {
         setLoading(true);
         setError('');
@@ -102,50 +95,16 @@ const FinanceModule = () => {
         }
     };
 
-    const handlePacketaUpload = async (e) => {
-        e.preventDefault();
-        if (!packetaFile) {
-            setMessage('Vyberte CSV soubor.');
-            return;
-        }
-        setMessage('');
-        setPacketaResult(null);
-        try {
-            const result = await financeAPI.importPacketaCsv(packetaFile, Number(packetaProdejna));
-            setPacketaResult(result);
-            setMessage(`Packeta import: ${result.created} nových, ${result.skipped} přeskočeno.`);
-        } catch (err) {
-            setMessage(err.response?.data?.error || 'Import CSV selhal');
-        }
-    };
-
-    const handlePacketaFetchAll = async () => {
-        setMessage('');
-        setPacketaFetchResult(null);
-        setPacketaFetching(true);
-        try {
-            const result = await financeAPI.fetchPacketaAll(Number(packetaFetchDays) || 1);
-            setPacketaFetchResult(result);
-            const ok = (result.branches || []).filter((b) => b.prodejna_id && !b.error).length;
-            setMessage(`Packeta staženo: ${ok} poboček importováno.`);
-        } catch (err) {
-            setMessage(err.response?.data?.error || 'Stažení z Packety selhalo');
-        } finally {
-            setPacketaFetching(false);
-        }
-    };
-
     const fioNote = status?.fio?.message || 'Fio token vyžaduje admin účet – zatím nedostupné';
-    const packetaFetchEnabled = status?.packeta?.fetch_available;
 
     return (
         <div className="finance-module">
-            <PageHeader title="Finance" subtitle="Admin sekce – náklady a Packeta provize" />
+            <PageHeader title="Finance" subtitle="Admin sekce – náklady a Fio" />
 
             <div className="finance-fio-banner" role="status">
                 <strong>Fio banka:</strong> {fioNote}
                 <span className="finance-fio-banner__hint">
-                    Ruční náklady a Packeta CSV import jsou aktivní.
+                    Ruční náklady jsou aktivní. Packeta import je v Analytika → Zásilkovna.
                 </span>
             </div>
 
@@ -163,13 +122,6 @@ const FinanceModule = () => {
                     onClick={() => setTab('manual')}
                 >
                     Ruční náklad
-                </button>
-                <button
-                    type="button"
-                    className={tab === 'packeta' ? 'active' : ''}
-                    onClick={() => setTab('packeta')}
-                >
-                    Packeta CSV
                 </button>
             </nav>
 
@@ -289,108 +241,6 @@ const FinanceModule = () => {
                         </label>
                         <button type="submit" className="finance-btn-primary">Uložit náklad</button>
                     </form>
-                </section>
-            )}
-
-            {!loading && tab === 'packeta' && (
-                <section className="finance-panel">
-                    <p className="finance-panel__intro">
-                        Automatické stažení z admin.packeta.com (všechny pobočky) nebo ruční CSV upload.
-                    </p>
-                    {packetaFetchEnabled && (
-                        <div className="finance-packeta-fetch">
-                            <h3>Automatické stažení</h3>
-                            <div className="finance-form finance-form--inline">
-                                <label>
-                                    Počet dní zpět
-                                    <select
-                                        value={packetaFetchDays}
-                                        onChange={(e) => setPacketaFetchDays(e.target.value)}
-                                    >
-                                        <option value="1">1 (včera)</option>
-                                        <option value="7">7</option>
-                                        <option value="14">14</option>
-                                    </select>
-                                </label>
-                                <button
-                                    type="button"
-                                    className="finance-btn-primary"
-                                    disabled={packetaFetching}
-                                    onClick={handlePacketaFetchAll}
-                                >
-                                    {packetaFetching ? 'Stahuji…' : 'Stáhnout všechny pobočky'}
-                                </button>
-                            </div>
-                            {packetaFetchResult?.branches && (
-                                <div className="finance-packeta-result">
-                                    <p>
-                                        Období: {packetaFetchResult.date_from} – {packetaFetchResult.date_to}
-                                    </p>
-                                    <ul className="finance-packeta-branch-list">
-                                        {packetaFetchResult.branches.map((b) => (
-                                            <li key={b.branch_name}>
-                                                <strong>{b.branch_name}</strong>
-                                                {b.prodejna_id ? ` (prodejna ${b.prodejna_id})` : ''}
-                                                {b.error && <span className="finance-error"> – {b.error}</span>}
-                                                {b.warning && !b.error && (
-                                                    <span className="finance-warning"> – {b.warning}</span>
-                                                )}
-                                                {b.stats && !b.error && (
-                                                    <span>
-                                                        {' '}
-                                                        – {b.created} nových, návštěvy {b.stats.navstevy_celkem}
-                                                    </span>
-                                                )}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            )}
-                        </div>
-                    )}
-                    <h3>Ruční CSV</h3>
-                    <form className="finance-form" onSubmit={handlePacketaUpload}>
-                        <label>
-                            Prodejna
-                            <select
-                                value={packetaProdejna}
-                                onChange={(e) => setPacketaProdejna(e.target.value)}
-                            >
-                                {stores.length > 0
-                                    ? stores.map((s) => (
-                                        <option key={s.id} value={s.id}>
-                                            {s.id} – {s.nazev || s.label}
-                                        </option>
-                                    ))
-                                    : [1, 2, 3, 4, 5, 6].map((id) => (
-                                        <option key={id} value={id}>{id}</option>
-                                    ))}
-                            </select>
-                        </label>
-                        <label>
-                            Soubor provize.csv
-                            <input
-                                type="file"
-                                accept=".csv,text/csv"
-                                onChange={(e) => setPacketaFile(e.target.files?.[0] || null)}
-                            />
-                        </label>
-                        <button type="submit" className="finance-btn-primary">Importovat CSV</button>
-                    </form>
-                    {packetaResult && (
-                        <div className="finance-packeta-result">
-                            <p>Nových řádků: {packetaResult.created}, přeskočeno: {packetaResult.skipped}</p>
-                            {packetaResult.stats && (
-                                <p>
-                                    Návštěvy Zásilkovna (DISTINCT zásilka): {packetaResult.stats.navstevy_celkem}
-                                    {' '}(vydané {packetaResult.stats.vydane}, přijaté {packetaResult.stats.prijate})
-                                </p>
-                            )}
-                            {packetaResult.warning && (
-                                <p className="finance-warning">{packetaResult.warning}</p>
-                            )}
-                        </div>
-                    )}
                 </section>
             )}
         </div>

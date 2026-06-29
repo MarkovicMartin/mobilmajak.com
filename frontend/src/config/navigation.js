@@ -5,6 +5,7 @@ import { getNavChildren, PARENTS_WITH_CHILDREN } from './navChildren';
 import { getAnalyticsSection } from '../modules/analytics/analyticsSections';
 import { plansIdFromPath, PLANS_SECTIONS } from '../modules/plans/plansSections';
 import { TASKS_SECTIONS } from '../modules/tasks/tasksSections';
+import { FINANCE_MODULE_ENABLED } from './featureFlags';
 
 export const NAV_GROUPS = [
     {
@@ -27,7 +28,9 @@ export const NAV_GROUPS = [
         items: [
             { sectionKey: 'analytics', label: 'Analytika', path: '/analytics', adminOnly: true, icon: 'fa-chart-bar' },
             { sectionKey: 'plans', label: 'Plány', path: '/plans', adminOnly: true, icon: 'fa-tasks' },
-            { sectionKey: 'finance', label: 'Finance', path: '/finance', adminOnly: true, icon: 'fa-coins' },
+            ...(FINANCE_MODULE_ENABLED
+                ? [{ sectionKey: 'finance', label: 'Finance', path: '/finance', adminOnly: true, icon: 'fa-coins' }]
+                : []),
             { sectionKey: 'orders', label: 'Objednávky', path: '/orders', icon: 'fa-shopping-cart' },
             { sectionKey: 'leaderboard', label: 'Žebříček', path: '/leaderboard', icon: 'fa-trophy' },
         ],

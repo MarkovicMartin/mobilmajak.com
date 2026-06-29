@@ -57,10 +57,10 @@ export const METRICS = {
         rankSubtitleDay: 'bodů z minulé směny',
     },
     [METRIC_KEYS.ZASILKOVNA]: {
-        sortKey: 'zasilkovna_prodeje',
-        label: 'Zásilkovna prodeje',
+        sortKey: 'zasilkovna_baliku',
+        label: 'Zásilkovna balíky',
         scoreLabel: 'KS',
-        rankSubtitle: 'propojených prodejů po balíku (Z v poznámce)',
+        rankSubtitle: 'vydaných balíků (odhad ze směny)',
     },
 };
 
@@ -152,5 +152,5 @@ export const STAT_CARD_META = {
         titleMonth: 'Nejlepší skóre minulý měsíc',
         titleDay: 'Nejlepší výkon včera',
     },
-    [METRIC_KEYS.ZASILKOVNA]: { icon: '📦', title: 'Top Zásilkovna prodeje' },
+    [METRIC_KEYS.ZASILKOVNA]: { icon: '📦', title: 'Top Zásilkovna' },
 };

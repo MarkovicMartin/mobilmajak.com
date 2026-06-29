@@ -210,6 +210,26 @@ const ProfileAnalytics = ({ userId }) => {
                             <span className="metric-value">{data.sklicka ?? 0}</span>
                             <span className="metric-label">Skla/fólie</span>
                         </div>
+                        {data.zasilkovna && (
+                            <>
+                                <div className="metric-item metric-item--mini">
+                                    <span className="metric-value">{data.zasilkovna.baliku_vydano ?? 0}</span>
+                                    <span className="metric-label">Balíky vyd.</span>
+                                </div>
+                                <div className="metric-item metric-item--mini">
+                                    <span className="metric-value">{data.zasilkovna.prodeje ?? 0}</span>
+                                    <span className="metric-label">Zás. prodeje</span>
+                                </div>
+                                <div className="metric-item metric-item--mini">
+                                    <span className="metric-value">
+                                        {data.zasilkovna.konverze_pct != null
+                                            ? `${data.zasilkovna.konverze_pct} %`
+                                            : '—'}
+                                    </span>
+                                    <span className="metric-label">Konverze</span>
+                                </div>
+                            </>
+                        )}
                         <div className="metric-item metric-item--mini">
                             <span className="metric-value">
                                 {data.prolepenost_pct != null ? `${data.prolepenost_pct} %` : '—'}

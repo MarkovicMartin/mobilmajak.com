@@ -155,6 +155,7 @@ const PointsLeaderboard = ({
             METRIC_KEYS.VICEPRACE,
             METRIC_KEYS.PRUMER_POLOZEK,
             METRIC_KEYS.PRUMER_HODNOTA,
+            ...(!hideStoreColumn ? [METRIC_KEYS.ZASILKOVNA] : []),
         ]
         : [
             METRIC_KEYS.SERVIS,
@@ -162,6 +163,7 @@ const PointsLeaderboard = ({
             METRIC_KEYS.VICEPRACE,
             METRIC_KEYS.PRUMER_POLOZEK,
             METRIC_KEYS.PRUMER_HODNOTA,
+            ...(!hideStoreColumn ? [METRIC_KEYS.ZASILKOVNA] : []),
         ]);
 
     const renderStatCardValue = (metricKey) => {
@@ -378,7 +380,13 @@ const PointsLeaderboard = ({
                                             {formatPrumerHodnotaUctenky(seller.prumer_hodnota_uctenky)}
                                         </td>
                                         <td className={`col-num ${rankMetric === METRIC_KEYS.ZASILKOVNA ? 'cell-active' : ''}`}>
-                                            {seller.zasilkovna_prodeje ?? 0}
+                                            {seller.zasilkovna_baliku ?? 0}
+                                            {(seller.zasilkovna_konverze_pct != null && seller.zasilkovna_baliku > 0) && (
+                                                <span className="cell-sub" title="Konverze = prodeje / vydané balíky">
+                                                    {' '}
+                                                    ({seller.zasilkovna_konverze_pct}%)
+                                                </span>
+                                            )}
                                         </td>
                                         {!hideLastPeriodColumn && (
                                             <td className={`col-num ${rankMetric === METRIC_KEYS.LAST_PERIOD ? 'cell-active' : ''}`}>

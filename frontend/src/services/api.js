@@ -416,6 +416,22 @@ export const analyticsAPI = {
     },
 };
 
+export const packetaAPI = {
+    getStatus: async () => (await api.get('/packeta/status/')).data,
+    importCsv: async (file, prodejnaId) => {
+        const form = new FormData();
+        form.append('file', file);
+        form.append('prodejna_id', String(prodejnaId));
+        const response = await api.post('/packeta/import-csv/', form, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        return response.data;
+    },
+    fetchAll: async (days = 1) => (
+        await api.post('/packeta/fetch/', { days })
+    ).data,
+};
+
 export const financeAPI = {
     getStatus: async () => (await api.get('/finance/status/')).data,
     getKategorie: async () => (await api.get('/finance/kategorie/')).data,
@@ -427,18 +443,6 @@ export const financeAPI = {
         await api.patch(`/finance/naklady/${id}/`, payload)
     ).data,
     createPravidlo: async (payload) => (await api.post('/finance/pravidla/', payload)).data,
-    importPacketaCsv: async (file, prodejnaId) => {
-        const form = new FormData();
-        form.append('file', file);
-        form.append('prodejna_id', String(prodejnaId));
-        const response = await api.post('/finance/packeta/import-csv/', form, {
-            headers: { 'Content-Type': 'multipart/form-data' },
-        });
-        return response.data;
-    },
-    fetchPacketaAll: async (days = 1) => (
-        await api.post('/finance/packeta/fetch/', { days })
-    ).data,
 };
 
 export const coachingAPI = {

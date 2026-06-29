@@ -117,3 +117,40 @@
 .zk-table--compact td {
     font-size: 0.78rem;
 }
+
+.zk-panel--import {
+    margin-bottom: 0.75rem;
+    padding: 0.5rem 0.75rem;
+}
+
+.zk-import-toggle {
+    background: none;
+    border: none;
+    font: inherit;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0;
+    color: var(--text-secondary);
+}
+
+.zk-import-body {
+    margin-top: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.zk-import-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+    font-size: 0.82rem;
+}
+
+.zk-import-msg {
+    margin: 0;
+    font-size: 0.8rem;
+    opacity: 0.8;
+}

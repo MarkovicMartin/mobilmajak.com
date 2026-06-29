@@ -122,6 +122,12 @@
     white-space: nowrap;
 }
 
+.points-leaderboard .cell-sub {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-weight: normal;
+}
+
 .points-leaderboard .stat-card-name {
     font-size: 0.72rem;
     font-weight: 600;

@@ -1,8 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { useAuth } from '../../../context/AuthContext';
 import { analyticsGet } from '../../../utils/analyticsRequest';
 import AnalyticsSectionWrapper from '../AnalyticsSectionWrapper';
 import AnalyticsPeriodFilterPanel from '../../../components/analytics/AnalyticsPeriodFilterPanel';
 import { computeQuickRange, detectQuickRangePreset } from '../../../utils/analyticsQuickRange';
+import PacketaImportPanel from './PacketaImportPanel';
 import api from '../../../services/api';
 import './ZasilkovnaKonverze.css';
 
@@ -10,6 +12,7 @@ const fmtPct = (v) => (v == null ? '—' : `${Number(v).toFixed(1)} %`);
 const fmtNum = (v) => new Intl.NumberFormat('cs-CZ').format(v || 0);
 
 const ZasilkovnaKonverzeView = () => {
+    const { isAdmin } = useAuth();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [data, setData] = useState(null);
@@ -131,6 +134,8 @@ const ZasilkovnaKonverzeView = () => {
                 </div>
             </AnalyticsPeriodFilterPanel>
 
+            {isAdmin() && <PacketaImportPanel onImported={loadData} />}
+
             {loading && <div className="zk-loading">Načítám…</div>}
             {error && <div className="zk-error">{error}</div>}
 
@@ -211,25 +216,25 @@ const ZasilkovnaKonverzeView = () => {
                         </section>
 
                         <section className="zk-panel">
-                            <h3>Prodejci (Z v poznámce)</h3>
+                            <h3>Prodejci</h3>
                             <table className="zk-table">
                                 <thead>
                                     <tr>
                                         <th>Prodejce</th>
+                                        <th>Balíky vydané</th>
                                         <th>Prodeje</th>
-                                        <th>Označeno Z</th>
-                                        <th>Úspěšnost Z</th>
+                                        <th>Konverze</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {(data.prodejci || []).length === 0 && (
-                                        <tr><td colSpan={4}>Zatím žádné poznámky Z – prodejci začnou zapisovat Z123456789</td></tr>
+                                        <tr><td colSpan={4}>Zatím žádná data – import Packeta + směny prodejce</td></tr>
                                     )}
                                     {(data.prodejci || []).map((row) => (
                                         <tr key={row.id_prodejce}>
                                             <td>{row.prodejce}</td>
+                                            <td>{fmtNum(row.zasilkovna_baliku)}</td>
                                             <td>{fmtNum(row.zasilkovna_prodeje)}</td>
-                                            <td>{fmtNum(row.zasilkovna_oznaceno)}</td>
                                             <td>{fmtPct(row.zasilkovna_konverze_pct)}</td>
                                         </tr>
                                     ))}

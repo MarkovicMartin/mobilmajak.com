@@ -5,7 +5,6 @@ from .models import (
     FioKategorizacniPravidlo,
     NakladKategorie,
     NakladPolozka,
-    PacketaProvizePolozka,
 )
 
 
@@ -33,9 +32,3 @@ class NakladPolozkaAdmin(admin.ModelAdmin):
 @admin.register(FioKategorizacniPravidlo)
 class FioKategorizacniPravidloAdmin(admin.ModelAdmin):
     list_display = ('id', 'protiucet', 'zprava_obsahuje', 'kategorie', 'ignorovat', 'aktivni')
-
-
-@admin.register(PacketaProvizePolozka)
-class PacketaProvizePolozkaAdmin(admin.ModelAdmin):
-    list_display = ('cas', 'prodejna_id', 'zasilka', 'typ_provize', 'castka')
-    list_filter = ('prodejna_id', 'typ_provize')

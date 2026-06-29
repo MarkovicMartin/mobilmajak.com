@@ -33,6 +33,8 @@ ALLOWED_HOSTS = [
 ]
 
 # Application definition
+FINANCE_MODULE_ENABLED = os.getenv('FINANCE_MODULE_ENABLED', '0').strip().lower() in ('1', 'true', 'yes')
+
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -54,6 +56,7 @@ INSTALLED_APPS = [
     'coaching',
     'tickets',
     'finance',
+    'packeta',
     'vallora',
 ]
 

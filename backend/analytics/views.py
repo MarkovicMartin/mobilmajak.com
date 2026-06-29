@@ -3356,6 +3356,20 @@ def _attach_servisni_prace(result, user_id, typ_exact=None, typ_month_prefix=Non
     return result
 
 
+def _attach_zasilkovna_metrics(result, user_id, date_from, date_to):
+    try:
+        from analytics.zasilkovna_konverze import zasilkovna_leaderboard_map
+        metrics = zasilkovna_leaderboard_map(date_from, date_to).get(int(user_id), {})
+    except Exception:
+        metrics = {}
+    result['zasilkovna'] = {
+        'baliku_vydano': metrics.get('zasilkovna_baliku', 0),
+        'prodeje': metrics.get('zasilkovna_prodeje', 0),
+        'konverze_pct': metrics.get('zasilkovna_konverze_pct'),
+    }
+    return result
+
+
 def _servis_points_for_user_id(user_id, typ_exact=None, typ_month_prefix=None):
     """Vrátí (body z 10 % marže servisních prací, servisni_prace dict nebo None)."""
     try:
@@ -5872,6 +5886,7 @@ def web_prodeje_salesperson_today(request):
 
         result['source'] = 'database'
         _attach_servisni_prace(result, user_id, typ_exact=target_iso)
+        _attach_zasilkovna_metrics(result, user_id, target, target)
         return JsonResponse(result)
     except Exception as e:
         return JsonResponse({'error': str(e), 'source': 'error'}, status=500)
@@ -5907,6 +5922,9 @@ def web_prodeje_salesperson_monthly(request):
 
         result['source'] = 'database'
         _attach_servisni_prace(result, user_id, typ_month_prefix=ym)
+        month_start = target.replace(day=1)
+        month_end = target
+        _attach_zasilkovna_metrics(result, user_id, month_start, month_end)
         return JsonResponse(result)
     except Exception as e:
         return JsonResponse({'error': str(e), 'source': 'error'}, status=500)
@@ -6558,6 +6576,10 @@ def _leaderboard_zero_month_row(user, prodejna_nazev, last_month_points, vykupy_
         'vykupy': vykupy,
         'prumer_polozek_uctu': 0.0,
         'prumer_hodnota_uctenky': 0.0,
+        'zasilkovna_baliku': 0,
+        'zasilkovna_prodeje': 0,
+        'zasilkovna_oznaceno': 0,
+        'zasilkovna_konverze_pct': None,
     }
 
 
@@ -6716,6 +6738,11 @@ def web_prodeje_leaderboard_points(request):
                 int(prev_month_points_map.get(prodejce_id, 0) or 0)
             )
 
+            z_stats = (
+                zasilkovna_map.get(prodejce_id)
+                or zasilkovna_map.get(row_id)
+                or {}
+            )
             leaderboard.append({
                 'id': row_id,
                 'prodejce': prodejce_jmeno,
@@ -6729,9 +6756,10 @@ def web_prodeje_leaderboard_points(request):
                 'vykupy': vykupy,
                 'prumer_polozek_uctu': _leaderboard_prumer_polozek(item),
                 'prumer_hodnota_uctenky': _leaderboard_prumer_hodnota_uctenky(item),
-                'zasilkovna_prodeje': (zasilkovna_map.get(prodejce_id) or {}).get('zasilkovna_prodeje', 0),
-                'zasilkovna_oznaceno': (zasilkovna_map.get(prodejce_id) or {}).get('zasilkovna_oznaceno', 0),
-                'zasilkovna_konverze_pct': (zasilkovna_map.get(prodejce_id) or {}).get('zasilkovna_konverze_pct'),
+                'zasilkovna_baliku': z_stats.get('zasilkovna_baliku', 0),
+                'zasilkovna_prodeje': z_stats.get('zasilkovna_prodeje', 0),
+                'zasilkovna_oznaceno': z_stats.get('zasilkovna_oznaceno', 0),
+                'zasilkovna_konverze_pct': z_stats.get('zasilkovna_konverze_pct'),
             })
             seen_ids.add(row_id)
 

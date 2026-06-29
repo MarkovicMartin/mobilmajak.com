@@ -18,7 +18,7 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING(status['message']))
             self.stdout.write(
                 self.style.NOTICE(
-                    'Tip: ruční náklady a Packeta CSV import fungují bez Fio. '
+                    'Tip: ruční náklady fungují bez Fio. '
                     'Po získání admin účtu nastavte FINANCE_FIO_ENABLED=1 v backend/.env.'
                 )
             )

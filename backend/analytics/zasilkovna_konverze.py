@@ -11,6 +11,7 @@ from analytics.models import WebProdejeAll
 from analytics.receipt_metrics import leaderboard_doklad_q
 from analytics.zasilkovna_link import (
     LinkedSale,
+    baliky_vydane_by_prodejce,
     distinct_visit_counts,
     link_sales_to_packeta,
     load_packeta_visits,
@@ -93,17 +94,25 @@ def build_konverze_report(
     from users.models import WebUser
 
     prodejci_stats = prodeje_by_prodejce(linked)
-    user_ids = list(prodejci_stats.keys())
+    baliky_map = baliky_vydane_by_prodejce(date_from, date_to, prodejna_id)
+    user_ids = sorted(set(prodejci_stats) | set(baliky_map))
     users = {u.id: u for u in WebUser.objects.filter(id__in=user_ids)} if user_ids else {}
 
     prodejci = []
-    for uid, stats in sorted(prodejci_stats.items(), key=lambda x: -x[1]['zasilkovna_prodeje']):
+    for uid in sorted(user_ids, key=lambda u: -baliky_map.get(u, 0)):
+        stats = prodejci_stats.get(uid, {})
+        baliku = baliky_map.get(uid, 0)
+        prodeje = stats.get('zasilkovna_prodeje', 0)
         user = users.get(uid)
         jmeno = f'{user.jmeno} {user.prijmeni}'.strip() if user else f'Prodejce {uid}'
         prodejci.append({
             'id_prodejce': uid,
             'prodejce': jmeno,
-            **stats,
+            'zasilkovna_baliku': baliku,
+            'zasilkovna_prodeje': prodeje,
+            'zasilkovna_oznaceno': stats.get('zasilkovna_oznaceno', 0),
+            'zasilkovna_konverze_pct': _pct(prodeje, baliku),
+            'zasilkovna_konverze_z_pct': stats.get('zasilkovna_konverze_z_pct'),
         })
 
     # Běžní zákazníci (účtenky bez Zásilkovna dopravy)
@@ -156,4 +165,17 @@ def build_konverze_report(
 def zasilkovna_leaderboard_map(date_from: date, date_to: date) -> dict[int, dict]:
     """Mapa id_prodejce → metriky pro žebříček."""
     linked, _ = link_sales_to_packeta(date_from, date_to)
-    return prodeje_by_prodejce(linked)
+    sales = prodeje_by_prodejce(linked)
+    baliky = baliky_vydane_by_prodejce(date_from, date_to)
+    result: dict[int, dict] = {}
+    for pid in set(sales) | set(baliky):
+        stats = sales.get(pid, {})
+        baliku = baliky.get(pid, 0)
+        prodeje = stats.get('zasilkovna_prodeje', 0)
+        result[pid] = {
+            'zasilkovna_baliku': baliku,
+            'zasilkovna_prodeje': prodeje,
+            'zasilkovna_oznaceno': stats.get('zasilkovna_oznaceno', 0),
+            'zasilkovna_konverze_pct': _pct(prodeje, baliku),
+        }
+    return result
