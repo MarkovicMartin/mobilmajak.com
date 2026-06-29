@@ -12,10 +12,12 @@ from analytics.receipt_metrics import leaderboard_doklad_q
 from analytics.zasilkovna_link import (
     LinkedSale,
     baliky_vydane_by_prodejce,
+    baliky_vydane_by_prodejna,
     distinct_visit_counts,
     link_sales_to_packeta,
     load_packeta_visits,
     prodeje_by_prodejce,
+    prodeje_zasilkovna_by_prodejna,
     typ_skupina,
 )
 from stores.models import Prodejna
@@ -177,5 +179,22 @@ def zasilkovna_leaderboard_map(date_from: date, date_to: date) -> dict[int, dict
             'zasilkovna_prodeje': prodeje,
             'zasilkovna_oznaceno': stats.get('zasilkovna_oznaceno', 0),
             'zasilkovna_konverze_pct': _pct(prodeje, baliku),
+        }
+    return result
+
+
+def zasilkovna_store_leaderboard_map(date_from: date, date_to: date) -> dict[int, dict]:
+    """Mapa id_prodejny → metriky pro žebříček prodejen."""
+    linked, _ = link_sales_to_packeta(date_from, date_to)
+    prodeje = prodeje_zasilkovna_by_prodejna(linked)
+    baliky = baliky_vydane_by_prodejna(date_from, date_to)
+    result: dict[int, dict] = {}
+    for sid in set(prodeje) | set(baliky):
+        baliku = baliky.get(sid, 0)
+        prod = prodeje.get(sid, 0)
+        result[sid] = {
+            'zasilkovna_baliku': baliku,
+            'zasilkovna_prodeje': prod,
+            'zasilkovna_konverze_pct': _pct(prod, baliku),
         }
     return result

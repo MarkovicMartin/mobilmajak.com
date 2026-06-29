@@ -155,7 +155,7 @@ const PointsLeaderboard = ({
             METRIC_KEYS.VICEPRACE,
             METRIC_KEYS.PRUMER_POLOZEK,
             METRIC_KEYS.PRUMER_HODNOTA,
-            ...(!hideStoreColumn ? [METRIC_KEYS.ZASILKOVNA] : []),
+            METRIC_KEYS.ZASILKOVNA,
         ]
         : [
             METRIC_KEYS.SERVIS,
@@ -163,7 +163,7 @@ const PointsLeaderboard = ({
             METRIC_KEYS.VICEPRACE,
             METRIC_KEYS.PRUMER_POLOZEK,
             METRIC_KEYS.PRUMER_HODNOTA,
-            ...(!hideStoreColumn ? [METRIC_KEYS.ZASILKOVNA] : []),
+            METRIC_KEYS.ZASILKOVNA,
         ]);
 
     const renderStatCardValue = (metricKey) => {

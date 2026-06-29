@@ -6991,6 +6991,17 @@ def web_prodeje_leaderboard_stores(request):
         aggregation = list(_leaderboard_store_aggregation(month_queryset))
         servis_map = _servis_points_map_for_month_by_store(ym)
 
+        month_start = today.replace(day=1)
+        month_end = today - timedelta(days=1)
+        if month_end < month_start:
+            month_end = today
+        zasilkovna_store_map = {}
+        try:
+            from analytics.zasilkovna_konverze import zasilkovna_store_leaderboard_map
+            zasilkovna_store_map = zasilkovna_store_leaderboard_map(month_start, month_end)
+        except Exception:
+            pass
+
         from stores.models import Prodejna
 
         prodejny_by_id = {p.id: p for p in Prodejna.objects.filter(aktivni=True)}
@@ -7016,6 +7027,7 @@ def web_prodeje_leaderboard_stores(request):
             product_points = calculate_points_for_data(_leaderboard_item_points_data(item))
             servis_points = servis_map.get(stredisko, 0)
             row_id = int(pid) if pid else abs(hash(stredisko)) % (10 ** 9)
+            z_stats = zasilkovna_store_map.get(int(pid), {}) if pid else {}
 
             leaderboard.append({
                 'id': row_id,
@@ -7029,6 +7041,9 @@ def web_prodeje_leaderboard_stores(request):
                 'prumer_polozek_uctu': _leaderboard_prumer_polozek(item),
                 'prumer_hodnota_uctenky': _leaderboard_prumer_hodnota_uctenky(item),
                 'celkovy_obrat': float(item.get('celkovy_obrat') or 0),
+                'zasilkovna_baliku': z_stats.get('zasilkovna_baliku', 0),
+                'zasilkovna_prodeje': z_stats.get('zasilkovna_prodeje', 0),
+                'zasilkovna_konverze_pct': z_stats.get('zasilkovna_konverze_pct'),
             })
 
         leaderboard.sort(key=lambda x: x['total_points'], reverse=True)

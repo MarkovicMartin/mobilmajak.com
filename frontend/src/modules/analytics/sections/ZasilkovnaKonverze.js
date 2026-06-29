@@ -1,10 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { useAuth } from '../../../context/AuthContext';
 import { analyticsGet } from '../../../utils/analyticsRequest';
 import AnalyticsSectionWrapper from '../AnalyticsSectionWrapper';
 import AnalyticsPeriodFilterPanel from '../../../components/analytics/AnalyticsPeriodFilterPanel';
 import { computeQuickRange, detectQuickRangePreset } from '../../../utils/analyticsQuickRange';
-import PacketaImportPanel from './PacketaImportPanel';
 import api from '../../../services/api';
 import './ZasilkovnaKonverze.css';
 
@@ -12,7 +10,6 @@ const fmtPct = (v) => (v == null ? '—' : `${Number(v).toFixed(1)} %`);
 const fmtNum = (v) => new Intl.NumberFormat('cs-CZ').format(v || 0);
 
 const ZasilkovnaKonverzeView = () => {
-    const { isAdmin } = useAuth();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [data, setData] = useState(null);
@@ -133,8 +130,6 @@ const ZasilkovnaKonverzeView = () => {
                     </select>
                 </div>
             </AnalyticsPeriodFilterPanel>
-
-            {isAdmin() && <PacketaImportPanel onImported={loadData} />}
 
             {loading && <div className="zk-loading">Načítám…</div>}
             {error && <div className="zk-error">{error}</div>}

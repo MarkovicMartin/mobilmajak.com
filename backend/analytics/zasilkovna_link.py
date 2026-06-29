@@ -374,3 +374,33 @@ def baliky_vydane_by_prodejce(
     for row in qs.values('id_prodejce', 'zasilka'):
         by_prodejce[row['id_prodejce']].add(row['zasilka'])
     return {pid: len(zasilky) for pid, zasilky in by_prodejce.items()}
+
+
+def baliky_vydane_by_prodejna(
+    date_from: date,
+    date_to: date,
+) -> dict[int, int]:
+    """Vydané balíky po prodejně (DISTINCT zásilka)."""
+    qs = PacketaProvizePolozka.objects.filter(
+        cas__date__gte=date_from,
+        cas__date__lte=date_to,
+        typ_provize__in=VYDANE_TYPY,
+    )
+    by_prodejna: dict[int, set[str]] = defaultdict(set)
+    for row in qs.values('prodejna_id', 'zasilka'):
+        if row['prodejna_id']:
+            by_prodejna[row['prodejna_id']].add(row['zasilka'])
+    return {sid: len(zasilky) for sid, zasilky in by_prodejna.items()}
+
+
+def prodeje_zasilkovna_by_prodejna(
+    linked: Iterable[LinkedSale],
+) -> dict[int, int]:
+    """Propojené prodeje Zásilkovna po prodejně (DISTINCT doklad)."""
+    by_prodejna: dict[int, set[str]] = defaultdict(set)
+    for item in linked:
+        if not item.id_prodejny:
+            continue
+        if item.packeta_nalezeno or item.match_source == 'poznamka':
+            by_prodejna[item.id_prodejny].add(item.doklad)
+    return {sid: len(doklady) for sid, doklady in by_prodejna.items()}
