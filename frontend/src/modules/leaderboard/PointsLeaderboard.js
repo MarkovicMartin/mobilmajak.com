@@ -150,6 +150,7 @@ const PointsLeaderboard = ({
     const showVykupy = !hideStoreColumn;
     const statCardKeys = (hideLastPeriodColumn
         ? [
+            METRIC_KEYS.TOTAL_POINTS,
             METRIC_KEYS.SERVIS,
             ...(showVykupy ? [METRIC_KEYS.VYKUPY] : []),
             METRIC_KEYS.VICEPRACE,
@@ -158,12 +159,14 @@ const PointsLeaderboard = ({
             METRIC_KEYS.ZASILKOVNA,
         ]
         : [
+            METRIC_KEYS.TOTAL_POINTS,
             METRIC_KEYS.SERVIS,
             ...(showVykupy ? [METRIC_KEYS.VYKUPY] : []),
             METRIC_KEYS.VICEPRACE,
             METRIC_KEYS.PRUMER_POLOZEK,
             METRIC_KEYS.PRUMER_HODNOTA,
             METRIC_KEYS.ZASILKOVNA,
+            METRIC_KEYS.LAST_PERIOD,
         ]);
 
     const renderStatCardValue = (metricKey) => {
@@ -181,9 +184,6 @@ const PointsLeaderboard = ({
     };
 
     const renderStatCardFoot = (metricKey) => {
-        if (STAT_CARD_META[metricKey]?.showSum) {
-            return null;
-        }
         if (metricKey === METRIC_KEYS.VICEPRACE) {
             return vicepraceTopObrat > 0 ? vicepraceTopName : null;
         }
@@ -328,6 +328,7 @@ const PointsLeaderboard = ({
                                     <th className="col-position">Poz.</th>
                                     <th className="col-seller">{sellerColumnLabel}</th>
                                     {!hideStoreColumn && <th className="col-store">Prodejna</th>}
+                                    {renderSortableHeader(METRIC_KEYS.TOTAL_POINTS, 'Body')}
                                     {renderSortableHeader(METRIC_KEYS.SERVIS, 'Servis')}
                                     {showVykupy && renderSortableHeader(METRIC_KEYS.VYKUPY, 'Výkupy')}
                                     {renderSortableHeader(METRIC_KEYS.VICEPRACE, VICEPRACE_LABEL)}
@@ -360,6 +361,11 @@ const PointsLeaderboard = ({
                                         {!hideStoreColumn && (
                                             <td className="col-store" title={seller.prodejna}>{seller.prodejna}</td>
                                         )}
+                                        <td className={`col-num ${rankMetric === METRIC_KEYS.TOTAL_POINTS ? 'cell-active' : ''}`}>
+                                            <span className="score-highlight">
+                                                {(seller.total_points ?? 0).toLocaleString('cs-CZ')}
+                                            </span>
+                                        </td>
                                         <td className={`col-num ${rankMetric === METRIC_KEYS.SERVIS ? 'cell-active' : ''}`}>
                                             <span className="servis-value">
                                                 {(seller.servis_provize ?? 0).toLocaleString('cs-CZ')}
@@ -410,7 +416,8 @@ const PointsLeaderboard = ({
                         <span className="position">{currentUserPosition}. místo</span>
                         <span className="points">
                             {formatMetricValue(currentUserRow, rankMetric, isDay)}
-                            {(rankMetric === METRIC_KEYS.SERVIS
+                            {(rankMetric === METRIC_KEYS.TOTAL_POINTS
+                                || rankMetric === METRIC_KEYS.SERVIS
                                 || rankMetric === METRIC_KEYS.LAST_PERIOD) ? ' bodů' : ''}
                             {rankMetric === METRIC_KEYS.VYKUPY ? ' ks' : ''}
                         </span>

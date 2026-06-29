@@ -141,7 +141,7 @@ export const getTopByMetric = (data, metricKey, isDay = false) => {
 };
 
 export const STAT_CARD_META = {
-    [METRIC_KEYS.TOTAL_POINTS]: { icon: '🏆', title: 'Celkové body', showSum: true },
+    [METRIC_KEYS.TOTAL_POINTS]: { icon: '🏆', title: 'Top body' },
     [METRIC_KEYS.SERVIS]: { icon: '🔧', title: 'Top servis' },
     [METRIC_KEYS.VYKUPY]: { icon: '📦', title: 'Top výkupy' },
     [METRIC_KEYS.VICEPRACE]: { icon: '🎁', title: null },
