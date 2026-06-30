@@ -113,24 +113,45 @@
     padding: 14px;
 }
 
-.polozky-view .seller-main-metrics {
+.polozky-view .seller-main-metrics,
+.polozky-view .seller-large-metrics {
+    display: grid;
     grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
     gap: 10px;
-    margin-bottom: 14px;
 }
 
-.polozky-view .seller-main-metrics .metric-item {
+.polozky-view .seller-main-metrics {
+    margin-bottom: 10px;
+}
+
+.polozky-view .seller-large-metrics {
+    margin-bottom: 12px;
+}
+
+.polozky-view .seller-main-metrics .metric-item,
+.polozky-view .seller-large-metrics .metric-item--large {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     padding: 9px 8px;
     border-radius: 6px;
     background: var(--bg-inset);
     border: 1px solid var(--border-subtle);
+    text-align: center;
 }
 
-.polozky-view .seller-main-metrics .metric-item:hover {
+.polozky-view .seller-main-metrics .metric-item:hover,
+.polozky-view .seller-large-metrics .metric-item--large:hover {
     transform: scale(1.01);
 }
 
-.polozky-view .seller-main-metrics .metric-label {
+.polozky-view .seller-large-metrics .metric-item--large-muted {
+    opacity: 0.75;
+}
+
+.polozky-view .seller-main-metrics .metric-label,
+.polozky-view .seller-large-metrics .metric-label {
+    display: block;
     font-size: 0.62rem;
     font-weight: 600;
     color: var(--text-label);
@@ -139,7 +160,9 @@
     text-align: center;
 }
 
-.polozky-view .seller-main-metrics .metric-value {
+.polozky-view .seller-main-metrics .metric-value,
+.polozky-view .seller-large-metrics .metric-value {
+    display: block;
     font-size: 0.95rem;
     font-weight: 700;
     color: var(--text-strong);
@@ -155,40 +178,6 @@
     color: #fff;
 }
 
-.polozky-view .seller-large-metrics {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-    margin-bottom: 12px;
-}
-
-.polozky-view .seller-large-metrics .metric-item--large {
-    padding: 10px 8px;
-    border-radius: 6px;
-    background: var(--bg-inset);
-    border: 1px solid var(--border-subtle);
-    text-align: center;
-}
-
-.polozky-view .seller-large-metrics .metric-item--large-muted {
-    opacity: 0.75;
-}
-
-.polozky-view .seller-large-metrics .metric-label {
-    display: block;
-    font-size: 0.62rem;
-    font-weight: 600;
-    color: var(--text-label);
-    margin-bottom: 4px;
-}
-
-.polozky-view .seller-large-metrics .metric-value {
-    display: block;
-    font-size: 1rem;
-    font-weight: 700;
-    color: var(--text-strong);
-}
-
 .polozky-view .seller-large-metrics .metric-value.highlight-profit {
     color: #0f766e;
 }
@@ -199,8 +188,8 @@
 
 .polozky-view .seller-large-metrics .metric-sublabel {
     display: block;
-    margin-top: 4px;
-    font-size: 0.62rem;
+    margin-top: 3px;
+    font-size: 0.58rem;
     color: var(--text-muted);
     line-height: 1.2;
 }
@@ -294,23 +283,33 @@
     font-size: 0.9rem;
 }
 
-.polozky-view.is-comparison .seller-main-metrics {
+.polozky-view.is-comparison .seller-main-metrics,
+.polozky-view.is-comparison .seller-large-metrics {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 4px 8px;
     margin-bottom: 6px;
 }
 
-.polozky-view.is-comparison .seller-main-metrics .metric-item {
+.polozky-view.is-comparison .seller-main-metrics .metric-item,
+.polozky-view.is-comparison .seller-large-metrics .metric-item--large {
     padding: 0;
+    background: transparent;
+    border: none;
 }
 
-.polozky-view.is-comparison .seller-main-metrics .metric-label {
+.polozky-view.is-comparison .seller-main-metrics .metric-label,
+.polozky-view.is-comparison .seller-large-metrics .metric-label {
     font-size: 0.65rem;
 }
 
-.polozky-view.is-comparison .seller-main-metrics .metric-value {
+.polozky-view.is-comparison .seller-main-metrics .metric-value,
+.polozky-view.is-comparison .seller-large-metrics .metric-value {
     font-size: 0.85rem;
+}
+
+.polozky-view.is-comparison .seller-large-metrics .metric-sublabel {
+    font-size: 0.58rem;
 }
 
 .polozky-view.is-comparison .seller-detail-chips {
@@ -347,7 +346,8 @@
         align-items: stretch;
     }
 
-    .polozky-view .seller-main-metrics {
+    .polozky-view .seller-main-metrics,
+    .polozky-view .seller-large-metrics {
         grid-template-columns: repeat(2, 1fr);
         gap: 6px;
     }
@@ -359,7 +359,8 @@
         grid-template-columns: repeat(2, 1fr);
     }
 
-    .polozky-view .seller-main-metrics {
+    .polozky-view .seller-main-metrics,
+    .polozky-view .seller-large-metrics {
         grid-template-columns: 1fr;
     }
 }
