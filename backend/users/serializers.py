@@ -86,7 +86,7 @@ class WebUserProfileSerializer(serializers.ModelSerializer):
         model = WebUser
         fields = [
             'id', 'uzivatelske_jmeno', 'jmeno', 'prijmeni', 'telefon', 'email',
-            'adresa', 'poznamka', 'prodejna_id', 'slack_ukoly_prefs',
+            'adresa', 'poznamka', 'prodejna_id', 'slack_ukoly_prefs', 'slack_daily_report',
         ]
         read_only_fields = ['id', 'uzivatelske_jmeno']
 

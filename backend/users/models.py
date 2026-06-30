@@ -53,6 +53,10 @@ class WebUser(models.Model):
         blank=True,
         verbose_name="Slack notifikace úkolů",
     )
+    slack_daily_report = models.BooleanField(
+        default=False,
+        verbose_name='Slack denní report prodejů',
+    )
 
     # Mzdové údaje (body) – viditelné jen pro ADMIN v administraci a exportu
     mzda_zaklad = models.DecimalField(

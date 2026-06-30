@@ -48,6 +48,7 @@ const ProfileSlackPrefs = ({ user, onSaved }) => {
     const defaultPrefs = useMemo(() => buildDefaultPrefs(groups), [groups]);
 
     const [prefs, setPrefs] = useState({ ...defaultPrefs });
+    const [dailyReport, setDailyReport] = useState(false);
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState('');
     const [messageType, setMessageType] = useState('');
@@ -55,6 +56,9 @@ const ProfileSlackPrefs = ({ user, onSaved }) => {
     useEffect(() => {
         if (user?.slack_ukoly_prefs) {
             setPrefs({ ...defaultPrefs, ...user.slack_ukoly_prefs });
+        }
+        if (user && typeof user.slack_daily_report === 'boolean') {
+            setDailyReport(user.slack_daily_report);
         }
     }, [user, defaultPrefs]);
 
@@ -70,13 +74,17 @@ const ProfileSlackPrefs = ({ user, onSaved }) => {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
-                body: JSON.stringify({ slack_ukoly_prefs: prefs }),
+                body: JSON.stringify({
+                    slack_ukoly_prefs: prefs,
+                    slack_daily_report: dailyReport,
+                }),
             });
             if (response.ok) {
                 const updated = await response.json();
                 setPrefs({ ...defaultPrefs, ...updated.slack_ukoly_prefs });
+                setDailyReport(!!updated.slack_daily_report);
                 onSaved?.(updated);
-                setMessage('Nastavení Slack notifikací uloženo');
+                setMessage('Nastavení Slacku uloženo');
                 setMessageType('success');
             } else {
                 const err = await response.json();
@@ -93,13 +101,32 @@ const ProfileSlackPrefs = ({ user, onSaved }) => {
 
     return (
         <div className="info-section slack-prefs-section">
-            <h3>Slack – úkoly</h3>
+            <h3>Slack</h3>
             <p className="slack-prefs-hint">
                 Upozornění chodí do Slacku (DM od bota). E-mail v profilu musí sedět se Slack účtem.
-                {' '}
-                Jste-li přiřazeni k úkolu, komentáře od ostatních vám chodí vždy.
             </p>
             {message && <div className={`message ${messageType}`}>{message}</div>}
+
+            <div className="slack-prefs-group">
+                <h4>Denní report prodejů</h4>
+                <p className="slack-prefs-subtitle">
+                    Každý večer souhrn za předchozí den (obrat, prodejny, top prodejci).
+                </p>
+                <ul className="slack-prefs-list">
+                    <li>
+                        <label className="slack-pref-label">
+                            <input
+                                type="checkbox"
+                                checked={dailyReport}
+                                onChange={() => setDailyReport((v) => !v)}
+                            />
+                            <span>Zasílat denní report do Slacku</span>
+                        </label>
+                    </li>
+                </ul>
+            </div>
+
+            <h4 className="slack-prefs-section-title">Úkoly</h4>
             {groups.map((group) => (
                 <div key={group.title} className="slack-prefs-group">
                     <h4>{group.title}</h4>
@@ -126,7 +153,7 @@ const ProfileSlackPrefs = ({ user, onSaved }) => {
                 onClick={handleSave}
                 disabled={loading}
             >
-                {loading ? 'Ukládám…' : 'Uložit notifikace'}
+                {loading ? 'Ukládám…' : 'Uložit nastavení Slacku'}
             </button>
         </div>
     );
