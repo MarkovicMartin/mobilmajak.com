@@ -212,6 +212,47 @@
     color: #666;
 }
 
+.payroll-penalizace-polozky {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.payroll-penalizace-polozka {
+    padding: 0.75rem;
+    border: 1px solid #e4e4e4;
+    border-radius: 10px;
+    background: #fafafa;
+}
+
+.payroll-penalizace-polozka-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+}
+
+.payroll-penalizace-remove,
+.payroll-penalizace-add {
+    border: none;
+    background: transparent;
+    color: #c0392b;
+    font-size: 0.85rem;
+    cursor: pointer;
+    padding: 0;
+}
+
+.payroll-penalizace-add {
+    color: #1a5f9e;
+    margin-bottom: 0.5rem;
+}
+
+.payroll-penalizace-remove:hover,
+.payroll-penalizace-add:hover {
+    text-decoration: underline;
+}
+
 .payroll-modal label {
     display: block;
     margin-bottom: 0.75rem;

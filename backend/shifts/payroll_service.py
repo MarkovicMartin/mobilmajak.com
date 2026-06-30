@@ -32,15 +32,49 @@ def _body_float(val):
     return float(_body_whole(val))
 
 
-def provize_po_penalizaci(provize_brutto, pocet_penalizaci):
-    """Každá penalizace = −10 % z hrubé provize (sčítá se)."""
+def provize_po_penalizaci(provize_brutto, penalizace_rows):
+    """
+    Srážky z hrubé provize:
+    - procenta: sčítají se (max 100 %), počítáno z brutto
+    - fixni: odečtou se z výsledku po procentech (min. 0)
+    """
     brutto = _body_whole(provize_brutto)
-    if pocet_penalizaci <= 0:
-        return brutto, Decimal('0'), 0
-    procent = min(100, int(pocet_penalizaci) * 10)
-    factor = (Decimal('100') - Decimal(str(procent))) / Decimal('100')
-    netto = _body_whole(brutto * factor)
-    return netto, brutto - netto, procent
+    rows = list(penalizace_rows or [])
+    if not rows:
+        return brutto, Decimal('0'), Decimal('0'), []
+
+    total_procent = Decimal('0')
+    fixed_sum = Decimal('0')
+    detail = []
+
+    for row in rows:
+        typ = getattr(row, 'typ', None) or 'procenta'
+        hodnota = Decimal(str(getattr(row, 'hodnota', None) or 10))
+        if typ == 'fixni':
+            fixed_sum += _body_whole(hodnota)
+            detail.append({
+                'typ': typ,
+                'hodnota': float(hodnota),
+                'duvod': (getattr(row, 'duvod', None) or '').strip(),
+                'srazka_body': float(_body_whole(hodnota)),
+            })
+        else:
+            pct = min(Decimal('100'), max(Decimal('0'), hodnota))
+            total_procent += pct
+            detail.append({
+                'typ': typ,
+                'hodnota': float(pct),
+                'duvod': (getattr(row, 'duvod', None) or '').strip(),
+                'srazka_body': float(_body_whole(brutto * pct / Decimal('100'))),
+            })
+
+    total_procent = min(total_procent, Decimal('100'))
+    netto = _body_whole(brutto * (Decimal('100') - total_procent) / Decimal('100'))
+    netto = max(Decimal('0'), netto - fixed_sum)
+    srazka = brutto - netto
+    return netto, srazka, total_procent, detail
+
+
 from .models import MzdovaOdmenaMesic, MzdovaPenalizaceMesic, Smena
 from .payroll_points_batch import (
     _empty_metrics,
@@ -341,8 +375,13 @@ def build_payroll_row(user, rok, mesic_cislo, hours_map, mesic_date, prodejny_ca
         provize_brutto = _body_whole(provize_raw)
 
     penalizace_rows = list((penalizace_map or {}).get(uid) or [])
-    provize_body, penalizace_srazka, penalizace_procent = provize_po_penalizaci(
-        provize_brutto, len(penalizace_rows),
+    provize_body, penalizace_srazka, penalizace_procent, penalizace_detail = provize_po_penalizaci(
+        provize_brutto, penalizace_rows,
+    )
+    penalizace_fixni = sum(
+        float(d.get('srazka_body') or 0)
+        for d in penalizace_detail
+        if d.get('typ') == 'fixni'
     )
 
     prescas_h = prescas_hodin(odpracovano, fondu_h)
@@ -406,11 +445,18 @@ def build_payroll_row(user, rok, mesic_cislo, hours_map, mesic_date, prodejny_ca
         'provize_body_brutto': _body_float(provize_brutto),
         'provize_body': _body_float(provize_body),
         'penalizace_pocet': len(penalizace_rows),
-        'penalizace_procent': penalizace_procent,
+        'penalizace_procent': float(penalizace_procent),
+        'penalizace_fixni_body': penalizace_fixni,
         'penalizace_srazka_body': _body_float(penalizace_srazka),
         'penalizace_popis': '; '.join((p.duvod or '').strip() for p in penalizace_rows if (p.duvod or '').strip()),
         'penalizace': [
-            {'id': p.id, 'duvod': p.duvod or '', 'vytvoreno': p.vytvoreno.isoformat() if p.vytvoreno else None}
+            {
+                'id': p.id,
+                'duvod': p.duvod or '',
+                'typ': p.typ or MzdovaPenalizaceMesic.TYP_PROCENTA,
+                'hodnota': float(p.hodnota or 0),
+                'vytvoreno': p.vytvoreno.isoformat() if p.vytvoreno else None,
+            }
             for p in penalizace_rows
         ],
         'provize_breakdown': breakdown,

@@ -1,5 +1,6 @@
 """Payroll a docházka – admin API."""
 from datetime import date, timedelta
+from decimal import Decimal
 
 from django.utils import timezone
 from rest_framework import status
@@ -296,17 +297,14 @@ def payroll_odmena(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def payroll_penalizace(request):
-    """Přidá srážku −10 % z provize (každý záznam = jedna instance)."""
+    """Přidá jednu nebo více srážek z provize (procenta nebo fixní body)."""
     denied = _require_admin(request)
     if denied:
         return denied
     user_id = request.data.get('user_id')
     mesic = request.data.get('mesic')
-    duvod = (request.data.get('duvod') or '').strip()
     if not user_id or not mesic:
         return Response({'error': 'Chybí user_id nebo mesic'}, status=status.HTTP_400_BAD_REQUEST)
-    if not duvod:
-        return Response({'error': 'Chybí důvod srážky'}, status=status.HTTP_400_BAD_REQUEST)
     parsed = _parse_mesic(mesic)
     if not parsed:
         return Response({'error': 'Neplatný formát měsíce'}, status=status.HTTP_400_BAD_REQUEST)
@@ -314,13 +312,61 @@ def payroll_penalizace(request):
     user = WebUser.objects.filter(id=user_id).first()
     if not user:
         return Response({'error': 'Uživatel nenalezen'}, status=status.HTTP_404_NOT_FOUND)
-    row = MzdovaPenalizaceMesic.objects.create(user=user, mesic=mesic_date, duvod=duvod)
+
+    raw_polozky = request.data.get('polozky')
+    if raw_polozky is None:
+        duvod = (request.data.get('duvod') or '').strip()
+        if not duvod:
+            return Response({'error': 'Chybí důvod srážky'}, status=status.HTTP_400_BAD_REQUEST)
+        raw_polozky = [{
+            'duvod': duvod,
+            'typ': request.data.get('typ') or MzdovaPenalizaceMesic.TYP_PROCENTA,
+            'hodnota': request.data.get('hodnota', 10),
+        }]
+    if not isinstance(raw_polozky, list) or not raw_polozky:
+        return Response({'error': 'Chybí položky penalizace'}, status=status.HTTP_400_BAD_REQUEST)
+
+    created = []
+    for item in raw_polozky:
+        if not isinstance(item, dict):
+            return Response({'error': 'Neplatný formát položky'}, status=status.HTTP_400_BAD_REQUEST)
+        duvod = (item.get('duvod') or '').strip()
+        if not duvod:
+            return Response({'error': 'Každá penalizace musí mít důvod'}, status=status.HTTP_400_BAD_REQUEST)
+        typ = (item.get('typ') or MzdovaPenalizaceMesic.TYP_PROCENTA).strip()
+        if typ not in (MzdovaPenalizaceMesic.TYP_PROCENTA, MzdovaPenalizaceMesic.TYP_FIXNI):
+            return Response({'error': 'Neplatný typ srážky'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            hodnota = Decimal(str(item.get('hodnota', 10)))
+        except Exception:
+            return Response({'error': 'Neplatná hodnota srážky'}, status=status.HTTP_400_BAD_REQUEST)
+        if hodnota <= 0:
+            return Response({'error': 'Hodnota srážky musí být větší než 0'}, status=status.HTTP_400_BAD_REQUEST)
+        if typ == MzdovaPenalizaceMesic.TYP_PROCENTA and hodnota > 100:
+            return Response({'error': 'Procenta max. 100'}, status=status.HTTP_400_BAD_REQUEST)
+        row = MzdovaPenalizaceMesic.objects.create(
+            user=user,
+            mesic=mesic_date,
+            duvod=duvod,
+            typ=typ,
+            hodnota=hodnota,
+        )
+        created.append(row)
+
     return Response({
-        'id': row.id,
         'user_id': user.id,
         'mesic': mesic,
-        'duvod': row.duvod,
-        'vytvoreno': row.vytvoreno.isoformat() if row.vytvoreno else None,
+        'count': len(created),
+        'penalizace': [
+            {
+                'id': row.id,
+                'duvod': row.duvod,
+                'typ': row.typ,
+                'hodnota': float(row.hodnota),
+                'vytvoreno': row.vytvoreno.isoformat() if row.vytvoreno else None,
+            }
+            for row in created
+        ],
     }, status=status.HTTP_201_CREATED)
 
 

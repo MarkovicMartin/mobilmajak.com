@@ -164,11 +164,30 @@ class MzdovaOdmenaMesic(models.Model):
 
 
 class MzdovaPenalizaceMesic(models.Model):
-    """Srážka −10 % z provize za měsíc (každý záznam = jedna instance)."""
+    """Srážka z provize za měsíc – procenta z hrubé provize nebo fixní body."""
+
+    TYP_PROCENTA = 'procenta'
+    TYP_FIXNI = 'fixni'
+    TYP_CHOICES = [
+        (TYP_PROCENTA, 'Procenta z provize'),
+        (TYP_FIXNI, 'Fixní body'),
+    ]
 
     user = models.ForeignKey(WebUser, on_delete=models.CASCADE, related_name='mzda_penalizace_mesic')
     mesic = models.DateField(verbose_name="Měsíc (první den)")
     duvod = models.TextField(verbose_name="Důvod srážky")
+    typ = models.CharField(
+        max_length=16,
+        choices=TYP_CHOICES,
+        default=TYP_PROCENTA,
+        verbose_name="Typ srážky",
+    )
+    hodnota = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=10,
+        verbose_name="Hodnota (%, nebo body)",
+    )
     vytvoreno = SafeDateTimeField(auto_now_add=True)
 
     class Meta:
@@ -178,7 +197,9 @@ class MzdovaPenalizaceMesic(models.Model):
         ordering = ['mesic', 'vytvoreno']
 
     def __str__(self):
-        return f"{self.user_id} – {self.mesic.strftime('%m/%Y')}: −10 % ({self.duvod[:40]})"
+        if self.typ == self.TYP_FIXNI:
+            return f"{self.user_id} – {self.mesic.strftime('%m/%Y')}: −{self.hodnota} b ({self.duvod[:40]})"
+        return f"{self.user_id} – {self.mesic.strftime('%m/%Y')}: −{self.hodnota} % ({self.duvod[:40]})"
 
 
 class ProdejnaPohybUdalost(models.Model):

@@ -15,6 +15,7 @@ const CACHE_PREFIX = 'payroll-overview-v1';
 const CURRENT_MONTH_STALE_MS = 5 * 60 * 1000;
 const RETURNS_CACHE_PREFIX = 'payroll-returns-v1';
 const RETURNS_STALE_MS = 10 * 60 * 1000;
+const EMPTY_PENALIZACE_POLOZKA = { typ: 'procenta', hodnota: '10', duvod: '' };
 const memoryCache = new Map();
 const returnsMemoryCache = new Map();
 
@@ -125,6 +126,14 @@ function currentMonthStr() {
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 }
 
+function formatPenalizaceLabel(p) {
+    const duvod = (p.duvod || '').trim();
+    if (p.typ === 'fixni') {
+        return `−${formatPoints(p.hodnota)}: ${duvod}`;
+    }
+    return `−${formatNumber(p.hodnota)} %: ${duvod}`;
+}
+
 function PayrollPanel({ month, onExport }) {
     const [rows, setRows] = useState([]);
     const [fonduH, setFonduH] = useState(null);
@@ -136,7 +145,10 @@ function PayrollPanel({ month, onExport }) {
     const [savingOdmena, setSavingOdmena] = useState(false);
     const [savingPenalizace, setSavingPenalizace] = useState(false);
     const [odmenaForm, setOdmenaForm] = useState({ user_id: '', castka: '', poznamka: '' });
-    const [penalizaceForm, setPenalizaceForm] = useState({ user_id: '', duvod: '' });
+    const [penalizaceForm, setPenalizaceForm] = useState({
+        user_id: '',
+        polozky: [{ ...EMPTY_PENALIZACE_POLOZKA }],
+    });
     const [discountedRows, setDiscountedRows] = useState([]);
     const [discountedCount, setDiscountedCount] = useState(0);
     const [discountedExcluded, setDiscountedExcluded] = useState(0);
@@ -174,7 +186,7 @@ function PayrollPanel({ month, onExport }) {
 
     const closePenalizaceModal = useCallback(() => {
         setShowPenalizaceModal(false);
-        setPenalizaceForm({ user_id: '', duvod: '' });
+        setPenalizaceForm({ user_id: '', polozky: [{ ...EMPTY_PENALIZACE_POLOZKA }] });
     }, []);
 
     const soucetBodu = useMemo(
@@ -620,9 +632,27 @@ function PayrollPanel({ month, onExport }) {
 
     const savePenalizace = async (e) => {
         e.preventDefault();
-        const duvod = (penalizaceForm.duvod || '').trim();
-        if (!penalizaceForm.user_id || !duvod) {
-            alert('Vyberte zaměstnance a zadejte důvod srážky.');
+        if (!penalizaceForm.user_id) {
+            alert('Vyberte zaměstnance.');
+            return;
+        }
+        const polozky = penalizaceForm.polozky
+            .map((p) => ({
+                typ: p.typ,
+                hodnota: parseFloat(String(p.hodnota).replace(',', '.')),
+                duvod: (p.duvod || '').trim(),
+            }))
+            .filter((p) => p.duvod);
+        if (!polozky.length) {
+            alert('Přidejte alespoň jednu penalizaci s důvodem.');
+            return;
+        }
+        if (polozky.some((p) => !Number.isFinite(p.hodnota) || p.hodnota <= 0)) {
+            alert('Zadejte kladnou hodnotu u každé penalizace.');
+            return;
+        }
+        if (polozky.some((p) => p.typ === 'procenta' && p.hodnota > 100)) {
+            alert('Procenta max. 100.');
             return;
         }
         setSavingPenalizace(true);
@@ -634,7 +664,7 @@ function PayrollPanel({ month, onExport }) {
                 body: JSON.stringify({
                     user_id: parseInt(penalizaceForm.user_id, 10),
                     mesic: month,
-                    duvod,
+                    polozky,
                 }),
             });
             if (!res.ok) {
@@ -873,15 +903,23 @@ function PayrollPanel({ month, onExport }) {
             (row.penalizace || []).forEach((p, i) => {
                 lines.push(
                     <div key={`pen-${i}`} className="breakdown-line breakdown-line-deduction">
-                        <span className="breakdown-label">− Penalizace −10 %: {p.duvod}</span>
+                        <span className="breakdown-label">− Penalizace {formatPenalizaceLabel(p)}</span>
                         <span className="breakdown-value">—</span>
                     </div>
                 );
             });
+            const pctLabel = Number(row.penalizace_procent) > 0
+                ? `${formatNumber(row.penalizace_procent)} %`
+                : null;
+            const fixLabel = Number(row.penalizace_fixni_body) > 0
+                ? `${formatPoints(row.penalizace_fixni_body)} b`
+                : null;
+            const srazkaParts = [pctLabel, fixLabel].filter(Boolean);
             lines.push(
                 <div key="provize-srazka" className="breakdown-line breakdown-line-deduction">
                     <span className="breakdown-label">
-                        − Srážka z provize ({row.penalizace_procent || 0} %)
+                        − Srážka z provize
+                        {srazkaParts.length ? ` (${srazkaParts.join(' + ')})` : ''}
                     </span>
                     <span className="breakdown-value">−{formatPoints(srazka)}</span>
                 </div>
@@ -993,7 +1031,7 @@ function PayrollPanel({ month, onExport }) {
                         className="btn-secondary"
                         onClick={() => setShowPenalizaceModal(true)}
                     >
-                        + Penalizace −10 %
+                        + Penalizace
                     </button>
                     {onExport && (
                         <button type="button" className="btn-export" onClick={onExport}>
@@ -1476,9 +1514,9 @@ function PayrollPanel({ month, onExport }) {
 
             {showPenalizaceModal && (
                 <Modal
-                    title="Penalizace −10 % z provize"
+                    title="Penalizace z provize"
                     onClose={closePenalizaceModal}
-                    size="sm"
+                    size="md"
                     onSubmit={savePenalizace}
                     formRef={penalizaceFormRef}
                     footer={(
@@ -1487,14 +1525,14 @@ function PayrollPanel({ month, onExport }) {
                                 Zrušit
                             </button>
                             <button type="submit" className="btn-submit" disabled={savingPenalizace}>
-                                {savingPenalizace ? 'Ukládám…' : 'Přidat penalizaci'}
+                                {savingPenalizace ? 'Ukládám…' : 'Uložit penalizace'}
                             </button>
                         </>
                     )}
                 >
                         <p className="modal-hint">
-                            Každá penalizace sníží provizi o dalších 10 % (3× = −30 %). Základ, cestovné
-                            a bonusy se nemění. Měsíc: {formatMonthName(month)}.
+                            Procenta se sčítají z hrubé provize (max. 100 %). Fixní body se odečtou
+                            po procentech. Základ, cestovné a bonusy se nemění. Měsíc: {formatMonthName(month)}.
                         </p>
                             <label>
                                 Zaměstnanec
@@ -1509,15 +1547,94 @@ function PayrollPanel({ month, onExport }) {
                                     ))}
                                 </select>
                             </label>
-                            <label>
-                                Důvod srážky
-                                <input
-                                    type="text"
-                                    value={penalizaceForm.duvod}
-                                    onChange={(e) => setPenalizaceForm((f) => ({ ...f, duvod: e.target.value }))}
-                                    required
-                                />
-                            </label>
+                            <div className="payroll-penalizace-polozky">
+                                {penalizaceForm.polozky.map((polozka, index) => (
+                                    <div key={index} className="payroll-penalizace-polozka">
+                                        <div className="payroll-penalizace-polozka-head">
+                                            <strong>Penalizace {index + 1}</strong>
+                                            {penalizaceForm.polozky.length > 1 && (
+                                                <button
+                                                    type="button"
+                                                    className="payroll-penalizace-remove"
+                                                    onClick={() => setPenalizaceForm((f) => ({
+                                                        ...f,
+                                                        polozky: f.polozky.filter((_, i) => i !== index),
+                                                    }))}
+                                                >
+                                                    Odebrat
+                                                </button>
+                                            )}
+                                        </div>
+                                        <label>
+                                            Typ srážky
+                                            <select
+                                                value={polozka.typ}
+                                                onChange={(e) => {
+                                                    const typ = e.target.value;
+                                                    setPenalizaceForm((f) => ({
+                                                        ...f,
+                                                        polozky: f.polozky.map((p, i) => (
+                                                            i === index
+                                                                ? {
+                                                                    ...p,
+                                                                    typ,
+                                                                    hodnota: typ === 'procenta' ? '10' : p.hodnota,
+                                                                }
+                                                                : p
+                                                        )),
+                                                    }));
+                                                }}
+                                            >
+                                                <option value="procenta">Procenta z provize</option>
+                                                <option value="fixni">Fixní body</option>
+                                            </select>
+                                        </label>
+                                        <label>
+                                            {polozka.typ === 'fixni' ? 'Body' : 'Procenta'}
+                                            <input
+                                                type="number"
+                                                className={manualNumberInputClass()}
+                                                min="0.01"
+                                                max={polozka.typ === 'procenta' ? '100' : undefined}
+                                                step={polozka.typ === 'procenta' ? '1' : '1'}
+                                                value={polozka.hodnota}
+                                                onChange={(e) => setPenalizaceForm((f) => ({
+                                                    ...f,
+                                                    polozky: f.polozky.map((p, i) => (
+                                                        i === index ? { ...p, hodnota: e.target.value } : p
+                                                    )),
+                                                }))}
+                                                onWheel={preventNumberInputWheel}
+                                                required
+                                            />
+                                        </label>
+                                        <label>
+                                            Důvod
+                                            <input
+                                                type="text"
+                                                value={polozka.duvod}
+                                                onChange={(e) => setPenalizaceForm((f) => ({
+                                                    ...f,
+                                                    polozky: f.polozky.map((p, i) => (
+                                                        i === index ? { ...p, duvod: e.target.value } : p
+                                                    )),
+                                                }))}
+                                                required
+                                            />
+                                        </label>
+                                    </div>
+                                ))}
+                            </div>
+                            <button
+                                type="button"
+                                className="payroll-penalizace-add"
+                                onClick={() => setPenalizaceForm((f) => ({
+                                    ...f,
+                                    polozky: [...f.polozky, { ...EMPTY_PENALIZACE_POLOZKA }],
+                                }))}
+                            >
+                                + Další penalizace
+                            </button>
                 </Modal>
             )}
 
