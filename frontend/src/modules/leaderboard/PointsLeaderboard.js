@@ -31,11 +31,11 @@ const PointsLeaderboard = ({
     emptyTitle = '📊 Žádná data k zobrazení',
     emptyMessage = null,
 }) => {
-    const [rankMetric, setRankMetric] = useState(METRIC_KEYS.SERVIS);
+    const [rankMetric, setRankMetric] = useState(METRIC_KEYS.TOTAL_POINTS);
     const [expandedMetric, setExpandedMetric] = useState(null);
 
     useEffect(() => {
-        setRankMetric(METRIC_KEYS.SERVIS);
+        setRankMetric(METRIC_KEYS.TOTAL_POINTS);
         setExpandedMetric(null);
     }, [period]);
 
@@ -43,7 +43,7 @@ const PointsLeaderboard = ({
     const periodLabel = isDay ? 'dnešek' : 'aktuální měsíc';
     const defaultEmptyMessage = `Pro ${periodLabel} nejsou k dispozici žádná data o bodovém hodnocení.`;
     const tableShiftLabel = isDay ? 'Body minulou směnu' : 'Skóre minulý měsíc';
-    const metricConfig = METRICS[rankMetric] || METRICS[METRIC_KEYS.SERVIS];
+    const metricConfig = METRICS[rankMetric] || METRICS[METRIC_KEYS.TOTAL_POINTS];
 
     const getLastShiftPoints = (seller) =>
         isDay ? (seller.last_shift_points || 0) : (seller.last_month_points || 0);
