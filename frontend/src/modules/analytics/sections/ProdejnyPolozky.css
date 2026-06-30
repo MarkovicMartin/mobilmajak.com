@@ -113,23 +113,14 @@
     padding: 14px;
 }
 
-.polozky-view .seller-main-metrics,
-.polozky-view .seller-large-metrics {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
-    gap: 10px;
-}
-
 .polozky-view .seller-main-metrics {
-    margin-bottom: 10px;
-}
-
-.polozky-view .seller-large-metrics {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 10px;
     margin-bottom: 12px;
 }
 
-.polozky-view .seller-main-metrics .metric-item,
-.polozky-view .seller-large-metrics .metric-item--large {
+.polozky-view .seller-main-metrics .metric-item {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -140,17 +131,15 @@
     text-align: center;
 }
 
-.polozky-view .seller-main-metrics .metric-item:hover,
-.polozky-view .seller-large-metrics .metric-item--large:hover {
+.polozky-view .seller-main-metrics .metric-item:hover {
     transform: scale(1.01);
 }
 
-.polozky-view .seller-large-metrics .metric-item--large-muted {
+.polozky-view .seller-main-metrics .metric-item--muted {
     opacity: 0.75;
 }
 
-.polozky-view .seller-main-metrics .metric-label,
-.polozky-view .seller-large-metrics .metric-label {
+.polozky-view .seller-main-metrics .metric-label {
     display: block;
     font-size: 0.62rem;
     font-weight: 600;
@@ -160,8 +149,7 @@
     text-align: center;
 }
 
-.polozky-view .seller-main-metrics .metric-value,
-.polozky-view .seller-large-metrics .metric-value {
+.polozky-view .seller-main-metrics .metric-value {
     display: block;
     font-size: 0.95rem;
     font-weight: 700;
@@ -178,15 +166,15 @@
     color: #fff;
 }
 
-.polozky-view .seller-large-metrics .metric-value.highlight-profit {
+.polozky-view .seller-main-metrics .metric-value.highlight-profit {
     color: #0f766e;
 }
 
-.polozky-view .seller-large-metrics .metric-value.highlight-negative {
+.polozky-view .seller-main-metrics .metric-value.highlight-negative {
     color: #b91c1c;
 }
 
-.polozky-view .seller-large-metrics .metric-sublabel {
+.polozky-view .seller-main-metrics .metric-sublabel {
     display: block;
     margin-top: 3px;
     font-size: 0.58rem;
@@ -283,32 +271,28 @@
     font-size: 0.9rem;
 }
 
-.polozky-view.is-comparison .seller-main-metrics,
-.polozky-view.is-comparison .seller-large-metrics {
+.polozky-view.is-comparison .seller-main-metrics {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 4px 8px;
     margin-bottom: 6px;
 }
 
-.polozky-view.is-comparison .seller-main-metrics .metric-item,
-.polozky-view.is-comparison .seller-large-metrics .metric-item--large {
+.polozky-view.is-comparison .seller-main-metrics .metric-item {
     padding: 0;
     background: transparent;
     border: none;
 }
 
-.polozky-view.is-comparison .seller-main-metrics .metric-label,
-.polozky-view.is-comparison .seller-large-metrics .metric-label {
+.polozky-view.is-comparison .seller-main-metrics .metric-label {
     font-size: 0.65rem;
 }
 
-.polozky-view.is-comparison .seller-main-metrics .metric-value,
-.polozky-view.is-comparison .seller-large-metrics .metric-value {
+.polozky-view.is-comparison .seller-main-metrics .metric-value {
     font-size: 0.85rem;
 }
 
-.polozky-view.is-comparison .seller-large-metrics .metric-sublabel {
+.polozky-view.is-comparison .seller-main-metrics .metric-sublabel {
     font-size: 0.58rem;
 }
 
@@ -346,8 +330,7 @@
         align-items: stretch;
     }
 
-    .polozky-view .seller-main-metrics,
-    .polozky-view .seller-large-metrics {
+    .polozky-view .seller-main-metrics {
         grid-template-columns: repeat(2, 1fr);
         gap: 6px;
     }
@@ -359,8 +342,7 @@
         grid-template-columns: repeat(2, 1fr);
     }
 
-    .polozky-view .seller-main-metrics,
-    .polozky-view .seller-large-metrics {
+    .polozky-view .seller-main-metrics {
         grid-template-columns: 1fr;
     }
 }

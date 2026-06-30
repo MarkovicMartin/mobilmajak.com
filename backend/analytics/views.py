@@ -16,9 +16,14 @@ from django.utils import timezone
 # import datetime  # Removed to prevent conflict with from datetime import ...
 from collections import defaultdict, Counter
 from django.db.models import Case, When, IntegerField, DecimalField
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import IsAuthenticated
 from django.utils.decorators import method_decorator
 from rest_framework.decorators import permission_classes
+from .permissions import (
+    analytics_login_required,
+    require_analytics_login,
+    WebhookMonthlyStatsPermission,
+)
 from .models import (
     ProdejniData,
     ProdejniDataDenni,
@@ -72,7 +77,7 @@ from .service_commission import (
 )
 
 
-@method_decorator(permission_classes([AllowAny]), name='dispatch')
+@analytics_login_required
 class ProdejnyDataView(View):
     """API endpoint pro načítání dat z Google Sheets"""
     
@@ -282,7 +287,7 @@ class ProdejnyDataView(View):
 
 
 @method_decorator(csrf_exempt, name='dispatch')
-@method_decorator(permission_classes([AllowAny]), name='dispatch')
+@analytics_login_required
 class SaveProdejnyDataView(View):
     """API endpoint pro uložení dat do databáze"""
     
@@ -471,7 +476,7 @@ class SaveProdejnyDataView(View):
 
 
 @method_decorator(csrf_exempt, name='dispatch')
-@method_decorator(permission_classes([AllowAny]), name='dispatch')
+@analytics_login_required
 class DebugProdejnyDataView(View):
     """Debug endpoint pro diagnostiku ukládání dat"""
     
@@ -577,7 +582,7 @@ class DebugProdejnyDataView(View):
 
 
 @require_http_methods(["GET"])
-@permission_classes([AllowAny])
+@require_analytics_login
 def get_data_by_date(request):
     """Získá data z databáze pro konkrétní datum"""
     data_type = request.GET.get('type', 'daily')
@@ -673,7 +678,7 @@ def get_data_by_date(request):
 
 
 @require_http_methods(["GET"])
-@permission_classes([AllowAny])
+@require_analytics_login
 def get_historical_data(request):
     """Získá historická data z databáze"""
     data_type = request.GET.get('type', 'daily')
@@ -726,7 +731,7 @@ def get_historical_data(request):
 # Nové endpointy pro analytiku prodejce
 
 @require_http_methods(["GET"])
-@permission_classes([AllowAny])
+@require_analytics_login
 def get_salesperson_analytics(request):
     """Získá analytiku pro konkrétního prodejce"""
     user_id = request.GET.get('user_id')
@@ -818,7 +823,7 @@ def get_salesperson_analytics(request):
 
 
 @require_http_methods(["GET"])
-@permission_classes([AllowAny])
+@require_analytics_login
 def get_salesperson_today_data(request):
     """Získá dnešní data pro konkrétního prodejce"""
     user_id = request.GET.get('user_id')
@@ -940,7 +945,7 @@ def get_salesperson_today_data(request):
 
 
 @require_http_methods(["GET"])
-@permission_classes([AllowAny])
+@require_analytics_login
 def get_salesperson_monthly_data(request):
     """Získá měsíční data pro konkrétního prodejce"""
     user_id = request.GET.get('user_id')
@@ -1070,7 +1075,7 @@ def calculate_points_for_data(data):
 
 
 @require_http_methods(["GET"])
-@permission_classes([AllowAny])
+@require_analytics_login
 def get_salesperson_points_today(request):
     """Získá dnešní bodový stav pro konkrétního prodejce"""
     user_id = request.GET.get('user_id')
@@ -1191,7 +1196,7 @@ def get_salesperson_points_today(request):
 
 
 @require_http_methods(["GET"])
-@permission_classes([AllowAny])
+@require_analytics_login
 def get_salesperson_points_monthly(request):
     """Získá měsíční bodový stav pro konkrétního prodejce"""
     user_id = request.GET.get('user_id')
@@ -1314,7 +1319,7 @@ def get_salesperson_points_monthly(request):
 
 
 @require_http_methods(["GET"])
-@permission_classes([AllowAny])
+@require_analytics_login
 def get_leaderboard_monthly_points(request):
     """Získá žebříček prodejců podle bodů za aktuální měsíc"""
     try:
@@ -1503,7 +1508,7 @@ def get_leaderboard_monthly_points(request):
 
 
 @require_http_methods(["GET"])
-@permission_classes([AllowAny])
+@require_analytics_login
 def get_leaderboard_average_items(request):
     """Získá žebříček prodejců podle průměru položek na účtenku za aktuální měsíc"""
     try:
@@ -1649,7 +1654,7 @@ def get_leaderboard_average_items(request):
 
 
 @require_http_methods(["GET"])
-@permission_classes([AllowAny])
+@require_analytics_login
 def get_last_backup_info(request):
     """Vrátí informace o posledním importu dat.
 
@@ -1721,7 +1726,7 @@ def get_last_backup_info(request):
 
 
 @require_http_methods(["GET"])
-@permission_classes([AllowAny])
+@require_analytics_login
 def get_charts_data(request):
     """Získá agregovaná data pro interaktivní grafy"""
     try:
@@ -2025,7 +2030,7 @@ def _bazar_prodane_q():
 
 
 @api_view(['GET'])
-@permission_classes([AllowAny])  # Povolíme přístup pro testování
+@permission_classes([IsAuthenticated])
 def celkova_cisla_view(request):
     """
     Hlavní endpoint pro modul 'Celková čísla'
@@ -2383,7 +2388,7 @@ def celkova_cisla_trendy_view(request):
 # CELKOVÁ ČÍSLA – ČASOVÉ ŘADY PODLE KATEGORIÍ
 # ===============================
 @api_view(['GET'])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def celkova_categories_timeseries_view(request):
     """
     Časové řady pro modul Celková čísla pro libovolný kanál
@@ -2504,7 +2509,7 @@ def celkova_categories_timeseries_view(request):
 # CELKOVÁ ČÍSLA – DETAIL/ITEMS PRO KANÁLY
 # ===============================
 @api_view(['GET'])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def celkova_prodejna_detail_view(request):
     """Detail kanálu Prodejna – rozklad podle středisek + top kategorie"""
     try:
@@ -2636,7 +2641,7 @@ def celkova_prodejna_detail_view(request):
 
 
 @api_view(['GET'])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def celkova_channel_items_view(request):
     """
     Vrací položky pro daný kanál:
@@ -2957,7 +2962,7 @@ def eshop_channel_items_view(request):
 
 
 @api_view(['GET'])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def eshop_categories_analytics_view(request):
     """
     Kategorie/podkategorie analytika pro E‑shop (WEB_PRODEJE_ALL) včetně vratek (negativní cena s DPH)
@@ -3089,7 +3094,7 @@ def eshop_categories_analytics_view(request):
 
 
 @api_view(['GET'])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def eshop_categories_timeseries_view(request):
     """
     Časové řady pro E‑shop podle zvolené dimenze (kategorie/kategorie_1/kategorie_2)
@@ -4864,7 +4869,7 @@ def phones_accessories_salesperson_receipts_view(request):
 # =============================================================================
 
 @api_view(['GET'])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def zakaznici_view(request):
     """
     Vrací počty zákazníků na základě unikátních dokladů/objednávek z tabulky WEB_PRODEJE_ALL.
@@ -4963,7 +4968,7 @@ def zakaznici_view(request):
 
 
 @api_view(['GET'])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def zakaznici_timeseries_view(request):
     """
     Časová řada návštěvnosti (počet zákazníků = unikátních dokladů/objednávek)
@@ -5304,7 +5309,7 @@ def convert_decimals(obj):
 # =============================================================================
 
 @require_http_methods(["GET"])
-@permission_classes([AllowAny])
+@require_analytics_login
 def get_web_prodeje_charts_data(request):
     """Získá agregovaná data pro interaktivní grafy z tabulky WEB_PRODEJE"""
     try:
@@ -5592,7 +5597,7 @@ def _polozky_servis_period_kwargs(period, selected_month, target_date, data_type
 
 
 @api_view(['GET'])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def web_prodeje_polozky_view(request):
     """
     API endpoint pro modul 'Prodejny - Položky' - čte přímo z tabulky WEB_PRODEJE_ALL
@@ -5722,7 +5727,7 @@ def web_prodeje_polozky_view(request):
 
 
 @api_view(['GET'])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def web_prodeje_polozky_timeline_view(request):
     """Měsíční časová řada metriky pro jednoho prodejce."""
     from .polozky_aggregate import aggregate_polozky_timeline, parse_polozky_params
@@ -5764,7 +5769,7 @@ def web_prodeje_polozky_timeline_view(request):
 
 
 @api_view(['GET'])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def web_prodeje_polozky_tasks_workload_view(request):
     """SLA úkolů a index vytížení prodejců v období."""
     from .polozky_aggregate import aggregate_tasks_workload, parse_polozky_params
@@ -5803,7 +5808,7 @@ def _salesperson_prev_month(target):
 
 
 @require_http_methods(["GET"])
-@permission_classes([AllowAny])
+@require_analytics_login
 def web_prodeje_salesperson_active_dates(request):
     """Dny se záznamy prodeje nebo servisní provize pro daného prodejce (kalendář)."""
     user_id = request.GET.get('user_id')
@@ -5853,7 +5858,7 @@ def web_prodeje_salesperson_active_dates(request):
 
 
 @require_http_methods(["GET"])
-@permission_classes([AllowAny])
+@require_analytics_login
 def web_prodeje_salesperson_today(request):
     """Denní souhrn + porovnání průměru s poslední směnou (WEB_PRODEJE_ALL)"""
     user_id = request.GET.get('user_id')
@@ -5893,7 +5898,7 @@ def web_prodeje_salesperson_today(request):
 
 
 @require_http_methods(["GET"])
-@permission_classes([AllowAny])
+@require_analytics_login
 def web_prodeje_salesperson_monthly(request):
     """Měsíční souhrn + porovnání průměru s minulým měsícem (WEB_PRODEJE_ALL)"""
     user_id = request.GET.get('user_id')
@@ -5931,7 +5936,7 @@ def web_prodeje_salesperson_monthly(request):
 
 
 @require_http_methods(["GET"])
-@permission_classes([AllowAny])
+@require_analytics_login
 def web_prodeje_salesperson_points_today(request):
     """Denní body + porovnání s poslední směnou pro konkrétního prodejce z tabulky WEB_PRODEJE_ALL"""
     user_id = request.GET.get('user_id')
@@ -5980,7 +5985,7 @@ def web_prodeje_salesperson_points_today(request):
 
 
 @require_http_methods(["GET"])
-@permission_classes([AllowAny])
+@require_analytics_login
 def web_prodeje_salesperson_points_monthly(request):
     """Měsíční body + porovnání s minulým měsícem pro konkrétního prodejce (WEB_PRODEJE_ALL)"""
     user_id = request.GET.get('user_id')
@@ -6668,7 +6673,7 @@ def _get_cached_prev_month_points(prev_ym, today=None):
 
 
 @require_http_methods(["GET"])
-@permission_classes([AllowAny])
+@require_analytics_login
 def web_prodeje_leaderboard_points(request):
     """Žebříček bodů – aktuální měsíc z jedné agregace + servis mapou; minulý měsíc z cache."""
     if request.GET.get('period') in ('today', 'day'):
@@ -6802,7 +6807,7 @@ def web_prodeje_leaderboard_points(request):
 
 
 @require_http_methods(["GET"])
-@permission_classes([AllowAny])
+@require_analytics_login
 def web_prodeje_leaderboard_points_today(request):
     """Žebříček bodů za dnešek – stejná agregace jako měsíční, filtr typ=dnes."""
     try:
@@ -6907,7 +6912,7 @@ def web_prodeje_leaderboard_points_today(request):
 
 
 @require_http_methods(["GET"])
-@permission_classes([AllowAny])
+@require_analytics_login
 def web_prodeje_leaderboard_average_items(request):
     """Žebříček průměru položek/účtenka – stejná jednotná agregace jako u bodů."""
     try:
@@ -6981,7 +6986,7 @@ def web_prodeje_leaderboard_average_items(request):
 
 
 @require_http_methods(["GET"])
-@permission_classes([AllowAny])
+@require_analytics_login
 def web_prodeje_leaderboard_stores(request):
     """Žebříček prodejen podle bodů za aktuální měsíc (agregace po středisku)."""
     try:
@@ -7067,7 +7072,7 @@ def web_prodeje_leaderboard_stores(request):
 
 
 @api_view(['GET'])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def debug_servis_rozdil_view(request):
     """
     DEBUG endpoint: Najde položky, které způsobují rozdíl mezi celkovým obratem servisu a součtem typů servisu
@@ -7236,7 +7241,7 @@ def servis_typ_items_view(request):
 
 
 @api_view(['GET'])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def zasilkovna_detail_view(request):
     """
     Endpoint pro detailní rozpad Zásilkovna dat podle prodejen a měsíců
@@ -7389,7 +7394,7 @@ def zasilkovna_detail_view(request):
 
 
 @api_view(['GET'])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def celkova_servis_detail_view(request):
     """
     Detail kanálu SERVIS – rozklad podle typů servisu
@@ -7500,11 +7505,12 @@ def celkova_servis_detail_view(request):
 
 
 @api_view(['GET', 'POST'])
-@permission_classes([AllowAny])
+@permission_classes([WebhookMonthlyStatsPermission])
 def webhook_monthly_stats(request):
     """
     Webhook endpoint pro získání měsíčních statistik firmy
     URL: /api/analytics/webhook/monthly-stats/
+    Auth: WEBHOOK_MONTHLY_STATS_TOKEN (X-Webhook-Token nebo ?token=)
     """
     try:
         # SQL dotaz pro měsíční statistiky
@@ -7572,7 +7578,7 @@ def webhook_monthly_stats(request):
 # STORE TRAFFIC ANALYTICS (NOVÝ MODUL "PRODEJNY & ZÁKAZNÍCI")
 # =============================================================================
 
-@method_decorator(permission_classes([AllowAny]), name='dispatch')
+@analytics_login_required
 class StoreTrafficView(View):
     """
     Nový endpoint pro modul "Prodejny & Zákazníci".

@@ -5,9 +5,8 @@ from datetime import date, datetime, timedelta
 
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
-from rest_framework.decorators import permission_classes
-from rest_framework.permissions import AllowAny
 
+from analytics.permissions import require_analytics_login
 from analytics.zasilkovna_konverze import build_konverze_report
 
 
@@ -18,7 +17,7 @@ def _parse_date(value: str | None, default: date) -> date:
 
 
 @require_http_methods(['GET'])
-@permission_classes([AllowAny])
+@require_analytics_login
 def zasilkovna_konverze_view(request):
     try:
         today = date.today()

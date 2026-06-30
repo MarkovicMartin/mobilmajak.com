@@ -381,10 +381,8 @@ const ProdejnyPolozkyView = ({
                                                     <span className="metric-value">{(item.pol_dok || 0).toFixed(2)}</span>
                                                 </div>
                                             )}
-                                        </div>
-                                        <div className="seller-large-metrics">
                                             {showMetric('polozky_nad_100_za_hodinu') && (
-                                                <div className="metric-item metric-item--large">
+                                                <div className="metric-item">
                                                     <span className="metric-label">Položky/h</span>
                                                     <span className="metric-value">
                                                         {item.polozky_nad_100_za_hodinu ?? '—'}
@@ -392,7 +390,7 @@ const ProdejnyPolozkyView = ({
                                                 </div>
                                             )}
                                             <div
-                                                className="metric-item metric-item--large"
+                                                className="metric-item"
                                                 title="Marže vytvořená ÷ odpracované hodiny"
                                             >
                                                 <span className="metric-label">Marže/h</span>
@@ -403,7 +401,7 @@ const ProdejnyPolozkyView = ({
                                                 </span>
                                             </div>
                                             <div
-                                                className="metric-item metric-item--large"
+                                                className="metric-item"
                                                 title="Marže bez DPH z prodeje + servisní práce (servis přiřazen technikovi, který je provedl)"
                                             >
                                                 <span className="metric-label">Marže vytvořená</span>
@@ -418,7 +416,7 @@ const ProdejnyPolozkyView = ({
                                             </div>
                                             {item.vynos_firmy != null && item.vynos_firmy !== undefined ? (
                                                 <div
-                                                    className="metric-item metric-item--large"
+                                                    className="metric-item"
                                                     title={`Marže − výplata (${item.vyplata_body ?? 0} bodů)`}
                                                 >
                                                     <span className="metric-label">Výnos pro firmu</span>
@@ -431,7 +429,7 @@ const ProdejnyPolozkyView = ({
                                                 </div>
                                             ) : (
                                                 <div
-                                                    className="metric-item metric-item--large metric-item--large-muted"
+                                                    className="metric-item metric-item--muted"
                                                     title="Výnos pro firmu lze zobrazit jen za celý kalendářní měsíc"
                                                 >
                                                     <span className="metric-label">Výnos pro firmu</span>

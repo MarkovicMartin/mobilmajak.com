@@ -9,6 +9,7 @@ class WebPristupyProdejnySerializer(serializers.ModelSerializer):
     """Hlavní serializer pro přístupy prodejen"""
     
     masked_password = serializers.ReadOnlyField()  # Pro bezpečné zobrazení
+    password = serializers.CharField(write_only=True)
     
     class Meta:
         model = WEB_PRISTUPY_PRODEJNY
@@ -71,13 +72,28 @@ class WebPristupyProdejnyListSerializer(serializers.ModelSerializer):
         ]
 
 class WebPristupyProdejnyDetailSerializer(serializers.ModelSerializer):
-    """Detailní serializer pro zobrazení konkrétního přístupu"""
+    """Detailní serializer pro zobrazení konkrétního přístupu (bez hesla v odpovědi)"""
     
     masked_password = serializers.ReadOnlyField()
     
     class Meta:
         model = WEB_PRISTUPY_PRODEJNY
-        fields = '__all__'
+        fields = [
+            'id',
+            'company_name',
+            'website_url',
+            'username',
+            'masked_password',
+            'category',
+            'store',
+            'description',
+            'notes',
+            'added_by',
+            'last_used',
+            'is_active',
+            'created_at',
+            'updated_at',
+        ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'last_used', 'masked_password']
 
 class StoreStatsSerializer(serializers.Serializer):
