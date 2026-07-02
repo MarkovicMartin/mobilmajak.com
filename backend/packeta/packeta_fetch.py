@@ -95,6 +95,16 @@ def iter_date_chunks(
     return chunks
 
 
+def date_range_today() -> tuple[date, date]:
+    d = date.today()
+    return d, d
+
+
+def date_range_yesterday() -> tuple[date, date]:
+    d = date.today() - timedelta(days=1)
+    return d, d
+
+
 def date_range_this_month() -> tuple[date, date]:
     today = date.today()
     end = today - timedelta(days=1)
@@ -102,6 +112,18 @@ def date_range_this_month() -> tuple[date, date]:
     if end < start:
         end = start
     return start, end
+
+
+def date_range_for_period(period: str, *, days: int | None = None) -> tuple[date, date]:
+    if period == 'today':
+        return date_range_today()
+    if period == 'yesterday':
+        return date_range_yesterday()
+    if period == 'month':
+        return date_range_this_month()
+    if period == 'days':
+        return date_range_for_days(days or 1)
+    raise ValueError(f'Neznámé období: {period}')
 
 
 def default_chunk_days(total_days: int) -> int:
@@ -242,8 +264,20 @@ def _select_date_preset(page, date_from: date, date_to: date) -> bool:
     menu = picker.locator('.dropdown-menu.show')
 
     span_days = (date_to - date_from).days + 1
-    yesterday = date.today() - timedelta(days=1)
+    today = date.today()
+    yesterday = today - timedelta(days=1)
+    use_today_preset = span_days == 1 and date_from == date_to == today
     use_yesterday_preset = span_days == 1 and date_from == date_to == yesterday
+
+    if use_today_preset:
+        for label in ('Today', 'Dnes'):
+            item = menu.locator('.dropdown-item').filter(
+                has_text=re.compile(rf'^{re.escape(label)}$', re.I),
+            )
+            if item.count():
+                item.first.click()
+                page.wait_for_timeout(300)
+                return False
 
     if use_yesterday_preset:
         for label in ('Yesterday', 'Včera'):
@@ -537,10 +571,8 @@ def fetch_single_branch(
             'Playwright není nainstalován. Spusťte: pip install playwright && playwright install chromium'
         ) from exc
 
-    if period == 'month':
-        date_from, date_to = date_range_this_month()
-    elif period == 'yesterday':
-        date_from = date_to = date.today() - timedelta(days=1)
+    if period in ('month', 'yesterday', 'today'):
+        date_from, date_to = date_range_for_period(period)
     else:
         raise RuntimeError(f'Neznámé období: {period}')
 
@@ -618,10 +650,7 @@ def fetch_and_import_branch(
         on_progress=on_progress,
     )
     batch = timezone.now().strftime('%Y%m%d%H%M%S')
-    if period == 'month':
-        start, end = date_range_this_month()
-    else:
-        start = end = date.today() - timedelta(days=1)
+    start, end = date_range_for_period(period)
 
     entry: dict = {
         'branch_name': fr.branch_name,

@@ -1,28 +1,32 @@
 #!/bin/bash
-# Import Packeta provizí – 3× denně (month v noci, recent poledne/večer). Ochrana proti paralelnímu běhu.
+# Packeta import – izolovaný běh (lock, nízká priorita). Nové řádky get_or_create, existující se nepřepisují.
 set -euo pipefail
 
 WEBAPP_PATH="${WEBAPP_PATH:-/home/webmajak/webapp}"
 LOCK_FILE="${PACKETA_LOCK_FILE:-/tmp/packeta-import.lock}"
 LOG_FILE="${PACKETA_LOG_FILE:-/var/log/packeta-import.log}"
 PID_FILE="${PACKETA_PID_FILE:-/tmp/packeta-import.pid}"
-MODE="${1:-${PACKETA_IMPORT_MODE:-month}}"
+MODE="${1:-${PACKETA_IMPORT_MODE:-today}}"
 
 cleanup() { rm -f "$LOCK_FILE" "$PID_FILE"; }
 trap cleanup EXIT
 
 case "$MODE" in
-  month)
-    IMPORT_CMD="python manage.py import_packeta_provize --fetch --period month --all-branches --typ baliky"
-    MODE_LABEL="month (celý měsíc, všechny pobočky)"
+  yesterday)
+    IMPORT_CMD="nice -n 10 python manage.py import_packeta_provize --fetch --period yesterday --all-branches --typ baliky"
+    MODE_LABEL="yesterday (včera, 6 poboček)"
     ;;
-  recent)
-    DAYS="${PACKETA_RECENT_DAYS:-3}"
-    IMPORT_CMD="python manage.py import_packeta_provize --fetch --period days --days ${DAYS} --all-branches --typ baliky"
-    MODE_LABEL="recent (poslední ${DAYS} dny, všechny pobočky)"
+  today)
+    IMPORT_CMD="nice -n 10 python manage.py import_packeta_provize --fetch --period today --all-branches --typ baliky"
+    MODE_LABEL="today (dnes, doplnění nových)"
+    ;;
+  audit)
+    DAYS="${PACKETA_AUDIT_DAYS:-7}"
+    IMPORT_CMD="nice -n 10 python manage.py import_packeta_provize --fetch --period days --days ${DAYS} --all-branches --typ baliky"
+    MODE_LABEL="audit (poslední ${DAYS} dní, reconciliace)"
     ;;
   *)
-    echo "Neznámý režim: $MODE (použij month nebo recent)" >&2
+    echo "Neznámý režim: $MODE (použij yesterday, today nebo audit)" >&2
     exit 2
     ;;
 esac
@@ -42,7 +46,7 @@ echo "$(date '+%Y-%m-%d %H:%M:%S') - Start Packeta import [$MODE_LABEL]" >> "$LO
 
 cd "$WEBAPP_PATH" || exit 1
 set +e
-sudo -u webmajak bash -c "cd '$WEBAPP_PATH' && source venv/bin/activate && ${IMPORT_CMD}" \
+sudo -u webmajak bash -c "cd '$WEBAPP_PATH' && source venv/bin/activate && export DJANGO_SETTINGS_MODULE=webapp.settings_production && ${IMPORT_CMD}" \
   >> "$LOG_FILE" 2>&1
 EXIT_CODE=$?
 set -e
@@ -50,6 +54,6 @@ set -e
 if [ "$EXIT_CODE" -eq 0 ]; then
   echo "$(date '+%Y-%m-%d %H:%M:%S') - Hotovo [$MODE]" >> "$LOG_FILE"
 else
-  echo "$(date '+%Y-%m-%d %H:%M:%S') - Selhalo (exit $EXIT_CODE) [$MODE]" >> "$LOG_FILE"
+  echo "$(date '+%Y-%m-%d %H:%M:%S') - Selhalo (exit $EXIT_CODE) [$MODE] – opraví další běh" >> "$LOG_FILE"
   exit "$EXIT_CODE"
 fi

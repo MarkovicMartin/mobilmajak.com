@@ -22,9 +22,9 @@ class Command(BaseCommand):
         parser.add_argument('--fetch', action='store_true', help='Stáhnout z admin.packeta.com')
         parser.add_argument(
             '--period',
-            choices=['month', 'yesterday', 'days'],
+            choices=['month', 'today', 'yesterday', 'days'],
             default='month',
-            help='Období: month=tento kalendářní měsíc, yesterday=včera, days=--days zpět',
+            help='Období: today=dnes, yesterday=včera, month=měsíc, days=--days zpět',
         )
         parser.add_argument(
             '--typ',
@@ -63,7 +63,7 @@ class Command(BaseCommand):
         def on_progress(msg: str) -> None:
             self.stdout.write(msg)
 
-        if period in ('month', 'yesterday'):
+        if period in ('month', 'today', 'yesterday'):
             if options.get('all_branches'):
                 branches = []
                 for pid in range(1, 7):
