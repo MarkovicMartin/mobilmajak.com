@@ -21,8 +21,14 @@ def prumer_override_for_user(user):
     if not overrides:
         return None
     prijmeni = (getattr(user, 'prijmeni', '') or '').strip().lower()
-    row = overrides.get(prijmeni)
-    if not row:
-        return None
-    mesice = row.get('mesice')
-    return mesice if mesice else None
+    aliases = {prijmeni}
+    if prijmeni in ('smčková', 'smckova'):
+        aliases.add('smrčková')
+    if prijmeni in ('smrčková', 'smrckova'):
+        aliases.add('smčková')
+    for key in aliases:
+        row = overrides.get(key)
+        if row:
+            mesice = row.get('mesice')
+            return mesice if mesice else None
+    return None

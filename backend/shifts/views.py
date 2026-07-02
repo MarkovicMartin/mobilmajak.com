@@ -53,19 +53,32 @@ def _normalize_brigadnik_rezim(user, typ_smeny, raw_rezim):
 
 
 def _normalize_pozice_smeny(prodejna, typ_smeny, raw_pozice, user=None):
-    """Pozice prodej/servis/backoffice – backoffice pro centrální zaměstnance."""
-    from shifts.shift_helpers import is_backoffice_user
+    """Pozice prodej/servis/backoffice/home office."""
+    from shifts.shift_helpers import is_admin_user, is_backoffice_user, is_home_office_pozice
 
     if typ_smeny != 'prace':
         return 'prodej'
+    pozice = (raw_pozice or 'prodej').strip()
     if user and is_backoffice_user(user):
         return 'backoffice'
-    pozice = (raw_pozice or 'prodej').strip()
+    if pozice == 'home_office' and user and is_admin_user(user):
+        return 'home_office'
     if pozice == 'backoffice':
         return 'backoffice'
     if not prodejna or not getattr(prodejna, 'povolena_pozice_servis', False):
         return 'prodej'
     return pozice if pozice in ('prodej', 'servis') else 'prodej'
+
+
+def _resolve_work_shift_prodejna(data, typ_smeny, user, raw_pozice=None):
+    """Home office a absence nemají prodejnu; jinak povinná prodejna."""
+    if is_absence_shift(typ_smeny):
+        return None
+    pozice = _normalize_pozice_smeny(None, typ_smeny, raw_pozice, user=user)
+    from shifts.shift_helpers import is_home_office_pozice
+    if is_home_office_pozice(pozice):
+        return None
+    return resolve_prodejna(data.get('prodejna'), typ_smeny)
 
 
 @api_view(['GET'])
@@ -209,7 +222,9 @@ def smeny_list(request):
             user = WebUser.objects.get(id=user_id)
             typ_smeny = data.get('typ_smeny', 'prace')
             try:
-                prodejna_obj = resolve_prodejna(data.get('prodejna'), typ_smeny)
+                prodejna_obj = _resolve_work_shift_prodejna(
+                    data, typ_smeny, user, data.get('pozice_smeny'),
+                )
             except Prodejna.DoesNotExist:
                 prodejna_input = data.get('prodejna')
                 return Response(
@@ -319,7 +334,9 @@ def smeny_bulk_create(request):
         chyby = []
 
         try:
-            prodejna_obj = resolve_prodejna(prodejna_input, typ_smeny)
+            prodejna_obj = _resolve_work_shift_prodejna(
+                data, typ_smeny, user, data.get('pozice_smeny'),
+            )
         except Prodejna.DoesNotExist:
             return Response(
                 {'error': f"Prodejna '{prodejna_input}' nebyla nalezena"},
@@ -421,16 +438,26 @@ def smena_detail(request, smena_id):
                 smena.typ_smeny = data['typ_smeny']
             if is_absence_shift(smena.typ_smeny):
                 smena.prodejna = None
-            elif 'prodejna' in data:
-                try:
-                    smena.prodejna = resolve_prodejna(data['prodejna'], smena.typ_smeny)
-                except Prodejna.DoesNotExist:
-                    return Response(
-                        {'error': f"Prodejna '{data['prodejna']}' nebyla nalezena"},
-                        status=status.HTTP_400_BAD_REQUEST,
-                    )
-                except ValueError as exc:
-                    return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+            elif 'pozice_smeny' in data or 'typ_smeny' in data or 'prodejna' in data:
+                from shifts.shift_helpers import is_home_office_pozice
+                smena.pozice_smeny = _normalize_pozice_smeny(
+                    smena.prodejna,
+                    smena.typ_smeny,
+                    data.get('pozice_smeny', smena.pozice_smeny),
+                    user=smena.user,
+                )
+                if is_home_office_pozice(smena.pozice_smeny):
+                    smena.prodejna = None
+                elif 'prodejna' in data:
+                    try:
+                        smena.prodejna = resolve_prodejna(data['prodejna'], smena.typ_smeny)
+                    except Prodejna.DoesNotExist:
+                        return Response(
+                            {'error': f"Prodejna '{data['prodejna']}' nebyla nalezena"},
+                            status=status.HTTP_400_BAD_REQUEST,
+                        )
+                    except ValueError as exc:
+                        return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
             if 'datum' in data:
                 smena.datum = new_datum
             if is_absence_shift(smena.typ_smeny):
@@ -451,13 +478,6 @@ def smena_detail(request, smena_id):
                     smena.user,
                     smena.typ_smeny,
                     data.get('brigadnik_rezim', smena.brigadnik_rezim),
-                )
-            if 'pozice_smeny' in data or 'typ_smeny' in data or 'prodejna' in data:
-                smena.pozice_smeny = _normalize_pozice_smeny(
-                    smena.prodejna,
-                    smena.typ_smeny,
-                    data.get('pozice_smeny', smena.pozice_smeny),
-                    user=smena.user,
                 )
             if 'poznamka' in data:
                 smena.poznamka = data['poznamka']
@@ -500,6 +520,19 @@ def _shift_calendar_payload(smena):
     """Jeden řádek směny pro kalendář včetně barvy a názvu prodejny."""
     p = smena.prodejna
     absence = is_absence_shift(smena.typ_smeny)
+    pozice = smena.pozice_smeny or 'prodej'
+    if absence:
+        store_name = ''
+        store_color = None
+    elif pozice == 'home_office' and not smena.prodejna_id:
+        store_name = 'Home office'
+        store_color = '#5f6368'
+    elif p:
+        store_name = (p.nazev_kratkiy or p.nazev or '').strip()
+        store_color = p.barva or '#0066cc'
+    else:
+        store_name = ''
+        store_color = None
     return {
         'id': smena.id,
         'datum': smena.datum.isoformat(),
@@ -509,12 +542,12 @@ def _shift_calendar_payload(smena):
         'cas_do': smena.cas_do.strftime('%H:%M'),
         'typ_smeny': smena.typ_smeny,
         'brigadnik_rezim': smena.brigadnik_rezim,
-        'pozice_smeny': smena.pozice_smeny or 'prodej',
+        'pozice_smeny': pozice,
         'servis_uroven': getattr(smena.user, 'servis_uroven', 'zadna') or 'zadna',
         'je_domaci_prodejna': smena.je_domaci_prodejna,
         'prodejna_id': p.id if p else None,
-        'prodejna_nazev': '' if absence else ((p.nazev_kratkiy or p.nazev or '').strip() if p else ''),
-        'prodejna_barva': None if absence else (p.barva or '#0066cc' if p else None),
+        'prodejna_nazev': store_name,
+        'prodejna_barva': store_color,
         'poznamka': smena.poznamka or '',
     }
 

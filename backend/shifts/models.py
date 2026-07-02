@@ -20,6 +20,7 @@ class Smena(models.Model):
         ('prodej', 'Prodej'),
         ('servis', 'Servisní technik'),
         ('backoffice', 'Backoffice'),
+        ('home_office', 'Home office'),
     ]
     
     user = models.ForeignKey(WebUser, on_delete=models.CASCADE, related_name='smeny')

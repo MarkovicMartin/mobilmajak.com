@@ -10,7 +10,22 @@ from stores.models import Prodejna
 
 ABSENCE_SHIFT_TYPES = ('dovolena', 'nemoc')
 
-BACKOFFICE_SURNAME_KEYS = frozenset({'smčková', 'smckova'})
+BACKOFFICE_SURNAME_KEYS = frozenset({
+    'smčková', 'smckova', 'smrčková', 'smrckova',
+})
+
+
+def is_admin_user(user) -> bool:
+    return getattr(user, 'role', None) == 'ADMIN'
+
+
+def is_home_office_pozice(pozice) -> bool:
+    return (pozice or '').strip() == 'home_office'
+
+
+def backoffice_surname_keys():
+    """Všechny varianty příjmení pro mapování (Excel, JSON override)."""
+    return BACKOFFICE_SURNAME_KEYS
 
 
 def _is_markovic_active_seller(user) -> bool:

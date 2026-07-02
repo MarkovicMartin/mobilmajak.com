@@ -4,13 +4,21 @@ from django.db import migrations, models
 def set_backoffice_shifts_for_michaela(apps, schema_editor):
     WebUser = apps.get_model('users', 'WebUser')
     Smena = apps.get_model('shifts', 'Smena')
-    users = WebUser.objects.filter(jmeno__iexact='michaela', prijmeni__iexact='smčková')
-    if not users.exists():
-        users = WebUser.objects.filter(jmeno__iexact='michaela', prijmeni__iexact='smckova')
-    for user in users:
-        WebUser.objects.filter(pk=user.pk).update(prodejna_id=None)
+    user_ids = list(
+        WebUser.objects.filter(jmeno__iexact='michaela', prijmeni__iexact='smčková').values_list('id', flat=True)
+    )
+    if not user_ids:
+        user_ids = list(
+            WebUser.objects.filter(jmeno__iexact='michaela', prijmeni__iexact='smckova').values_list('id', flat=True)
+        )
+    if not user_ids:
+        user_ids = list(WebUser.objects.filter(prijmeni__iexact='smrčková').values_list('id', flat=True))
+    if not user_ids:
+        user_ids = list(WebUser.objects.filter(prijmeni__iexact='smrckova').values_list('id', flat=True))
+    for user_id in user_ids:
+        WebUser.objects.filter(pk=user_id).update(prodejna_id=None)
         Smena.objects.filter(
-            user_id=user.pk,
+            user_id=user_id,
             typ_smeny='prace',
             aktivni=True,
         ).update(pozice_smeny='backoffice')

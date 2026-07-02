@@ -23,6 +23,16 @@ class BackofficePositionTest(TestCase):
         user = WebUser(
             id=9901,
             jmeno='Michaela',
+            prijmeni='Smrčková',
+            role='PRODEJCE',
+            prodejna_id=self.prodejna.id,
+        )
+        self.assertTrue(is_backoffice_user(user))
+
+    def test_michaela_smrckova_is_backoffice(self):
+        user = WebUser(
+            id=9905,
+            jmeno='Michaela',
             prijmeni='Smčková',
             role='PRODEJCE',
             prodejna_id=self.prodejna.id,

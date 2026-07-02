@@ -3,7 +3,7 @@ import Modal from '../../components/Modal';
 import { AnalyticsDateInput } from '../../components/AnalyticsDateRange';
 import { userAPI, storeAPI } from '../../services/api';
 import { shiftRoleLabel } from './shiftRoleLabels';
-import { isBackofficeUser } from './shiftBackoffice';
+import { isBackofficeUser, isAdminUser, isHomeOfficePozice } from './shiftBackoffice';
 import './ShiftForm.css';
 
 const buildInitialFormData = (user, initialDatum, editShift) => {
@@ -177,7 +177,9 @@ function ShiftForm({ user, onClose, onSuccess, initialDatum = '', editShift = nu
     const servisPoziceEnabled = Boolean(selectedStore?.povolena_pozice_servis);
     const selectedUserObj = users.find((u) => u.id === formData.user_id) || user;
     const backofficeUser = isBackofficeUser(selectedUserObj);
-    const showPoziceSelect = (servisPoziceEnabled || backofficeUser) && formData.typ_smeny === 'prace';
+    const adminUser = isAdminUser(selectedUserObj);
+    const homeOfficeShift = isHomeOfficePozice(formData.pozice_smeny);
+    const showPoziceSelect = (servisPoziceEnabled || backofficeUser || adminUser) && formData.typ_smeny === 'prace';
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -192,6 +194,9 @@ function ShiftForm({ user, onClose, onSuccess, initialDatum = '', editShift = nu
             }
             if (!showPoziceSelect) {
                 delete payload.pozice_smeny;
+            }
+            if (homeOfficeShift) {
+                delete payload.prodejna;
             }
             if (isAbsence) {
                 delete payload.prodejna;
@@ -354,6 +359,12 @@ function ShiftForm({ user, onClose, onSuccess, initialDatum = '', editShift = nu
                         </>
                     )}
 
+                    {homeOfficeShift && (
+                        <div className="time-info">
+                            ℹ️ Home office není vázané na prodejnu – v kalendáři se zobrazí bez pobočky.
+                        </div>
+                    )}
+
                     {isAbsence && (
                         <div className="time-info">
                             ℹ️ Dovolená a nemoc nejsou vázané na prodejnu – v kalendáři se zobrazí kompaktně.
@@ -367,9 +378,10 @@ function ShiftForm({ user, onClose, onSuccess, initialDatum = '', editShift = nu
                                 value={formData.pozice_smeny}
                                 onChange={(e) => setFormData({ ...formData, pozice_smeny: e.target.value })}
                             >
-                                {!backofficeUser && <option value="prodej">Prodej</option>}
+                                {!backofficeUser && !homeOfficeShift && <option value="prodej">Prodej</option>}
                                 {backofficeUser && <option value="backoffice">Backoffice</option>}
-                                {servisPoziceEnabled && <option value="servis">Servisní technik</option>}
+                                {adminUser && <option value="home_office">Home office</option>}
+                                {servisPoziceEnabled && !homeOfficeShift && <option value="servis">Servisní technik</option>}
                             </select>
                             {selectedUserObj?.servis_uroven === 'zauceni' && formData.pozice_smeny === 'servis' && (
                                 <div className="time-info">

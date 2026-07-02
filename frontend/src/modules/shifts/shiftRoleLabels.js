@@ -10,6 +10,7 @@ export const shiftRoleLabel = (shift, { short = false } = {}) => {
     if (typ !== 'prace') return typ;
 
     if (shift.pozice_smeny === 'backoffice') return 'Backoffice';
+    if (shift.pozice_smeny === 'home_office') return short ? 'Home off.' : 'Home office';
     if (shift.pozice_smeny === 'servis') {
         if (short) {
             return shift.servis_uroven === 'zauceni' ? 'Servis (zašk.)' : 'Servis';

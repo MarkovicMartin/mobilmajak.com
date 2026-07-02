@@ -32,6 +32,8 @@ ALIASES = {
     'benny': 'babušík',
     'králík': 'králik',
     'křížková': 'křížková f',
+    'smčková': 'smrčková',
+    'smckova': 'smrčková',
 }
 
 
