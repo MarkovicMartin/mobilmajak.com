@@ -3,7 +3,7 @@ from datetime import date, time
 from django.test import TestCase
 
 from shifts.models import Smena
-from shifts.shift_helpers import is_backoffice_user
+from shifts.shift_helpers import is_backoffice_user, is_plans_eligible_user
 from shifts.views import _normalize_pozice_smeny
 from stores.models import Prodejna
 from users.models import WebUser
@@ -28,6 +28,28 @@ class BackofficePositionTest(TestCase):
             prodejna_id=self.prodejna.id,
         )
         self.assertTrue(is_backoffice_user(user))
+
+    def test_backoffice_neni_v_planech(self):
+        user = WebUser(
+            id=9906,
+            jmeno='Michaela',
+            prijmeni='Smrčková',
+            role='PRODEJCE',
+            aktivni=True,
+            prodejna_id=self.prodejna.id,
+        )
+        self.assertFalse(is_plans_eligible_user(user))
+
+    def test_prodejce_je_v_planech(self):
+        user = WebUser(
+            id=9907,
+            jmeno='Jan',
+            prijmeni='Prodejce',
+            role='PRODEJCE',
+            aktivni=True,
+            prodejna_id=self.prodejna.id,
+        )
+        self.assertTrue(is_plans_eligible_user(user))
 
     def test_michaela_smrckova_is_backoffice(self):
         user = WebUser(

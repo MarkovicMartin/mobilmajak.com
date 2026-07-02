@@ -9,6 +9,7 @@ from rest_framework.response import Response
 
 from stores.models import Prodejna
 from users.models import WebUser
+from shifts.shift_helpers import is_plans_eligible_user
 from .models import PlanMonth, PlanStore, PlanCategory, PlanProdejce, PlanProdejceKategorie, KATEGORIE_CHOICES
 from .helpers import vypocti_prumerne_ceny
 from .historie import vypocitej_plan_z_historie, historie_nahled, ChybejiciDataError
@@ -817,6 +818,8 @@ def plan_ulozit(request, rok, mesic):
                     uzivatel = WebUser.objects.get(id=uzivatel_id)
                 except WebUser.DoesNotExist:
                     continue
+                if not is_plans_eligible_user(uzivatel):
+                    continue
                 pp = PlanProdejce.objects.create(plan_prodejna=ps, uzivatel=uzivatel)
                 for kod, hodnoty in kat_dict.items():
                     pocet = int(hodnoty.get('pocet_kusu', 0))
@@ -995,13 +998,22 @@ def plan_prodejci(request, plan_prodejna_id):
     ps = get_object_or_404(PlanStore.objects.select_related('prodejna', 'plan_mesic').prefetch_related('kategorie'), id=plan_prodejna_id)
 
     # Prodejci domovské prodejny (aktivní) – nahoře v dropdownu
-    prodejci_domovska = list(WebUser.objects.filter(prodejna_id=ps.prodejna_id, aktivni=True).order_by('jmeno', 'prijmeni'))
+    prodejci_domovska = [
+        u for u in WebUser.objects.filter(prodejna_id=ps.prodejna_id, aktivni=True).order_by('jmeno', 'prijmeni')
+        if is_plans_eligible_user(u)
+    ]
     # Ostatní aktivní prodejci (mohou pomáhat na více prodejnách)
     ids_domovska = {u.id for u in prodejci_domovska}
-    prodejci_ostatni = list(WebUser.objects.filter(aktivni=True).exclude(id__in=ids_domovska).order_by('jmeno', 'prijmeni'))
+    prodejci_ostatni = [
+        u for u in WebUser.objects.filter(aktivni=True).exclude(id__in=ids_domovska).order_by('jmeno', 'prijmeni')
+        if is_plans_eligible_user(u)
+    ]
 
-    # Existující plány prodejců
-    plany_pp = PlanProdejce.objects.filter(plan_prodejna=ps).prefetch_related('kategorie').select_related('uzivatel')
+    # Existující plány prodejců (bez backoffice)
+    plany_pp = [
+        pp for pp in PlanProdejce.objects.filter(plan_prodejna=ps).prefetch_related('kategorie').select_related('uzivatel')
+        if is_plans_eligible_user(pp.uzivatel)
+    ]
 
     rok, mesic = ps.plan_mesic.rok, ps.plan_mesic.mesic
     kategorie_prodejny = _serialize_plan_kategorie(ps, rok, mesic)
@@ -1059,6 +1071,8 @@ def plan_prodejci_ulozit(request, plan_prodejna_id):
             try:
                 uzivatel = WebUser.objects.get(id=uzivatel_id)
             except WebUser.DoesNotExist:
+                continue
+            if not is_plans_eligible_user(uzivatel):
                 continue
 
             pp = PlanProdejce.objects.create(plan_prodejna=ps, uzivatel=uzivatel)
@@ -1306,6 +1320,8 @@ def plan_plneni_prodejci(request, rok, mesic):
         'plany_prodejcu__uzivatel',
     ):
         for pp in ps.plany_prodejcu.all():
+            if not is_plans_eligible_user(pp.uzivatel):
+                continue
             uid = pp.uzivatel_id
             if uid not in prodejci_plan:
                 prodejci_plan[uid] = {

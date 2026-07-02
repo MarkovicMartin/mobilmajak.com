@@ -1,8 +1,7 @@
 """
 Denní přepočet přiřazení prodejců podle směn (hodiny).
 
-Od 15. dne v měsíci: aktuální + příští měsíc.
-Před 15.: jen příští měsíc.
+Běžící měsíc; poslední den měsíce navíc příští (cron 7:00).
 
 Příklad cron (staging/produkce, 7:00):
   python manage.py prepocet_plan_prodejci
@@ -10,8 +9,8 @@ Příklad cron (staging/produkce, 7:00):
 Vynucení všech měsíců roku:
   python manage.py prepocet_plan_prodejci --rok 2026
 
-Vynucení i před 15.:
-  python manage.py prepocet_plan_prodejci --force
+Vynucení jednoho měsíce:
+  python manage.py prepocet_plan_prodejci --mesic 2026-07
 """
 from datetime import date
 
@@ -22,7 +21,7 @@ from plans.prodejci_prepocet import (
     prepocet_prodejci_mesice,
 )
 class Command(BaseCommand):
-    help = 'Přepočítá plány prodejců podle směn (hodiny) – denně od 15. v měsíci.'
+    help = 'Přepočítá plány prodejců podle směn (hodiny) – denně běžící měsíc.'
 
     def add_arguments(self, parser):
         parser.add_argument('--rok', type=int, help='Přepočítat všech 12 měsíců daného roku')
@@ -30,7 +29,7 @@ class Command(BaseCommand):
         parser.add_argument(
             '--force',
             action='store_true',
-            help='Ignorovat pravidlo „od 15.“ (aktuální měsíc i dříve v měsíci)',
+            help='Přepočítat běžící i příští měsíc (i mimo poslední den)',
         )
 
     def handle(self, *args, **options):

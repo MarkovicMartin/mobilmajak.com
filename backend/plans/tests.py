@@ -83,7 +83,7 @@ class ProdejciAutoHodinyTests(TestCase):
         for uid, jmeno, role in [
             (201, 'Gabriel', 'PRODEJCE'),
             (202, 'Létal', 'PRODEJCE'),
-            (203, 'Brig', 'BRIGADNIK'),
+            (203, 'Karas', 'PRODEJCE'),
         ]:
             u = WebUser.objects.create(
                 id=uid, uzivatelske_jmeno=f'u{uid}', jmeno=jmeno, prijmeni='T',
@@ -134,23 +134,35 @@ class ProdejciAutoHodinyTests(TestCase):
         self.assertEqual(b_k, 2)
 
     @patch('plans.prodejci_auto._hodiny_na_prodejne')
-    def test_vychodil_bez_kusovych_kategorii(self, mock_hodiny):
-        mock_hodiny.return_value = {VYCHODIL_USER_ID: 80.0, 201: 20.0}
-        PlanCategory.objects.create(
-            plan_prodejna=self.ps,
-            kategorie_kod='SERVIS',
-            podil_procenta=Decimal('0'),
-            castka_kategorie=Decimal('1'),
-            prumerna_cena_za_kus=Decimal('1'),
+    def test_vychodil_dostane_prodejni_plan_pri_smene_prodej(self, mock_hodiny):
+        u = WebUser.objects.create(
+            id=VYCHODIL_USER_ID,
+            uzivatelske_jmeno='vych_plan',
+            jmeno='František',
+            prijmeni='Vychodil',
+            role='PRODEJCE',
+            prodejna_id=self.prodejna.id,
+            aktivni=True,
         )
-        prirazeno, _ = _prirad_prodejce_prodejna(self.ps, 2026, 7)
-        self.assertFalse(
+        u.set_heslo('x')
+        u.save()
+        mock_hodiny.return_value = {VYCHODIL_USER_ID: 80.0, 201: 20.0}
+        _prirad_prodejce_prodejna(self.ps, 2026, 7)
+        self.assertTrue(
             PlanProdejceKategorie.objects.filter(
                 plan_prodejce__uzivatel_id=VYCHODIL_USER_ID,
                 kategorie_kod='NOVE_TELEFONY',
             ).exists()
         )
+
+    @patch('plans.prodejci_auto._hodiny_na_prodejne')
+    def test_backoffice_vyloucen_z_automatickeho_planu(self, mock_hodiny):
+        backoffice_id = 299
+        mock_hodiny.return_value = {201: 50.0, backoffice_id: 80.0}
+        prirazeno, _ = _prirad_prodejce_prodejna(self.ps, 2026, 7)
+        self.assertEqual(prirazeno, 1)
         self.assertTrue(PlanProdejce.objects.filter(uzivatel_id=201).exists())
+        self.assertFalse(PlanProdejce.objects.filter(uzivatel_id=backoffice_id).exists())
 
 
 class HybridHistorieAutoTests(TestCase):
@@ -326,10 +338,10 @@ class ForecastTests(TestCase):
     def test_mesice_pro_denni_prepocet(self):
         self.assertEqual(
             mesice_pro_denni_prepocet(date(2026, 6, 4)),
-            [(2026, 7)],
+            [(2026, 6)],
         )
         self.assertEqual(
-            mesice_pro_denni_prepocet(date(2026, 6, 15)),
+            mesice_pro_denni_prepocet(date(2026, 6, 30)),
             [(2026, 6), (2026, 7)],
         )
 
@@ -467,14 +479,14 @@ class PoziceServisAutoTests(TestCase):
 
     def test_globus_servis_jen_technikovi(self):
         self._smena(301, date(2026, 8, 4), time(8, 0), time(16, 0), pozice='servis')
-        self._smena(302, date(2026, 8, 4), time(8, 0), time(16, 0), pozice='prodej')
+        self._smena(303, date(2026, 8, 4), time(8, 0), time(16, 0), pozice='prodej')
         prirazeno, _ = _prirad_prodejce_prodejna(self.ps_globus, 2026, 8)
         self.assertGreaterEqual(prirazeno, 2)
         servis_t = PlanProdejceKategorie.objects.filter(
             plan_prodejce__uzivatel_id=301, kategorie_kod='SERVIS',
         ).first()
         servis_p = PlanProdejceKategorie.objects.filter(
-            plan_prodejce__uzivatel_id=302, kategorie_kod='SERVIS',
+            plan_prodejce__uzivatel_id=303, kategorie_kod='SERVIS',
         ).first()
         self.assertIsNotNone(servis_t)
         self.assertTrue(servis_t.pocet_kusu > 0)
@@ -509,7 +521,7 @@ class PoziceServisAutoTests(TestCase):
         day_h, _ = _servis_interval_contributions_globus(datum, [sm])
         self.assertAlmostEqual(day_h[302], 4.0)
 
-    def test_vychodil_mimo_prodejni_pool_s_pozici(self):
+    def test_vychodil_prodejni_plan_pri_smene_prodej_globus(self):
         u = WebUser.objects.create(
             id=VYCHODIL_USER_ID,
             uzivatelske_jmeno='vych',
@@ -527,7 +539,7 @@ class PoziceServisAutoTests(TestCase):
         self._smena(302, date(2026, 8, 7), time(8, 0), time(16, 0), pozice='prodej')
         prirazeno, _ = _prirad_prodejce_prodejna(self.ps_globus, 2026, 8)
         self.assertGreater(prirazeno, 0)
-        self.assertFalse(
+        self.assertTrue(
             PlanProdejceKategorie.objects.filter(
                 plan_prodejce__uzivatel_id=VYCHODIL_USER_ID,
                 kategorie_kod='NOVE_TELEFONY',

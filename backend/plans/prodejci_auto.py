@@ -15,6 +15,7 @@ from django.db.models import Q
 from shifts.models import Smena
 
 from users.models import WebUser
+from shifts.shift_helpers import smena_pocita_do_planovych_hodin, user_muze_dostat_plan
 from .models import PlanProdejce, PlanProdejceKategorie, PlanCategory
 
 VYCHODIL_USER_ID = 121
@@ -51,6 +52,10 @@ def _ma_servis_smeny_v_mesici(rok, mesic, prodejna_id):
     return _smeny_mesic_qs(rok, mesic, prodejna_id).filter(pozice_smeny='servis').exists()
 
 
+def _smena_pocita_do_planu(smena) -> bool:
+    return smena_pocita_do_planovych_hodin(smena)
+
+
 def _hodiny_na_prodejne(rok, mesic, prodejna_id, jen_prodej_pozice=False):
     """{user_id: součet hodin} za pracovní směny na prodejně v měsíci."""
     smeny = _smeny_mesic_qs(rok, mesic, prodejna_id)
@@ -58,7 +63,7 @@ def _hodiny_na_prodejne(rok, mesic, prodejna_id, jen_prodej_pozice=False):
         smeny = smeny.filter(pozice_smeny='prodej')
     hodiny = defaultdict(float)
     for s in smeny:
-        if not s.user.aktivni:
+        if not _smena_pocita_do_planu(s):
             continue
         h = s.delka_smeny_hodin
         if h and h > 0:
@@ -100,12 +105,14 @@ def _rozdel_kusy(celkem, podily):
 
 
 def _domovsky_prodejce_prodejny(prodejna_id):
-    """Záloha: domovský aktivní uživatel prodejny (bez Vychodila)."""
-    u = WebUser.objects.filter(
+    """Záloha: domovský aktivní uživatel prodejny (bez backoffice)."""
+    for u in WebUser.objects.filter(
         aktivni=True,
         prodejna_id=prodejna_id,
-    ).exclude(id=VYCHODIL_USER_ID).order_by('id').first()
-    return u.id if u else None
+    ).order_by('id'):
+        if user_muze_dostat_plan(u):
+            return u.id
+    return None
 
 
 def _kategorie_plan_kusy(plan_prodejna):
@@ -163,6 +170,8 @@ def _globus_segment_contributions(datum, active_smeny):
     has_servis = any((s.pozice_smeny or 'prodej') == 'servis' for s in active_smeny)
 
     for s in active_smeny:
+        if not _smena_pocita_do_planu(s):
+            continue
         uroven = _user_servis_uroven(s.user)
         if uroven == 'zadna':
             continue
@@ -206,10 +215,12 @@ def _servis_interval_contributions_globus(datum, smeny_na_den):
 
 
 def _efektivni_servis_hodin_jednoduche(smeny):
-    """Ostatní prodejny: bez vlivu dne v týdnu, dle pozice a servis_uroven."""
+    """Ostatní prodejny: hodiny jen na směnách pozice=servis, dle servis_uroven."""
     result = defaultdict(float)
     for s in smeny:
-        if not s.user.aktivni:
+        if not _smena_pocita_do_planu(s):
+            continue
+        if (s.pozice_smeny or 'prodej') != 'servis':
             continue
         uroven = _user_servis_uroven(s.user)
         if uroven == 'zadna':
@@ -228,7 +239,7 @@ def _efektivni_servis_hodin_mesic(rok, mesic, prodejna):
     """
     smeny = [
         s for s in _smeny_mesic_qs(rok, mesic, prodejna.id)
-        if s.user.aktivni
+        if _smena_pocita_do_planu(s)
     ]
     if not _ma_servis_smeny_v_mesici(rok, mesic, prodejna.id):
         return None, {}
@@ -323,7 +334,7 @@ def _prirad_prodejce_prodejna(ps, rok, mesic):
             if info:
                 warnings.append(f'{prodejna.nazev}: SERVIS efektivní hodiny – {info}')
 
-    podily_prodej = _podily_z_hodin(hodiny_prodej, exclude_user_ids=[VYCHODIL_USER_ID])
+    podily_prodej = _podily_z_hodin(hodiny_prodej)
 
     if not podily_prodej:
         dom = _domovsky_prodejce_prodejny(prodejna.id)
@@ -331,7 +342,7 @@ def _prirad_prodejce_prodejna(ps, rok, mesic):
             podily_prodej = {dom: 1.0}
             warnings.append(
                 f'{prodejna.nazev}: prodejní kategorie jen domovskému uživateli '
-                f'(směny bez jiného prodejce než Vychodil).'
+                f'(žádné prodejní hodiny na směnách).'
             )
         else:
             warnings.append(f'{prodejna.nazev}: nelze rozdělit prodejní kategorie.')
@@ -379,6 +390,8 @@ def _prirad_prodejce_prodejna(ps, rok, mesic):
         try:
             uzivatel = WebUser.objects.get(id=uid, aktivni=True)
         except WebUser.DoesNotExist:
+            continue
+        if not user_muze_dostat_plan(uzivatel):
             continue
         pp = PlanProdejce.objects.create(plan_prodejna=ps, uzivatel=uzivatel)
         for kod, pocet in kategorie.items():

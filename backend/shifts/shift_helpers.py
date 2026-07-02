@@ -55,6 +55,37 @@ def is_backoffice_user(user) -> bool:
         and getattr(user, 'role', None) in ('PRODEJCE', 'VEDOUCI')
     )
 
+
+def is_plans_eligible_user(user) -> bool:
+    """Smí mít plán / výkon – ne backoffice, admin. Brigádník ano (výpomoc se filtruje po směnách)."""
+    return user_muze_dostat_plan(user)
+
+
+def user_muze_dostat_plan(user) -> bool:
+    """Uživatel smí mít záznam PlanProdejce (auto nebo ruční přiřazení)."""
+    if not user or not getattr(user, 'aktivni', False):
+        return False
+    if is_backoffice_user(user):
+        return False
+    return getattr(user, 'role', None) != 'ADMIN'
+
+
+def smena_pocita_do_planovych_hodin(smena) -> bool:
+    """
+    Započítat směnu do hodin pro rozdělení plánu.
+    Brigádník jen v režimu „jako prodejce“, ne výpomoc.
+  """
+    user = smena.user
+    if not user_muze_dostat_plan(user):
+        return False
+    if getattr(user, 'role', None) == 'BRIGADNIK':
+        if (getattr(smena, 'brigadnik_rezim', None) or 'prodejce') != 'prodejce':
+            return False
+    pozice = getattr(smena, 'pozice_smeny', None) or 'prodej'
+    if pozice in ('backoffice', 'home_office'):
+        return False
+    return True
+
 def earliest_editable_shift_date(today: date | None = None) -> date:
     """První den aktuálního měsíce – prodejci smí měnit jen směny v tomto měsíci."""
     today = today or date.today()

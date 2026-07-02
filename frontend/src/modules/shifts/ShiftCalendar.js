@@ -270,10 +270,9 @@ function ShiftCalendar({
     }, [month, prodejna]);
 
     const isDateSelectable = useCallback((date) => {
-        if (svatky[format(date, 'yyyy-MM-dd')]) return false;
         if (user?.role === 'ADMIN') return true;
         return sellerMayEditShiftOnDate(format(date, 'yyyy-MM-dd'));
-    }, [svatky, user]);
+    }, [user]);
 
     const handlePickDate = useCallback((dateStr) => {
         setDragPreviewDates((prev) => {
