@@ -441,6 +441,7 @@ class WebProdejeAll(models.Model):
     
     # Poznámky
     poznamka = models.TextField(null=True, blank=True, verbose_name="Poznámka k položce", db_column='Poznamka')
+    poznamka_dokladu = models.TextField(null=True, blank=True, verbose_name="Poznámka k dokladu", db_column='Poznamka_dokladu')
     poznamka_zakaznika = models.TextField(null=True, blank=True, verbose_name="Poznámka zákazníka", db_column='Poznamka_zakaznika')
     objednavku_zalozil = models.CharField(max_length=100, null=True, blank=True, verbose_name="Objednávku založil", db_column='Objednavku_zalozil')
     

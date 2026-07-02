@@ -39,6 +39,8 @@ Když se na **jedné účtence** prodá **více stejných položek** (stejný k�
   `/opt/actor/ACTOR_FINALL_WEB_PRODEJE_ALL/main.js`  
   Cron: `*/2 * * * * /opt/run-prodeje-actor-safe.sh`
 
+**Poznámka k dokladu (Zásilkovna):** pro konverzi Zásilkovny je potřeba importovat sloupec **`Poznamka_dokladu`** do `WEB_PRODEJE_ALL` (poznámka k celé účtence v Sympliu, např. hodnota `Z`). Sloupec byl v tabulce obnoven migrací Django `0020`; actor musí pole mapovat při INSERT (stejně jako u legacy `WEB_PRODEJE`).
+
 **Původní logika v `insertDataToWebProdejeAll`:**
 
 ```text

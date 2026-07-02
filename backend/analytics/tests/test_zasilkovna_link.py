@@ -1,15 +1,17 @@
 """Testy parseru a propojení Zásilkovna."""
 from datetime import date, datetime
-from decimal import Decimal
 
 from django.test import TestCase
 
 from analytics.zasilkovna_link import (
+    LinkedSale,
+    is_plain_z_marker,
+    is_z_oznaceno,
+    parse_z_note_fields,
     parse_zasilka_from_note,
     prodeje_by_prodejce,
     typ_skupina,
 )
-from analytics.zasilkovna_link import LinkedSale
 
 
 class ParseZasilkaNoteTests(TestCase):
@@ -28,6 +30,29 @@ class ParseZasilkaNoteTests(TestCase):
     def test_empty(self):
         self.assertIsNone(parse_zasilka_from_note(None))
         self.assertIsNone(parse_zasilka_from_note(''))
+
+
+class PlainZMarkerTests(TestCase):
+    def test_plain_z(self):
+        self.assertTrue(is_plain_z_marker('Z'))
+        self.assertTrue(is_plain_z_marker(' z '))
+        self.assertTrue(is_plain_z_marker('ZS: Z'))
+
+    def test_not_plain_z(self):
+        self.assertFalse(is_plain_z_marker('Záruka'))
+        self.assertFalse(is_plain_z_marker('Z123456789'))
+
+    def test_parse_fields_doklad_priority(self):
+        z, source, marker = parse_z_note_fields('Z', 'Z123456789', None)
+        self.assertEqual(source, 'poznamka_dokladu')
+        self.assertTrue(marker)
+        self.assertIsNone(z)
+
+    def test_parse_fields_zasilka_on_doklad(self):
+        z, source, marker = parse_z_note_fields('Z 236 9101 479', None, None)
+        self.assertEqual(source, 'poznamka_dokladu')
+        self.assertEqual(z, 'Z 2369101479')
+        self.assertFalse(marker)
 
 
 class TypSkupinaTests(TestCase):
@@ -57,3 +82,18 @@ class ProdejceAggTests(TestCase):
         stats = prodeje_by_prodejce(linked)
         self.assertEqual(stats[10]['zasilkovna_prodeje'], 2)
         self.assertEqual(stats[10]['zasilkovna_oznaceno'], 2)
+
+    def test_plain_z_on_doklad_counts_as_oznaceno(self):
+        linked = [
+            LinkedSale(
+                zasilka='', zasilka_raw='', typ_provize=None,
+                typ_skupina=None, id_prodejce=10, id_prodejny=5,
+                doklad='32607011005', datum_prodeje=date(2026, 7, 1),
+                cas_baliku=None, match_source='poznamka_dokladu',
+                packeta_nalezeno=False, z_marker=True,
+            ),
+        ]
+        self.assertTrue(is_z_oznaceno(linked[0]))
+        stats = prodeje_by_prodejce(linked)
+        self.assertEqual(stats[10]['zasilkovna_oznaceno'], 1)
+        self.assertEqual(stats[10]['zasilkovna_prodeje'], 1)

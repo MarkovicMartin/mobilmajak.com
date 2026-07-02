@@ -2,7 +2,7 @@
 
 Živý dokument pro plánování rozšíření. U každé oblasti: **stav dnes**, **varianty rozpracování**, **odhad náročnosti** (S/M/L/XL) a **vliv na kvalitu aplikace** (1–5, kde 5 = největší přínos pro provoz nebo řízení firmy).
 
-Poslední revize: 2026-07-01
+Poslední revize: 2026-07-02
 
 ---
 
@@ -340,10 +340,44 @@ flowchart LR
 
 ---
 
+## 13. Zásilkovna – konverze a ruční opravy
+
+### Stav dnes (2026-07-02)
+
+- Modul **Zásilkovna konverze** propojuje prodeje s Packeta provizemi (`finance_packeta_provize`).
+- Označení Z čte z **`Poznamka_dokladu`** (poznámka k účtence v Sympliu), dále `Poznamka` u položky a `Poznamka_zakaznika`.
+- Podporuje **samotné „Z“** (bez čísla balíku) i **Z + číslo zásilky**.
+- Fallback: sleva `ZASILKOVNA` na účtence, když chybí poznámka Z.
+- Sloupec `Poznamka_dokladu` byl vrácen do `WEB_PRODEJE_ALL` (migrace `0020`) – **Symplio actor musí pole znovu plnit** při importu.
+- Packeta detailní import běží cronem 3× denně; při výpadku chybí návštěvy balíků v konverzi (měsíční `WEB_ZASILKOVNA` může být aktuálnější).
+
+### Plánované rozšíření
+
+| Varianta | Popis | Náročnost | Vliv |
+|----------|-------|-----------|------|
+| **Z1 – Audit chybějících Z** | Fronta dokladů: sleva Zásilkovna bez poznámky Z, Z bez propojení na Packeta, neplatné číslo balíku | M | 5 |
+| **Z2 – Ruční přiřazení v UI** | Admin/vedoucí: k dokladu doplnit Z / číslo balíku, přiřadit k Packeta návštěvě, označit jako vyřešeno | M | 5 |
+| **Z3 – Oprava po importu** | Uložené ruční opravy přežijí další Symplio re-import (override tabulka nebo merge pravidlo) | L | 4 |
+| **Z4 – Notifikace prodejci** | Slack / úkol: „chybí Z u účtenky se slevou Zásilkovna“ do konce směny | M | 4 |
+| **Z5 – Sjednocení Packeta zdrojů** | Jeden zdroj pravdy: detailní provize + měsíční souhrn; alert při výpadku cronu | S | 4 |
+
+### Kontrolní checklist (Z1)
+
+- [ ] Doklad se slevou Zásilkovna a bez poznámky Z → ve frontě auditu
+- [ ] Doklad s poznámkou Z bez shody v Packeta → ve frontě (čeká import nebo ruční párování)
+- [ ] Po Z2 ruční opravě se metriky konverze přepočítají bez redeploye
+
+### Doporučené pořadí
+
+**Z1** (audit) → **Z2** (ruční UI) → **Z5** (spolehlivý import) → **Z3** (perzistence oprav) → **Z4** (notifikace).
+
+---
+
 ## 10. Historie změn dokumentu
 
 | Datum | Změna |
 |-------|-------|
+| 2026-07-02 | §13 Zásilkovna – audit a ruční opravy konverze |
 | 2026-07-01 | §12 Novinky – kdo reagoval + audit komentářů pro ne-adminy |
 | 2026-06-30 | §11 Slack denní report + personalizace do budoucna |
 | 2026-06-29 | První verze: finance, přístupy, objednávky, reklamace, gamifikace, návrhy rozšíření |

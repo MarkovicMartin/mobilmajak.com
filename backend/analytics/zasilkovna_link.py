@@ -1,9 +1,9 @@
-"""Propojení prodejů (Z + číslo balíku) s Packeta provizemi."""
+"""Propojení prodejů (Z / číslo balíku) s Packeta provizemi."""
 from __future__ import annotations
 
 import re
 from collections import defaultdict
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from typing import Iterable
 
@@ -11,7 +11,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 from analytics.models import WebProdejeAll
-from analytics.receipt_metrics import active_receipt_filter_q, leaderboard_doklad_q
+from analytics.receipt_metrics import active_receipt_filter_q
 from packeta.models import PacketaProvizePolozka
 from packeta.packeta_parser import PACKETA_MAIN_VISIT_TYPES, normalize_zasilka
 
@@ -19,6 +19,22 @@ from packeta.packeta_parser import PACKETA_MAIN_VISIT_TYPES, normalize_zasilka
 ZASILKA_NOTE_RE = re.compile(
     r'(?:^|(?<![A-Za-z0-9]))Z(?:\s*(\d[\d\s]{8,20}))',
     re.IGNORECASE | re.MULTILINE,
+)
+PLAIN_Z_MARKER_RE = re.compile(r'(?i)^\s*Z\s*$')
+ZS_PLAIN_Z_RE = re.compile(r'(?i)^\s*ZS:\s*Z\s*$')
+
+Z_NOTE_SOURCES = frozenset({'poznamka', 'poznamka_dokladu', 'poznamka_zakaznika'})
+
+Z_NOTE_FILTER_Q = (
+    Q(poznamka_dokladu__iregex=r'(?i)^\s*Z\s*$')
+    | Q(poznamka_dokladu__iregex=r'ZS:\s*Z')
+    | Q(poznamka_dokladu__iregex=r'Z[0-9]')
+    | Q(poznamka__iregex=r'Z[0-9]')
+    | Q(poznamka__iregex=r'ZS:\s*Z')
+    | Q(poznamka__iregex=r'(?i)^\s*Z\s*$')
+    | Q(poznamka_zakaznika__iregex=r'Z[0-9]')
+    | Q(poznamka_zakaznika__iregex=r'ZS:\s*Z')
+    | Q(poznamka_zakaznika__iregex=r'(?i)^\s*Z\s*$')
 )
 
 VYDANE_TYPY = frozenset({
@@ -42,6 +58,7 @@ class LinkedSale:
     cas_baliku: datetime | None
     match_source: str
     packeta_nalezeno: bool = True
+    z_marker: bool = False
 
 
 @dataclass
@@ -67,6 +84,38 @@ def parse_zasilka_from_note(text: str | None) -> str | None:
     if len(digits) < 9:
         return None
     return normalize_zasilka(f'Z {digits}')
+
+
+def is_plain_z_marker(text: str | None) -> bool:
+    if not text:
+        return False
+    t = text.strip()
+    return bool(PLAIN_Z_MARKER_RE.match(t) or ZS_PLAIN_Z_RE.match(t))
+
+
+def parse_z_note_fields(
+    poznamka_dokladu: str | None,
+    poznamka: str | None,
+    poznamka_zakaznika: str | None,
+) -> tuple[str | None, str | None, bool]:
+    """Vrátí (zasilka, match_source, z_marker). Priorita: doklad → položka → zákazník."""
+    for source, text in (
+        ('poznamka_dokladu', poznamka_dokladu),
+        ('poznamka', poznamka),
+        ('poznamka_zakaznika', poznamka_zakaznika),
+    ):
+        if not text:
+            continue
+        zasilka = parse_zasilka_from_note(text)
+        if zasilka:
+            return zasilka, source, False
+        if is_plain_z_marker(text):
+            return None, source, True
+    return None, None, False
+
+
+def is_z_oznaceno(item: LinkedSale) -> bool:
+    return item.match_source in Z_NOTE_SOURCES and (bool(item.zasilka) or item.z_marker)
 
 
 def typ_skupina(typ_provize: str | None) -> str | None:
@@ -154,7 +203,7 @@ def _packeta_index(visits: Iterable[PacketaVisit]) -> dict[tuple[int, str], list
     return idx
 
 
-def _scan_z_note_rows(
+def _scan_z_marked_doklady(
     date_from: date,
     date_to: date,
     prodejna_id: int | None,
@@ -162,20 +211,40 @@ def _scan_z_note_rows(
     qs = WebProdejeAll.objects.filter(
         typ__gte=date_from,
         typ__lte=date_to,
-    ).filter(
-        Q(poznamka__iregex=r'Z[0-9]') | Q(poznamka__iregex=r'ZS:\s*Z'),
-    )
+    ).filter(Z_NOTE_FILTER_Q)
     if prodejna_id:
         qs = qs.filter(id_prodejny=prodejna_id)
 
-    rows = []
+    by_doklad: dict[str, dict] = {}
     for row in qs.values(
-        'id', 'typ', 'doklad', 'poznamka', 'id_prodejce', 'id_prodejny', 'cas_prodeje',
+        'typ', 'doklad', 'poznamka', 'poznamka_dokladu', 'poznamka_zakaznika',
+        'id_prodejce', 'id_prodejny', 'cas_prodeje',
     ).iterator():
-        zasilka = parse_zasilka_from_note(row.get('poznamka'))
-        if not zasilka:
+        doklad = row.get('doklad')
+        if not doklad:
             continue
-        rows.append({**row, 'zasilka': zasilka, 'match_source': 'poznamka'})
+        existing = by_doklad.get(doklad)
+        if not existing:
+            by_doklad[doklad] = dict(row)
+            continue
+        if not (existing.get('poznamka_dokladu') or '').strip() and (row.get('poznamka_dokladu') or '').strip():
+            existing['poznamka_dokladu'] = row['poznamka_dokladu']
+
+    rows = []
+    for row in by_doklad.values():
+        zasilka, source, z_marker = parse_z_note_fields(
+            row.get('poznamka_dokladu'),
+            row.get('poznamka'),
+            row.get('poznamka_zakaznika'),
+        )
+        if not zasilka and not z_marker:
+            continue
+        rows.append({
+            **row,
+            'zasilka': zasilka,
+            'match_source': source,
+            'z_marker': z_marker,
+        })
     return rows
 
 
@@ -206,8 +275,60 @@ def _scan_sleva_fallback(
             **row,
             'zasilka': None,
             'match_source': 'sleva_fallback',
+            'z_marker': False,
         })
     return rows
+
+
+def _pick_packeta_match(
+    zasilka: str | None,
+    z_marker: bool,
+    prodejna_id: int | None,
+    sale_dt: datetime | None,
+    packeta_idx: dict[tuple[int, str], list[PacketaVisit]],
+    visits: list[PacketaVisit],
+    used_visits: set[tuple[int, str]],
+) -> PacketaVisit | None:
+    if zasilka and prodejna_id:
+        matches = packeta_idx.get((prodejna_id, zasilka), [])
+        best: PacketaVisit | None = None
+        for cand in matches:
+            if _within_window(sale_dt, cand.cas):
+                best = cand
+                break
+        if not best and matches:
+            best = matches[0]
+        if best:
+            return best
+
+    if not z_marker or not prodejna_id:
+        return None
+
+    best: PacketaVisit | None = None
+    best_delta: float | None = None
+    for cand in visits:
+        if cand.prodejna_id != prodejna_id:
+            continue
+        if cand.typ_skupina != 'vydane':
+            continue
+        key = (cand.prodejna_id, cand.zasilka)
+        if key in used_visits:
+            continue
+        if not _within_window(sale_dt, cand.cas):
+            continue
+        if sale_dt is None:
+            return cand
+        cdt = cand.cas
+        sdt = sale_dt
+        if timezone.is_naive(cdt):
+            cdt = timezone.make_aware(cdt)
+        if timezone.is_naive(sdt):
+            sdt = timezone.make_aware(sdt)
+        delta = abs((sdt - cdt).total_seconds())
+        if best is None or (best_delta is not None and delta < best_delta):
+            best = cand
+            best_delta = delta
+    return best
 
 
 def link_sales_to_packeta(
@@ -221,31 +342,24 @@ def link_sales_to_packeta(
 
     linked: list[LinkedSale] = []
     invalid_z: list[dict] = []
-    seen_doklad_z: set[tuple[str, str | None]] = set()
+    seen_doklad: set[str] = set()
+    used_visits: set[tuple[int, str]] = set()
 
-    for row in _scan_z_note_rows(date_from, date_to, prodejna_id):
+    for row in _scan_z_marked_doklady(date_from, date_to, prodejna_id):
         doklad = row.get('doklad')
-        zasilka = row['zasilka']
-        if not doklad or doklad not in qualifying:
+        zasilka = row.get('zasilka')
+        z_marker = bool(row.get('z_marker'))
+        if not doklad or doklad not in qualifying or doklad in seen_doklad:
             continue
-        dedupe_key = (doklad, zasilka)
-        if dedupe_key in seen_doklad_z:
-            continue
-        seen_doklad_z.add(dedupe_key)
+        seen_doklad.add(doklad)
 
         pid = row.get('id_prodejny')
-        matches = packeta_idx.get((pid, zasilka), []) if pid else []
         sale_dt = _sale_datetime(row['typ'], row.get('cas_prodeje'))
+        best = _pick_packeta_match(
+            zasilka, z_marker, pid, sale_dt, packeta_idx, visits, used_visits,
+        )
 
-        best: PacketaVisit | None = None
-        for cand in matches:
-            if _within_window(sale_dt, cand.cas):
-                best = cand
-                break
-        if not best and matches:
-            best = matches[0]
-
-        if not best:
+        if zasilka and not best:
             invalid_z.append({
                 'doklad': doklad,
                 'zasilka': zasilka,
@@ -253,33 +367,23 @@ def link_sales_to_packeta(
                 'id_prodejce': row.get('id_prodejce'),
                 'id_prodejny': pid,
             })
-            linked.append(LinkedSale(
-                zasilka=zasilka,
-                zasilka_raw=zasilka,
-                typ_provize=None,
-                typ_skupina=None,
-                id_prodejce=row.get('id_prodejce'),
-                id_prodejny=pid,
-                doklad=doklad,
-                datum_prodeje=row['typ'],
-                cas_baliku=None,
-                match_source='poznamka',
-                packeta_nalezeno=False,
-            ))
-            continue
+
+        if best:
+            used_visits.add((best.prodejna_id, best.zasilka))
 
         linked.append(LinkedSale(
-            zasilka=zasilka,
-            zasilka_raw=zasilka,
-            typ_provize=best.typ_provize,
-            typ_skupina=best.typ_skupina,
+            zasilka=best.zasilka if best else (zasilka or ''),
+            zasilka_raw=best.zasilka if best else (zasilka or ''),
+            typ_provize=best.typ_provize if best else None,
+            typ_skupina=best.typ_skupina if best else None,
             id_prodejce=row.get('id_prodejce'),
             id_prodejny=pid,
             doklad=doklad,
             datum_prodeje=row['typ'],
-            cas_baliku=best.cas,
-            match_source='poznamka',
-            packeta_nalezeno=True,
+            cas_baliku=best.cas if best else None,
+            match_source=row['match_source'],
+            packeta_nalezeno=best is not None,
+            z_marker=z_marker,
         ))
 
     known_doklady = {l.doklad for l in linked}
@@ -299,6 +403,7 @@ def link_sales_to_packeta(
             cas_baliku=None,
             match_source='sleva_fallback',
             packeta_nalezeno=False,
+            z_marker=False,
         ))
 
     return linked, invalid_z
@@ -337,10 +442,11 @@ def prodeje_by_prodejce(linked: Iterable[LinkedSale]) -> dict[int, dict]:
         pid = item.id_prodejce
         if not pid:
             continue
-        if item.match_source == 'poznamka' and item.zasilka:
+        if is_z_oznaceno(item):
             out[pid]['prodeje_oznacene'].add(item.doklad)
-            out[pid]['zasilky'].add(item.zasilka)
-        if item.packeta_nalezeno or item.match_source == 'poznamka':
+            if item.zasilka:
+                out[pid]['zasilky'].add(item.zasilka)
+        if item.packeta_nalezeno or item.match_source in Z_NOTE_SOURCES:
             out[pid]['prodeje_propojene'].add(item.doklad)
 
     result = {}
@@ -401,6 +507,6 @@ def prodeje_zasilkovna_by_prodejna(
     for item in linked:
         if not item.id_prodejny:
             continue
-        if item.packeta_nalezeno or item.match_source == 'poznamka':
+        if item.packeta_nalezeno or item.match_source in Z_NOTE_SOURCES:
             by_prodejna[item.id_prodejny].add(item.doklad)
     return {sid: len(doklady) for sid, doklady in by_prodejna.items()}

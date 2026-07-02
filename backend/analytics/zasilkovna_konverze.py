@@ -14,6 +14,7 @@ from analytics.zasilkovna_link import (
     baliky_vydane_by_prodejce,
     baliky_vydane_by_prodejna,
     distinct_visit_counts,
+    is_z_oznaceno,
     link_sales_to_packeta,
     load_packeta_visits,
     prodeje_by_prodejce,
@@ -43,7 +44,7 @@ def build_konverze_report(
     linked, invalid_z = link_sales_to_packeta(date_from, date_to, prodejna_id)
 
     linked_typed = _linked_with_typ(linked)
-    prodeje_z_note = {l.doklad for l in linked if l.match_source == 'poznamka' and l.zasilka}
+    prodeje_z_note = {l.doklad for l in linked if is_z_oznaceno(l)}
     prodeje_fallback = {l.doklad for l in linked if l.match_source == 'sleva_fallback'}
     prodeje_propojene = {l.doklad for l in linked if l.packeta_nalezeno}
     prodeje_celkem = {l.doklad for l in linked}
@@ -137,9 +138,25 @@ def build_konverze_report(
             'id_prodejny': l.id_prodejny,
             'match_source': l.match_source,
             'packeta_nalezeno': l.packeta_nalezeno,
+            'z_marker': l.z_marker,
         }
         for l in sorted(linked_typed, key=lambda x: (x.datum_prodeje or date.min, x.doklad), reverse=True)[:300]
     ]
+
+    # Doklady označené Z bez propojení na Packeta (čekají na import nebo ruční opravu)
+    chybi_propojeni = [
+        {
+            'doklad': l.doklad,
+            'datum_prodeje': l.datum_prodeje.isoformat() if l.datum_prodeje else None,
+            'id_prodejce': l.id_prodejce,
+            'id_prodejny': l.id_prodejny,
+            'match_source': l.match_source,
+            'z_marker': l.z_marker,
+            'zasilka': l.zasilka or None,
+        }
+        for l in linked
+        if is_z_oznaceno(l) and not l.packeta_nalezeno
+    ][:100]
 
     return {
         'date_from': date_from.isoformat(),
@@ -155,12 +172,14 @@ def build_konverze_report(
             'prodeje_celkem': len(prodeje_celkem),
             'konverze_pct': _pct(len(prodeje_propojene), navstevy),
             'neplatne_z': len(invalid_z),
+            'chybi_propojeni_z': len(chybi_propojeni),
         },
         'po_typu': po_typu,
         'po_prodejne': po_prodejne,
         'prodejci': prodejci,
         'detail': detail,
         'neplatne_z': invalid_z[:100],
+        'chybi_propojeni': chybi_propojeni,
     }
 
 
