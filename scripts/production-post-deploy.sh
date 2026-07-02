@@ -22,6 +22,10 @@ if [ -f "$ENV_FILE" ]; then
   fi
 fi
 
+# Po přesunu Packeta do app packeta zůstávaly staré soubory ve finance/ a rozbíjely cron import.
+rm -f "$APP/finance/packeta_fetch.py" "$APP/finance/packeta_parser.py" "$APP/finance/packeta_shift_assign.py" \
+  "$APP/finance/management/commands/import_packeta_provize.py"
+
 cd "$APP"
 sudo -u webmajak bash -lc 'set -e; source venv/bin/activate; export DJANGO_SETTINGS_MODULE=webapp.settings_production; python manage.py migrate --noinput || echo "WARN: migrate skipped"; python manage.py collectstatic --noinput; python manage.py check --deploy || python manage.py check'
 systemctl restart webmajak
