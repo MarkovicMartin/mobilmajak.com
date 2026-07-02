@@ -6,20 +6,13 @@ from users.mzda_utils import is_brigadnik
 from .labor_hours import HODINY_NA_PRACOVNI_DEN, fondu_hodin_mesic
 from .models import Smena
 from .czech_holidays import get_ceske_svatky
+from .shift_helpers import _is_markovic_active_seller, is_backoffice_user
 
 DOVOLENA_ROCNI_FOND = 160
 DOVOLENA_PREVOD_MAX = 40
 DOVOLENA_HODINY_ZA_DEN = HODINY_NA_PRACOVNI_DEN
 DOVOLENA_DEFICIT_OD_ROK = 2026
 DOVOLENA_DEFICIT_OD_MESIC = 6
-
-
-def _is_markovic_active_seller(user):
-    """Martin Markovič – prodej na pultu při roli ADMIN."""
-    return (
-        (getattr(user, 'jmeno', '') or '').strip().lower() == 'martin'
-        and (getattr(user, 'prijmeni', '') or '').strip().lower() == 'markovič'
-    )
 
 
 def is_dovolena_eligible(user):
@@ -41,7 +34,7 @@ def pocita_deficit_z_fondu(user):
         return True
     if getattr(user, 'role', None) == 'ADMIN':
         return False
-    if getattr(user, 'prodejna_id', None) is None:
+    if is_backoffice_user(user):
         return False
     return True
 

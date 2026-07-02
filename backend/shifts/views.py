@@ -52,13 +52,19 @@ def _normalize_brigadnik_rezim(user, typ_smeny, raw_rezim):
     return rezim if rezim in ('prodejce', 'vypomoc') else 'prodejce'
 
 
-def _normalize_pozice_smeny(prodejna, typ_smeny, raw_pozice):
-    """Pozice prodej/servis – jen u práce na prodejně s povoleným servisem."""
+def _normalize_pozice_smeny(prodejna, typ_smeny, raw_pozice, user=None):
+    """Pozice prodej/servis/backoffice – backoffice pro centrální zaměstnance."""
+    from shifts.shift_helpers import is_backoffice_user
+
     if typ_smeny != 'prace':
         return 'prodej'
+    if user and is_backoffice_user(user):
+        return 'backoffice'
+    pozice = (raw_pozice or 'prodej').strip()
+    if pozice == 'backoffice':
+        return 'backoffice'
     if not prodejna or not getattr(prodejna, 'povolena_pozice_servis', False):
         return 'prodej'
-    pozice = (raw_pozice or 'prodej').strip()
     return pozice if pozice in ('prodej', 'servis') else 'prodej'
 
 
@@ -270,7 +276,7 @@ def smeny_list(request):
                         user, typ_smeny, data.get('brigadnik_rezim'),
                     ),
                     pozice_smeny=_normalize_pozice_smeny(
-                        prodejna_obj, typ_smeny, data.get('pozice_smeny'),
+                        prodejna_obj, typ_smeny, data.get('pozice_smeny'), user=user,
                     ),
                     poznamka=data.get('poznamka', '')
                 )
@@ -357,7 +363,7 @@ def smeny_bulk_create(request):
                         user, typ_smeny, data.get('brigadnik_rezim'),
                     ),
                     pozice_smeny=_normalize_pozice_smeny(
-                        prodejna_obj, typ_smeny, data.get('pozice_smeny'),
+                        prodejna_obj, typ_smeny, data.get('pozice_smeny'), user=user,
                     ),
                     poznamka=poznamka
                 )
@@ -451,6 +457,7 @@ def smena_detail(request, smena_id):
                     smena.prodejna,
                     smena.typ_smeny,
                     data.get('pozice_smeny', smena.pozice_smeny),
+                    user=smena.user,
                 )
             if 'poznamka' in data:
                 smena.poznamka = data['poznamka']

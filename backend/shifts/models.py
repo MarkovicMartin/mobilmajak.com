@@ -19,6 +19,7 @@ class Smena(models.Model):
     POZICE_SMENY = [
         ('prodej', 'Prodej'),
         ('servis', 'Servisní technik'),
+        ('backoffice', 'Backoffice'),
     ]
     
     user = models.ForeignKey(WebUser, on_delete=models.CASCADE, related_name='smeny')

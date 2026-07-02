@@ -10,6 +10,36 @@ from stores.models import Prodejna
 
 ABSENCE_SHIFT_TYPES = ('dovolena', 'nemoc')
 
+BACKOFFICE_SURNAME_KEYS = frozenset({'smčková', 'smckova'})
+
+
+def _is_markovic_active_seller(user) -> bool:
+    """Martin Markovič – prodej na pultu při roli ADMIN."""
+    return (
+        (getattr(user, 'jmeno', '') or '').strip().lower() == 'martin'
+        and (getattr(user, 'prijmeni', '') or '').strip().lower() == 'markovič'
+    )
+
+
+def is_backoffice_user(user) -> bool:
+    """
+    Backoffice – bez domovské prodejny, ve směnách jako Backoffice (ne Prodejce).
+    Michaela Smčková je výslovně backoffice i při chybně nastavené prodejně.
+    """
+    if not user:
+        return False
+    if _is_markovic_active_seller(user):
+        return False
+    prijmeni = (getattr(user, 'prijmeni', '') or '').strip().lower()
+    if prijmeni in BACKOFFICE_SURNAME_KEYS:
+        return True
+    if getattr(user, 'role', None) == 'ADMIN':
+        return False
+    return (
+        getattr(user, 'prodejna_id', None) is None
+        and getattr(user, 'role', None) in ('PRODEJCE', 'VEDOUCI')
+    )
+
 # Dočasně: prodejci mohou opravit směny za červen 2026 do 1. 8. 2026.
 JUNE_2026_SHIFT_EDIT_UNTIL = date(2026, 8, 1)
 JUNE_2026_START = date(2026, 6, 1)

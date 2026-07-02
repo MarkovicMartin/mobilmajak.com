@@ -334,6 +334,14 @@ class VacationServiceTests(TestCase):
         deficit = deficit_mesic_hodin(user.id, 2027, 1)
         self.assertEqual(deficit, round(fond - 28, 2))
 
+    def test_michaela_s_deficit_nezapocitava(self):
+        """Michaela Smčková – backoffice i při přiřazené prodejně."""
+        user = WebUser.objects.create(
+            id=9026, uzivatelske_jmeno='michaela.smckova', jmeno='Michaela', prijmeni='Smčková',
+            heslo='x', role='PRODEJCE', aktivni=True, prodejna_id=self.prodejna.id,
+        )
+        self.assertFalse(pocita_deficit_z_fondu(user))
+
     def test_backoffice_jen_smeny_dovolene(self):
         """Backoffice bez prodejny – čerpá jen ze směn dovolené, ne z deficitu fondu."""
         user = WebUser.objects.create(

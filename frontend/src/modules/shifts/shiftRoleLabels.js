@@ -1,6 +1,6 @@
 /**
  * Zobrazení role směny místo generického „Práce“.
- * Brigádník: Výpomoc / Prodejce; servisní pozice; absence: Dovolená / Nemoc.
+ * Brigádník: Výpomoc / Prodejce; servisní pozice; backoffice; absence: Dovolená / Nemoc.
  */
 export const shiftRoleLabel = (shift, { short = false } = {}) => {
     if (!shift) return '—';
@@ -9,6 +9,7 @@ export const shiftRoleLabel = (shift, { short = false } = {}) => {
     if (typ === 'nemoc') return 'Nemoc';
     if (typ !== 'prace') return typ;
 
+    if (shift.pozice_smeny === 'backoffice') return 'Backoffice';
     if (shift.pozice_smeny === 'servis') {
         if (short) {
             return shift.servis_uroven === 'zauceni' ? 'Servis (zašk.)' : 'Servis';

@@ -10,7 +10,7 @@ from pathlib import Path
 from django.db import transaction
 
 from shifts.models import Smena
-from shifts.shift_helpers import find_overlapping_shift, is_absence_shift, resolve_prodejna
+from shifts.shift_helpers import find_overlapping_shift, is_absence_shift, is_backoffice_user, resolve_prodejna
 from shifts.vacation_service import normalize_dovolena_casy
 from stores.models import Prodejna
 from stores.oteviraci_doba_utils import DNY_KLICE, resolve_den_hours
@@ -681,7 +681,9 @@ def apply_parsed_shifts(
             brigadnik_rezim = 'prodejce'
 
         pozice = shift.pozice_smeny
-        if shift.typ_smeny != 'prace' or not prodejna_obj or not prodejna_obj.povolena_pozice_servis:
+        if is_backoffice_user(user):
+            pozice = 'backoffice'
+        elif shift.typ_smeny != 'prace' or not prodejna_obj or not prodejna_obj.povolena_pozice_servis:
             pozice = 'prodej'
 
         note_parts = [poznamka, shift.source_file]

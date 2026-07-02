@@ -3,6 +3,7 @@ import Modal from '../../components/Modal';
 import { AnalyticsDateInput } from '../../components/AnalyticsDateRange';
 import { userAPI, storeAPI } from '../../services/api';
 import { shiftRoleLabel } from './shiftRoleLabels';
+import { isBackofficeUser } from './shiftBackoffice';
 import './ShiftForm.css';
 
 const buildInitialFormData = (user, initialDatum, editShift) => {
@@ -175,6 +176,8 @@ function ShiftForm({ user, onClose, onSuccess, initialDatum = '', editShift = nu
     const isSenimo = selectedStoreName === 'Senimo';
     const servisPoziceEnabled = Boolean(selectedStore?.povolena_pozice_servis);
     const selectedUserObj = users.find((u) => u.id === formData.user_id) || user;
+    const backofficeUser = isBackofficeUser(selectedUserObj);
+    const showPoziceSelect = (servisPoziceEnabled || backofficeUser) && formData.typ_smeny === 'prace';
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -187,7 +190,7 @@ function ShiftForm({ user, onClose, onSuccess, initialDatum = '', editShift = nu
             if (!isBrigadnikShift) {
                 delete payload.brigadnik_rezim;
             }
-            if (!servisPoziceEnabled || formData.typ_smeny !== 'prace') {
+            if (!showPoziceSelect) {
                 delete payload.pozice_smeny;
             }
             if (isAbsence) {
@@ -357,15 +360,16 @@ function ShiftForm({ user, onClose, onSuccess, initialDatum = '', editShift = nu
                         </div>
                     )}
 
-                    {servisPoziceEnabled && formData.typ_smeny === 'prace' && (
+                    {showPoziceSelect && (
                         <div className="form-group">
                             <label>Pozice na směně:</label>
                             <select
                                 value={formData.pozice_smeny}
                                 onChange={(e) => setFormData({ ...formData, pozice_smeny: e.target.value })}
                             >
-                                <option value="prodej">Prodej</option>
-                                <option value="servis">Servisní technik</option>
+                                {!backofficeUser && <option value="prodej">Prodej</option>}
+                                {backofficeUser && <option value="backoffice">Backoffice</option>}
+                                {servisPoziceEnabled && <option value="servis">Servisní technik</option>}
                             </select>
                             {selectedUserObj?.servis_uroven === 'zauceni' && formData.pozice_smeny === 'servis' && (
                                 <div className="time-info">

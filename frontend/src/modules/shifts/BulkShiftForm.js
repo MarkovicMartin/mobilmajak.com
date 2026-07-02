@@ -3,6 +3,7 @@ import Modal from '../../components/Modal';
 import { userAPI, storeAPI } from '../../services/api';
 import './BulkShiftForm.css';
 import UnifiedCalendar from './UnifiedCalendar';
+import { isBackofficeUser } from './shiftBackoffice';
 import { parse, isBefore } from 'date-fns';
 
 function BulkShiftForm({ user, onClose, onSuccess, initialDates = [], initialMonth = null }) {
@@ -138,6 +139,8 @@ function BulkShiftForm({ user, onClose, onSuccess, initialDates = [], initialMon
     const selectedUser = users.find((u) => u.id === formData.user_id) || user;
     const selectedStore = stores.find((s) => s.id === formData.prodejna);
     const servisPoziceEnabled = Boolean(selectedStore?.povolena_pozice_servis);
+    const backofficeUser = isBackofficeUser(selectedUser);
+    const showPoziceSelect = (servisPoziceEnabled || backofficeUser) && formData.typ_smeny === 'prace';
     const isAbsence = formData.typ_smeny === 'dovolena' || formData.typ_smeny === 'nemoc';
     const isBrigadnikShift = selectedUser?.role === 'BRIGADNIK' && formData.typ_smeny === 'prace';
 
@@ -159,7 +162,7 @@ function BulkShiftForm({ user, onClose, onSuccess, initialDates = [], initialMon
             if (!isBrigadnikShift) {
                 delete requestData.brigadnik_rezim;
             }
-            if (!servisPoziceEnabled || formData.typ_smeny !== 'prace') {
+            if (!showPoziceSelect) {
                 delete requestData.pozice_smeny;
             }
             if (isAbsence) {
@@ -308,7 +311,7 @@ function BulkShiftForm({ user, onClose, onSuccess, initialDates = [], initialMon
                                     </div>
                                 )}
 
-                                {servisPoziceEnabled && formData.typ_smeny === 'prace' && (
+                                {showPoziceSelect && (
                                     <div className="form-group">
                                         <label className="form-label">Pozice na směně:</label>
                                         <select
@@ -316,8 +319,9 @@ function BulkShiftForm({ user, onClose, onSuccess, initialDates = [], initialMon
                                             value={formData.pozice_smeny}
                                             onChange={(e) => setFormData(prev => ({ ...prev, pozice_smeny: e.target.value }))}
                                         >
-                                            <option value="prodej">Prodej</option>
-                                            <option value="servis">Servisní technik</option>
+                                            {!backofficeUser && <option value="prodej">Prodej</option>}
+                                            {backofficeUser && <option value="backoffice">Backoffice</option>}
+                                            {servisPoziceEnabled && <option value="servis">Servisní technik</option>}
                                         </select>
                                     </div>
                                 )}
