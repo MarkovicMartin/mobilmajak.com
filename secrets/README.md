@@ -5,7 +5,9 @@
 | `secrets/mobilmajak_vps_ed25519` nebo `secrets/mobilmajak_vps_ed25519.USER_INPUT_REQ` | Privátní SSH klíč (celý blok `-----BEGIN … KEY-----` … `-----END …`) |
 | `backend/.env` | DB heslo – šablona `backend/.env.example` |
 | `frontend/.env.production` | `REACT_APP_CLARITY_PROJECT_ID` – šablona `frontend/.env.example` |
-| `secrets/actor-cesta-na-vps.USER_INPUT_REQ` | Cesta k actoru na VPS po `grep techniciMap` |
+| `secrets/mobilmajak-finance.json` | Finance modul – šablona `mobilmajak-finance.example.json` |
+| `secrets/mobilmajak-slack.json` | Slack bot token + signing secret – šablona `mobilmajak-slack.example.json` |
+| `secrets/slacktoken.json` | **legacy** – starý formát; stále funguje jako záloha, raději migruj na `mobilmajak-slack.json` |
 
 **Privátní klíč (funguje):** `.ssh/webmajak_vps/mobilmajak_vps_ed25519` v kořeni projektu (v gitignore)
 
@@ -43,31 +45,36 @@ Nastaví u uživatele `webmajak`: 1. den v měsíci 6:00 `ensure_monthly_plans -
 
 Po „Založit plány na rok“ z UI se prodejci přepočítají hned; denní cron od 15. doplňuje směny.
 
-**Slack notifikace úkolů (volitelné):**
+**Slack (úkoly – notifikace + `/ukol` wizard):**
 
-V `backend/.env` na stagingu / produkci:
+Kompletní návod pro Slack portal: **[docs/slack-app-produkce.md](../docs/slack-app-produkce.md)**
 
-```
-SLACK_BOT_TOKEN=xoxb-...
-MOBILMAJAK_APP_URL=https://staging.mobilmajak.com
-```
+**Doporučený soubor** (jako u financí):
 
-Volitelně kanálový webhook (fallback bez bota):
-
-```
-SLACK_TASKS_WEBHOOK_URL=https://hooks.slack.com/services/...
+```bash
+cp secrets/mobilmajak-slack.example.json secrets/mobilmajak-slack.json
+# vyplnit bot_token + signing_secret
 ```
 
-### Slack app – nastavení bota pro DM
+V `backend/.env` (lokálně i na VPS):
 
-1. Na [api.slack.com/apps](https://api.slack.com/apps) vytvořte **From scratch** appku (workspace MOBILMAJAK).
-2. **OAuth & Permissions** → Bot Token Scopes:
-   - `chat:write` – odesílání DM
-   - `users:read.email` – vyhledání uživatele podle e-mailu
-3. **Install App** do workspace → zkopírujte **Bot User OAuth Token** (`xoxb-...`) do `SLACK_BOT_TOKEN`.
-4. V **Manage Distribution** / nastavení appky povolte instalaci do workspace (pokud je appka jen pro jeden workspace, stačí Install).
-5. Uživatelé musí mít v MOBILMAJAK vyplněný **e-mail shodný se Slack účtem** (lookup přes `users.lookupByEmail`).
-6. Bota není nutné přidávat do kanálů pro DM – DM jdou přímo na uživatele.
+```
+SLACK_SECRETS_FILE=../secrets/mobilmajak-slack.json
+```
+
+Backend načte z JSON; **env proměnné** (`SLACK_BOT_TOKEN`, `SLACK_SIGNING_SECRET`, …) mají **přednost** před souborem.
+
+**Signing secret** → Slack app → Basic Information → App Credentials → Signing Secret.
+
+**Bot token** (`xoxb-...`) → Install App → Bot User OAuth Token.
+
+**Migrace ze `secrets/slacktoken.json`:** zkopíruj token do `bot_token`, signing secret doplň do `signing_secret`, `app_url` nech `https://mobilmajak.com`.
+
+Na **produkčním VPS** buď:
+- nahraj `secrets/mobilmajak-slack.json` a nastav `SLACK_SECRETS_FILE`, **nebo**
+- nech hodnoty přímo v `/home/webmajak/app/backend/.env` (deploy `.env` nepřepisuje).
+
+Po změně: `sudo systemctl restart gunicorn`.
 
 Test lookupu (na serveru s tokenem v env):
 

@@ -163,7 +163,7 @@ function VacationPanel({ user }) {
                                     {formatPoints(row.dovolena_sazba_h)}/h
                                 </div>
                                 <div className="vacation-stat-label">
-                                    Sazba dovolené (průměr 3 měs.)
+                                    Sazba dovolené (výplata / h)
                                 </div>
                             </div>
                         </div>
@@ -186,7 +186,7 @@ function VacationPanel({ user }) {
                         )}
 
                         <p className="vacation-rate-hint">
-                            Průměr fixní mzdy za poslední 3 měsíce (k {row.prumer_mesice || `${rok}`}):
+                            Průměr mzdy (jako ve výplatě, bez dopravného a dýška) za poslední 3 měsíce (k {row.prumer_mesice || `${rok}`}):
                             {' '}<strong>{formatPoints(row.prumer_fixni_h)} bodů/h</strong>
                             {' '}→ výplata dovolené {formatPoints(row.dovolena_sazba_h)} bodů/h
                         </p>
@@ -198,7 +198,11 @@ function VacationPanel({ user }) {
                                         <tr>
                                             <th>Měsíc (průměr)</th>
                                             <th>Odpracováno</th>
-                                            <th>Fixní výplata</th>
+                                            <th>Základ</th>
+                                            <th>Provize</th>
+                                            <th>Položky</th>
+                                            <th>Odměna</th>
+                                            <th>Srážky</th>
                                             <th>Sazba</th>
                                         </tr>
                                     </thead>
@@ -207,7 +211,18 @@ function VacationPanel({ user }) {
                                             <tr key={`${pm.rok}-${pm.mesic}`}>
                                                 <td>{MONTH_NAMES[pm.mesic - 1]} {pm.rok}</td>
                                                 <td>{formatNumber(pm.odpracovano_h)} h</td>
-                                                <td>{formatPoints(pm.fixni_body)}</td>
+                                                <td>{formatPoints(pm.zaklad_body ?? pm.fixni_body)}</td>
+                                                <td>{formatPoints(pm.provize_body || 0)}</td>
+                                                <td>{formatPoints(pm.pol_dok_odmena_body || 0)}</td>
+                                                <td>{formatPoints(pm.odmena_mesic_body || 0)}</td>
+                                                <td>
+                                                    {pm.penalizace_srazka_body > 0 && (
+                                                        <span title="Srážky z provize">
+                                                            −{formatPoints(pm.penalizace_srazka_body)}
+                                                        </span>
+                                                    )}
+                                                    {!pm.penalizace_srazka_body && '—'}
+                                                </td>
                                                 <td>{formatPoints(pm.sazba_h)}/h</td>
                                             </tr>
                                         ))}
@@ -217,6 +232,14 @@ function VacationPanel({ user }) {
                                             <td>Celkem / průměr</td>
                                             <td>{formatNumber(row.prumer_detail.celkem_h)} h</td>
                                             <td>{formatPoints(row.prumer_detail.celkem_fixni)}</td>
+                                            <td>{formatPoints(row.prumer_detail.celkem_provize || 0)}</td>
+                                            <td>{formatPoints(row.prumer_detail.celkem_pol_dok || 0)}</td>
+                                            <td>{formatPoints(row.prumer_detail.celkem_odmena || 0)}</td>
+                                            <td>
+                                                {row.prumer_detail.celkem_penalizace > 0 ? (
+                                                    <span>−{formatPoints(row.prumer_detail.celkem_penalizace)}</span>
+                                                ) : '—'}
+                                            </td>
                                             <td><strong>{formatPoints(row.prumer_detail.prumer_fixni_h)}/h</strong></td>
                                         </tr>
                                     </tfoot>

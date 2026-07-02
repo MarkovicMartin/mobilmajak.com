@@ -1,0 +1,26 @@
+.shell-brand {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-width: 0;
+}
+
+.shell-brand__mark {
+    width: 1.375rem;
+}
+
+.shell-brand__wordmark {
+    margin: 0;
+    font-family: var(--font-family-display);
+    font-size: 0.8125rem;
+    font-weight: var(--font-weight-bold);
+    line-height: var(--line-height-tight);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--brand-navy);
+    white-space: nowrap;
+}
+
+.dark-mode .shell-brand__wordmark {
+    color: var(--text-inverse);
+}

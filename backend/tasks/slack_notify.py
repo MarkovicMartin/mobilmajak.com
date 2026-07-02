@@ -39,6 +39,7 @@ DM_EVENT_TYPES = (
 )
 
 _slack_user_cache: dict[int, str | None] = {}
+_slack_id_to_web_user_cache: dict[str, int | None] = {}
 
 
 class SlackApiError(Exception):
@@ -60,7 +61,7 @@ def _app_base_url() -> str:
     return (getattr(settings, "MOBILMAJAK_APP_URL", None) or "https://mobilmajak.com").rstrip("/")
 
 
-_SLACK_GET_METHODS = frozenset({"users.lookupByEmail"})
+_SLACK_GET_METHODS = frozenset({"users.lookupByEmail", "users.info"})
 
 
 def _slack_api(method: str, payload: dict[str, Any]) -> dict:
@@ -118,6 +119,58 @@ def slack_user_id_for_web_user(user: WebUser | int | None) -> str | None:
     except Exception:
         logger.exception("Slack lookup selhal pro WebUser #%s", user.id)
         return None
+
+
+def web_user_for_slack_id(slack_user_id: str | None) -> WebUser | None:
+    """Najde WebUser podle Slack user ID (users.info → e-mail)."""
+    sid = (slack_user_id or "").strip()
+    if not sid:
+        return None
+    if sid in _slack_id_to_web_user_cache:
+        uid = _slack_id_to_web_user_cache[sid]
+        if uid is None:
+            return None
+        try:
+            return WebUser.objects.get(pk=uid, aktivni=True)
+        except WebUser.DoesNotExist:
+            _slack_id_to_web_user_cache[sid] = None
+            return None
+
+    if not _bot_token():
+        return None
+
+    try:
+        data = _slack_api("users.info", {"user": sid})
+        profile = (data.get("user") or {}).get("profile") or {}
+        email = (profile.get("email") or "").strip().lower()
+        if not email:
+            _slack_id_to_web_user_cache[sid] = None
+            return None
+        user = WebUser.objects.filter(email__iexact=email, aktivni=True).first()
+        _slack_id_to_web_user_cache[sid] = user.id if user else None
+        if user:
+            _slack_user_cache[user.id] = sid
+        return user
+    except SlackApiError as exc:
+        logger.info("Slack users.info selhalo pro %s: %s", sid, exc.error)
+        _slack_id_to_web_user_cache[sid] = None
+        return None
+    except Exception:
+        logger.exception("Slack users.info selhalo pro %s", sid)
+        return None
+
+
+def open_slack_modal(trigger_id: str, view: dict) -> bool:
+    """Otevře modální dialog (views.open) – textový vstup bez psaní do DM."""
+    tid = (trigger_id or "").strip()
+    if not tid or not _bot_token():
+        return False
+    try:
+        _slack_api("views.open", {"trigger_id": tid, "view": view})
+        return True
+    except Exception:
+        logger.exception("Slack views.open selhalo")
+        return False
 
 
 def send_slack_dm(slack_user_id: str, text: str, blocks: list | None = None) -> bool:

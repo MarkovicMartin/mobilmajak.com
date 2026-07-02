@@ -144,6 +144,26 @@ class UkolSlackNotifikace(models.Model):
         return f"Slack {self.typ}{who} pro úkol #{self.ukol_id}"
 
 
+class SlackTaskDraft(models.Model):
+    """Rozpracovaný úkol zakládaný přes Slack bota (wizard)."""
+
+    slack_user_id = models.CharField(max_length=32, unique=True, db_column="SLACK_USER_ID")
+    channel_id = models.CharField(max_length=32, blank=True, default="", db_column="CHANNEL_ID")
+    web_user_id = models.IntegerField(db_column="WEB_USER_ID")
+    step = models.CharField(max_length=40, db_column="STEP")
+    data = models.JSONField(default=dict, blank=True, db_column="DATA")
+    vytvoreno = models.DateTimeField(auto_now_add=True, db_column="VYTVORENO")
+    upraveno = models.DateTimeField(auto_now=True, db_column="UPRAVENO")
+
+    class Meta:
+        db_table = "WEB_UKOLY_SLACK_DRAFT"
+        verbose_name = "Slack draft úkolu"
+        verbose_name_plural = "Slack drafty úkolů"
+
+    def __str__(self) -> str:
+        return f"Slack draft {self.slack_user_id} krok={self.step}"
+
+
 class UkolShiftRecapNotifikace(models.Model):
     """Odeslaný ranní recap úkolů ke směně (jednou za směnu)."""
 

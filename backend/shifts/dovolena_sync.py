@@ -3,8 +3,7 @@ from decimal import Decimal
 
 from shifts.vacation_service import (
     DOVOLENA_ROCNI_FOND,
-    cerpana_dovolena_rok,
-    deficit_fondu_rok,
+    celkove_cerpano_rok,
     dovolena_stav,
     prevod_z_predchoziho_roku,
 )
@@ -30,7 +29,7 @@ def apply_dovolena_targets(user, rok, fond_h, cerpano_h, zbyva_h=None, dry_run=F
 
     prevod = prevod_z_predchoziho_roku(user.id, rok)
     fond_zaklad = float(DOVOLENA_ROCNI_FOND) + prevod
-    cerpano_sys = cerpana_dovolena_rok(user.id, rok) + deficit_fondu_rok(user.id, rok)
+    cerpano_sys = celkove_cerpano_rok(user.id, rok, user=user)
     fond_extra = round(fond_h - fond_zaklad, 2)
     korekce = round(cerpano_h - cerpano_sys, 2)
 

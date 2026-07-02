@@ -2,7 +2,7 @@
 
 Živý dokument pro plánování rozšíření. U každé oblasti: **stav dnes**, **varianty rozpracování**, **odhad náročnosti** (S/M/L/XL) a **vliv na kvalitu aplikace** (1–5, kde 5 = největší přínos pro provoz nebo řízení firmy).
 
-Poslední revize: 2026-06-29
+Poslední revize: 2026-07-01
 
 ---
 
@@ -208,6 +208,8 @@ ReklamacePolozka
 | **Interní knowledge base** | Krátké návody (jak založit reklamaci, jak objednat díl) v aplikaci | S | 3 | Méně opakovaných dotazů |
 | **Mobilní PWA režim** | Offline-light pro objednávky a přístupy na prodejně | L | 4 | Adopce v terénu |
 | **Symplio kategorie webhook** | Po ruční změně v Symplio označit položku v G2 jako vyřešenou | XL | 3 | Závislost na Symplio API |
+| **Novinky – kdo reagoval** | V UI u příspěvku zobrazit, kdo dal kterou emoji reakci (data už jsou v API) | S | 3 | Viz §12 |
+| **Audit komentářů pro ne-adminy** | Ověřit a otestovat, že komentovat mohou i běžní uživatelé (novinky + úkoly) | S | 4 | Viz §12 |
 
 ---
 
@@ -307,9 +309,41 @@ flowchart LR
 
 ---
 
+## 12. Novinky – reakce a komentáře
+
+### Stav dnes
+
+- **Reakce:** model `Reakce`, API vrací `reakce[]` včetně `uzivatel` (`ReakceSerializer`). Frontend (`Post.js`) zobrazuje jen souhrnný počet a počty per emoji – **ne kdo konkrétně reagoval**.
+- **Komentáře k novinkám:** backend `IsAuthenticated` – komentovat může každý přihlášený uživatel; mazat jen autor nebo admin.
+- **Komentáře k úkolům:** backend vyžaduje `user_can_access_task` (admin, vedoucí prodejny, přiřazený řešitel, osobní úkol). Frontend formulář neomezuje podle role, ale při chybě 403 se chyba **neukáže** (`TaskComments.js` – tiché selhání).
+
+### Plánované rozšíření
+
+| Varianta | Popis | Náročnost | Vliv |
+|----------|-------|-----------|------|
+| **N1 – Kdo reagoval** | Po kliknutí / hover na emoji badge: popover se seznamem jmen (seskupení per typ reakce) | S | 3 |
+| **N2 – Audit komentářů ne-adminů** | E2E ověření: prodejce komentuje novinku; řešitel / vedoucí komentuje úkol, ke kterému má přístup; dokumentovat očekávané chování | S | 4 |
+| **N3 – Testy oprávnění** | Backend testy: `POST /news/{id}/komentare/` a `POST /tasks/{id}/comments/` pro role PRODEJCE, VEDOUCI, ADMIN | S | 4 |
+| **N4 – Viditelná chyba u úkolů** | Místo tichého failu zobrazit „Nemáte oprávnění“ nebo API message | S | 3 |
+
+### Kontrolní checklist (N2)
+
+- [ ] Prodejce (ne admin) přidá komentář k novince – úspěch
+- [ ] Přiřazený řešitel přidá komentář ke svému úkolu – úspěch
+- [ ] Vedoucí přidá komentář k úkolu na své prodejně – úspěch
+- [ ] Uživatel bez přístupu k úkolu dostane 403 a srozumitelnou hlášku (po N4)
+- [ ] Reakce: po implementaci N1 jsou jména reagujících čitelná u každého příspěvku
+
+### Doporučené pořadí
+
+**N2 + N3** (ověření oprávnění) → **N4** (UX) → **N1** (reakce).
+
+---
+
 ## 10. Historie změn dokumentu
 
 | Datum | Změna |
 |-------|-------|
+| 2026-07-01 | §12 Novinky – kdo reagoval + audit komentářů pro ne-adminy |
 | 2026-06-30 | §11 Slack denní report + personalizace do budoucna |
 | 2026-06-29 | První verze: finance, přístupy, objednávky, reklamace, gamifikace, návrhy rozšíření |

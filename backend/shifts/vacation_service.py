@@ -30,6 +30,22 @@ def is_dovolena_eligible(user):
     return _is_markovic_active_seller(user)
 
 
+def pocita_deficit_z_fondu(user):
+    """
+    Prodejci na prodejně – čerpání z nesplněného měsíčního fondu (přesčas se nezapočítává).
+    Admin / backoffice bez prodejny – jen směny typu dovolená (směny jinak neevidují).
+    """
+    if not is_dovolena_eligible(user):
+        return False
+    if _is_markovic_active_seller(user):
+        return True
+    if getattr(user, 'role', None) == 'ADMIN':
+        return False
+    if getattr(user, 'prodejna_id', None) is None:
+        return False
+    return True
+
+
 def _svatky_set(rok):
     return {(y, m, d) for y, m, d in get_ceske_svatky(rok)}
 
@@ -94,8 +110,8 @@ def _mesic_ukoncen(rok, mesic_cislo, referencni_datum=None):
 
 def deficit_mesic_hodin(user_id, rok, mesic_cislo, hours_cache=None):
     """
-    Nesplněný měsíční pracovní fond: max(0, fondu - odpracováno - dovolená v měsíci).
-    Dovolená v měsíci se odečte, aby se nepočítala dvakrát (směna + deficit).
+    Nesplněný měsíční pracovní fond: max(0, fondu - min(odpracováno, fondu)).
+    Přesčas nad fond se do čerpání dovolené nezapočítává; směny dovolené jen ve výpisu.
     """
     fondu = fondu_hodin_mesic(rok, mesic_cislo)
     if fondu <= 0:
@@ -107,19 +123,23 @@ def deficit_mesic_hodin(user_id, rok, mesic_cislo, hours_cache=None):
     else:
         hours = aggregate_hours_by_user(rok, mesic_cislo).get(user_id, {})
     odpracovano = float(hours.get('odpracovano_h', 0) or 0)
-    dovolena = float(hours.get('dovolena_h', 0) or 0)
-    return round(max(0.0, fondu - odpracovano - dovolena), 2)
+    odpracovano_efekt = min(odpracovano, fondu)
+    return round(max(0.0, fondu - odpracovano_efekt), 2)
 
 
-def deficit_mesic_pro_dovolenou(user_id, rok, mesic_cislo, hours_cache=None):
-    """Deficit započítaný do dovolené – 0 před červnem 2026."""
+def deficit_mesic_pro_dovolenou(user_id, rok, mesic_cislo, user=None, hours_cache=None):
+    """Deficit započítaný do dovolené – 0 před červnem 2026 nebo u admin/backoffice."""
+    if user is not None and not pocita_deficit_z_fondu(user):
+        return 0.0
     if not _mesic_pocita_deficit(rok, mesic_cislo):
         return 0.0
     return deficit_mesic_hodin(user_id, rok, mesic_cislo, hours_cache=hours_cache)
 
 
-def deficit_fondu_rok(user_id, rok, referencni_datum=None, hours_cache=None):
+def deficit_fondu_rok(user_id, rok, user=None, referencni_datum=None, hours_cache=None):
     """Součet deficitů z ukončených měsíců v daném roce."""
+    if user is not None and not pocita_deficit_z_fondu(user):
+        return 0.0
     if referencni_datum is None:
         referencni_datum = date.today()
     celkem = 0.0
@@ -132,13 +152,30 @@ def deficit_fondu_rok(user_id, rok, referencni_datum=None, hours_cache=None):
     return round(celkem, 2)
 
 
-def celkove_cerpano_rok(user_id, rok, ignorovat_smena_id=None, referencni_datum=None, hours_cache=None):
-    """Čerpání fondu: směny dovolené + automatický deficit z nesplněného měsíčního fondu."""
-    smeny_h = cerpana_dovolena_rok(user_id, rok, ignorovat_smena_id=ignorovat_smena_id)
-    deficit_h = deficit_fondu_rok(
-        user_id, rok, referencni_datum=referencni_datum, hours_cache=hours_cache,
-    )
-    return round(smeny_h + deficit_h, 2)
+def celkove_cerpano_rok(user_id, rok, user=None, ignorovat_smena_id=None, referencni_datum=None, hours_cache=None):
+    """
+    Čerpání ročního fondu:
+    - prodejci na prodejně (od 6/2026): deficit měsíčního fondu,
+    - prodejci před 6/2026: směny dovolené,
+    - admin / backoffice: jen směny typu dovolená.
+    """
+    if user is None:
+        from users.models import WebUser
+        user = WebUser.objects.get(pk=user_id)
+    if pocita_deficit_z_fondu(user):
+        if referencni_datum is None:
+            referencni_datum = date.today()
+        cerpano = 0.0
+        for mesic in range(1, 13):
+            if not _mesic_ukoncen(rok, mesic, referencni_datum):
+                continue
+            if _mesic_pocita_deficit(rok, mesic):
+                cerpano += deficit_mesic_hodin(user_id, rok, mesic, hours_cache=hours_cache)
+            else:
+                cerpano += cerpana_dovolena_mesic(user_id, rok, mesic, hours_cache=hours_cache)
+    else:
+        cerpano = cerpana_dovolena_rok(user_id, rok, ignorovat_smena_id=ignorovat_smena_id)
+    return round(cerpano, 2)
 
 
 def prevod_z_predchoziho_roku(user_id, rok, _memo=None, hours_cache=None):
@@ -194,10 +231,25 @@ def dovolena_stav(user, rok=None, hours_cache=None, referencni_datum=None):
     prevod = prevod_z_predchoziho_roku(user.id, rok, hours_cache=hours_cache)
     fond = dovolena_fond_rok(user.id, rok, fond_extra=extra, hours_cache=hours_cache)
     cerpano_smeny = cerpana_dovolena_rok(user.id, rok)
-    odeceno_deficit = deficit_fondu_rok(
-        user.id, rok, referencni_datum=referencni_datum, hours_cache=hours_cache,
-    )
-    cerpano = round(cerpano_smeny + odeceno_deficit + korekce, 2)
+    if pocita_deficit_z_fondu(user):
+        if referencni_datum is None:
+            referencni_datum = date.today()
+        odeceno_deficit = deficit_fondu_rok(
+            user.id, rok, user=user, referencni_datum=referencni_datum, hours_cache=hours_cache,
+        )
+        cerpano_pred_cutoff = 0.0
+        for mesic in range(1, 13):
+            if not _mesic_ukoncen(rok, mesic, referencni_datum):
+                continue
+            if not _mesic_pocita_deficit(rok, mesic):
+                cerpano_pred_cutoff += cerpana_dovolena_mesic(
+                    user.id, rok, mesic, hours_cache=hours_cache,
+                )
+        cerpano_zdroj = odeceno_deficit + cerpano_pred_cutoff
+    else:
+        odeceno_deficit = 0.0
+        cerpano_zdroj = cerpano_smeny
+    cerpano = round(cerpano_zdroj + korekce, 2)
     zbyva = fond - cerpano
     return {
         'rok': rok,
@@ -214,13 +266,20 @@ def dovolena_stav(user, rok=None, hours_cache=None, referencni_datum=None):
     }
 
 
-def validate_dovolena_kapacita(user, datum, typ_smeny, ignorovat_smena_id=None):
+def validate_dovolena_kapacita(user, datum, typ_smeny, ignorovat_smena_id=None, referencni_datum=None):
     if typ_smeny != 'dovolena' or not is_dovolena_eligible(user):
         return None
     nove_h = float(DOVOLENA_HODINY_ZA_DEN)
     rok = datum.year if isinstance(datum, date) else datum
     fond = dovolena_fond_rok(user.id, rok, fond_extra=fond_extra_h(user))
-    cerpano = celkove_cerpano_rok(user.id, rok, ignorovat_smena_id=ignorovat_smena_id) + korekce_cerpano_h(user)
+    cerpano = celkove_cerpano_rok(
+        user.id, rok, user=user, ignorovat_smena_id=ignorovat_smena_id,
+        referencni_datum=referencni_datum,
+    )
+    smeny = cerpana_dovolena_rok(user.id, rok, ignorovat_smena_id=ignorovat_smena_id)
+    if pocita_deficit_z_fondu(user):
+        cerpano = max(cerpano, smeny)
+    cerpano += korekce_cerpano_h(user)
     if cerpano + nove_h > fond + 0.001:
         zbyva = max(0.0, fond - cerpano)
         return (
@@ -257,24 +316,38 @@ def cerpana_dovolena_mesic(user_id, rok, mesic_cislo, hours_cache=None):
     return round(float(hours.get('dovolena_h', 0) or 0), 2)
 
 
-def mesicni_cerpani_dovolene(user_id, rok, mesic_cislo, referencni_datum=None, hours_cache=None):
+def mesicni_cerpani_dovolene(user_id, rok, mesic_cislo, user=None, referencni_datum=None, hours_cache=None):
     """
-    Čerpání fondu v měsíci: směny dovolené + deficit (jen u ukončených měsíců).
+    Čerpání fondu v měsíci – prodejci z deficitu fondu, admin/backoffice ze směn dovolené.
+    Směny dovolené jsou vždy ve výpisu (dovolena_smeny_h).
     """
+    if user is None:
+        from users.models import WebUser
+        user = WebUser.objects.get(pk=user_id)
     smeny_h = cerpana_dovolena_mesic(user_id, rok, mesic_cislo, hours_cache=hours_cache)
-    pocita_deficit = _mesic_pocita_deficit(rok, mesic_cislo)
+    z_fondu = pocita_deficit_z_fondu(user)
+    pocita_deficit = z_fondu and _mesic_pocita_deficit(rok, mesic_cislo)
     deficit_h = (
         deficit_mesic_hodin(user_id, rok, mesic_cislo, hours_cache=hours_cache)
         if pocita_deficit else 0.0
     )
     ukoncen = _mesic_ukoncen(rok, mesic_cislo, referencni_datum)
     deficit_odeceno = round(deficit_h, 2) if ukoncen and pocita_deficit else 0.0
+    if z_fondu:
+        if pocita_deficit:
+            cerpano_h = deficit_odeceno
+        elif ukoncen:
+            cerpano_h = smeny_h
+        else:
+            cerpano_h = 0.0
+    else:
+        cerpano_h = smeny_h if ukoncen else 0.0
     return {
         'mesic': mesic_cislo,
         'dovolena_smeny_h': smeny_h,
         'deficit_h': deficit_odeceno,
         'deficit_predikce_h': round(deficit_h, 2) if not ukoncen and pocita_deficit and deficit_h > 0 else 0.0,
-        'cerpano_h': round(smeny_h + deficit_odeceno, 2),
+        'cerpano_h': round(cerpano_h, 2),
         'mesic_ukoncen': ukoncen,
     }
 
@@ -298,7 +371,7 @@ def build_hours_cache_for_overview(rok, referencni_datum=None) -> dict:
     }
 
 
-def build_vacation_overview_user(user, rok=None, referencni_datum=None, hours_cache=None):
+def build_vacation_overview_user(user, rok=None, referencni_datum=None, hours_cache=None, prumer_cache=None):
     """Přehled dovolené pro jednoho uživatele – roční tabulka měsíců a sazba výplaty."""
     if not is_dovolena_eligible(user):
         return None
@@ -307,23 +380,25 @@ def build_vacation_overview_user(user, rok=None, referencni_datum=None, hours_ca
     if referencni_datum is None:
         referencni_datum = date.today()
 
-    from .payroll_service import prumer_fixni_hodinove_body, prumer_fixni_hodinove_detail
+    from .payroll_service import prumer_dovolena_hodinove_body, prumer_dovolena_hodinove_detail
     from .prumer_mzdy_override import prumer_override_for_user
 
     ref_mesic = _reference_month_for_prumer(rok, referencni_datum)
     override_mesice = prumer_override_for_user(user)
-    prumer_detail = prumer_fixni_hodinove_detail(
-        user, rok, ref_mesic, hours_cache=hours_cache, override_mesice=override_mesice,
+    prumer_detail = prumer_dovolena_hodinove_detail(
+        user, rok, ref_mesic, hours_cache=hours_cache, prumer_cache=prumer_cache,
+        override_mesice=override_mesice,
     )
-    prumer_h = prumer_fixni_hodinove_body(
-        user, rok, ref_mesic, hours_cache=hours_cache, override_mesice=override_mesice,
+    prumer_h = prumer_dovolena_hodinove_body(
+        user, rok, ref_mesic, hours_cache=hours_cache, prumer_cache=prumer_cache,
+        override_mesice=override_mesice,
     )
     stav = dovolena_stav(
         user, rok, hours_cache=hours_cache, referencni_datum=referencni_datum,
     )
     mesice = [
         mesicni_cerpani_dovolene(
-            user.id, rok, m, referencni_datum=referencni_datum, hours_cache=hours_cache,
+            user.id, rok, m, user=user, referencni_datum=referencni_datum, hours_cache=hours_cache,
         )
         for m in range(1, 13)
     ]

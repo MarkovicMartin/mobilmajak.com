@@ -113,4 +113,7 @@ class ProdejnaChoiceSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Prodejna
-        fields = ['id', 'nazev', 'nazev_kratkiy', 'barva', 'povolena_pozice_servis', 'oteviraci_doba']
+        fields = [
+            'id', 'nazev', 'nazev_kratkiy', 'barva', 'povolena_pozice_servis',
+            'oteviraci_doba', 'otevreno_od', 'otevreno_do',
+        ]

@@ -20,6 +20,7 @@ from .attendance_service import (
     work_hours_from_history,
 )
 from .vacation_service import (
+    _reference_month_for_prumer,
     build_hours_cache_for_overview,
     build_vacation_overview_user,
     deficit_mesic_pro_dovolenou,
@@ -39,6 +40,7 @@ from .shift_helpers import (
     is_absence_shift,
     parse_shift_time,
     resolve_prodejna,
+    seller_may_edit_shift_on_date,
 )
 
 
@@ -193,10 +195,7 @@ def smeny_list(request):
         datum_str = data.get('datum')
         if datum_str:
             datum = datetime.strptime(datum_str, '%Y-%m-%d').date()
-            ted = date.today()
-            aktualni_mesic = ted.replace(day=1)
-            
-            if request.user.role not in ['ADMIN', 'VEDOUCI'] and datum < aktualni_mesic:
+            if request.user.role not in ['ADMIN', 'VEDOUCI'] and not seller_may_edit_shift_on_date(datum):
                 return Response({'error': 'Nelze vytvářet směny v minulých měsících'}, 
                               status=status.HTTP_403_FORBIDDEN)
         
@@ -310,10 +309,6 @@ def smeny_bulk_create(request):
         poznamka = data.get('poznamka', '')
         
         
-        # Kontrola času pro prodejce
-        ted = date.today()
-        aktualni_mesic = ted.replace(day=1)
-        
         uspesne = 0
         chyby = []
 
@@ -332,7 +327,7 @@ def smeny_bulk_create(request):
                 datum = datetime.strptime(datum_str, '%Y-%m-%d').date()
                 
                 # Kontrola oprávnění pro datum
-                if request.user.role not in ['ADMIN', 'VEDOUCI'] and datum < aktualni_mesic:
+                if request.user.role not in ['ADMIN', 'VEDOUCI'] and not seller_may_edit_shift_on_date(datum):
                     chyby.append(f'{datum_str}: Nelze vytvářet směny v minulých měsících')
                     continue
                 
@@ -396,12 +391,9 @@ def smena_detail(request, smena_id):
                       status=status.HTTP_403_FORBIDDEN)
     
     # Kontrola času pro prodejce
-    if request.user.role not in ['ADMIN', 'VEDOUCI']:
-        ted = date.today()
-        aktualni_mesic = ted.replace(day=1)
-        if smena.datum < aktualni_mesic:
-            return Response({'error': 'Nelze upravovat směny v minulých měsících'}, 
-                          status=status.HTTP_403_FORBIDDEN)
+    if request.user.role not in ['ADMIN', 'VEDOUCI'] and not seller_may_edit_shift_on_date(smena.datum):
+        return Response({'error': 'Nelze upravovat směny v minulých měsících'}, 
+                      status=status.HTTP_403_FORBIDDEN)
     
     if request.method == 'PUT':
         try:
@@ -745,12 +737,20 @@ def vacation_overview(request):
     else:
         users = [request.user]
 
+    from .payroll_service import build_prumer_mzdy_cache_for_prumer
+
     result_users = []
     referencni_datum = date.today()
     hours_cache = build_hours_cache_for_overview(rok, referencni_datum=referencni_datum)
+    ref_mesic = _reference_month_for_prumer(rok, referencni_datum)
+    eligible_users = [u for u in users if is_dovolena_eligible(u)]
+    prumer_cache = build_prumer_mzdy_cache_for_prumer(
+        [u.id for u in eligible_users], rok, ref_mesic,
+    )
     for user in users:
         overview = build_vacation_overview_user(
             user, rok, referencni_datum=referencni_datum, hours_cache=hours_cache,
+            prumer_cache=prumer_cache,
         )
         if overview:
             result_users.append(overview)
@@ -856,7 +856,7 @@ def smeny_prehled(request):
     from .labor_hours import fondu_hodin_mesic
 
     mesicni_fond = fondu_hodin_mesic(rok, mesic_cislo)
-    deficit_mesic = deficit_mesic_pro_dovolenou(user.id, rok, mesic_cislo) if is_dovolena_eligible(user) else 0.0
+    deficit_mesic = deficit_mesic_pro_dovolenou(user.id, rok, mesic_cislo, user=user) if is_dovolena_eligible(user) else 0.0
 
     return Response({
         'mesic': f'{rok}-{mesic_cislo:02d}',

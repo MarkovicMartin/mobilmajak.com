@@ -8,6 +8,7 @@ import { taskAPI } from '../../services/api';
 import TaskUrgencyBadge from '../tasks/TaskUrgencyBadge';
 import { openTask } from '../../utils/taskNavigation';
 import { shiftRoleLabel } from '../shifts/shiftRoleLabels';
+import { sellerMayEditShiftOnDate } from '../shifts/shiftEditPolicy';
 
 const formatShiftTime = (t) => (t || '').substring(0, 5);
 
@@ -15,11 +16,7 @@ const canEditShift = (shift, user, dateStr) => {
     if (!user) return false;
     if (['ADMIN', 'VEDOUCI'].includes(user.role)) return true;
     if (shift.user_id !== user.id) return false;
-    const [y, m] = dateStr.split('-').map(Number);
-    const shiftMonth = new Date(y, m - 1, 1);
-    const now = new Date();
-    const currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    return shiftMonth >= currentMonth;
+    return sellerMayEditShiftOnDate(dateStr);
 };
 
 const ProfileDayPanel = ({

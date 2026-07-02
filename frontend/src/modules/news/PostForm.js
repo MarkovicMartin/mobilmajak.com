@@ -116,9 +116,10 @@ const PostForm = ({ onSubmit, onCancel }) => {
         <Modal
             title="Nový příspěvek"
             onClose={onCancel}
-            size="md"
+            size="lg"
             onSubmit={handleSubmit}
             bodyClassName="post-form-body"
+            contentClassName="post-form-modal"
             footer={(
                 <>
                     <button type="button" className="btn-cancel" onClick={onCancel} disabled={isSubmitting}>
@@ -148,7 +149,6 @@ const PostForm = ({ onSubmit, onCancel }) => {
                             value={content}
                             onChange={(e) => setContent(e.target.value)}
                             placeholder="Co se děje?"
-                            rows={4}
                             maxLength={1000}
                         />
                         <div className="content-counter">

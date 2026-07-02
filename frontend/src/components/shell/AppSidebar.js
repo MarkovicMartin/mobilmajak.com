@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import ShellBrand from '../brand/ShellBrand';
 import ShellNavLinks, { ShellProfileLinks } from './ShellNavLinks';
 
 const AppSidebar = ({
@@ -23,10 +24,7 @@ const AppSidebar = ({
             aria-label="Hlavní navigace"
         >
             <div className="app-sidebar__brand">
-                <div className="app-sidebar__logo" aria-hidden="true">
-                    MM
-                </div>
-                {!collapsed && <h1 className="app-sidebar__title">MOBIL MAJÁK</h1>}
+                <ShellBrand showWordmark={!collapsed} />
                 <button
                     type="button"
                     className="app-sidebar__collapse-btn"

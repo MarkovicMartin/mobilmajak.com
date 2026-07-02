@@ -278,7 +278,11 @@ TICKET_WEBHOOK_URLS = [
     'https://80-211-198-189.sslip.io/webhook-test/e06d3356-c8d9-4bbd-bf15-2f9701962278',
 ]
 
-# Slack webhook pro notifikace termínů úkolů (volitelné – prázdné = no-op)
-SLACK_BOT_TOKEN = os.getenv('SLACK_BOT_TOKEN', '')
-SLACK_TASKS_WEBHOOK_URL = os.getenv('SLACK_TASKS_WEBHOOK_URL', '')
-MOBILMAJAK_APP_URL = os.getenv('MOBILMAJAK_APP_URL', 'http://localhost:3000')
+# Slack (úkoly) – env nebo secrets/mobilmajak-slack.json
+from tasks.slack_secrets import slack_config as _slack_config
+
+_slack = _slack_config()
+SLACK_BOT_TOKEN = _slack.bot_token
+SLACK_SIGNING_SECRET = _slack.signing_secret
+SLACK_TASKS_WEBHOOK_URL = _slack.tasks_webhook_url
+MOBILMAJAK_APP_URL = _slack.app_url or "http://localhost:3000"

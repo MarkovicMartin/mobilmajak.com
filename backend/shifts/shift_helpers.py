@@ -2,13 +2,30 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, time
+from datetime import date, datetime, timedelta, time
 
 from django.db.models import Q
 
 from stores.models import Prodejna
 
 ABSENCE_SHIFT_TYPES = ('dovolena', 'nemoc')
+
+# Dočasně: prodejci mohou opravit směny za červen 2026 do 1. 8. 2026.
+JUNE_2026_SHIFT_EDIT_UNTIL = date(2026, 8, 1)
+JUNE_2026_START = date(2026, 6, 1)
+
+
+def earliest_editable_shift_date(today: date | None = None) -> date:
+    """Nejdřívější datum směny, které může upravovat prodejce (ne admin/vedoucí)."""
+    today = today or date.today()
+    current_month_start = today.replace(day=1)
+    if today < JUNE_2026_SHIFT_EDIT_UNTIL and JUNE_2026_START < current_month_start:
+        return JUNE_2026_START
+    return current_month_start
+
+
+def seller_may_edit_shift_on_date(datum: date, today: date | None = None) -> bool:
+    return datum >= earliest_editable_shift_date(today)
 
 
 def is_absence_shift(typ_smeny: str | None) -> bool:

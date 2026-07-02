@@ -217,9 +217,13 @@ TICKET_WEBHOOK_URLS = [
 ]
 
 # Slack notifikace úkolů (volitelné – prázdné = no-op)
-SLACK_BOT_TOKEN = os.getenv('SLACK_BOT_TOKEN', '')
-SLACK_TASKS_WEBHOOK_URL = os.getenv('SLACK_TASKS_WEBHOOK_URL', '')
-MOBILMAJAK_APP_URL = os.getenv('MOBILMAJAK_APP_URL', 'https://mobilmajak.com')
+from tasks.slack_secrets import slack_config as _slack_config_prod
+
+_slack_prod = _slack_config_prod()
+SLACK_BOT_TOKEN = _slack_prod.bot_token
+SLACK_SIGNING_SECRET = _slack_prod.signing_secret
+SLACK_TASKS_WEBHOOK_URL = _slack_prod.tasks_webhook_url
+MOBILMAJAK_APP_URL = _slack_prod.app_url or "https://mobilmajak.com"
 
 # Logování pro produkci
 LOGGING = {

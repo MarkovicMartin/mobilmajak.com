@@ -804,3 +804,38 @@
 .bez-paru-hint__kandidat {
     color: #4b5563;
 }
+
+.payroll-prumer-dovolena-wrap {
+    grid-column: 1 / -1;
+    margin: 0.25rem 0 0.5rem;
+    overflow-x: auto;
+}
+
+.payroll-prumer-dovolena-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.payroll-prumer-dovolena-table th,
+.payroll-prumer-dovolena-table td {
+    padding: 0.35rem 0.5rem;
+    border-bottom: 1px solid #e5e7eb;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.payroll-prumer-dovolena-table th:first-child,
+.payroll-prumer-dovolena-table td:first-child {
+    text-align: left;
+}
+
+.payroll-prumer-dovolena-table th {
+    font-weight: 600;
+    color: #4b5563;
+}
+
+.payroll-prumer-dovolena-table tfoot td {
+    font-weight: 600;
+    border-top: 2px solid #d1d5db;
+}

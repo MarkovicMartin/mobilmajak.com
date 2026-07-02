@@ -6,6 +6,7 @@ import UnifiedCalendar from './UnifiedCalendar';
 import { shiftRoleLabel } from './shiftRoleLabels';
 import { groupDayShiftsByStore } from './shiftRosterUtils';
 import { format, parse, startOfMonth, endOfMonth, eachDayOfInterval, isBefore } from 'date-fns';
+import { earliestEditableShiftDate, sellerMayEditShiftMonth } from './shiftEditPolicy';
 import { isStoreOpenOnDate } from '../../constants/oteviraciDoba';
 
 const isWorkShift = (shift) => shift.typ_smeny === 'prace';
@@ -27,10 +28,11 @@ const getStaffingGap = (shifts, stores, allStores, dateStr, selectedProdejnaId =
         const missing = openStores.filter((s) => !staffedIds.has(s.id));
         if (!missing.length) return null;
         const allEmpty = missing.length === openStores.length;
+        const gapStores = allEmpty ? openStores : missing;
         return {
             kind: allEmpty ? 'all-empty' : 'partial',
             missing,
-            label: allEmpty ? '0 směn' : `−${missing.length}`,
+            labels: gapStores.map((s) => `chybí ${storeDisplayName(s)}`),
             title: allEmpty
                 ? 'Žádná pracovní směna na žádné otevřené prodejně'
                 : `Bez směny: ${missing.map(storeDisplayName).join(', ')}`,
@@ -41,10 +43,11 @@ const getStaffingGap = (shifts, stores, allStores, dateStr, selectedProdejnaId =
             const store = stores.find((s) => String(s.id) === String(selectedProdejnaId));
             if (store && !isStoreOpenOnDate(store, dateStr)) return null;
         }
+        const storeName = store ? storeDisplayName(store) : null;
         return {
             kind: 'all-empty',
-            missing: [],
-            label: '0 směn',
+            missing: store ? [store] : [],
+            labels: storeName ? [`chybí ${storeName}`] : ['chybí směna'],
             title: 'Žádná pracovní směna v tento den',
         };
     }
@@ -201,13 +204,10 @@ function ShiftCalendar({
             return;
         }
 
-        const today = new Date();
-        const currentMonth = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0');
         const shiftDatum = shift.datum || shift.date || dateStr;
         const shiftMonth = shiftDatum ? String(shiftDatum).substring(0, 7) : month;
         
-        // Kontrola měsíce s lepší chybovou hláškou
-        if (!['ADMIN', 'VEDOUCI'].includes(user?.role) && shiftMonth < currentMonth) {
+        if (!['ADMIN', 'VEDOUCI'].includes(user?.role) && !sellerMayEditShiftMonth(shiftMonth)) {
             setError('Nelze upravovat směny v minulých měsících. Obraťte se na administrátora.');
             return;
         }
@@ -272,9 +272,8 @@ function ShiftCalendar({
     const isDateSelectable = useCallback((date) => {
         if (svatky[format(date, 'yyyy-MM-dd')]) return false;
         if (user && ['ADMIN', 'VEDOUCI'].includes(user.role)) return true;
-        const firstOfMonth = parse(`${month}-01`, 'yyyy-MM-dd', new Date());
-        return !isBefore(date, firstOfMonth);
-    }, [month, svatky, user]);
+        return !isBefore(date, earliestEditableShiftDate());
+    }, [svatky, user]);
 
     const handlePickDate = useCallback((dateStr) => {
         setDragPreviewDates((prev) => {
@@ -504,7 +503,11 @@ function ShiftCalendar({
                                         className={`staffing-alert staffing-alert--${staffingGap.kind}`}
                                         title={staffingGap.title}
                                     >
-                                        ⚠ {staffingGap.label}
+                                        {staffingGap.labels.map((line) => (
+                                            <div key={line} className="staffing-alert__line">
+                                                ⚠ {line}
+                                            </div>
+                                        ))}
                                     </div>
                                 )}
                                 <div className="shifts-container">

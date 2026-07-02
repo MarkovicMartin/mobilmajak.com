@@ -1,0 +1,18 @@
+.brand-logo-mark {
+    display: block;
+    width: 1.625rem;
+    height: auto;
+    flex-shrink: 0;
+}
+
+.brand-logo-mark__beacon {
+    fill: var(--brand-pink);
+}
+
+.brand-logo-mark__a {
+    fill: var(--brand-navy);
+}
+
+.dark-mode .brand-logo-mark__a {
+    fill: var(--text-inverse);
+}

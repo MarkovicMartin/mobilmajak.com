@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import ShellBrand from '../brand/ShellBrand';
 import ShellNavLinks, { ShellProfileLinks } from './ShellNavLinks';
 
 const AppMobileDrawer = ({
@@ -35,7 +36,7 @@ const AppMobileDrawer = ({
                     {user?.jmeno ? (
                         <span className="app-drawer__user">{user.jmeno}</span>
                     ) : (
-                        <span className="app-drawer__user">MOBIL MAJÁK</span>
+                        <ShellBrand />
                     )}
                     <button
                         type="button"

@@ -116,6 +116,27 @@ function formatMonthName(monthStr) {
     return `${MONTH_NAMES[month - 1]} ${year}`;
 }
 
+function monthShortLabel(month, year) {
+    return `${MONTH_NAMES[month - 1]} ${year}`;
+}
+
+function formatDovolenaSazbaLabel(row) {
+    const sazba = row.prumer_dovolena_h ?? row.prumer_fixni_h;
+    const detail = row.prumer_dovolena_detail;
+    if (!detail || sazba == null) return null;
+    if (detail.zdroj === 'fallback_zaklad_fond' && detail.fallback_zaklad_body && detail.fallback_fond_h) {
+        return `${formatPoints(detail.fallback_zaklad_body)} / ${formatNumber(detail.fallback_fond_h)} h = ${formatPoints(sazba)}/h (fallback – bez historie)`;
+    }
+    if (detail.celkem_h > 0 && detail.celkem_mzda > 0) {
+        const mesice = (detail.mesice || [])
+            .map((pm) => monthShortLabel(pm.mesic, pm.rok))
+            .join(', ');
+        const importNote = detail.zdroj === 'override_excel' ? ', hodiny z importu' : '';
+        return `${formatPoints(detail.celkem_mzda)} / ${formatNumber(detail.celkem_h)} h = ${formatPoints(sazba)}/h (${mesice}${importNote})`;
+    }
+    return `${formatPoints(sazba)}/h`;
+}
+
 function returnsPersonKey(id, name) {
     if (id != null && id !== '') return `id:${id}`;
     return `name:${String(name || '—').trim().toLowerCase()}`;
@@ -932,14 +953,78 @@ function PayrollPanel({ month, onExport }) {
             </div>
         );
         if (dovolena > 0) {
+            const sazbaDovolenaLabel = formatDovolenaSazbaLabel(row);
             lines.push(
                 <div key="dovolena" className="breakdown-line">
                     <span className="breakdown-label">
-                        + Dovolená ({formatNumber(row.dovolena_h)} h × {formatPoints(row.prumer_fixni_h)}/h)
+                        + Dovolená ({formatNumber(row.dovolena_h)} h
+                        {sazbaDovolenaLabel ? `, ${sazbaDovolenaLabel}` : ` × ${formatPoints(row.prumer_fixni_h)}/h`})
                     </span>
                     <span className="breakdown-value">{formatPoints(dovolena)}</span>
                 </div>
             );
+            const prumerDetail = row.prumer_dovolena_detail;
+            if (prumerDetail?.mesice?.length > 0) {
+                lines.push(
+                    <div key="dovolena-prumer" className="payroll-prumer-dovolena-wrap">
+                        <table className="payroll-prumer-dovolena-table">
+                            <thead>
+                                <tr>
+                                    <th>Měsíc (průměr)</th>
+                                    <th>Odpracováno</th>
+                                    <th>Základ</th>
+                                    <th>Provize</th>
+                                    <th>Položky</th>
+                                    <th>Odměna</th>
+                                    <th>Srážky</th>
+                                    <th>Sazba</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {prumerDetail.mesice.map((pm) => (
+                                    <tr key={`${pm.rok}-${pm.mesic}`}>
+                                        <td>{monthShortLabel(pm.mesic, pm.rok)}</td>
+                                        <td>
+                                            {formatNumber(pm.odpracovano_h)} h
+                                            {pm.odpracovano_h_smeny != null && pm.hodiny_rozdil_h
+                                                ? ` (směny ${formatNumber(pm.odpracovano_h_smeny)})`
+                                                : ''}
+                                        </td>
+                                        <td>{formatPoints(pm.zaklad_body ?? pm.fixni_body)}</td>
+                                        <td>{formatPoints(pm.provize_body || 0)}</td>
+                                        <td>{formatPoints(pm.pol_dok_odmena_body || 0)}</td>
+                                        <td>{formatPoints(pm.odmena_mesic_body || 0)}</td>
+                                        <td>
+                                            {pm.penalizace_srazka_body > 0
+                                                ? `−${formatPoints(pm.penalizace_srazka_body)}`
+                                                : '—'}
+                                        </td>
+                                        <td>{formatPoints(pm.sazba_h)}/h</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td>Celkem / průměr</td>
+                                    <td>{formatNumber(prumerDetail.celkem_h)} h</td>
+                                    <td>{formatPoints(prumerDetail.celkem_fixni)}</td>
+                                    <td>{formatPoints(prumerDetail.celkem_provize || 0)}</td>
+                                    <td>{formatPoints(prumerDetail.celkem_pol_dok || 0)}</td>
+                                    <td>{formatPoints(prumerDetail.celkem_odmena || 0)}</td>
+                                    <td>
+                                        {prumerDetail.celkem_penalizace > 0
+                                            ? `−${formatPoints(prumerDetail.celkem_penalizace)}`
+                                            : '—'}
+                                    </td>
+                                    <td>
+                                        <strong>{formatPoints(prumerDetail.prumer_h ?? row.prumer_dovolena_h)}/h</strong>
+                                    </td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                );
+            }
         }
         if (dyska > 0) {
             lines.push(
@@ -1482,10 +1567,10 @@ function PayrollPanel({ month, onExport }) {
                                                 <div className="payroll-detail-full">
                                     {renderBrigadnikSouhrn(row)}
                                     {renderMzdaSouhrn(row)}
-                                    {row.deficit_h > 0 && (
+                                    {row.dovolena_smeny_h > 0 && row.dovolena_smeny_h !== row.dovolena_h && (
                                         <p className="payroll-detail-hint">
-                                            Deficit fondu v měsíci: {formatNumber(row.deficit_h)} h
-                                            {' '}(odečteno z roční dovolené
+                                            Směny dovolené ve výpisu: {formatNumber(row.dovolena_smeny_h)} h
+                                            {' '}(proplácen deficit fondu {formatNumber(row.dovolena_h)} h
                                             {row.prumer_fixni_h > 0
                                                 ? `, průměr ${formatPoints(row.prumer_fixni_h)} bodů/h`
                                                 : ''}

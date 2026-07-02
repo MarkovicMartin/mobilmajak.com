@@ -27,27 +27,9 @@
         border-bottom: 1px solid var(--border-secondary);
     }
 
-    .app-sidebar__logo {
-        width: 2.25rem;
-        height: 2.25rem;
-        border-radius: var(--radius-md);
-        background: linear-gradient(135deg, var(--brand-navy), var(--brand-pink));
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: var(--text-inverse);
-        font-size: var(--text-sm);
-        font-weight: var(--font-weight-bold);
-        flex-shrink: 0;
-    }
-
-    .app-sidebar__title {
-        margin: 0;
-        font-size: var(--text-sm);
-        font-weight: var(--font-weight-bold);
-        line-height: var(--line-height-tight);
-        color: var(--text-heading);
-        letter-spacing: 0.02em;
+    .app-sidebar__brand .shell-brand {
+        flex: 1;
+        min-width: 0;
     }
 
     .app-sidebar__nav {
@@ -339,11 +321,17 @@
 
     .app-sidebar--collapsed .app-sidebar__brand {
         flex-direction: column;
+        align-items: center;
         padding: var(--space-3) var(--space-2);
         gap: var(--space-2);
     }
 
-    .app-sidebar--collapsed .app-sidebar__title,
+    .app-sidebar--collapsed .app-sidebar__brand .shell-brand {
+        flex: none;
+        justify-content: center;
+    }
+
+    .app-sidebar--collapsed .shell-brand__wordmark,
     .app-sidebar--collapsed .app-sidebar__group-label,
     .app-sidebar--collapsed .shell-nav__label {
         display: none;
