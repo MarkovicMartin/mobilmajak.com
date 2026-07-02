@@ -40,8 +40,9 @@ from .shift_helpers import (
     is_absence_shift,
     parse_shift_time,
     resolve_prodejna,
-    seller_may_edit_shift_on_date,
+    user_may_edit_shift_on_date,
 )
+from plans.shift_hooks import naplanuj_prepocet_po_smene
 
 
 def _normalize_brigadnik_rezim(user, typ_smeny, raw_rezim):
@@ -214,8 +215,8 @@ def smeny_list(request):
         datum_str = data.get('datum')
         if datum_str:
             datum = datetime.strptime(datum_str, '%Y-%m-%d').date()
-            if request.user.role not in ['ADMIN', 'VEDOUCI'] and not seller_may_edit_shift_on_date(datum):
-                return Response({'error': 'Nelze vytvářet směny v minulých měsících'}, 
+            if not user_may_edit_shift_on_date(request.user, datum):
+                return Response({'error': 'Nelze vytvářet směny mimo aktuální měsíc'},
                               status=status.HTTP_403_FORBIDDEN)
         
         try:
@@ -295,7 +296,8 @@ def smeny_list(request):
                     ),
                     poznamka=data.get('poznamka', '')
                 )
-            
+                naplanuj_prepocet_po_smene(smena, zdroj='single')
+
             return Response({
                 'id': smena.id,
                 'message': 'Směna byla úspěšně vytvořena'
@@ -350,8 +352,8 @@ def smeny_bulk_create(request):
                 datum = datetime.strptime(datum_str, '%Y-%m-%d').date()
                 
                 # Kontrola oprávnění pro datum
-                if request.user.role not in ['ADMIN', 'VEDOUCI'] and not seller_may_edit_shift_on_date(datum):
-                    chyby.append(f'{datum_str}: Nelze vytvářet směny v minulých měsících')
+                if not user_may_edit_shift_on_date(request.user, datum):
+                    chyby.append(f'{datum_str}: Nelze vytvářet směny mimo aktuální měsíc')
                     continue
                 
                 bulk_cas_od = parse_shift_time(cas_od)
@@ -413,9 +415,8 @@ def smena_detail(request, smena_id):
         return Response({'error': 'Nemáte oprávnění upravovat tuto směnu'}, 
                       status=status.HTTP_403_FORBIDDEN)
     
-    # Kontrola času pro prodejce
-    if request.user.role not in ['ADMIN', 'VEDOUCI'] and not seller_may_edit_shift_on_date(smena.datum):
-        return Response({'error': 'Nelze upravovat směny v minulých měsících'}, 
+    if not user_may_edit_shift_on_date(request.user, smena.datum):
+        return Response({'error': 'Nelze upravovat směny mimo aktuální měsíc'},
                       status=status.HTTP_403_FORBIDDEN)
     
     if request.method == 'PUT':
@@ -459,6 +460,11 @@ def smena_detail(request, smena_id):
                     except ValueError as exc:
                         return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
             if 'datum' in data:
+                if not user_may_edit_shift_on_date(request.user, new_datum):
+                    return Response(
+                        {'error': 'Nelze přesunout směnu mimo aktuální měsíc'},
+                        status=status.HTTP_403_FORBIDDEN,
+                    )
                 smena.datum = new_datum
             if is_absence_shift(smena.typ_smeny):
                 cas_od, cas_do = normalize_dovolena_casy(
@@ -503,7 +509,8 @@ def smena_detail(request, smena_id):
                 return Response({'error': err_msg}, status=status.HTTP_409_CONFLICT)
 
             smena.save()
-            
+            naplanuj_prepocet_po_smene(smena, zdroj='single')
+
             return Response({'message': 'Směna byla úspěšně aktualizována'})
             
         except Exception as e:
@@ -512,7 +519,17 @@ def smena_detail(request, smena_id):
     elif request.method == 'DELETE':
         # Všichni uživatelé (včetně prodejců) skutečně mažou z databáze
         smena_info = f"{smena.user.prijmeni} - {smena.datum} - {smena.prodejna}"
+        smena_datum = smena.datum
+        smena_prodejna_id = smena.prodejna_id
+        smena_user = smena.user
         smena.delete()
+        naplanuj_prepocet_po_smene(
+            None,
+            zdroj='single',
+            datum=smena_datum,
+            prodejna_id=smena_prodejna_id,
+            user=smena_user,
+        )
         return Response({'message': f'Směna byla úspěšně smazána z databáze: {smena_info}'})
 
 

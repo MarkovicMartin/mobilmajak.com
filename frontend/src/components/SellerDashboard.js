@@ -220,15 +220,33 @@ export default function SellerDashboard({ user }) {
                   const pracovnichDni = mujPlan.pracovnich_dni ?? 0;
                   const smenDnes = mujPlan.smen_dnes ?? 0;
                   const jeDenni = mujPlanView === 'denni';
-                  const divisor = jeDenni ? (pracovnichDni > 0 ? pracovnichDni : PRUMER_PRACOVNICH_DNI) : 1;
+                  const denniData = mujPlan.denni;
+                  const fallbackDivisor = pracovnichDni > 0 ? pracovnichDni : PRUMER_PRACOVNICH_DNI;
+                  const divisor = jeDenni
+                    ? (denniData?.hodiny_mesic > 0 && denniData?.hodiny_dnes > 0
+                      ? denniData.hodiny_mesic / denniData.hodiny_dnes
+                      : fallbackDivisor)
+                    : 1;
                   const showDenni = jeDenni;
-                  const nemaSmeny = jeDenni && pracovnichDni === 0;
-                  const celkemZobraz = showDenni ? Math.ceil(mujPlan.celkem_polozek / divisor) : mujPlan.celkem_polozek;
+                  const nemaSmeny = jeDenni && pracovnichDni === 0 && !denniData;
+                  const denniKategorie = denniData?.kategorie;
+                  const zobrazKategorie = (jeDenni && denniKategorie?.length)
+                    ? denniKategorie
+                    : (mujPlan.kategorie || []);
+                  const celkemZobraz = jeDenni && denniData?.celkem_polozek != null
+                    ? denniData.celkem_polozek
+                    : (showDenni ? Math.ceil(mujPlan.celkem_polozek / divisor) : mujPlan.celkem_polozek);
                   const formatKs = (val) => number(Math.round(val));
+                  const prodejnyBreakdown = jeDenni
+                    ? (denniData?.prodejny || [])
+                    : (mujPlan.prodejny || []);
                   return (
                     <>
                       {nemaSmeny && (
                         <div className="muj-plan-info muj-plan-info-warning">Zobrazuje se odhadovaný průměr, pro přesné číslo si doplň směny!</div>
+                      )}
+                      {jeDenni && denniData?.odhad && pracovnichDni > 0 && (
+                        <div className="muj-plan-info">Denní plán odhadnut z {pracovnichDni} prac. dnů (dnes bez směny).</div>
                       )}
                       <div className="muj-plan-total">
                         Celkem <strong>{formatKs(celkemZobraz)}</strong> položek {showDenni ? 'za den' : 'za měsíc'}
@@ -251,15 +269,31 @@ export default function SellerDashboard({ user }) {
                           );
                         })()}
                         {!showDenni && mujPlan.celkem_castka && parseFloat(mujPlan.celkem_castka) > 0 && ` · ${number(parseFloat(mujPlan.celkem_castka))} Kč`}
-                        {showDenni && (pracovnichDni > 0 ? (
+                        {showDenni && denniData?.hodiny_dnes > 0 && (
+                          <span className="muj-plan-meta"> ({denniData.hodiny_dnes} h dnes)</span>
+                        )}
+                        {showDenni && !denniData?.hodiny_dnes && pracovnichDni > 0 && !denniData?.odhad && (
                           <span className="muj-plan-meta"> ({pracovnichDni} prac. dní)</span>
-                        ) : nemaSmeny ? null : (
+                        )}
+                        {showDenni && !denniData && nemaSmeny && (
                           <span className="muj-plan-meta"> (odhad /19)</span>
-                        ))}
+                        )}
                       </div>
+                      {prodejnyBreakdown.length > 1 && (
+                        <div className="muj-plan-prodejny">
+                          {prodejnyBreakdown.map((p) => (
+                            <span key={p.prodejna_id} className={`muj-plan-prodejna-chip${p.je_domaci ? '' : ' muj-plan-prodejna-cizi'}`}>
+                              {p.prodejna_nazev} {formatKs(p.celkem_polozek)} ks
+                            </span>
+                          ))}
+                        </div>
+                      )}
                       <div className="muj-plan-bars">
-                        {(mujPlan.kategorie || []).filter(k => k.pocet_kusu > 0).map((k) => {
-                          const cil = showDenni ? Math.ceil(k.pocet_kusu / divisor) : k.pocet_kusu;
+                        {zobrazKategorie.filter(k => k.pocet_kusu > 0).map((k) => {
+                          const mesicniKusy = (mujPlan.kategorie || []).find(
+                            (mk) => mk.kategorie_kod === k.kategorie_kod,
+                          )?.pocet_kusu ?? k.pocet_kusu;
+                          const cil = showDenni ? k.pocet_kusu : mesicniKusy;
                           const skutecne = showDenni ? (k.skutecne_dnes ?? 0) : (k.skutecne_kusy ?? 0);
                           const pct = cil > 0 ? Math.min(100, (skutecne / cil) * 100) : 0;
                           return (

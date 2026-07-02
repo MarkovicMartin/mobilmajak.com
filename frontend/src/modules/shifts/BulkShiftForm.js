@@ -4,7 +4,8 @@ import { userAPI, storeAPI } from '../../services/api';
 import './BulkShiftForm.css';
 import UnifiedCalendar from './UnifiedCalendar';
 import { isBackofficeUser, isAdminUser, isHomeOfficePozice } from './shiftBackoffice';
-import { parse, isBefore } from 'date-fns';
+import { format } from 'date-fns';
+import { sellerMayEditShiftOnDate } from './shiftEditPolicy';
 
 function BulkShiftForm({ user, onClose, onSuccess, initialDates = [], initialMonth = null }) {
     const [formData, setFormData] = useState({
@@ -397,9 +398,9 @@ function BulkShiftForm({ user, onClose, onSuccess, initialDates = [], initialMon
                                     selectedDates={selectedDates}
                                     enableDragSelect
                                     isDateEnabled={(date) => {
-                                        if (user && ['ADMIN', 'VEDOUCI'].includes(user.role)) return true;
-                                        const firstOfMonth = parse(`${currentMonth}-01`, 'yyyy-MM-dd', new Date());
-                                        return !isBefore(date, firstOfMonth);
+                                        if (user?.role === 'ADMIN') return true;
+                                        const dateStr = format(date, 'yyyy-MM-dd');
+                                        return sellerMayEditShiftOnDate(dateStr);
                                     }}
                                     onDateClick={(dateStr) => handleDateToggle(dateStr)}
                                     onDateDragSelect={(dateStr) => handleDateToggle(dateStr)}

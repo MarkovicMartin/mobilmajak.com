@@ -55,22 +55,22 @@ def is_backoffice_user(user) -> bool:
         and getattr(user, 'role', None) in ('PRODEJCE', 'VEDOUCI')
     )
 
-# Dočasně: prodejci mohou opravit směny za červen 2026 do 1. 8. 2026.
-JUNE_2026_SHIFT_EDIT_UNTIL = date(2026, 8, 1)
-JUNE_2026_START = date(2026, 6, 1)
-
-
 def earliest_editable_shift_date(today: date | None = None) -> date:
-    """Nejdřívější datum směny, které může upravovat prodejce (ne admin/vedoucí)."""
+    """První den aktuálního měsíce – prodejci smí měnit jen směny v tomto měsíci."""
     today = today or date.today()
-    current_month_start = today.replace(day=1)
-    if today < JUNE_2026_SHIFT_EDIT_UNTIL and JUNE_2026_START < current_month_start:
-        return JUNE_2026_START
-    return current_month_start
+    return today.replace(day=1)
 
 
 def seller_may_edit_shift_on_date(datum: date, today: date | None = None) -> bool:
-    return datum >= earliest_editable_shift_date(today)
+    """Prodejce / vedoucí: úpravy jen ve směnách spadajících do aktuálního kalendářního měsíce."""
+    today = today or date.today()
+    return datum.year == today.year and datum.month == today.month
+
+
+def user_may_edit_shift_on_date(user, datum: date, today: date | None = None) -> bool:
+    if is_admin_user(user):
+        return True
+    return seller_may_edit_shift_on_date(datum, today)
 
 
 def is_absence_shift(typ_smeny: str | None) -> bool:

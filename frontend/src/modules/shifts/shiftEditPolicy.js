@@ -1,23 +1,21 @@
-// Dočasně: prodejci mohou opravit směny za červen 2026 do 1. 8. 2026.
-const JUNE_2026_SHIFT_EDIT_UNTIL = new Date(2026, 7, 1);
-const JUNE_2026_START = new Date(2026, 5, 1);
+function currentMonthKey(refDate = new Date()) {
+    return `${refDate.getFullYear()}-${String(refDate.getMonth() + 1).padStart(2, '0')}`;
+}
 
+/** První den aktuálního měsíce – pro výběr data v kalendáři. */
 export function earliestEditableShiftDate(refDate = new Date()) {
-    const currentMonthStart = new Date(refDate.getFullYear(), refDate.getMonth(), 1);
-    if (refDate < JUNE_2026_SHIFT_EDIT_UNTIL && JUNE_2026_START < currentMonthStart) {
-        return JUNE_2026_START;
-    }
-    return currentMonthStart;
+    return new Date(refDate.getFullYear(), refDate.getMonth(), 1);
 }
 
 export function sellerMayEditShiftMonth(monthStr, refDate = new Date()) {
-    const [y, m] = monthStr.split('-').map(Number);
-    const shiftMonthStart = new Date(y, m - 1, 1);
-    return shiftMonthStart >= earliestEditableShiftDate(refDate);
+    return monthStr === currentMonthKey(refDate);
 }
 
 export function sellerMayEditShiftOnDate(dateStr, refDate = new Date()) {
-    const [y, m, d] = dateStr.split('-').map(Number);
-    const shiftDate = new Date(y, m - 1, d);
-    return shiftDate >= earliestEditableShiftDate(refDate);
+    return String(dateStr).slice(0, 7) === currentMonthKey(refDate);
+}
+
+export function userMayEditShiftOnDate(user, dateStr, refDate = new Date()) {
+    if (user?.role === 'ADMIN') return true;
+    return sellerMayEditShiftOnDate(dateStr, refDate);
 }

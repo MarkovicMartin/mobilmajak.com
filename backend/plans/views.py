@@ -874,12 +874,10 @@ def muj_plan(request):
     """
     GET – Vrátí osobní plán přihlášeného prodejce pro daný měsíc.
     Query: rok, mesic (volitelné, výchozí = aktuální měsíc).
-    Obsahuje plnění (skutečné kusy z WEB_PRODEJE_ALL) a trend.
+    Obsahuje plnění (skutečné kusy z WEB_PRODEJE_ALL), trend a rozpad po prodejnách.
     """
     from datetime import date
-    import calendar
-    from shifts.models import Smena
-    from .plneni import plneni_prodejce, plneni_prodejce_do_data, plneni_prodejce_den
+    from .muj_plan_service import build_muj_plan_payload
 
     today = date.today()
     rok = request.query_params.get('rok', today.year)
@@ -891,137 +889,7 @@ def muj_plan(request):
         rok = today.year
         mesic = today.month
 
-    # Počet pracovních směn (typ_smeny='prace') pro přihlášeného uživatele v daném měsíci
-    pracovnich_dni = Smena.objects.filter(
-        user=request.user,
-        datum__year=rok,
-        datum__month=mesic,
-        typ_smeny='prace',
-        aktivni=True,
-    ).count()
-
-    # Počet směn pro dnešek (pro denní zobrazení) – pokud 0, frontend použije 19
-    smen_dnes = 0
-    plneni_dnes = {}
-    if rok == today.year and mesic == today.month:
-        smen_dnes = Smena.objects.filter(
-            user=request.user,
-            datum=today,
-            typ_smeny='prace',
-            aktivni=True,
-        ).count()
-        plneni_dnes = plneni_prodejce_den(today, request.user.id)
-
-    plan_mesic = PlanMonth.objects.filter(
-        rok=rok, mesic=mesic, je_aktualni=True
-    ).first()
-
-    if not plan_mesic:
-        return Response({
-            'rok': rok,
-            'mesic': mesic,
-            'mesic_nazev': NAZVY_MESICU.get(mesic, ''),
-            'celkem_polozek': 0,
-            'celkem_castka': '0.00',
-            'kategorie': [],
-            'pracovnich_dni': pracovnich_dni,
-            'smen_dnes': smen_dnes,
-            'plneni': None,
-        })
-
-    plany_pp = PlanProdejce.objects.filter(
-        uzivatel=request.user,
-        plan_prodejna__plan_mesic=plan_mesic,
-    ).prefetch_related('kategorie')
-
-    # Agregace kusů a částek přes všechny prodejny
-    agregace = {}
-    for pp in plany_pp:
-        for k in pp.kategorie.all():
-            kod = k.kategorie_kod
-            if kod not in agregace:
-                agregace[kod] = {'pocet_kusu': 0, 'castka': Decimal('0')}
-            agregace[kod]['pocet_kusu'] += k.pocet_kusu
-            agregace[kod]['castka'] += k.castka
-
-    # Plnění z WEB_PRODEJE_ALL pro přihlášeného prodejce
-    prodejce_id = request.user.id
-    plneni_data = plneni_prodejce(rok, mesic, prodejce_id)
-    trend_kategorie = {}
-    je_aktualni_mesic = (rok == today.year and mesic == today.month)
-    if je_aktualni_mesic:
-        prvni_den = date(rok, mesic, 1)
-        pocet_dni = (today - prvni_den).days + 1
-        dni_v_mesici = calendar.monthrange(rok, mesic)[1]
-        if pocet_dni >= 2:
-            do_dnes = plneni_prodejce_do_data(rok, mesic, today, prodejce_id)
-            for kod, kusy_d in do_dnes.items():
-                prumer = kusy_d / pocet_dni if pocet_dni else 0
-                trend_kategorie[kod] = {
-                    'trend_kusy': round(prumer * dni_v_mesici),
-                    'trend_procent': None,
-                }
-
-    kategorie = []
-    celkem_skutecne = 0
-    celkem_polozek = 0
-    celkem_castka = Decimal('0')
-    for kod, data in sorted(agregace.items()):
-        if kod in SELLER_HIDDEN_PLAN_KATEGORIE:
-            continue
-        plan_k = data['pocet_kusu']
-        skut_k = plneni_data.get(kod, 0)
-        skut_dnes = plneni_dnes.get(kod, 0)
-        celkem_skutecne += skut_k
-        celkem_polozek += plan_k
-        celkem_castka += data['castka']
-        pct = (skut_k / plan_k * 100) if plan_k > 0 else 0
-        td = trend_kategorie.get(kod, {})
-        trend_k = td.get('trend_kusy')
-        trend_pct = (trend_k / plan_k * 100) if plan_k and trend_k is not None else None
-        if trend_pct is not None:
-            trend_pct = round(trend_pct, 1)
-        row = {
-            'kategorie_kod': kod,
-            'kategorie_nazev': seller_kategorie_nazev(kod, KATEGORIE_NAZVY.get(kod, kod)),
-            'pocet_kusu': data['pocet_kusu'],
-            'castka': str(data['castka']),
-            'skutecne_kusy': skut_k,
-            'skutecne_dnes': skut_dnes,
-            'plneni_procent': round(pct, 1),
-            'trend_kusy': trend_k,
-            'trend_procent': trend_pct,
-        }
-        if kod == 'SERVIS':
-            row['napoveda'] = SERVIS_NAZEV_HINT
-        kategorie.append(row)
-
-    plneni_celkem_pct = (celkem_skutecne / celkem_polozek * 100) if celkem_polozek > 0 else 0
-    visible_kody = [k for k in agregace if k not in SELLER_HIDDEN_PLAN_KATEGORIE]
-    trend_celkem = (
-        sum(trend_kategorie.get(kod, {}).get('trend_kusy', 0) for kod in visible_kody)
-        if trend_kategorie else 0
-    )
-    trend_celkem_pct = round((trend_celkem / celkem_polozek * 100), 1) if celkem_polozek and trend_kategorie else None
-    celkem_dnes = sum(plneni_dnes.get(kod, 0) for kod in visible_kody)
-
-    return Response({
-        'rok': rok,
-        'mesic': mesic,
-        'mesic_nazev': NAZVY_MESICU.get(mesic, ''),
-        'celkem_polozek': celkem_polozek,
-        'celkem_castka': str(celkem_castka),
-        'kategorie': kategorie,
-        'pracovnich_dni': pracovnich_dni,
-        'smen_dnes': smen_dnes,
-        'plneni': {
-            'celkem_skutecne': celkem_skutecne,
-            'celkem_dnes': celkem_dnes,
-            'plneni_procent': round(plneni_celkem_pct, 1),
-            'trend_kusy': trend_celkem if je_aktualni_mesic and trend_kategorie else None,
-            'trend_procent': trend_celkem_pct,
-        },
-    })
+    return Response(build_muj_plan_payload(request.user, rok, mesic))
 
 
 @api_view(['GET'])

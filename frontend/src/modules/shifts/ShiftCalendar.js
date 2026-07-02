@@ -5,8 +5,8 @@ import './ShiftCalendar.css';
 import UnifiedCalendar from './UnifiedCalendar';
 import { shiftRoleLabel } from './shiftRoleLabels';
 import { groupDayShiftsByStore } from './shiftRosterUtils';
-import { format, parse, startOfMonth, endOfMonth, eachDayOfInterval, isBefore } from 'date-fns';
-import { earliestEditableShiftDate, sellerMayEditShiftMonth } from './shiftEditPolicy';
+import { format, parse, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
+import { sellerMayEditShiftMonth, sellerMayEditShiftOnDate } from './shiftEditPolicy';
 import { isStoreOpenOnDate } from '../../constants/oteviraciDoba';
 
 const isWorkShift = (shift) => shift.typ_smeny === 'prace';
@@ -207,8 +207,8 @@ function ShiftCalendar({
         const shiftDatum = shift.datum || shift.date || dateStr;
         const shiftMonth = shiftDatum ? String(shiftDatum).substring(0, 7) : month;
         
-        if (!['ADMIN', 'VEDOUCI'].includes(user?.role) && !sellerMayEditShiftMonth(shiftMonth)) {
-            setError('Nelze upravovat směny v minulých měsících. Obraťte se na administrátora.');
+        if (user?.role !== 'ADMIN' && !sellerMayEditShiftMonth(shiftMonth)) {
+            setError('Směny mimo aktuální měsíc může upravovat jen administrátor.');
             return;
         }
 
@@ -271,8 +271,8 @@ function ShiftCalendar({
 
     const isDateSelectable = useCallback((date) => {
         if (svatky[format(date, 'yyyy-MM-dd')]) return false;
-        if (user && ['ADMIN', 'VEDOUCI'].includes(user.role)) return true;
-        return !isBefore(date, earliestEditableShiftDate());
+        if (user?.role === 'ADMIN') return true;
+        return sellerMayEditShiftOnDate(format(date, 'yyyy-MM-dd'));
     }, [svatky, user]);
 
     const handlePickDate = useCallback((dateStr) => {

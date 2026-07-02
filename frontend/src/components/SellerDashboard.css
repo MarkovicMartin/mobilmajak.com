@@ -203,6 +203,23 @@
     font-size: 14px;
     color: var(--text-secondary);
 }
+.muj-plan-prodejny {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 8px 0 12px;
+}
+.muj-plan-prodejna-chip {
+    font-size: 0.8rem;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(0, 102, 204, 0.1);
+    color: #0066cc;
+}
+.muj-plan-prodejna-chip.muj-plan-prodejna-cizi {
+    background: rgba(230, 126, 34, 0.12);
+    color: #c0651a;
+}
 .muj-plan-loading,
 .muj-plan-error,
 .muj-plan-empty {

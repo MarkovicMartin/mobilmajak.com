@@ -8,15 +8,15 @@ import { taskAPI } from '../../services/api';
 import TaskUrgencyBadge from '../tasks/TaskUrgencyBadge';
 import { openTask } from '../../utils/taskNavigation';
 import { shiftRoleLabel } from '../shifts/shiftRoleLabels';
-import { sellerMayEditShiftOnDate } from '../shifts/shiftEditPolicy';
+import { userMayEditShiftOnDate } from '../shifts/shiftEditPolicy';
 
 const formatShiftTime = (t) => (t || '').substring(0, 5);
 
 const canEditShift = (shift, user, dateStr) => {
     if (!user) return false;
-    if (['ADMIN', 'VEDOUCI'].includes(user.role)) return true;
-    if (shift.user_id !== user.id) return false;
-    return sellerMayEditShiftOnDate(dateStr);
+    if (user.role === 'ADMIN') return true;
+    if (shift.user_id !== user.id && user.role !== 'VEDOUCI') return false;
+    return userMayEditShiftOnDate(user, dateStr);
 };
 
 const ProfileDayPanel = ({
