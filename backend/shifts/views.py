@@ -216,7 +216,7 @@ def smeny_list(request):
         if datum_str:
             datum = datetime.strptime(datum_str, '%Y-%m-%d').date()
             if not user_may_edit_shift_on_date(request.user, datum):
-                return Response({'error': 'Nelze vytvářet směny mimo aktuální měsíc'},
+                return Response({'error': 'Nelze vytvářet směny v minulých měsících'},
                               status=status.HTTP_403_FORBIDDEN)
         
         try:
@@ -353,7 +353,7 @@ def smeny_bulk_create(request):
                 
                 # Kontrola oprávnění pro datum
                 if not user_may_edit_shift_on_date(request.user, datum):
-                    chyby.append(f'{datum_str}: Nelze vytvářet směny mimo aktuální měsíc')
+                    chyby.append(f'{datum_str}: Nelze vytvářet směny v minulých měsících')
                     continue
                 
                 bulk_cas_od = parse_shift_time(cas_od)
@@ -416,7 +416,7 @@ def smena_detail(request, smena_id):
                       status=status.HTTP_403_FORBIDDEN)
     
     if not user_may_edit_shift_on_date(request.user, smena.datum):
-        return Response({'error': 'Nelze upravovat směny mimo aktuální měsíc'},
+        return Response({'error': 'Nelze upravovat směny v minulých měsících'},
                       status=status.HTTP_403_FORBIDDEN)
     
     if request.method == 'PUT':
@@ -462,7 +462,7 @@ def smena_detail(request, smena_id):
             if 'datum' in data:
                 if not user_may_edit_shift_on_date(request.user, new_datum):
                     return Response(
-                        {'error': 'Nelze přesunout směnu mimo aktuální měsíc'},
+                        {'error': 'Nelze přesunout směnu do minulých měsíců'},
                         status=status.HTTP_403_FORBIDDEN,
                     )
                 smena.datum = new_datum

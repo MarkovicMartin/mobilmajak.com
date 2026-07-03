@@ -5,7 +5,7 @@ import './BulkShiftForm.css';
 import UnifiedCalendar from './UnifiedCalendar';
 import { isBackofficeUser, isAdminUser, isHomeOfficePozice } from './shiftBackoffice';
 import { format } from 'date-fns';
-import { sellerMayEditShiftOnDate } from './shiftEditPolicy';
+import { userMayEditShiftOnDate } from './shiftEditPolicy';
 
 function BulkShiftForm({ user, onClose, onSuccess, initialDates = [], initialMonth = null }) {
     const [formData, setFormData] = useState({
@@ -400,7 +400,7 @@ function BulkShiftForm({ user, onClose, onSuccess, initialDates = [], initialMon
                                     isDateEnabled={(date) => {
                                         if (user?.role === 'ADMIN') return true;
                                         const dateStr = format(date, 'yyyy-MM-dd');
-                                        return sellerMayEditShiftOnDate(dateStr);
+                                        return userMayEditShiftOnDate(user, dateStr);
                                     }}
                                     onDateClick={(dateStr) => handleDateToggle(dateStr)}
                                     onDateDragSelect={(dateStr) => handleDateToggle(dateStr)}

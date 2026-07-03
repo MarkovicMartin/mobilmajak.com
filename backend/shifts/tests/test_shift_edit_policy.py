@@ -14,13 +14,14 @@ class _User:
 
 
 class ShiftEditPolicyTests(TestCase):
-    def test_seller_current_month_only(self):
+    def test_seller_current_and_future_months(self):
         today = date(2026, 7, 15)
         self.assertEqual(earliest_editable_shift_date(today), date(2026, 7, 1))
         self.assertTrue(seller_may_edit_shift_on_date(date(2026, 7, 1), today))
         self.assertTrue(seller_may_edit_shift_on_date(date(2026, 7, 31), today))
+        self.assertTrue(seller_may_edit_shift_on_date(date(2026, 8, 1), today))
+        self.assertTrue(seller_may_edit_shift_on_date(date(2026, 12, 31), today))
         self.assertFalse(seller_may_edit_shift_on_date(date(2026, 6, 30), today))
-        self.assertFalse(seller_may_edit_shift_on_date(date(2026, 8, 1), today))
 
     def test_admin_any_month(self):
         today = date(2026, 7, 15)
@@ -28,8 +29,9 @@ class ShiftEditPolicyTests(TestCase):
         self.assertTrue(user_may_edit_shift_on_date(admin, date(2025, 1, 1), today))
         self.assertTrue(user_may_edit_shift_on_date(admin, date(2026, 7, 1), today))
 
-    def test_vedouci_current_month_only(self):
+    def test_vedouci_any_month(self):
         today = date(2026, 7, 15)
         vedouci = _User('VEDOUCI')
         self.assertTrue(user_may_edit_shift_on_date(vedouci, date(2026, 7, 10), today))
-        self.assertFalse(user_may_edit_shift_on_date(vedouci, date(2026, 6, 1), today))
+        self.assertTrue(user_may_edit_shift_on_date(vedouci, date(2026, 6, 1), today))
+        self.assertTrue(user_may_edit_shift_on_date(vedouci, date(2026, 8, 1), today))

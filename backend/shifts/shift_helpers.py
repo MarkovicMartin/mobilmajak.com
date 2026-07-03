@@ -87,19 +87,19 @@ def smena_pocita_do_planovych_hodin(smena) -> bool:
     return True
 
 def earliest_editable_shift_date(today: date | None = None) -> date:
-    """První den aktuálního měsíce – prodejci smí měnit jen směny v tomto měsíci."""
+    """Nejdřívější datum směny, které smí upravovat prodejce (aktuální měsíc, ne minulost)."""
     today = today or date.today()
     return today.replace(day=1)
 
 
 def seller_may_edit_shift_on_date(datum: date, today: date | None = None) -> bool:
-    """Prodejce / vedoucí: úpravy jen ve směnách spadajících do aktuálního kalendářního měsíce."""
+    """Prodejce: aktuální a budoucí měsíce, ne minulé."""
     today = today or date.today()
-    return datum.year == today.year and datum.month == today.month
+    return datum >= earliest_editable_shift_date(today)
 
 
 def user_may_edit_shift_on_date(user, datum: date, today: date | None = None) -> bool:
-    if is_admin_user(user):
+    if getattr(user, 'role', None) in ('ADMIN', 'VEDOUCI'):
         return True
     return seller_may_edit_shift_on_date(datum, today)
 

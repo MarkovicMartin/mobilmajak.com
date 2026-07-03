@@ -6,7 +6,7 @@ import UnifiedCalendar from './UnifiedCalendar';
 import { shiftRoleLabel } from './shiftRoleLabels';
 import { groupDayShiftsByStore } from './shiftRosterUtils';
 import { format, parse, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
-import { sellerMayEditShiftMonth, sellerMayEditShiftOnDate } from './shiftEditPolicy';
+import { userMayEditShiftMonth, userMayEditShiftOnDate } from './shiftEditPolicy';
 import { isStoreOpenOnDate } from '../../constants/oteviraciDoba';
 
 const isWorkShift = (shift) => shift.typ_smeny === 'prace';
@@ -207,8 +207,8 @@ function ShiftCalendar({
         const shiftDatum = shift.datum || shift.date || dateStr;
         const shiftMonth = shiftDatum ? String(shiftDatum).substring(0, 7) : month;
         
-        if (user?.role !== 'ADMIN' && !sellerMayEditShiftMonth(shiftMonth)) {
-            setError('Směny mimo aktuální měsíc může upravovat jen administrátor.');
+        if (!userMayEditShiftMonth(user, shiftMonth)) {
+            setError('Směny v minulých měsících může upravovat jen vedoucí nebo administrátor.');
             return;
         }
 
@@ -270,8 +270,7 @@ function ShiftCalendar({
     }, [month, prodejna]);
 
     const isDateSelectable = useCallback((date) => {
-        if (user?.role === 'ADMIN') return true;
-        return sellerMayEditShiftOnDate(format(date, 'yyyy-MM-dd'));
+        return userMayEditShiftOnDate(user, format(date, 'yyyy-MM-dd'));
     }, [user]);
 
     const handlePickDate = useCallback((dateStr) => {
