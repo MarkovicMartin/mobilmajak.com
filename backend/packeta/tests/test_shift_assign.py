@@ -99,3 +99,45 @@ class ShiftAssignTests(TestCase):
         cas = timezone.make_aware(datetime.combine(self.day, time(0, 30)), loc)
         pid = resolve_prodejce_for_packeta(self.prodejna.id, cas)
         self.assertEqual(pid, self.user_b.id)
+
+    def test_overlap_prefers_seller_with_nearby_sales(self):
+        from analytics.models import WebProdejeAll
+        from decimal import Decimal
+
+        overlap_day = date(2026, 6, 11)
+        Smena.objects.create(
+            prodejna=self.prodejna,
+            user=self.user_a,
+            datum=overlap_day,
+            cas_od=time(8, 0),
+            cas_do=time(20, 0),
+            typ_smeny='prace',
+            pozice_smeny='prodej',
+            aktivni=True,
+        )
+        Smena.objects.create(
+            prodejna=self.prodejna,
+            user=self.user_b,
+            datum=overlap_day,
+            cas_od=time(8, 0),
+            cas_do=time(17, 0),
+            typ_smeny='prace',
+            pozice_smeny='prodej',
+            aktivni=True,
+        )
+        WebProdejeAll.objects.create(
+            typ=overlap_day,
+            doklad='UCT-OVERLAP-1',
+            kod='P100',
+            nazev='Test',
+            pocet_kusu=1,
+            cena_ks_vcl_dph=Decimal('100'),
+            id_prodejce=self.user_a.id,
+            id_prodejny=self.prodejna.id,
+            stredisko='Test',
+            cas_prodeje=time(10, 0),
+        )
+        loc = timezone.get_current_timezone()
+        cas = timezone.make_aware(datetime.combine(overlap_day, time(10, 30)), loc)
+        pid = resolve_prodejce_for_packeta(self.prodejna.id, cas)
+        self.assertEqual(pid, self.user_a.id)

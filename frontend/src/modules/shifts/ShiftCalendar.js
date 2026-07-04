@@ -7,7 +7,7 @@ import { shiftRoleLabel } from './shiftRoleLabels';
 import { groupDayShiftsByStore } from './shiftRosterUtils';
 import { format, parse, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
 import { userMayEditShiftMonth, userMayEditShiftOnDate } from './shiftEditPolicy';
-import { isStoreOpenOnDate } from '../../constants/oteviraciDoba';
+import { isStoreExpectingShift, getClosureNotice } from '../../constants/prodejnaZavreni';
 
 const isWorkShift = (shift) => shift.typ_smeny === 'prace';
 
@@ -20,7 +20,7 @@ const getStaffingGap = (shifts, stores, allStores, dateStr, selectedProdejnaId =
     const workShifts = shifts.filter(isWorkShift);
     if (allStores && stores.length > 0) {
         const openStores = dateStr
-            ? stores.filter((s) => isStoreOpenOnDate(s, dateStr))
+            ? stores.filter((s) => isStoreExpectingShift(s, dateStr))
             : stores;
         if (!openStores.length) return null;
 
@@ -39,9 +39,10 @@ const getStaffingGap = (shifts, stores, allStores, dateStr, selectedProdejnaId =
         };
     }
     if (workShifts.length === 0) {
+        let store = null;
         if (dateStr && selectedProdejnaId && selectedProdejnaId !== 'vse') {
-            const store = stores.find((s) => String(s.id) === String(selectedProdejnaId));
-            if (store && !isStoreOpenOnDate(store, dateStr)) return null;
+            store = stores.find((s) => String(s.id) === String(selectedProdejnaId));
+            if (store && !isStoreExpectingShift(store, dateStr)) return null;
         }
         const storeName = store ? storeDisplayName(store) : null;
         return {
@@ -148,7 +149,6 @@ function ShiftCalendar({
         let partialDays = 0;
         days.forEach((day) => {
             const dateStr = format(day, 'yyyy-MM-dd');
-            if (svatky[dateStr]) return;
             const gap = getStaffingGap(getShiftsForDate(dateStr), stores, allStores, dateStr, prodejna);
             if (!gap) return;
             gapsByDate[dateStr] = gap;
@@ -157,14 +157,14 @@ function ShiftCalendar({
             else partialDays += 1;
         });
         return { gapDays, allEmptyDays, partialDays, gapsByDate };
-    }, [showStaffingGaps, month, kalendarData, stores, allStores, svatky, prodejna]);
+    }, [showStaffingGaps, month, kalendarData, stores, allStores, prodejna]);
 
     const staffingGapsByDate = monthCoverage.gapsByDate;
 
     const getExtraCellClass = useCallback((dateStr) => {
         const classes = [];
         if (svatky[dateStr]) classes.push('holiday');
-        if (!dateStr.startsWith(month) || !showStaffingGaps || svatky[dateStr]) {
+        if (!dateStr.startsWith(month) || !showStaffingGaps) {
             return classes.join(' ');
         }
         const gap = staffingGapsByDate[dateStr];
@@ -486,7 +486,10 @@ function ShiftCalendar({
                         const absenceShifts = shifts.filter(isAbsenceShift);
                         const isSvatek = svatky[dateStr];
                         const inMonth = dateStr.startsWith(month);
-                        const staffingGap = inMonth && !isSvatek && showStaffingGaps
+                        const closureNotice = inMonth
+                            ? getClosureNotice(dateStr, { stores, allStores, prodejnaId: prodejna })
+                            : null;
+                        const staffingGap = inMonth && showStaffingGaps
                             ? staffingGapsByDate[dateStr]
                             : null;
                         return (
@@ -494,6 +497,16 @@ function ShiftCalendar({
                                 {isSvatek && (
                                     <div className="holiday-indicator" title={isSvatek.nazev}>
                                         {getHolidayIcon(isSvatek.nazev)}
+                                    </div>
+                                )}
+                                {closureNotice && (
+                                    <div
+                                        className={`closure-notice closure-notice--${closureNotice.kind}`}
+                                        title={closureNotice.title}
+                                    >
+                                        {closureNotice.kind === 'always_closed' ? '🔒' : '⛪'}
+                                        {' '}
+                                        {closureNotice.label}
                                     </div>
                                 )}
                                 {staffingGap && (

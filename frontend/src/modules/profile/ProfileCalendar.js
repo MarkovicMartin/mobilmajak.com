@@ -6,7 +6,8 @@ import api from '../../services/api';
 import { taskAPI } from '../../services/api';
 import UnifiedCalendar from '../shifts/UnifiedCalendar';
 import ProfileDayPanel from './ProfileDayPanel';
-import { openTask } from '../../utils/taskNavigation';
+import { useAuth } from '../../context/AuthContext';
+import { getClosureNotice } from '../../constants/prodejnaZavreni';
 import { urgencyClassName, urgencyForTask } from '../../utils/taskUrgency';
 import '../shifts/ShiftCalendar.css';
 import './ProfileModule.css';
@@ -15,6 +16,7 @@ const formatShiftTime = (t) => (t || '').substring(0, 5);
 
 const ProfileCalendar = () => {
     const navigate = useNavigate();
+    const { user } = useAuth();
     const [month, setMonth] = useState(() => format(new Date(), 'yyyy-MM'));
     const [shiftData, setShiftData] = useState({});
     const [taskData, setTaskData] = useState({});
@@ -79,8 +81,20 @@ const ProfileCalendar = () => {
         const tasks = taskData[dateStr] || [];
         const workShifts = shifts.filter((s) => s.typ_smeny === 'prace');
         const absenceShifts = shifts.filter((s) => s.typ_smeny === 'dovolena' || s.typ_smeny === 'nemoc');
+        const userStore = user?.prodejna_id
+            ? { id: user.prodejna_id, nazev: user.prodejna, nazev_kratkiy: user.prodejna }
+            : null;
+        const closureNotice = getClosureNotice(dateStr, { userStore });
         return (
             <>
+                {closureNotice && (
+                    <div
+                        className={`closure-notice closure-notice--${closureNotice.kind}`}
+                        title={closureNotice.title}
+                    >
+                        {closureNotice.kind === 'always_closed' ? '🔒' : '⛪'} {closureNotice.label}
+                    </div>
+                )}
                 {workShifts.length > 0 && (
                     <div className="shifts-container">
                         {workShifts.slice(0, 2).map((s) => (

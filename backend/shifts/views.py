@@ -662,10 +662,15 @@ def kalendar_data(request):
         for rok_s, mesic_s, den_s in ceske_svatky:
             if mesic_s == mesic_cislo:
                 datum_str = f"{rok_s}-{mesic_s:02d}-{den_s:02d}"
-                svatky_mesic[datum_str] = {
+                entry = {
                     'je_svatek': True,
-                    'nazev': get_nazev_svatku(mesic_s, den_s)
+                    'nazev': get_nazev_svatku(mesic_s, den_s),
                 }
+                from .mall_closure import closure_kind_for_date
+                zavreni = closure_kind_for_date(date(rok_s, mesic_s, den_s))
+                if zavreni:
+                    entry['zavreni_typ'] = zavreni
+                svatky_mesic[datum_str] = entry
         
         response_data = {
             'kalendar_data': kalendar_data,

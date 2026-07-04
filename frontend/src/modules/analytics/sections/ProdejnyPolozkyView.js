@@ -4,6 +4,7 @@ import AnalyticsPeriodFilterPanel from '../../../components/analytics/AnalyticsP
 import {
     applyQuickRangePreset,
     detectQuickRangeFromFilters,
+    detectQuickRangePreset,
 } from '../../../utils/analyticsQuickRange';
 import { PolozkyDeltaBadge } from '../components/PolozkyComparisonDelta';
 import PolozkySellerDetailChips from '../components/PolozkySellerDetailChips';

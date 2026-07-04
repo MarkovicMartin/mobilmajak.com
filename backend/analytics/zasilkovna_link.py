@@ -14,6 +14,7 @@ from analytics.models import WebProdejeAll
 from analytics.receipt_metrics import active_receipt_filter_q
 from packeta.models import PacketaProvizePolozka
 from packeta.packeta_parser import PACKETA_MAIN_VISIT_TYPES, normalize_zasilka
+from users.prodejce_resolve import build_prodejce_key_to_user_id, resolve_web_user_id
 
 # Z123456789 nebo ZS: Z 236 9101 479 – ne ZZS (Zlínský kraj)
 ZASILKA_NOTE_RE = re.compile(
@@ -339,6 +340,7 @@ def link_sales_to_packeta(
     qualifying = _qualifying_doklady(date_from, date_to, prodejna_id)
     visits = load_packeta_visits(date_from, date_to, prodejna_id)
     packeta_idx = _packeta_index(visits)
+    prodejce_key_map = build_prodejce_key_to_user_id()
 
     linked: list[LinkedSale] = []
     invalid_z: list[dict] = []
@@ -376,7 +378,7 @@ def link_sales_to_packeta(
             zasilka_raw=best.zasilka if best else (zasilka or ''),
             typ_provize=best.typ_provize if best else None,
             typ_skupina=best.typ_skupina if best else None,
-            id_prodejce=row.get('id_prodejce'),
+            id_prodejce=resolve_web_user_id(row.get('id_prodejce'), prodejce_key_map),
             id_prodejny=pid,
             doklad=doklad,
             datum_prodeje=row['typ'],
@@ -396,7 +398,7 @@ def link_sales_to_packeta(
             zasilka_raw='',
             typ_provize=None,
             typ_skupina=None,
-            id_prodejce=row.get('id_prodejce'),
+            id_prodejce=resolve_web_user_id(row.get('id_prodejce'), prodejce_key_map),
             id_prodejny=row.get('id_prodejny'),
             doklad=doklad,
             datum_prodeje=row['typ'],
@@ -432,14 +434,15 @@ def distinct_visit_counts(visits: Iterable[PacketaVisit]) -> dict:
 
 
 def prodeje_by_prodejce(linked: Iterable[LinkedSale]) -> dict[int, dict]:
-    """Po prodejci: propojené prodeje (DISTINCT doklad se Z match)."""
+    """Po prodejci (WebUser.id): propojené prodeje (DISTINCT doklad se Z match)."""
+    key_map = build_prodejce_key_to_user_id()
     out: dict[int, dict] = defaultdict(lambda: {
         'prodeje_propojene': set(),
         'prodeje_oznacene': set(),
         'zasilky': set(),
     })
     for item in linked:
-        pid = item.id_prodejce
+        pid = resolve_web_user_id(item.id_prodejce, key_map)
         if not pid:
             continue
         if is_z_oznaceno(item):

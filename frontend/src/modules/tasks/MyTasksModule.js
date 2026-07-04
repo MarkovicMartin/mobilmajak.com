@@ -36,7 +36,7 @@ const MyTasksModule = ({ embedded = false }) => {
         return p;
     }, [filter]);
 
-    const { tasks, loading, load, update, create } = useTasks({ listParams });
+    const { tasks, loading, load, create, setTasks } = useTasks({ listParams });
 
     const selectTask = useCallback((task) => {
         setSelected(task);
@@ -98,7 +98,7 @@ const MyTasksModule = ({ embedded = false }) => {
 
     const handleTaskUpdate = (u) => {
         setSelected(u);
-        update(u.id, u, { merge: true });
+        setTasks((list) => list.map((t) => (t.id === u.id ? u : t)));
         window.dispatchEvent(new Event('tasks-notifications-refresh'));
     };
 

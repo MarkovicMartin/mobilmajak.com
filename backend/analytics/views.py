@@ -6540,6 +6540,20 @@ def _leaderboard_cache_table_available():
         return False
 
 
+def _leaderboard_zasilkovna_stats(zasilkovna_map, user, prodejce_id, row_id):
+    """Metriky Zásilkovna podle kanonického WebUser.id."""
+    from users.prodejce_resolve import resolve_web_user_id
+
+    canonical = user.id if user else None
+    if not canonical and row_id:
+        canonical = resolve_web_user_id(int(row_id))
+    if not canonical and prodejce_id:
+        canonical = resolve_web_user_id(int(prodejce_id))
+    if not canonical:
+        return {}
+    return zasilkovna_map.get(canonical, {})
+
+
 def _leaderboard_prev_month_points_for_user(user, prev_month_points_map):
     """Body minulého měsíce – id prodejce v datech může být WebUser.id nebo technik_id."""
     pts = int(prev_month_points_map.get(user.id, 0) or 0)
@@ -6694,9 +6708,7 @@ def web_prodeje_leaderboard_points(request):
         vykupy_map = vykupy_counts_map(typ_month_prefix=ym)
 
         month_start = today.replace(day=1)
-        month_end = today - timedelta(days=1)
-        if month_end < month_start:
-            month_end = today
+        month_end = today
         zasilkovna_map = {}
         try:
             from analytics.zasilkovna_konverze import zasilkovna_leaderboard_map
@@ -6743,11 +6755,7 @@ def web_prodeje_leaderboard_points(request):
                 int(prev_month_points_map.get(prodejce_id, 0) or 0)
             )
 
-            z_stats = (
-                zasilkovna_map.get(prodejce_id)
-                or zasilkovna_map.get(row_id)
-                or {}
-            )
+            z_stats = _leaderboard_zasilkovna_stats(zasilkovna_map, user, prodejce_id, row_id)
             leaderboard.append({
                 'id': row_id,
                 'prodejce': prodejce_jmeno,
@@ -6997,9 +7005,7 @@ def web_prodeje_leaderboard_stores(request):
         servis_map = _servis_points_map_for_month_by_store(ym)
 
         month_start = today.replace(day=1)
-        month_end = today - timedelta(days=1)
-        if month_end < month_start:
-            month_end = today
+        month_end = today
         zasilkovna_store_map = {}
         try:
             from analytics.zasilkovna_konverze import zasilkovna_store_leaderboard_map

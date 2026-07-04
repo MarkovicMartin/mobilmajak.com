@@ -4,6 +4,7 @@ from packeta.packeta_fetch import (
     default_chunk_days,
     fetch_and_import_all_branches,
     fetch_and_import_branch,
+    fetch_and_import_period,
     import_packeta_rows,
 )
 from packeta.packeta_parser import parse_packeta_csv
@@ -65,31 +66,20 @@ class Command(BaseCommand):
 
         if period in ('month', 'today', 'yesterday'):
             if options.get('all_branches'):
-                branches = []
-                for pid in range(1, 7):
-                    self.stdout.write(
-                        f'Stahuji Packeta ({typ_preset}), období {period}, prodejna {pid}…'
+                pid_filter = fetch_pid if fetch_pid in range(1, 7) else None
+                self.stdout.write(
+                    f'Stahuji Packeta ({typ_preset}), období {period}, '
+                    f'všechny pobočky (1 relace)…'
+                )
+                try:
+                    result = fetch_and_import_period(
+                        period,
+                        dry_run=dry_run,
+                        prodejna_id=pid_filter,
+                        on_progress=on_progress,
                     )
-                    try:
-                        branch = fetch_and_import_branch(
-                            pid,
-                            period=period,
-                            typ_preset=typ_preset,
-                            dry_run=dry_run,
-                            on_progress=on_progress,
-                        )
-                        branches.append(branch)
-                    except RuntimeError as exc:
-                        branches.append({
-                            'prodejna_id': pid,
-                            'branch_name': f'Prodejna {pid}',
-                            'error': str(exc),
-                        })
-                result = {
-                    'date_from': branches[0].get('date_from') if branches else None,
-                    'date_to': branches[0].get('date_to') if branches else None,
-                    'branches': branches,
-                }
+                except RuntimeError as exc:
+                    raise CommandError(str(exc)) from exc
             elif not fetch_pid:
                 raise CommandError(
                     f'--period {period} vyžaduje --prodejna-id nebo --all-branches.'
@@ -101,26 +91,26 @@ class Command(BaseCommand):
                     f'Stahuji Packeta ({typ_preset}), období {period}, prodejna {fetch_pid}…'
                 )
                 try:
-                    result = fetch_and_import_branch(
-                        fetch_pid,
-                        period=period,
-                        typ_preset=typ_preset,
+                    result = fetch_and_import_period(
+                        period,
                         dry_run=dry_run,
+                        prodejna_id=fetch_pid,
                         on_progress=on_progress,
                     )
                 except RuntimeError as exc:
                     raise CommandError(str(exc)) from exc
         else:
-            if not options['all_branches']:
-                raise CommandError('--period days vyžaduje --all-branches')
             days = max(1, options['days'] or 1)
             chunk_days = options['chunk_days'] or default_chunk_days(days)
-            pid_note = f', jen prodejna {fetch_pid}' if fetch_pid else ''
+            if not options.get('all_branches') and fetch_pid not in range(1, 7):
+                raise CommandError('--period days vyžaduje --all-branches nebo --prodejna-id 1–6')
+            pid_note = f', prodejna {fetch_pid}' if fetch_pid in range(1, 7) else ', všechny pobočky'
             self.stdout.write(
                 f'Stahuji Packeta, {days} dní, kousky po {chunk_days} dnech{pid_note}…'
             )
             try:
-                result = fetch_and_import_all_branches(
+                result = fetch_and_import_period(
+                    'days',
                     days=days,
                     dry_run=dry_run,
                     chunk_days=chunk_days,
@@ -135,6 +125,13 @@ class Command(BaseCommand):
             f'Období: {result["date_from"]} – {result["date_to"]}{suffix}'
         )
         self._print_branches(result['branches'])
+        errors = [b for b in result['branches'] if b.get('error')]
+        if errors:
+            names = ', '.join(
+                f"{b.get('branch_name', '?')} (prodejna {b.get('prodejna_id')})"
+                for b in errors
+            )
+            raise CommandError(f'Import selhal u poboček: {names}')
 
     def _print_branches(self, branches):
         for branch in branches:

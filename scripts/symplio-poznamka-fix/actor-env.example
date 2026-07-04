@@ -1,0 +1,9 @@
+# Zkopírovat na VPS: /opt/actor/ACTOR_FINALL_WEB_PRODEJE_ALL/.env  (chmod 600)
+# Načítá run-prodeje-actor-safe.sh přes: set -a && source .env && set +a
+
+SYMPLIO_SECRETS_FILE=/home/webmajak/secrets/mobilmajak-symplio.json
+
+DB_HOST=db.dw300.webglobe.com
+DB_USER=multi_724223
+DB_NAME=multi_724223
+DB_PASSWORD=

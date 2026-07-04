@@ -820,6 +820,33 @@ def fetch_all_branch_csvs(
     chunk_days: int | None = None,
     prodejna_id_filter: int | None = None,
     on_progress=None,
+    *,
+    date_from: date | None = None,
+    date_to: date | None = None,
+) -> list[BranchFetchResult]:
+    if date_from is None or date_to is None:
+        date_from, date_to = date_range_for_days(days)
+    span_days = (date_to - date_from).days + 1
+    if chunk_days is None:
+        chunk_days = default_chunk_days(max(span_days, 1))
+    return _fetch_all_branch_csvs_for_range(
+        date_from,
+        date_to,
+        headless=headless,
+        chunk_days=chunk_days,
+        prodejna_id_filter=prodejna_id_filter,
+        on_progress=on_progress,
+    )
+
+
+def _fetch_all_branch_csvs_for_range(
+    date_from: date,
+    date_to: date,
+    *,
+    headless: bool = True,
+    chunk_days: int = 1,
+    prodejna_id_filter: int | None = None,
+    on_progress=None,
 ) -> list[BranchFetchResult]:
     creds = get_packeta_admin_for_fetch()
     if not creds:
@@ -832,9 +859,6 @@ def fetch_all_branch_csvs(
             'Playwright není nainstalován. Spusťte: pip install playwright && playwright install chromium'
         ) from exc
 
-    date_from, date_to = date_range_for_days(days)
-    if chunk_days is None:
-        chunk_days = default_chunk_days(days)
     results: list[BranchFetchResult] = []
 
     def _progress(msg: str) -> None:
@@ -929,22 +953,18 @@ def fetch_all_branch_csvs(
     return results
 
 
-def fetch_and_import_all_branches(
-    days: int = 1,
+def _import_branch_fetch_results(
+    fetch_results: list[BranchFetchResult],
+    *,
+    date_from: date,
+    date_to: date,
     dry_run: bool = False,
+    period: str | None = None,
+    days: int | None = None,
     chunk_days: int | None = None,
-    prodejna_id: int | None = None,
-    on_progress=None,
 ) -> dict:
-    fetch_results = fetch_all_branch_csvs(
-        days=days,
-        chunk_days=chunk_days,
-        prodejna_id_filter=prodejna_id,
-        on_progress=on_progress,
-    )
     batch = timezone.now().strftime('%Y%m%d%H%M%S')
     branches: list[dict] = []
-    start, end = date_range_for_days(days)
 
     for fr in fetch_results:
         entry: dict = {
@@ -976,12 +996,76 @@ def fetch_and_import_all_branches(
             entry['error'] = str(exc)
         branches.append(entry)
 
-    return {
+    out: dict = {
         'import_batch': batch,
-        'days': days,
-        'chunk_days': chunk_days or default_chunk_days(days),
-        'date_from': start.isoformat(),
-        'date_to': end.isoformat(),
+        'date_from': date_from.isoformat(),
+        'date_to': date_to.isoformat(),
         'branches': branches,
         'dry_run': dry_run,
     }
+    if period is not None:
+        out['period'] = period
+    if days is not None:
+        out['days'] = days
+    if chunk_days is not None:
+        out['chunk_days'] = chunk_days
+    return out
+
+
+def fetch_and_import_all_branches(
+    days: int = 1,
+    dry_run: bool = False,
+    chunk_days: int | None = None,
+    prodejna_id: int | None = None,
+    on_progress=None,
+) -> dict:
+    fetch_results = fetch_all_branch_csvs(
+        days=days,
+        chunk_days=chunk_days,
+        prodejna_id_filter=prodejna_id,
+        on_progress=on_progress,
+    )
+    start, end = date_range_for_days(days)
+    return _import_branch_fetch_results(
+        fetch_results,
+        date_from=start,
+        date_to=end,
+        dry_run=dry_run,
+        days=days,
+        chunk_days=chunk_days or default_chunk_days(days),
+    )
+
+
+def fetch_and_import_period(
+    period: str,
+    *,
+    days: int = 7,
+    dry_run: bool = False,
+    chunk_days: int | None = None,
+    prodejna_id: int | None = None,
+    on_progress=None,
+) -> dict:
+    """
+    Jedna Playwright relace – všechny pobočky (spolehlivější než 6× fetch_single_branch).
+    period: today | yesterday | month | days
+    """
+    date_from, date_to = date_range_for_period(period, days=days if period == 'days' else None)
+    span_days = (date_to - date_from).days + 1
+    resolved_chunk = chunk_days or default_chunk_days(max(span_days, 1))
+    fetch_results = fetch_all_branch_csvs(
+        headless=True,
+        chunk_days=resolved_chunk,
+        prodejna_id_filter=prodejna_id,
+        on_progress=on_progress,
+        date_from=date_from,
+        date_to=date_to,
+    )
+    return _import_branch_fetch_results(
+        fetch_results,
+        date_from=date_from,
+        date_to=date_to,
+        dry_run=dry_run,
+        period=period,
+        days=days if period == 'days' else None,
+        chunk_days=resolved_chunk,
+    )
