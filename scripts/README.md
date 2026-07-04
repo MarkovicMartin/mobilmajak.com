@@ -25,7 +25,7 @@ Přehled – co je provozní, co plánované rozšíření. Nepřidávejte jedno
 |--------|------|
 | `install-staging-plans-cron.sh` | Jednorázově nastaví cron `ensure_monthly_plans` + `prepocet_plan_prodejci` pro uživatele `webmajak` |
 
-Detaily a ruční řádky crontab: [`secrets/README.md`](../secrets/README.md).
+Detaily a ruční řádky crontab: [`docs/secrets-setup.md`](../docs/secrets-setup.md).
 
 ## Záloha (off-site, mimo git projektu)
 
@@ -53,7 +53,7 @@ Návod: [`docs/zaloha-disaster-recovery.md`](../docs/zaloha-disaster-recovery.md
 | `vsetin-gateway/` | Instalátor Windows pro Vsetín (ID 5) + README checklist |
 | `camera_motion_gateway.example.json` | Příklad konfigurace |
 
-Tajemství: `secrets/camera_motion_secrets.json` – viz `secrets/README.md`.
+Tajemství: `secrets/camera_motion_secrets.json` – viz `docs/secrets-setup.md`.
 
 ## Lokální vývoj
 

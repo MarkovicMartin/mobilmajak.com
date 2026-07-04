@@ -8,7 +8,7 @@ SYMPLIO_SECRETS_LOCAL="${SYMPLIO_SECRETS_LOCAL:-$REPO_ROOT/secrets/mobilmajak-sy
 SYMPLIO_SECRETS_VPS="/home/webmajak/secrets/mobilmajak-symplio.json"
 
 if [[ ! -f "$SYMPLIO_SECRETS_LOCAL" ]]; then
-  echo "Chybí $SYMPLIO_SECRETS_LOCAL – zkopíruj secrets/mobilmajak-symplio.example.json a vyplň heslo."
+  echo "Chybí $SYMPLIO_SECRETS_LOCAL – zkopíruj config/secrets-examples/mobilmajak-symplio.example.json → secrets/mobilmajak-symplio.json a vyplň heslo."
   exit 1
 fi
 
@@ -38,8 +38,17 @@ scp -i "$KEY" \
   "$REPO_ROOT/scripts/symplio-poznamka-fix/symplio-credentials.js" \
   "$REPO_ROOT/scripts/symplio-poznamka-fix/symplio-login.js" \
   "$REPO_ROOT/scripts/symplio-poznamka-fix/fetch-doklad-notes.js" \
+  "$REPO_ROOT/scripts/symplio-poznamka-fix/apply-poznamka-dokladu.js" \
+  "$REPO_ROOT/scripts/symplio-poznamka-fix/sync-doklad-notes.js" \
   "$REPO_ROOT/scripts/symplio-poznamka-fix/compare.js" \
   "root@194.182.87.138:${ACTOR}/"
+
+echo "==> Wrapper + cron schedule (Packeta + Symplio poznámky)"
+scp -i "$KEY" \
+  "$REPO_ROOT/scripts/run-symplio-doklad-notes-safe.sh" \
+  "$REPO_ROOT/scripts/packeta-cron-schedule.sh" \
+  "root@194.182.87.138:/opt/scripts/"
+ssh -i "$KEY" root@194.182.87.138 "chmod +x /opt/scripts/run-symplio-doklad-notes-safe.sh"
 
 echo "==> run-prodeje-actor-safe.sh – načtení .env"
 ssh -i "$KEY" root@194.182.87.138 bash <<'EOF'
@@ -62,4 +71,6 @@ else
 fi
 EOF
 
-echo "Hotovo. Ověř: ssh … 'cd ${ACTOR} && set -a && source .env && set +a && node -e \"require(\\\"./symplio-credentials\\\").loadSymplioCredentials()\"'"
+echo "Hotovo."
+echo "  Ověř credentials: ssh … 'cd ${ACTOR} && set -a && source .env && set +a && node -e \"require(\\\"./symplio-credentials\\\").loadSymplioCredentials()\"'"
+echo "  Nainstaluj cron (Packeta + Symplio poznámky): na VPS spusť scripts/install-packeta-cron.sh"

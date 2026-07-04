@@ -87,7 +87,7 @@ def main():
     if resp.ok:
         print('OK – v NVR ověřte Configuration → Event → HTTP notifikace, pak projděte před kamerou.')
     else:
-        print('Pokud PUT selže, nastavte URL ručně v menu NVR (viz secrets/README.md).', file=sys.stderr)
+        print('Pokud PUT selže, nastavte URL ručně v menu NVR (viz docs/secrets-setup.md).', file=sys.stderr)
         sys.exit(1)
 
 

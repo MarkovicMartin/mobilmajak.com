@@ -27,7 +27,7 @@ Poslední revize: 2026-07-02
 - API: fronta nezařazených, ruční náklad, kategorie; Fio import připraven (`import_fio_naklady`), defaultně **vypnutý** (`FINANCE_FIO_ENABLED=0`).
 - Frontend: `FinanceModule` — záložky „K zařazení“ + „Ruční náklad“, za feature flagem.
 - Packeta provize: import v analytice (Zásilkovna), ne v modulu Finance.
-- Secrets šablona: `secrets/mobilmajak-finance.example.json` (Fio, Packeta admin, Google Sheets náklady).
+- Secrets šablona: `config/secrets-examples/mobilmajak-finance.example.json` (Fio, Packeta admin, Google Sheets náklady).
 
 ### Varianty
 

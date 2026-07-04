@@ -1,12 +1,15 @@
-# Lokální tajné soubory (gitignore – na GitHub se neposílají)
+# Lokální tajné soubory (`secrets/` – celá složka v gitignore)
+
+Šablony bez hesel: [`config/secrets-examples/`](../config/secrets-examples/).
 
 | Soubor | Účel |
 |--------|------|
 | `secrets/mobilmajak_vps_ed25519` nebo `secrets/mobilmajak_vps_ed25519.USER_INPUT_REQ` | Privátní SSH klíč (celý blok `-----BEGIN … KEY-----` … `-----END …`) |
 | `backend/.env` | DB heslo – šablona `backend/.env.example` |
 | `frontend/.env.production` | `REACT_APP_CLARITY_PROJECT_ID` – šablona `frontend/.env.example` |
-| `secrets/mobilmajak-finance.json` | Finance modul – šablona `mobilmajak-finance.example.json` |
-| `secrets/mobilmajak-slack.json` | Slack bot token + signing secret – šablona `mobilmajak-slack.example.json` |
+| `secrets/mobilmajak-finance.json` | Finance modul – šablona `config/secrets-examples/mobilmajak-finance.example.json` |
+| `secrets/mobilmajak-slack.json` | Slack bot token + signing secret – šablona `config/secrets-examples/mobilmajak-slack.example.json` |
+| `secrets/mobilmajak-symplio.json` | Symplio actor login – šablona `config/secrets-examples/mobilmajak-symplio.example.json` |
 | `secrets/slacktoken.json` | **legacy** – starý formát; stále funguje jako záloha, raději migruj na `mobilmajak-slack.json` |
 
 **Privátní klíč (funguje):** `.ssh/webmajak_vps/mobilmajak_vps_ed25519` v kořeni projektu (v gitignore)
@@ -52,7 +55,7 @@ Kompletní návod pro Slack portal: **[docs/slack-app-produkce.md](../docs/slack
 **Doporučený soubor** (jako u financí):
 
 ```bash
-cp secrets/mobilmajak-slack.example.json secrets/mobilmajak-slack.json
+cp config/secrets-examples/mobilmajak-slack.example.json secrets/mobilmajak-slack.json
 # vyplnit bot_token + signing_secret
 ```
 
@@ -99,8 +102,8 @@ Bez `SLACK_BOT_TOKEN` (a bez webhooku) příkaz jen vypíše úkoly a nic neode�
 
 | Soubor | Účel |
 |--------|------|
-| `secrets/mobilmajak-finance.json` | Finance modul – Fio token, Packeta admin loginy per prodejna, Google Sheets náklady. Šablona: `mobilmajak-finance.example.json`. V `backend/.env`: `FINANCE_SECRETS_FILE=../secrets/mobilmajak-finance.json`, `FINANCE_FIO_ENABLED=0` (Fio až po admin účtu) |
-| `secrets/google-sheets-service-account.json` | Service account pro import tabulky nákladů. Šablona: `google-sheets-service-account.example.json` |
+| `secrets/mobilmajak-finance.json` | Finance modul – Fio token, Packeta admin loginy per prodejna, Google Sheets náklady. Šablona: `config/secrets-examples/mobilmajak-finance.example.json`. V `backend/.env`: `FINANCE_SECRETS_FILE=../secrets/mobilmajak-finance.json`, `FINANCE_FIO_ENABLED=0` (Fio až po admin účtu) |
+| `secrets/google-sheets-service-account.json` | Service account pro import tabulky nákladů |
 | `secrets/camera_motion_secrets.json` | `{"ID_PRODEJNY":"hex_secret"}` – jeden secret na pilotní prodejnu |
 
 Na produkčním VPS v `/home/webmajak/webapp/.env`:
@@ -144,4 +147,10 @@ Ručně v NVR: **Configuration → Network → Advanced → HTTP(S) alarm** (neb
 ./scripts/backup-full-server.sh
 ```
 
-Výstup: `../mobilmajak-backups/`. Návod a obnova: [`docs/zaloha-disaster-recovery.md`](../docs/zaloha-disaster-recovery.md). Privátní git jen pro manifesty: `backup-init-offsite-git.sh` + `backup-sync-manifests-to-git.sh`.
+Výstup: `../mobilmajak-backups/`. Návod a obnova: [`docs/zaloha-disaster-recovery.md`](zaloha-disaster-recovery.md). Privátní git jen pro manifesty: `backup-init-offsite-git.sh` + `backup-sync-manifests-to-git.sh`.
+
+**Symplio prodejní actor (VPS):**
+
+- Actor: `/opt/actor/ACTOR_FINALL_WEB_PRODEJE_ALL/main.js`
+- Cron: `/opt/run-prodeje-actor-safe.sh` (každé 2 min)
+- Credentials: `secrets/mobilmajak-symplio.json` → na VPS `/home/webmajak/secrets/mobilmajak-symplio.json`

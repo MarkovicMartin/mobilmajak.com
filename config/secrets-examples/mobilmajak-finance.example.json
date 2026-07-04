@@ -1,5 +1,5 @@
 {
-  "_readme": "Zkopírovat na secrets/mobilmajak-finance.json (gitignore) a vyplnit. VPS: FINANCE_SECRETS_FILE v backend/.env",
+  "_readme": "Zkopírovat na secrets/mobilmajak-finance.json a vyplnit. VPS: FINANCE_SECRETS_FILE v backend/.env",
 
   "fio": {
     "accounts": [

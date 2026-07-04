@@ -1,0 +1,6 @@
+{
+  "_readme": "Zkopírovat na secrets/mobilmajak-slack.json. VPS: SLACK_SECRETS_FILE v backend/.env",
+  "bot_token": "xoxb-SLACK_BOT_TOKEN",
+  "signing_secret": "SLACK_SIGNING_SECRET",
+  "app_url": "https://mobilmajak.com"
+}

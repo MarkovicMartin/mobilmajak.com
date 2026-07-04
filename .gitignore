@@ -59,22 +59,9 @@ frontend/coverage/
 *~
 .DS_Store
 
-# SSH keys and local secrets (never commit)
+# SSH keys and local secrets (never commit – celá složka)
 .ssh/
-secrets/mobilmajak_vps_ed25519
-secrets/mobilmajak_vps_ed25519.pub
-secrets/mobilmajak_vps_ed25519.USER_INPUT_REQ
-secrets/webmajak_vps
-secrets/*.pem
-secrets/id_*
-!secrets/actor-cesta-na-vps.USER_INPUT_REQ
-!secrets/README.md
-secrets/camera_motion*.json
-secrets/slacktoken.json
-secrets/mobilmajak-finance.json
-secrets/mobilmajak-slack.json
-secrets/mobilmajak-symplio.json
-secrets/*token*.json
+secrets/
 scripts/*-gateway/config.json
 
 # Environment variables

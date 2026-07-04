@@ -1,7 +1,7 @@
 """
 Zajistí hybridní plány pro aktuální a příští měsíc (cron 1. den v měsíci).
 
-Příklad crontab na VPS – viz secrets/README.md.
+Příklad crontab na VPS – viz docs/secrets-setup.md.
 """
 from datetime import date
 

@@ -1,0 +1,5 @@
+{
+  "_readme": "Zkopírovat na secrets/mobilmajak-symplio.json. VPS: SYMPLIO_SECRETS_FILE=/home/webmajak/secrets/mobilmajak-symplio.json",
+  "user": "APIFY",
+  "password": "SYMPLIO_PASSWORD_HERE"
+}
