@@ -36,9 +36,22 @@ Z_NOTE_PREFILTER_Q = (
 VYDANE_TYPY = frozenset({
     'Zpracování zásilky', 'Zpracování nadrozměrné zásilky',
 })
-PRIJATE_TYPY = frozenset({'Podání', 'Podání C2C'})
+PRIJATE_TYPY = frozenset({'Podání'})
+C2C_TYPY = frozenset({'Podání C2C'})
+PRIJATE_ALL_TYPY = PRIJATE_TYPY | C2C_TYPY
 
-MATCH_WINDOW_HOURS = 24
+# Výdej s dobírkou – v CSV někdy chybí řádek Zpracování zásilky, je jen Cash collection
+VYDANE_DOBIRKA_TYPY = frozenset({'Cash collection'})
+VYDANE_ALL_TYPY = VYDANE_TYPY | VYDANE_DOBIRKA_TYPY
+PACKETA_SALE_MATCH_EXTRA = VYDANE_DOBIRKA_TYPY
+PACKETA_SALE_MATCH_TYPES = PACKETA_MAIN_VISIT_TYPES | PACKETA_SALE_MATCH_EXTRA
+
+TYP_KATEGORIE_LABELS = {
+    'prijate': 'Příjem zásilky',
+    'prijate_c2c': 'Příjem C2C',
+    'vydane': 'Výdej zásilky',
+    'vydane_dobirka': 'Výdej s dobírkou',
+}
 
 # Symplio sleva: kód SLEVA, název typicky „ZASILKOVNA ZASILKOVNA20“
 ZASILKOVNA_SLEVA_KOD = 'zasilkovna20'
@@ -58,6 +71,7 @@ class LinkedSale:
     match_source: str
     packeta_nalezeno: bool = True
     z_marker: bool = False
+    typ_inferovano: bool = False
 
 
 @dataclass
@@ -117,14 +131,48 @@ def is_z_oznaceno(item: LinkedSale) -> bool:
     return item.match_source in Z_NOTE_SOURCES and (bool(item.zasilka) or item.z_marker)
 
 
-def typ_skupina(typ_provize: str | None) -> str | None:
+def is_zasilkovna_prodej(item: LinkedSale) -> bool:
+    """Prodejka Zásilkovna: Z+číslo v poznámce (sleva ani Packeta nejsou povinné)."""
+    return bool(item.zasilka) and not item.z_marker and item.match_source in Z_NOTE_SOURCES
+
+
+def typ_kategorie(typ_provize: str | None) -> str | None:
     if not typ_provize:
         return None
+    if typ_provize in VYDANE_DOBIRKA_TYPY:
+        return 'vydane_dobirka'
     if typ_provize in VYDANE_TYPY:
         return 'vydane'
     if typ_provize in PRIJATE_TYPY:
         return 'prijate'
-    return 'jine'
+    if typ_provize in C2C_TYPY:
+        return 'prijate_c2c'
+    return None
+
+
+def typ_provize_label(typ_provize: str | None) -> str | None:
+    if not typ_provize:
+        return None
+    if typ_provize in VYDANE_DOBIRKA_TYPY:
+        return TYP_KATEGORIE_LABELS['vydane_dobirka']
+    if typ_provize == 'Zpracování nadrozměrné zásilky':
+        return 'Výdej zásilky (nadrozměrná)'
+    if typ_provize in VYDANE_TYPY:
+        return TYP_KATEGORIE_LABELS['vydane']
+    if typ_provize == 'Podání C2C':
+        return TYP_KATEGORIE_LABELS['prijate_c2c']
+    if typ_provize in PRIJATE_TYPY:
+        return TYP_KATEGORIE_LABELS['prijate']
+    return typ_provize
+
+
+def typ_skupina(typ_provize: str | None) -> str | None:
+    kat = typ_kategorie(typ_provize)
+    if kat in ('vydane', 'vydane_dobirka'):
+        return 'vydane'
+    if kat in ('prijate', 'prijate_c2c'):
+        return kat
+    return 'jine' if typ_provize else None
 
 
 def _sale_datetime(row_date: date, cas_prodeje) -> datetime | None:
@@ -141,16 +189,6 @@ def _sale_datetime(row_date: date, cas_prodeje) -> datetime | None:
         ))
     except (ValueError, IndexError):
         return datetime.combine(row_date, datetime.min.time())
-
-
-def _within_window(a: datetime | None, b: datetime | None, hours: int = MATCH_WINDOW_HOURS) -> bool:
-    if a is None or b is None:
-        return True
-    if timezone.is_naive(a):
-        a = timezone.make_aware(a)
-    if timezone.is_naive(b):
-        b = timezone.make_aware(b)
-    return abs((a - b).total_seconds()) <= hours * 3600
 
 
 def _qualifying_doklady(date_from: date, date_to: date, prodejna_id: int | None) -> set[str]:
@@ -172,7 +210,7 @@ def load_packeta_visits(
     qs = PacketaProvizePolozka.objects.filter(
         cas__gte=date_from,
         cas__lt=end_exclusive,
-        typ_provize__in=PACKETA_MAIN_VISIT_TYPES,
+        typ_provize__in=PACKETA_SALE_MATCH_TYPES,
     )
     if prodejna_id:
         qs = qs.filter(prodejna_id=prodejna_id)
@@ -198,13 +236,6 @@ def load_packeta_visits(
 
 def _zasilka_key(zasilka: str) -> str:
     return normalize_zasilka(zasilka)
-
-
-def _packeta_index(visits: Iterable[PacketaVisit]) -> dict[tuple[int, str], list[PacketaVisit]]:
-    idx: dict[tuple[int, str], list[PacketaVisit]] = defaultdict(list)
-    for v in visits:
-        idx[(v.prodejna_id, _zasilka_key(v.zasilka))].append(v)
-    return idx
 
 
 def _merge_note_fields_from_rows(rows: Iterable[dict]) -> tuple[str | None, str | None, str | None]:
@@ -314,24 +345,113 @@ def _scan_sleva_fallback(
     return rows
 
 
+def _sale_local_date(sale_dt: datetime | None) -> date | None:
+    if sale_dt is None:
+        return None
+    if timezone.is_naive(sale_dt):
+        return sale_dt.date()
+    return timezone.localtime(sale_dt).date()
+
+
+def _visit_local_date(visit_cas: datetime) -> date:
+    if timezone.is_naive(visit_cas):
+        return visit_cas.date()
+    return timezone.localtime(visit_cas).date()
+
+
+def _same_sale_day(sale_dt: datetime | None, visit_cas: datetime) -> bool:
+    """Balík musí být v Packeta ve stejný den jako prodejka – jiná interakce (příjem vs. výdej)."""
+    sday = _sale_local_date(sale_dt)
+    if sday is None:
+        return True
+    return sday == _visit_local_date(visit_cas)
+
+
+def _closest_by_time(visits: list[PacketaVisit], sale_dt: datetime) -> PacketaVisit:
+    if timezone.is_naive(sale_dt):
+        sale_dt = timezone.make_aware(sale_dt)
+    best = visits[0]
+    best_delta: float | None = None
+    for cand in visits:
+        cdt = cand.cas
+        if timezone.is_naive(cdt):
+            cdt = timezone.make_aware(cdt)
+        delta = abs((sale_dt - cdt).total_seconds())
+        if best_delta is None or delta < best_delta:
+            best = cand
+            best_delta = delta
+    return best
+
+
+def _closest_packeta_visit(
+    visits: list[PacketaVisit],
+    sale_dt: datetime | None,
+) -> PacketaVisit | None:
+    if not visits:
+        return None
+    if sale_dt is not None:
+        same_day = [v for v in visits if _same_sale_day(sale_dt, v.cas)]
+        if not same_day:
+            return None
+        visits = same_day
+    if sale_dt is None:
+        return visits[-1]
+    return _closest_by_time(visits, sale_dt)
+
+
+def _hint_vydany_visit(
+    zasilka: str,
+    prodejna_id: int,
+    sale_dt: datetime | None,
+) -> PacketaVisit | None:
+    """Odhad typu výdeje z Packety – jen pro zobrazení, nepotvrzuje párování."""
+    matches = _packeta_visits_for_zasilka(zasilka, prodejna_id)
+    vydane = [v for v in matches if typ_kategorie(v.typ_provize) in ('vydane', 'vydane_dobirka')]
+    if not vydane:
+        return None
+    if sale_dt is not None:
+        same_day = [v for v in vydane if _same_sale_day(sale_dt, v.cas)]
+        if same_day:
+            return _closest_by_time(same_day, sale_dt)
+        return _closest_by_time(vydane, sale_dt)
+    return vydane[-1]
+
+
+def _packeta_visits_for_zasilka(zasilka: str, prodejna_id: int) -> list[PacketaVisit]:
+    """Hlavní návštěvy balíku na pobočce (vydané i přijaté – výběr podle dne prodeje)."""
+    z_key = _zasilka_key(zasilka)
+    visits: list[PacketaVisit] = []
+    seen: set[tuple[int, str, str]] = set()
+    qs = PacketaProvizePolozka.objects.filter(
+        prodejna_id=prodejna_id,
+        zasilka=z_key,
+        typ_provize__in=PACKETA_SALE_MATCH_TYPES,
+    ).order_by('cas')
+    for row in qs.iterator():
+        key = (row.prodejna_id, z_key, row.typ_provize)
+        if key in seen:
+            continue
+        seen.add(key)
+        visits.append(PacketaVisit(
+            zasilka=z_key,
+            typ_provize=row.typ_provize,
+            typ_skupina=typ_skupina(row.typ_provize) or 'jine',
+            prodejna_id=row.prodejna_id,
+            cas=row.cas,
+        ))
+    return visits
+
+
 def _pick_packeta_match(
     zasilka: str | None,
     prodejna_id: int | None,
     sale_dt: datetime | None,
-    packeta_idx: dict[tuple[int, str], list[PacketaVisit]],
 ) -> PacketaVisit | None:
-    """Páruje jen explicitní Z+číslo v poznámce – ne čisté „Z“ bez čísla."""
+    """Páruje Z+číslo na návštěvu ve stejný den jako prodejka (příjem nebo výdej)."""
     if not zasilka or not prodejna_id:
         return None
-    matches = packeta_idx.get((prodejna_id, _zasilka_key(zasilka)), [])
-    best: PacketaVisit | None = None
-    for cand in matches:
-        if _within_window(sale_dt, cand.cas):
-            best = cand
-            break
-    if not best and matches:
-        best = matches[0]
-    return best
+    matches = _packeta_visits_for_zasilka(zasilka, prodejna_id)
+    return _closest_packeta_visit(matches, sale_dt)
 
 
 def link_sales_to_packeta(
@@ -340,8 +460,6 @@ def link_sales_to_packeta(
     prodejna_id: int | None = None,
 ) -> tuple[list[LinkedSale], list[dict]]:
     qualifying = _qualifying_doklady(date_from, date_to, prodejna_id)
-    visits = load_packeta_visits(date_from, date_to, prodejna_id)
-    packeta_idx = _packeta_index(visits)
     prodejce_key_map = build_prodejce_key_to_user_id()
 
     linked: list[LinkedSale] = []
@@ -358,7 +476,10 @@ def link_sales_to_packeta(
 
         pid = row.get('id_prodejny')
         sale_dt = _sale_datetime(row['typ'], row.get('cas_prodeje'))
-        best = _pick_packeta_match(zasilka, pid, sale_dt, packeta_idx)
+        best = _pick_packeta_match(zasilka, pid, sale_dt)
+        hint = None
+        if zasilka and not best:
+            hint = _hint_vydany_visit(zasilka, pid, sale_dt)
 
         if zasilka and not best:
             invalid_z.append({
@@ -369,19 +490,21 @@ def link_sales_to_packeta(
                 'id_prodejny': pid,
             })
 
+        visit = best or hint
         linked.append(LinkedSale(
-            zasilka=best.zasilka if best else (zasilka or ''),
-            zasilka_raw=best.zasilka if best else (zasilka or ''),
-            typ_provize=best.typ_provize if best else None,
-            typ_skupina=best.typ_skupina if best else None,
+            zasilka=visit.zasilka if visit else (zasilka or ''),
+            zasilka_raw=visit.zasilka if visit else (zasilka or ''),
+            typ_provize=visit.typ_provize if visit else None,
+            typ_skupina=visit.typ_skupina if visit else None,
             id_prodejce=resolve_web_user_id(row.get('id_prodejce'), prodejce_key_map),
             id_prodejny=pid,
             doklad=doklad,
             datum_prodeje=row['typ'],
-            cas_baliku=best.cas if best else None,
+            cas_baliku=visit.cas if visit else None,
             match_source=row['match_source'],
             packeta_nalezeno=best is not None,
             z_marker=z_marker,
+            typ_inferovano=best is None and hint is not None,
         ))
 
     known_doklady = {l.doklad for l in linked}
@@ -410,7 +533,8 @@ def link_sales_to_packeta(
 def distinct_visit_counts(visits: Iterable[PacketaVisit]) -> dict:
     celkem: set[str] = set()
     vydane: set[str] = set()
-    prijate: set[str] = set()
+    podani: set[str] = set()
+    c2c: set[str] = set()
     by_typ: dict[str, set[str]] = defaultdict(set)
 
     for v in visits:
@@ -420,25 +544,31 @@ def distinct_visit_counts(visits: Iterable[PacketaVisit]) -> dict:
         if v.typ_skupina == 'vydane':
             vydane.add(key)
         elif v.typ_skupina == 'prijate':
-            prijate.add(key)
+            podani.add(key)
+        elif v.typ_skupina == 'prijate_c2c':
+            c2c.add(key)
 
     return {
         'navstevy_celkem': len(celkem),
         'navstevy_vydane': len(vydane),
-        'navstevy_prijate': len(prijate),
+        'navstevy_podani': len(podani),
+        'navstevy_c2c': len(c2c),
+        'navstevy_prijate': len(podani | c2c),
         'po_typu': {typ: len(z) for typ, z in by_typ.items()},
     }
 
 
 def prodeje_by_prodejce(linked: Iterable[LinkedSale]) -> dict[int, dict]:
-    """Po prodejci (WebUser.id): prodeje jen s párováním na zásilku v Packeta."""
+    """Po prodejci (WebUser.id): prodeje = Z+číslo v poznámce (bez nutnosti slevy / Packety)."""
     key_map = build_prodejce_key_to_user_id()
     out: dict[int, dict] = defaultdict(lambda: {
         'prodeje_propojene': set(),
         'prodeje_oznacene': set(),
+        'prodeje_z_cislem': set(),
         'z_bez_cisla': set(),
         'sleva_bez_baliku': set(),
         'zasilky': set(),
+        'packeta_potvrzene': set(),
     })
     for item in linked:
         pid = resolve_web_user_id(item.id_prodejce, key_map)
@@ -450,21 +580,26 @@ def prodeje_by_prodejce(linked: Iterable[LinkedSale]) -> dict[int, dict]:
                 out[pid]['z_bez_cisla'].add(item.doklad)
             if item.zasilka and item.packeta_nalezeno:
                 out[pid]['zasilky'].add(item.zasilka)
+        if is_zasilkovna_prodej(item):
+            out[pid]['prodeje_z_cislem'].add(item.doklad)
+        if item.packeta_nalezeno and is_zasilkovna_prodej(item):
+            out[pid]['prodeje_propojene'].add(item.doklad)
+            out[pid]['packeta_potvrzene'].add(item.doklad)
         if item.match_source == 'sleva_fallback':
             out[pid]['sleva_bez_baliku'].add(item.doklad)
-        if item.packeta_nalezeno:
-            out[pid]['prodeje_propojene'].add(item.doklad)
 
     result = {}
     for pid, data in out.items():
         oznacene = len(data['prodeje_oznacene'])
-        propojene = len(data['prodeje_propojene'])
+        z_cislem = len(data['prodeje_z_cislem'])
+        packeta = len(data['packeta_potvrzene'])
         result[pid] = {
-            'zasilkovna_prodeje': propojene,
+            'zasilkovna_prodeje': z_cislem,
             'zasilkovna_oznaceno': oznacene,
             'zasilkovna_z_bez_cisla': len(data['z_bez_cisla']),
             'zasilkovna_sleva_bez_baliku': len(data['sleva_bez_baliku']),
-            'zasilkovna_konverze_z_pct': round(100 * propojene / oznacene, 1) if oznacene else None,
+            'zasilkovna_packeta_potvrzene': packeta,
+            'zasilkovna_konverze_z_pct': round(100 * packeta / z_cislem, 1) if z_cislem else None,
         }
     return result
 
@@ -519,7 +654,7 @@ def baliky_vydane_by_prodejce(
     prodejna_id: int | None = None,
 ) -> dict[int, int]:
     """Vydané balíky přiřazené prodejci ze směny (DISTINCT zásilka)."""
-    return _baliky_distinct_by_prodejce(date_from, date_to, VYDANE_TYPY, prodejna_id)
+    return _baliky_distinct_by_prodejce(date_from, date_to, VYDANE_ALL_TYPY, prodejna_id)
 
 
 def baliky_zpracovane_by_prodejce(
@@ -538,7 +673,7 @@ def baliky_vydane_by_prodejna(
     date_to: date,
 ) -> dict[int, int]:
     """Vydané balíky po prodejně (DISTINCT zásilka)."""
-    return _baliky_distinct_by_prodejna(date_from, date_to, VYDANE_TYPY)
+    return _baliky_distinct_by_prodejna(date_from, date_to, VYDANE_ALL_TYPY)
 
 
 def baliky_zpracovane_by_prodejna(
@@ -552,11 +687,11 @@ def baliky_zpracovane_by_prodejna(
 def prodeje_zasilkovna_by_prodejna(
     linked: Iterable[LinkedSale],
 ) -> dict[int, int]:
-    """Propojené prodeje Zásilkovna po prodejně (DISTINCT doklad s párováním na zásilku)."""
+    """Prodeje Zásilkovna po prodejně (DISTINCT doklad se Z+číslem v poznámce)."""
     by_prodejna: dict[int, set[str]] = defaultdict(set)
     for item in linked:
         if not item.id_prodejny:
             continue
-        if item.packeta_nalezeno:
+        if is_zasilkovna_prodej(item):
             by_prodejna[item.id_prodejny].add(item.doklad)
     return {sid: len(doklady) for sid, doklady in by_prodejna.items()}

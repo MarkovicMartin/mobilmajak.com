@@ -15,11 +15,14 @@ from analytics.zasilkovna_link import (
     baliky_zpracovane_by_prodejna,
     distinct_visit_counts,
     is_z_oznaceno,
+    is_zasilkovna_prodej,
     link_sales_to_packeta,
     load_packeta_visits,
     prodeje_by_prodejce,
     prodeje_zasilkovna_by_prodejna,
     typ_skupina,
+    typ_kategorie,
+    typ_provize_label,
 )
 from users.prodejce_resolve import build_prodejce_key_to_user_id, resolve_web_user_id
 from users.models import WebUser
@@ -59,7 +62,7 @@ def _prodejce_label(prodejce_map: dict[int, str], id_prodejce: int | None) -> st
 
 
 def _linked_with_typ(linked: list[LinkedSale]) -> list[LinkedSale]:
-    return [l for l in linked if l.packeta_nalezeno and l.typ_provize]
+    return [l for l in linked if l.typ_provize]
 
 
 def build_konverze_report(
@@ -73,6 +76,7 @@ def build_konverze_report(
 
     linked_typed = _linked_with_typ(linked)
     prodeje_z_note = {l.doklad for l in linked if is_z_oznaceno(l)}
+    prodeje_z_cislem = {l.doklad for l in linked if is_zasilkovna_prodej(l)}
     prodeje_fallback = {l.doklad for l in linked if l.match_source == 'sleva_fallback'}
     prodeje_propojene = {l.doklad for l in linked if l.packeta_nalezeno}
     prodeje_celkem = {l.doklad for l in linked}
@@ -89,6 +93,8 @@ def build_konverze_report(
         prod = len(prodeje_po_typu.get(typ, set()))
         po_typu.append({
             'typ_provize': typ,
+            'typ_baliku': typ_provize_label(typ),
+            'typ_kategorie': typ_kategorie(typ),
             'typ_skupina': typ_skupina(typ),
             'navstevy': nav,
             'prodeje': prod,
@@ -101,8 +107,8 @@ def build_konverze_report(
     for v in visits:
         visits_by_store[v.prodejna_id].add(v.zasilka)
     prodeje_by_store: dict[int, set[str]] = defaultdict(set)
-    for item in linked_typed:
-        if item.id_prodejny:
+    for item in linked:
+        if item.id_prodejny and is_zasilkovna_prodej(item):
             prodeje_by_store[item.id_prodejny].add(item.doklad)
 
     po_prodejne = []
@@ -170,7 +176,10 @@ def build_konverze_report(
             'doklad': l.doklad,
             'zasilka': l.zasilka,
             'typ_provize': l.typ_provize,
+            'typ_baliku': typ_provize_label(l.typ_provize),
+            'typ_kategorie': typ_kategorie(l.typ_provize),
             'typ_skupina': l.typ_skupina,
+            'typ_inferovano': l.typ_inferovano,
             'datum_prodeje': l.datum_prodeje.isoformat() if l.datum_prodeje else None,
             'id_prodejce': l.id_prodejce,
             'prodejce': _prodejce_label(prodejce_map, l.id_prodejce),
@@ -179,10 +188,14 @@ def build_konverze_report(
             'packeta_nalezeno': l.packeta_nalezeno,
             'z_marker': l.z_marker,
         }
-        for l in sorted(linked_typed, key=lambda x: (x.datum_prodeje or date.min, x.doklad), reverse=True)[:300]
+        for l in sorted(
+            [x for x in linked if is_zasilkovna_prodej(x)],
+            key=lambda x: (x.datum_prodeje or date.min, x.doklad),
+            reverse=True,
+        )[:300]
     ]
 
-    # Doklady označené Z bez propojení na Packeta (čekají na číslo balíku / import)
+    # Jen „Z“ bez čísla – ne počítá se jako prodej
     chybi_propojeni = [
         {
             'doklad': l.doklad,
@@ -195,7 +208,7 @@ def build_konverze_report(
             'zasilka': l.zasilka or None,
         }
         for l in linked
-        if is_z_oznaceno(l) and not l.packeta_nalezeno
+        if l.z_marker and not l.packeta_nalezeno
     ][:100]
 
     sleva_bez_baliku = [
@@ -217,15 +230,19 @@ def build_konverze_report(
             'navstevy_bezni': navstevy_bezni,
             'navstevy_baliku': navstevy,
             'navstevy_vydane': visit_stats['navstevy_vydane'],
+            'navstevy_podani': visit_stats['navstevy_podani'],
+            'navstevy_c2c': visit_stats['navstevy_c2c'],
             'navstevy_prijate': visit_stats['navstevy_prijate'],
             'prodeje_propojene': len(prodeje_propojene),
+            'prodeje_z_cislem': len(prodeje_z_cislem),
             'prodeje_oznacene_z': len(prodeje_z_note),
             'prodeje_sleva_fallback': len(prodeje_fallback),
             'prodeje_z_bez_cisla': sum(
                 s.get('zasilkovna_z_bez_cisla', 0) for s in prodejci_stats.values()
             ),
             'prodeje_celkem': len(prodeje_celkem),
-            'konverze_pct': _pct(len(prodeje_propojene), navstevy),
+            'konverze_pct': _pct(len(prodeje_z_cislem), navstevy),
+            'konverze_packeta_pct': _pct(len(prodeje_propojene), navstevy),
             'neplatne_z': len(invalid_z),
             'chybi_propojeni_z': len(chybi_propojeni),
         },

@@ -2,4 +2,5 @@
 # Načítá run-symplio-pokladna-safe.sh přes: set -a && source .env && set +a
 
 SYMPLIO_SECRETS_FILE=/home/webmajak/secrets/mobilmajak-symplio.json
+SYMPLIO_SCRIPTS_DIR=/opt/actor/ACTOR_FINALL_WEB_PRODEJE_ALL
 SYMPLIO_POKLADNA_DAYS=7

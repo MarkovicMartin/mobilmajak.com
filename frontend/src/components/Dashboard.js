@@ -6,7 +6,7 @@ import AppShell from './shell/AppShell';
 import AppToast from './AppToast';
 import UxFrictionMonitor from './UxFrictionMonitor';
 import ProfileModule from '../modules/profile/ProfileModule';
-import { FINANCE_MODULE_ENABLED } from '../config/featureFlags';
+import { FINANCE_MODULE_ENABLED, DAILY_DUTIES_MODULE_ENABLED } from '../config/featureFlags';
 import './Dashboard.css';
 
 const AdminDashboard = lazy(() => import('./AdminDashboard'));
@@ -26,6 +26,11 @@ const TasksModule = lazy(() => import('../modules/tasks/TasksModule'));
 const CoachingModule = lazy(() => import('../modules/coaching/CoachingModule'));
 const FinanceModule = FINANCE_MODULE_ENABLED
     ? lazy(() => import('../modules/finance/FinanceModule'))
+    : null;
+const WreckPartsModule = lazy(() => import('../modules/wreckParts/WreckPartsModule'));
+const ReklamaceModule = lazy(() => import('../modules/reklamace/ReklamaceModule'));
+const DailyDutiesModule = DAILY_DUTIES_MODULE_ENABLED
+    ? lazy(() => import('../modules/dailyDuties/DailyDutiesModule'))
     : null;
 
 const RouteFallback = () => (
@@ -69,6 +74,11 @@ const Dashboard = () => {
                         <Route path="/shifts" element={<ShiftsModule />} />
                         <Route path="/access" element={<AccessModule />} />
                         <Route path="/orders" element={<OrdersModule />} />
+                        <Route path="/reklamace" element={<ReklamaceModule />} />
+                        <Route path="/wreck-parts" element={<WreckPartsModule />} />
+                        {DAILY_DUTIES_MODULE_ENABLED && (
+                            <Route path="/daily-duties" element={<DailyDutiesModule />} />
+                        )}
                         <Route path="/plans/*" element={isAdmin() ? <PlansModule /> : <Navigate to="/" />} />
                         {FINANCE_MODULE_ENABLED && (
                             <Route path="/finance/*" element={isAdmin() ? <FinanceModule /> : <Navigate to="/" />} />

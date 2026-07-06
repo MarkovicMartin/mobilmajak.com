@@ -33,6 +33,8 @@ def _parse_fio_date(value: str) -> date:
 
 def _col(tx: dict, key: str, default=''):
     val = tx.get(key)
+    if isinstance(val, dict):
+        val = val.get('value')
     if val is None:
         return default
     return str(val).strip()

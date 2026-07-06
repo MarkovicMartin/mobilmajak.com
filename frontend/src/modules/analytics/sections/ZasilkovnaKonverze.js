@@ -140,36 +140,45 @@ const ZasilkovnaKonverzeView = () => {
                         <div className="zk-kpi">
                             <span className="zk-kpi-label">Návštěvy balíků</span>
                             <strong>{fmtNum(summary.navstevy_baliku)}</strong>
-                            <small>vydané {fmtNum(summary.navstevy_vydane)} · přijaté {fmtNum(summary.navstevy_prijate)}</small>
+                            <small>
+                                vydané {fmtNum(summary.navstevy_vydane)}
+                                · příjem {fmtNum(summary.navstevy_podani)}
+                                · C2C {fmtNum(summary.navstevy_c2c)}
+                            </small>
                         </div>
                         <div className="zk-kpi">
-                            <span className="zk-kpi-label">Propojené prodeje</span>
-                            <strong>{fmtNum(summary.prodeje_propojene)}</strong>
+                            <span className="zk-kpi-label">Prodeje Zásilkovna</span>
+                            <strong>{fmtNum(summary.prodeje_z_cislem)}</strong>
                             <small>
-                                označeno Z: {fmtNum(summary.prodeje_oznacene_z)}
-                                · Z bez čísla: {fmtNum(summary.prodeje_z_bez_cisla)}
+                                Z+číslo v poznámce (sleva není nutná)
+                                · Packeta: {fmtNum(summary.prodeje_propojene)}
+                                · jen Z: {fmtNum(summary.prodeje_z_bez_cisla)}
                                 · sleva bez balíku: {fmtNum(summary.prodeje_sleva_fallback)}
                             </small>
                         </div>
                         <div className="zk-kpi">
                             <span className="zk-kpi-label">Konverze balík → nákup</span>
                             <strong>{fmtPct(summary.konverze_pct)}</strong>
-                            <small>běžní zákazníci: {fmtNum(summary.navstevy_bezni)} účtenek</small>
+                            <small>
+                                Packeta stejný den: {fmtPct(summary.konverze_packeta_pct)}
+                                · běžní zákazníci: {fmtNum(summary.navstevy_bezni)} účtenek
+                            </small>
                         </div>
                         <div className="zk-kpi">
-                            <span className="zk-kpi-label">Neplatné Z v poznámce</span>
+                            <span className="zk-kpi-label">Bez potvrzení Packeta</span>
                             <strong>{fmtNum(summary.neplatne_z)}</strong>
-                            <small>číslo balíku nenalezeno v Packeta</small>
+                            <small>Z+číslo v poznámce, balík v provizi stejný den nenalezen</small>
                         </div>
                     </div>
 
                     <div className="zk-panels">
-                        <section className="zk-panel">
-                            <h3>Konverze podle typu zásilky</h3>
+                        <div className="zk-panels-col zk-panels-col--side">
+                            <section className="zk-panel">
+                                <h3>Konverze podle typu zásilky</h3>
                             <table className="zk-table">
                                 <thead>
                                     <tr>
-                                        <th>Typ provize</th>
+                                        <th>Typ balíku</th>
                                         <th>Skupina</th>
                                         <th>Návštěvy</th>
                                         <th>Prodeje</th>
@@ -179,8 +188,18 @@ const ZasilkovnaKonverzeView = () => {
                                 <tbody>
                                     {(data.po_typu || []).map((row) => (
                                         <tr key={row.typ_provize}>
-                                            <td>{row.typ_provize}</td>
-                                            <td>{row.typ_skupina === 'vydane' ? 'vydané' : row.typ_skupina === 'prijate' ? 'přijaté' : '—'}</td>
+                                            <td>{row.typ_baliku || row.typ_provize}</td>
+                                            <td>
+                                                {row.typ_kategorie === 'vydane_dobirka'
+                                                    ? 'vydané (dobírka)'
+                                                    : row.typ_skupina === 'vydane'
+                                                        ? 'vydané'
+                                                        : row.typ_skupina === 'prijate_c2c'
+                                                            ? 'C2C'
+                                                            : row.typ_skupina === 'prijate'
+                                                                ? 'příjem'
+                                                                : '—'}
+                                            </td>
                                             <td>{fmtNum(row.navstevy)}</td>
                                             <td>{fmtNum(row.prodeje)}</td>
                                             <td>{fmtPct(row.konverze_pct)}</td>
@@ -190,8 +209,8 @@ const ZasilkovnaKonverzeView = () => {
                             </table>
                         </section>
 
-                        <section className="zk-panel">
-                            <h3>Prodejny</h3>
+                            <section className="zk-panel">
+                                <h3>Prodejny</h3>
                             <table className="zk-table">
                                 <thead>
                                     <tr>
@@ -213,8 +232,9 @@ const ZasilkovnaKonverzeView = () => {
                                 </tbody>
                             </table>
                         </section>
+                        </div>
 
-                        <section className="zk-panel">
+                        <section className="zk-panel zk-panel--prodejci">
                             <h3>Prodejci</h3>
                             <table className="zk-table">
                                 <thead>
@@ -247,10 +267,10 @@ const ZasilkovnaKonverzeView = () => {
                     </div>
 
                     <section className="zk-panel zk-panel--wide">
-                        <h3>Propojené prodeje s balíkem</h3>
+                        <h3>Prodeje Zásilkovna (Z+číslo v poznámce)</h3>
                         {(data.detail || []).length === 0 ? (
                             <p className="zk-empty">
-                                Žádný doklad s poznámkou Z propojený na Packeta.
+                                Žádný doklad se Z+číslem v poznámce.
                                 {summary.prodeje_sleva_fallback > 0 && (
                                     <> Dokladů se slevou zasilkovna20 (bez čísla balíku): {fmtNum(summary.prodeje_sleva_fallback)}.</>
                                 )}
@@ -264,6 +284,7 @@ const ZasilkovnaKonverzeView = () => {
                                         <th>Doklad</th>
                                         <th>Zásilka</th>
                                         <th>Typ balíku</th>
+                                        <th>Packeta</th>
                                         <th>Zdroj</th>
                                     </tr>
                                 </thead>
@@ -274,7 +295,11 @@ const ZasilkovnaKonverzeView = () => {
                                             <td>{row.prodejce || '—'}</td>
                                             <td>{row.doklad}</td>
                                             <td>{row.zasilka}</td>
-                                            <td>{row.typ_provize}</td>
+                                            <td>
+                                                {row.typ_baliku || '—'}
+                                                {row.typ_inferovano ? ' (odhad)' : ''}
+                                            </td>
+                                            <td>{row.packeta_nalezeno ? 'ano' : 'ne'}</td>
                                             <td>{row.match_source === 'poznamka' ? 'Z v poznámce' : row.match_source}</td>
                                         </tr>
                                     ))}

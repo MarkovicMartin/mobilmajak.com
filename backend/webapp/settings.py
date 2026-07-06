@@ -48,6 +48,7 @@ ALLOWED_HOSTS = [
 # Application definition
 
 FINANCE_MODULE_ENABLED = os.getenv('FINANCE_MODULE_ENABLED', '0').strip().lower() in ('1', 'true', 'yes')
+DAILY_DUTIES_MODULE_ENABLED = os.getenv('DAILY_DUTIES_MODULE_ENABLED', '0').strip().lower() in ('1', 'true', 'yes')
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -72,6 +73,9 @@ INSTALLED_APPS = [
     'finance',
     'packeta',
     'vallora',
+    'wreck_parts',
+    'reklamace',
+    'daily_duties',
 ]
 
 MIDDLEWARE = [
@@ -170,6 +174,9 @@ if _use_sqlite_for_tests:
             'web_pristupy',
             'coaching',
             'vallora',
+            'reklamace',
+            'daily_duties',
+            'wreck_parts',
         )
     }
 

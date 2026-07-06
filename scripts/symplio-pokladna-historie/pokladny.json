@@ -14,7 +14,7 @@
       "prodejna_id": 2,
       "admin_slug": "pokladna-2",
       "store_button": "Senimo",
-      "enabled": false
+      "enabled": true
     },
     {
       "key": "globus-predni",
@@ -22,7 +22,7 @@
       "prodejna_id": 1,
       "admin_slug": "pokladna-4",
       "store_button": "Globus",
-      "enabled": false
+      "enabled": true
     },
     {
       "key": "globus-zadni",
@@ -30,7 +30,7 @@
       "prodejna_id": 1,
       "admin_slug": "pokladna-5",
       "store_button": "Globus",
-      "enabled": false
+      "enabled": true
     },
     {
       "key": "vsetin",
@@ -38,7 +38,7 @@
       "prodejna_id": 5,
       "admin_slug": "pokladna-6",
       "store_button": "Vsetín",
-      "enabled": false
+      "enabled": true
     },
     {
       "key": "zlin-prava",
@@ -46,7 +46,7 @@
       "prodejna_id": 3,
       "admin_slug": "pokladna-7",
       "store_button": "Čepkov",
-      "enabled": false
+      "enabled": true
     },
     {
       "key": "lucka",
@@ -54,7 +54,7 @@
       "prodejna_id": 2,
       "admin_slug": "pokladna-8",
       "store_button": "Senimo",
-      "enabled": false
+      "enabled": true
     },
     {
       "key": "prerov",
@@ -62,7 +62,7 @@
       "prodejna_id": 4,
       "admin_slug": "pokladna-9",
       "store_button": "Přerov",
-      "enabled": false
+      "enabled": true
     }
   ],
   "_readme": "admin_slug = pokladna-{symplio_id}. prodejna_id z MOBILMAJAK (Globus=1 Senimo=2 Zlín=3 Přerov=4 Vsetín=5 Šternberk=6). Zapni enabled po ověření exportu."

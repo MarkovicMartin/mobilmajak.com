@@ -79,11 +79,16 @@ urlpatterns = [
     path('api/plans/', include('plans.urls')),
     path('api/coaching/', include('coaching.urls')),
     path('api/tickets/', include('tickets.urls')),
+    path('api/wreck-parts/', include('wreck_parts.urls')),
+    path('api/reklamace/', include('reklamace.urls')),
     path('', include('web_pristupy.urls')),
 ]
 
 if getattr(settings, 'FINANCE_MODULE_ENABLED', False):
     urlpatterns.insert(-1, path('api/finance/', include('finance.urls')))
+
+if getattr(settings, 'DAILY_DUTIES_MODULE_ENABLED', False):
+    urlpatterns.insert(-1, path('api/daily-duties/', include('daily_duties.urls')))
 
 # Přidání URL pro media soubory v development módu
 if settings.DEBUG:

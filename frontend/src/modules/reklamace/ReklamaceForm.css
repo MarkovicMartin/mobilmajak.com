@@ -1,0 +1,94 @@
+.reklamace-form-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 1rem;
+}
+
+.reklamace-form {
+    background: var(--card-bg, #fff);
+    border-radius: 8px;
+    padding: 1.25rem;
+    width: 100%;
+    max-width: 560px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.reklamace-form__grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.65rem;
+    margin: 1rem 0;
+}
+
+.reklamace-form__full {
+    grid-column: 1 / -1;
+}
+
+.reklamace-form label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    font-size: 0.8rem;
+}
+
+.reklamace-form input,
+.reklamace-form textarea,
+.reklamace-form select {
+    padding: 0.4rem 0.55rem;
+    border: 1px solid var(--border-color, #ccc);
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+.reklamace-form__checkbox {
+    flex-direction: row !important;
+    align-items: center;
+    gap: 0.4rem !important;
+}
+
+.reklamace-form__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+.reklamace-form-confirm {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1001;
+    padding: 1rem;
+}
+
+.reklamace-form-confirm__box {
+    background: var(--card-bg, #fff);
+    border-radius: 8px;
+    padding: 1.25rem;
+    max-width: 420px;
+    width: 100%;
+}
+
+.reklamace-form-confirm__box h4 {
+    margin: 0 0 0.5rem;
+}
+
+.reklamace-form-confirm__box p {
+    margin: 0 0 1rem;
+    color: var(--text-muted, #555);
+    font-size: 0.9rem;
+}
+
+@media (max-width: 500px) {
+    .reklamace-form__grid {
+        grid-template-columns: 1fr;
+    }
+}

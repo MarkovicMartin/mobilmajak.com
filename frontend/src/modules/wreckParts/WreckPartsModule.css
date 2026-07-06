@@ -1,0 +1,71 @@
+.wreck-parts-module {
+    padding: 0 0 2rem;
+}
+
+.wreck-parts-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    align-items: flex-end;
+}
+
+.wreck-parts-filters input[type="search"] {
+    flex: 1;
+    min-width: 200px;
+}
+
+.wreck-parts-store {
+    margin-bottom: 0.85rem;
+}
+
+.wreck-parts-store__title {
+    font-size: 0.95rem;
+    margin: 0 0 0.3rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.wreck-parts-store__count {
+    font-size: 0.78rem;
+    opacity: 0.7;
+    font-weight: normal;
+}
+
+.wreck-parts-table-wrap {
+    overflow-x: auto;
+}
+
+.wreck-parts-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.78rem;
+}
+
+.wreck-parts-table th,
+.wreck-parts-table td {
+    padding: 0.25rem 0.45rem;
+    border-bottom: 1px solid var(--border-color, #e0e0e0);
+    text-align: left;
+    vertical-align: top;
+}
+
+.wreck-parts-notes {
+    max-width: 240px;
+    font-size: 0.75rem;
+    opacity: 0.9;
+}
+
+.wreck-parts-actions {
+    white-space: nowrap;
+}
+
+.wreck-parts-actions .btn {
+    margin-left: 0.25rem;
+}
+
+.wreck-parts-loading,
+.wreck-parts-empty {
+    opacity: 0.8;
+}

@@ -223,7 +223,13 @@ def get_finance_counts() -> dict:
     }
 
 
-def import_symplio_pokladna_file(path, prodejna_id: int, dry_run: bool = False) -> dict:
+def import_symplio_pokladna_file(
+    path,
+    prodejna_id: int,
+    dry_run: bool = False,
+    date_from: date | None = None,
+    date_to: date | None = None,
+) -> dict:
     """Import jednoho XLSX exportu historie pokladny. Vrací statistiky."""
     from pathlib import Path
 
@@ -235,9 +241,15 @@ def import_symplio_pokladna_file(path, prodejna_id: int, dry_run: bool = False) 
     )
 
     rows = parse_symplio_pokladna_xlsx(Path(path))
-    stats = {'created': 0, 'updated': 0, 'skipped': 0, 'non_vydej': 0}
+    stats = {'created': 0, 'updated': 0, 'skipped': 0, 'non_vydej': 0, 'out_of_range': 0}
 
     for row in rows:
+        if date_from and row['datum'] < date_from:
+            stats['out_of_range'] += 1
+            continue
+        if date_to and row['datum'] > date_to:
+            stats['out_of_range'] += 1
+            continue
         if not is_symplio_vydej(row):
             stats['non_vydej'] += 1
             continue

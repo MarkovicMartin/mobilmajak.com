@@ -5,7 +5,7 @@ import { getNavChildren, PARENTS_WITH_CHILDREN } from './navChildren';
 import { getAnalyticsSection } from '../modules/analytics/analyticsSections';
 import { plansIdFromPath, PLANS_SECTIONS } from '../modules/plans/plansSections';
 import { TASKS_SECTIONS } from '../modules/tasks/tasksSections';
-import { FINANCE_MODULE_ENABLED } from './featureFlags';
+import { FINANCE_MODULE_ENABLED, DAILY_DUTIES_MODULE_ENABLED } from './featureFlags';
 
 export const NAV_GROUPS = [
     {
@@ -32,6 +32,8 @@ export const NAV_GROUPS = [
                 ? [{ sectionKey: 'finance', label: 'Finance', path: '/finance', adminOnly: true, icon: 'fa-coins' }]
                 : []),
             { sectionKey: 'orders', label: 'Objednávky', path: '/orders', icon: 'fa-shopping-cart' },
+            { sectionKey: 'reklamace', label: 'Reklamace', path: '/reklamace', icon: 'fa-undo-alt' },
+            { sectionKey: 'wreck-parts', label: 'Díly z vraků', path: '/wreck-parts', icon: 'fa-mobile-alt' },
             { sectionKey: 'leaderboard', label: 'Žebříček', path: '/leaderboard', icon: 'fa-trophy' },
         ],
     },
@@ -49,6 +51,9 @@ export const NAV_GROUPS = [
         label: 'Nástroje',
         items: [
             { sectionKey: 'access', label: 'Přístupy', path: '/access', icon: 'fa-key' },
+            ...(DAILY_DUTIES_MODULE_ENABLED
+                ? [{ sectionKey: 'daily-duties', label: 'Denní povinnosti', path: '/daily-duties', icon: 'fa-clipboard-check' }]
+                : []),
             { sectionKey: 'tickets', label: 'Tickety', path: '/my-tickets', icon: 'fa-ticket-alt' },
         ],
     },
@@ -146,6 +151,15 @@ export const getRouteLabel = (pathname) => {
     }
     if (pathname.startsWith('/finance')) {
         return 'Finance';
+    }
+    if (pathname.startsWith('/reklamace')) {
+        return 'Reklamace';
+    }
+    if (pathname.startsWith('/wreck-parts')) {
+        return 'Díly z vraků';
+    }
+    if (pathname.startsWith('/daily-duties')) {
+        return 'Denní povinnosti';
     }
     if (pathname.startsWith('/tasks/')) {
         const section = TASKS_SECTIONS.find((s) => s.path === pathname.replace(/^\/tasks\/?/, '').split('/')[0]);
