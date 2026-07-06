@@ -57,10 +57,10 @@ export const METRICS = {
         rankSubtitleDay: 'bodů z minulé směny',
     },
     [METRIC_KEYS.ZASILKOVNA]: {
-        sortKey: 'zasilkovna_baliku',
-        label: 'Zásilkovna balíky',
-        scoreLabel: 'KS',
-        rankSubtitle: 'vydaných balíků (odhad ze směny)',
+        sortKey: 'zasilkovna_konverze_pct',
+        label: 'Zásilkovna',
+        scoreLabel: '%',
+        rankSubtitle: 'úspěšnosti prodeje (prodeje / vydané balíky)',
     },
 };
 
@@ -94,6 +94,14 @@ export const getMetricNumericValue = (seller, metricKey, isDay = false) => {
     return Number.isFinite(n) ? n : 0;
 };
 
+export const formatZasilkovnaLeaderboard = (seller) => {
+    const baliku = Number(seller.zasilkovna_baliku) || 0;
+    const pct = seller.zasilkovna_konverze_pct;
+    if (!baliku && pct == null) return '—';
+    const pctLabel = pct != null ? `${Math.round(Number(pct))}%` : '—';
+    return `${pctLabel} (${baliku})`;
+};
+
 export const formatMetricValue = (seller, metricKey, isDay = false) => {
     switch (metricKey) {
         case METRIC_KEYS.VICEPRACE:
@@ -102,6 +110,8 @@ export const formatMetricValue = (seller, metricKey, isDay = false) => {
             return (seller.prumer_polozek_uctu ?? 0).toFixed(2);
         case METRIC_KEYS.PRUMER_HODNOTA:
             return formatPrumerHodnotaUctenky(seller.prumer_hodnota_uctenky);
+        case METRIC_KEYS.ZASILKOVNA:
+            return formatZasilkovnaLeaderboard(seller);
         case METRIC_KEYS.LAST_PERIOD:
         case METRIC_KEYS.TOTAL_POINTS:
         default:
@@ -109,10 +119,33 @@ export const formatMetricValue = (seller, metricKey, isDay = false) => {
     }
 };
 
+export const hasZasilkovnaActivity = (seller) =>
+    (Number(seller.zasilkovna_baliku) || 0) > 0
+    || (Number(seller.zasilkovna_prodeje) || 0) > 0;
+
+export const compareZasilkovnaMetric = (a, b) => {
+    const aActive = hasZasilkovnaActivity(a);
+    const bActive = hasZasilkovnaActivity(b);
+    if (aActive !== bActive) return aActive ? -1 : 1;
+    if (!aActive) return (a.prodejce || '').localeCompare(b.prodejce || '', 'cs');
+
+    const aPct = a.zasilkovna_konverze_pct;
+    const bPct = b.zasilkovna_konverze_pct;
+    const aVal = aPct != null ? Number(aPct) : -1;
+    const bVal = bPct != null ? Number(bPct) : -1;
+    if (bVal !== aVal) return bVal - aVal;
+    return (Number(b.zasilkovna_baliku) || 0) - (Number(a.zasilkovna_baliku) || 0);
+};
+
 export const sortByMetric = (data, metricKey, isDay = false) => {
-    const sorted = [...data].sort(
-        (a, b) => getMetricNumericValue(b, metricKey, isDay) - getMetricNumericValue(a, metricKey, isDay),
-    );
+    const sorted = [...data];
+    if (metricKey === METRIC_KEYS.ZASILKOVNA) {
+        sorted.sort(compareZasilkovnaMetric);
+    } else {
+        sorted.sort(
+            (a, b) => getMetricNumericValue(b, metricKey, isDay) - getMetricNumericValue(a, metricKey, isDay),
+        );
+    }
     return sorted.map((seller, index) => ({
         ...seller,
         position: index + 1,
@@ -130,9 +163,17 @@ export const getTopByMetric = (data, metricKey, isDay = false) => {
     if (!data?.length) {
         return { value: 0, name: '—', row: null };
     }
-    const best = data.reduce((a, b) => (
-        getMetricNumericValue(b, metricKey, isDay) > getMetricNumericValue(a, metricKey, isDay) ? b : a
-    ));
+    const pool = metricKey === METRIC_KEYS.ZASILKOVNA
+        ? data.filter(hasZasilkovnaActivity)
+        : data;
+    if (!pool.length) {
+        return { value: 0, name: '—', row: null };
+    }
+    const best = metricKey === METRIC_KEYS.ZASILKOVNA
+        ? [...pool].sort(compareZasilkovnaMetric)[0]
+        : pool.reduce((a, b) => (
+            getMetricNumericValue(b, metricKey, isDay) > getMetricNumericValue(a, metricKey, isDay) ? b : a
+        ));
     return {
         value: getMetricNumericValue(best, metricKey, isDay),
         name: best.prodejce || '—',

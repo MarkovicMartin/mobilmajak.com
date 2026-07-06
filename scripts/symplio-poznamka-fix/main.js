@@ -372,77 +372,24 @@ function buildLineImportKey(date, cas, kod, doklad, cena, seqOnDoklad) {
     return `${date}|${cas || ''}|${kod || ''}|${doklad || ''}|${cena}|${seqOnDoklad}`;
 }
 
-const POZNAMKA_DOKLADU_COLUMN_NAMES = [
-    'Poznámka k dokladu',
-    'Poznámka dokladu',
-    'Poznamka_dokladu',
-    'Poznámky',
-];
-
-function trimNote(value) {
-    if (value === null || value === undefined) return null;
-    const text = String(value).trim();
-    return text || null;
-}
-
-function looksLikeZasilkaNote(text) {
-    if (!text) return false;
-    if (/^\s*Z\s*$/i.test(text)) return true;
-    return /(?:^|(?<![A-Za-z0-9]))Z(?:\s*(\d[\d\s]{8,20}))/i.test(text);
-}
-
-function getColumnValue(g, names) {
-    for (const name of names) {
-        const value = trimNote(g(name));
-        if (value) return value;
-    }
-    return null;
-}
-
-function loadPoznamkaEnrichmentMap() {
-    const filePath = process.env.POZNAMKA_DOKLADU_ENRICHMENT;
-    if (!filePath || !fs.existsSync(filePath)) return {};
-    try {
-        const raw = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-        return raw.map || raw;
-    } catch (error) {
-        console.warn('Nepodařilo se načíst enrichment poznámek:', error.message);
-        return {};
-    }
-}
-
-function buildDokladNoteMap(headers, rows) {
-    const C = {};
-    headers.forEach((h, i) => { if (h) C[h.toString().trim()] = i; });
+/** Poznamka_dokladu neplníme z exportu položek – doplňuje sync-doklad-notes.js (seznam dokladů). */
+async function loadPreservedDokladNotes(connection, table, dates) {
+    if (!dates.length) return new Map();
+    const placeholders = dates.map(() => '?').join(', ');
+    const [rows] = await connection.execute(
+        `SELECT Doklad, MAX(Poznamka_dokladu) AS note
+         FROM ${table}
+         WHERE Vystaveno IN (${placeholders})
+           AND Poznamka_dokladu IS NOT NULL
+           AND TRIM(Poznamka_dokladu) <> ''
+         GROUP BY Doklad`,
+        dates,
+    );
     const map = new Map();
-
     for (const row of rows) {
-        if (!row || row.length === 0) continue;
-        const g = (name) => { const idx = C[name]; return idx !== undefined ? row[idx] : null; };
-        const doklad = trimNote(g('Doklad'));
-        if (!doklad) continue;
-
-        const candidates = [
-            getColumnValue(g, POZNAMKA_DOKLADU_COLUMN_NAMES),
-            looksLikeZasilkaNote(trimNote(g('Poznámka'))) ? trimNote(g('Poznámka')) : null,
-        ].filter(Boolean);
-
-        if (!candidates.length) continue;
-        const existing = map.get(doklad);
-        if (!existing || (looksLikeZasilkaNote(candidates[0]) && !looksLikeZasilkaNote(existing))) {
-            map.set(doklad, candidates[0]);
-        }
+        if (row.Doklad && row.note) map.set(String(row.Doklad).trim(), String(row.note).trim());
     }
     return map;
-}
-
-function resolvePoznamkaDokladu(g, dokladStr, dokladNoteMap, enrichmentMap) {
-    return (
-        getColumnValue(g, POZNAMKA_DOKLADU_COLUMN_NAMES)
-        || dokladNoteMap.get(dokladStr)
-        || trimNote(enrichmentMap[dokladStr])
-        || null
-    );
 }
 
 // Funkce pro nahrání dat do tabulky WEB_PRODEJE_ALL (vše najednou)
@@ -470,6 +417,12 @@ async function insertDataToWebProdejeAll(connection, headers, rows) {
         }
         console.log(`Dny k re-importu (DELETE + INSERT): ${[...uniqueDates].join(', ')}`);
 
+        const dateList = [...uniqueDates];
+        const preservedDokladNotes = await loadPreservedDokladNotes(connection, TABLE, dateList);
+        if (preservedDokladNotes.size > 0) {
+            console.log(`Zachováno Poznamka_dokladu z DB pro ${preservedDokladNotes.size} dokladů (sync-doklad-notes)`);
+        }
+
         if (uniqueDates.size > 0) {
             const placeholders = [...uniqueDates].map(() => '?').join(', ');
             const [delResult] = await connection.execute(
@@ -490,13 +443,9 @@ async function insertDataToWebProdejeAll(connection, headers, rows) {
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
-        const dokladNoteMap = buildDokladNoteMap(headers, rows);
-        const enrichmentMap = loadPoznamkaEnrichmentMap();
-        console.log(`Poznámky k dokladu z exportu: ${dokladNoteMap.size}, enrichment soubor: ${Object.keys(enrichmentMap).length}`);
-
         let insertedCount = 0;
         let skippedExactInFile = 0;
-        let withPoznamkaDokladu = 0;
+        let withPreservedPoznamkaDokladu = 0;
         const seqPerDoklad = new Map();
         const seenInFile = new Set();
         const batchSize = 100;
@@ -532,8 +481,8 @@ async function insertDataToWebProdejeAll(connection, headers, rows) {
                     console.log(`DEBUG řádek ${insertedCount + 1}: Technik: "${g('Technik')}", k_servisu: "${g('k_servisu')}"`);
                 }
 
-                const poznamkaDokladu = resolvePoznamkaDokladu(g, dokladStr, dokladNoteMap, enrichmentMap);
-                if (poznamkaDokladu) withPoznamkaDokladu++;
+                const poznamkaDokladu = preservedDokladNotes.get(dokladStr) || null;
+                if (poznamkaDokladu) withPreservedPoznamkaDokladu++;
 
                 const values = [
                     convertedDate,
@@ -590,7 +539,7 @@ async function insertDataToWebProdejeAll(connection, headers, rows) {
         console.log(`Celková doba zpracování: ${duration} sekund (${Math.round(duration/60)} minut)`);
         console.log(`Bylo zpracováno ${rows.length} řádků z exportu`);
         console.log(`Vloženo záznamů: ${insertedCount}`);
-        console.log(`Řádků s Poznamka_dokladu: ${withPoznamkaDokladu}`);
+        console.log(`Řádků se zachovanou Poznamka_dokladu (z sync-doklad-notes): ${withPreservedPoznamkaDokladu}`);
         console.log(`Přeskočeno přesných duplicit v jednom souboru: ${skippedExactInFile}`);
         console.log(`Celkový počet řádků v tabulce ${TABLE}: ${newCount}`);
 

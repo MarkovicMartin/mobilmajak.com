@@ -157,14 +157,30 @@ const NewsModule = () => {
                     post.id === postId 
                         ? {
                             ...post,
-                            komentare: [...post.komentare, completeComment]
+                            komentare: [...(post.komentare || []), completeComment],
+                            pocet_komentaru: (post.pocet_komentaru || 0) + 1,
                         }
                         : post
                 )
             );
+            return completeComment;
         } catch (err) {
             setError(err.message);
+            throw err;
         }
+    };
+
+    // Načtení komentářů k příspěvku (lazy load při rozkliku)
+    const handleLoadComments = async (postId) => {
+        const response = await api.get(`/news/${postId}/komentare/`);
+        setPosts(prevPosts =>
+            prevPosts.map(post =>
+                post.id === postId
+                    ? { ...post, komentare: response.data }
+                    : post
+            )
+        );
+        return response.data;
     };
 
     // Smazání komentáře
@@ -173,10 +189,16 @@ const NewsModule = () => {
             await api.delete(`/news/komentare/${commentId}/`);
 
             setPosts(prevPosts => 
-                prevPosts.map(post => ({
-                    ...post,
-                    komentare: post.komentare.filter(comment => comment.id !== commentId)
-                }))
+                prevPosts.map(post => {
+                    const hadComment = (post.komentare || []).some((c) => c.id === commentId);
+                    return {
+                        ...post,
+                        komentare: (post.komentare || []).filter(comment => comment.id !== commentId),
+                        pocet_komentaru: hadComment
+                            ? Math.max(0, (post.pocet_komentaru || 0) - 1)
+                            : post.pocet_komentaru,
+                    };
+                })
             );
         } catch (err) {
             setError(err.message);
@@ -292,6 +314,7 @@ const NewsModule = () => {
                 onRemoveReaction={handleRemoveReaction}
                 onAddComment={handleAddComment}
                 onDeleteComment={handleDeleteComment}
+                onLoadComments={handleLoadComments}
             />
         </div>
     );

@@ -45,6 +45,9 @@ PRIJATE_TYPY = frozenset({'Podání', 'Podání C2C'})
 
 MATCH_WINDOW_HOURS = 24
 
+# Symplio sleva: kód SLEVA, název typicky „ZASILKOVNA ZASILKOVNA20“
+ZASILKOVNA_SLEVA_KOD = 'zasilkovna20'
+
 
 @dataclass
 class LinkedSale:
@@ -84,7 +87,7 @@ def parse_zasilka_from_note(text: str | None) -> str | None:
     digits = digits_from_z_match(m.group(1))
     if len(digits) < 9:
         return None
-    return normalize_zasilka(f'Z {digits}')
+    return normalize_zasilka(f'Z{digits}')
 
 
 def is_plain_z_marker(text: str | None) -> bool:
@@ -182,13 +185,14 @@ def load_packeta_visits(
     visits: list[PacketaVisit] = []
     seen: set[tuple[int, str, str]] = set()
     for row in qs.iterator():
-        key = (row.prodejna_id, row.zasilka, row.typ_provize)
+        z_key = normalize_zasilka(row.zasilka)
+        key = (row.prodejna_id, z_key, row.typ_provize)
         if key in seen:
             continue
         seen.add(key)
         skupina = typ_skupina(row.typ_provize) or 'jine'
         visits.append(PacketaVisit(
-            zasilka=row.zasilka,
+            zasilka=z_key,
             typ_provize=row.typ_provize,
             typ_skupina=skupina,
             prodejna_id=row.prodejna_id,
@@ -197,10 +201,14 @@ def load_packeta_visits(
     return visits
 
 
+def _zasilka_key(zasilka: str) -> str:
+    return normalize_zasilka(zasilka)
+
+
 def _packeta_index(visits: Iterable[PacketaVisit]) -> dict[tuple[int, str], list[PacketaVisit]]:
     idx: dict[tuple[int, str], list[PacketaVisit]] = defaultdict(list)
     for v in visits:
-        idx[(v.prodejna_id, v.zasilka)].append(v)
+        idx[(v.prodejna_id, _zasilka_key(v.zasilka))].append(v)
     return idx
 
 
@@ -259,9 +267,7 @@ def _scan_sleva_fallback(
         typ__gte=date_from,
         typ__lte=date_to,
         kod='SLEVA',
-    ).filter(
-        Q(nazev__icontains='zasilkovna') | Q(nazev__icontains='ZASILKOVNA'),
-    )
+    ).filter(nazev__icontains=ZASILKOVNA_SLEVA_KOD)
     if prodejna_id:
         qs = qs.filter(id_prodejny=prodejna_id)
 
@@ -283,52 +289,21 @@ def _scan_sleva_fallback(
 
 def _pick_packeta_match(
     zasilka: str | None,
-    z_marker: bool,
     prodejna_id: int | None,
     sale_dt: datetime | None,
     packeta_idx: dict[tuple[int, str], list[PacketaVisit]],
-    visits: list[PacketaVisit],
-    used_visits: set[tuple[int, str]],
 ) -> PacketaVisit | None:
-    if zasilka and prodejna_id:
-        matches = packeta_idx.get((prodejna_id, zasilka), [])
-        best: PacketaVisit | None = None
-        for cand in matches:
-            if _within_window(sale_dt, cand.cas):
-                best = cand
-                break
-        if not best and matches:
-            best = matches[0]
-        if best:
-            return best
-
-    if not z_marker or not prodejna_id:
+    """Páruje jen explicitní Z+číslo v poznámce – ne čisté „Z“ bez čísla."""
+    if not zasilka or not prodejna_id:
         return None
-
+    matches = packeta_idx.get((prodejna_id, _zasilka_key(zasilka)), [])
     best: PacketaVisit | None = None
-    best_delta: float | None = None
-    for cand in visits:
-        if cand.prodejna_id != prodejna_id:
-            continue
-        if cand.typ_skupina != 'vydane':
-            continue
-        key = (cand.prodejna_id, cand.zasilka)
-        if key in used_visits:
-            continue
-        if not _within_window(sale_dt, cand.cas):
-            continue
-        if sale_dt is None:
-            return cand
-        cdt = cand.cas
-        sdt = sale_dt
-        if timezone.is_naive(cdt):
-            cdt = timezone.make_aware(cdt)
-        if timezone.is_naive(sdt):
-            sdt = timezone.make_aware(sdt)
-        delta = abs((sdt - cdt).total_seconds())
-        if best is None or (best_delta is not None and delta < best_delta):
+    for cand in matches:
+        if _within_window(sale_dt, cand.cas):
             best = cand
-            best_delta = delta
+            break
+    if not best and matches:
+        best = matches[0]
     return best
 
 
@@ -345,7 +320,6 @@ def link_sales_to_packeta(
     linked: list[LinkedSale] = []
     invalid_z: list[dict] = []
     seen_doklad: set[str] = set()
-    used_visits: set[tuple[int, str]] = set()
 
     for row in _scan_z_marked_doklady(date_from, date_to, prodejna_id):
         doklad = row.get('doklad')
@@ -357,9 +331,7 @@ def link_sales_to_packeta(
 
         pid = row.get('id_prodejny')
         sale_dt = _sale_datetime(row['typ'], row.get('cas_prodeje'))
-        best = _pick_packeta_match(
-            zasilka, z_marker, pid, sale_dt, packeta_idx, visits, used_visits,
-        )
+        best = _pick_packeta_match(zasilka, pid, sale_dt, packeta_idx)
 
         if zasilka and not best:
             invalid_z.append({
@@ -369,9 +341,6 @@ def link_sales_to_packeta(
                 'id_prodejce': row.get('id_prodejce'),
                 'id_prodejny': pid,
             })
-
-        if best:
-            used_visits.add((best.prodejna_id, best.zasilka))
 
         linked.append(LinkedSale(
             zasilka=best.zasilka if best else (zasilka or ''),
@@ -418,12 +387,13 @@ def distinct_visit_counts(visits: Iterable[PacketaVisit]) -> dict:
     by_typ: dict[str, set[str]] = defaultdict(set)
 
     for v in visits:
-        celkem.add((v.prodejna_id, v.zasilka))
-        by_typ[v.typ_provize].add((v.prodejna_id, v.zasilka))
+        key = (v.prodejna_id, _zasilka_key(v.zasilka))
+        celkem.add(key)
+        by_typ[v.typ_provize].add(key)
         if v.typ_skupina == 'vydane':
-            vydane.add((v.prodejna_id, v.zasilka))
+            vydane.add(key)
         elif v.typ_skupina == 'prijate':
-            prijate.add((v.prodejna_id, v.zasilka))
+            prijate.add(key)
 
     return {
         'navstevy_celkem': len(celkem),
@@ -434,11 +404,13 @@ def distinct_visit_counts(visits: Iterable[PacketaVisit]) -> dict:
 
 
 def prodeje_by_prodejce(linked: Iterable[LinkedSale]) -> dict[int, dict]:
-    """Po prodejci (WebUser.id): propojené prodeje (DISTINCT doklad se Z match)."""
+    """Po prodejci (WebUser.id): prodeje jen s párováním na zásilku v Packeta."""
     key_map = build_prodejce_key_to_user_id()
     out: dict[int, dict] = defaultdict(lambda: {
         'prodeje_propojene': set(),
         'prodeje_oznacene': set(),
+        'z_bez_cisla': set(),
+        'sleva_bez_baliku': set(),
         'zasilky': set(),
     })
     for item in linked:
@@ -447,9 +419,13 @@ def prodeje_by_prodejce(linked: Iterable[LinkedSale]) -> dict[int, dict]:
             continue
         if is_z_oznaceno(item):
             out[pid]['prodeje_oznacene'].add(item.doklad)
-            if item.zasilka:
+            if item.z_marker and not item.packeta_nalezeno:
+                out[pid]['z_bez_cisla'].add(item.doklad)
+            if item.zasilka and item.packeta_nalezeno:
                 out[pid]['zasilky'].add(item.zasilka)
-        if item.packeta_nalezeno or item.match_source in Z_NOTE_SOURCES:
+        if item.match_source == 'sleva_fallback':
+            out[pid]['sleva_bez_baliku'].add(item.doklad)
+        if item.packeta_nalezeno:
             out[pid]['prodeje_propojene'].add(item.doklad)
 
     result = {}
@@ -459,6 +435,8 @@ def prodeje_by_prodejce(linked: Iterable[LinkedSale]) -> dict[int, dict]:
         result[pid] = {
             'zasilkovna_prodeje': propojene,
             'zasilkovna_oznaceno': oznacene,
+            'zasilkovna_z_bez_cisla': len(data['z_bez_cisla']),
+            'zasilkovna_sleva_bez_baliku': len(data['sleva_bez_baliku']),
             'zasilkovna_konverze_z_pct': round(100 * propojene / oznacene, 1) if oznacene else None,
         }
     return result
@@ -481,7 +459,7 @@ def baliky_vydane_by_prodejce(
 
     by_prodejce: dict[int, set[str]] = defaultdict(set)
     for row in qs.values('id_prodejce', 'zasilka'):
-        by_prodejce[row['id_prodejce']].add(row['zasilka'])
+        by_prodejce[row['id_prodejce']].add(_zasilka_key(row['zasilka']))
     return {pid: len(zasilky) for pid, zasilky in by_prodejce.items()}
 
 
@@ -498,18 +476,18 @@ def baliky_vydane_by_prodejna(
     by_prodejna: dict[int, set[str]] = defaultdict(set)
     for row in qs.values('prodejna_id', 'zasilka'):
         if row['prodejna_id']:
-            by_prodejna[row['prodejna_id']].add(row['zasilka'])
+            by_prodejna[row['prodejna_id']].add(_zasilka_key(row['zasilka']))
     return {sid: len(zasilky) for sid, zasilky in by_prodejna.items()}
 
 
 def prodeje_zasilkovna_by_prodejna(
     linked: Iterable[LinkedSale],
 ) -> dict[int, int]:
-    """Propojené prodeje Zásilkovna po prodejně (DISTINCT doklad)."""
+    """Propojené prodeje Zásilkovna po prodejně (DISTINCT doklad s párováním na zásilku)."""
     by_prodejna: dict[int, set[str]] = defaultdict(set)
     for item in linked:
         if not item.id_prodejny:
             continue
-        if item.packeta_nalezeno or item.match_source in Z_NOTE_SOURCES:
+        if item.packeta_nalezeno:
             by_prodejna[item.id_prodejny].add(item.doklad)
     return {sid: len(doklady) for sid, doklady in by_prodejna.items()}

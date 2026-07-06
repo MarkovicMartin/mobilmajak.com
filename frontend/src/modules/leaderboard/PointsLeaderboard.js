@@ -10,6 +10,7 @@ import {
     STAT_CARD_META,
     formatMetricValue,
     formatPrumerHodnotaUctenky,
+    formatZasilkovnaLeaderboard,
     getOppositeMetric,
     getTopByMetric,
     isExpandableMetric,
@@ -232,7 +233,7 @@ const PointsLeaderboard = ({
     const renderSortableHeader = (metricKey, label) => (
         <th
             key={metricKey}
-            className={`col-num sortable ${rankMetric === metricKey ? 'sort-active' : ''}`}
+            className={`${metricKey === METRIC_KEYS.ZASILKOVNA ? 'col-zasilkovna' : 'col-num'} sortable ${rankMetric === metricKey ? 'sort-active' : ''}`}
             onClick={() => handleMetricSelect(metricKey)}
             title={label}
         >
@@ -385,14 +386,8 @@ const PointsLeaderboard = ({
                                         <td className={`col-num ${rankMetric === METRIC_KEYS.PRUMER_HODNOTA ? 'cell-active' : ''}`}>
                                             {formatPrumerHodnotaUctenky(seller.prumer_hodnota_uctenky)}
                                         </td>
-                                        <td className={`col-num ${rankMetric === METRIC_KEYS.ZASILKOVNA ? 'cell-active' : ''}`}>
-                                            {seller.zasilkovna_baliku ?? 0}
-                                            {(seller.zasilkovna_konverze_pct != null && seller.zasilkovna_baliku > 0) && (
-                                                <span className="cell-sub" title="Konverze = prodeje / vydané balíky">
-                                                    {' '}
-                                                    ({seller.zasilkovna_konverze_pct}%)
-                                                </span>
-                                            )}
+                                        <td className={`col-zasilkovna ${rankMetric === METRIC_KEYS.ZASILKOVNA ? 'cell-active' : ''}`}>
+                                            {formatZasilkovnaLeaderboard(seller)}
                                         </td>
                                         {!hideLastPeriodColumn && (
                                             <td className={`col-num ${rankMetric === METRIC_KEYS.LAST_PERIOD ? 'cell-active' : ''}`}>

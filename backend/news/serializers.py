@@ -75,7 +75,7 @@ class NovinkaSerializer(serializers.ModelSerializer):
     autor = WebUserSerializer(read_only=True)
     soubory = NovinkaSouborSerializer(many=True, read_only=True)
     reakce = ReakceSerializer(many=True, read_only=True)
-    komentare = KomentarSerializer(many=True, read_only=True)
+    komentare = serializers.SerializerMethodField()
     kategorie = KategorieSerializer(many=True, read_only=True)
     pocet_reakci = serializers.IntegerField(read_only=True)
     pocet_komentaru = serializers.IntegerField(read_only=True)
@@ -90,6 +90,10 @@ class NovinkaSerializer(serializers.ModelSerializer):
             'datum_vytvoreni', 'datum_upravy'
         ]
     
+    def get_komentare(self, obj):
+        active = obj.komentare.filter(aktivni=True)
+        return KomentarSerializer(active, many=True, context=self.context).data
+
     def get_moje_reakce(self, obj):
         """Vrátí reakci aktuálního uživatele na tuto novinku"""
         request = self.context.get('request')
@@ -114,7 +118,7 @@ class NovinkaCreateSerializer(serializers.ModelSerializer):
     autor = WebUserSerializer(read_only=True)
     soubory = NovinkaSouborSerializer(many=True, read_only=True)
     reakce = ReakceSerializer(many=True, read_only=True)
-    komentare = KomentarSerializer(many=True, read_only=True)
+    komentare = serializers.SerializerMethodField()
     kategorie = serializers.PrimaryKeyRelatedField(many=True, queryset=Kategorie.objects.all(), required=False)
     kategorie_display = KategorieSerializer(many=True, read_only=True, source='kategorie')
     pocet_reakci = serializers.IntegerField(read_only=True)
@@ -140,6 +144,10 @@ class NovinkaCreateSerializer(serializers.ModelSerializer):
         data['kategorie'] = data.pop('kategorie_display', [])
         return data
     
+    def get_komentare(self, obj):
+        active = obj.komentare.filter(aktivni=True)
+        return KomentarSerializer(active, many=True, context=self.context).data
+
     def get_moje_reakce(self, obj):
         """Vrátí reakci aktuálního uživatele na tuto novinku"""
         request = self.context.get('request')

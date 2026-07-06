@@ -9,18 +9,44 @@ const PostList = ({
     onAddReaction, 
     onRemoveReaction, 
     onAddComment, 
-    onDeleteComment 
+    onDeleteComment,
+    onLoadComments,
 }) => {
     const [expandedComments, setExpandedComments] = useState(new Set());
+    const [loadingComments, setLoadingComments] = useState(new Set());
 
-    const toggleComments = (postId) => {
-        const newExpanded = new Set(expandedComments);
-        if (newExpanded.has(postId)) {
-            newExpanded.delete(postId);
-        } else {
-            newExpanded.add(postId);
+    const expandComments = (postId) => {
+        setExpandedComments((prev) => new Set(prev).add(postId));
+    };
+
+    const toggleComments = async (post) => {
+        const postId = post.id;
+        const isExpanded = expandedComments.has(postId);
+
+        if (!isExpanded) {
+            const hasLocalComments = (post.komentare || []).length > 0;
+            const expectedCount = post.pocet_komentaru || 0;
+            if (!hasLocalComments && expectedCount > 0 && onLoadComments) {
+                setLoadingComments((prev) => new Set(prev).add(postId));
+                try {
+                    await onLoadComments(postId);
+                } finally {
+                    setLoadingComments((prev) => {
+                        const next = new Set(prev);
+                        next.delete(postId);
+                        return next;
+                    });
+                }
+            }
+            setExpandedComments((prev) => new Set(prev).add(postId));
+            return;
         }
-        setExpandedComments(newExpanded);
+
+        setExpandedComments((prev) => {
+            const next = new Set(prev);
+            next.delete(postId);
+            return next;
+        });
     };
 
     if (posts.length === 0) {
@@ -46,11 +72,13 @@ const PostList = ({
                     onAddComment={onAddComment}
                     onDeleteComment={onDeleteComment}
                     showComments={expandedComments.has(post.id)}
-                    onToggleComments={() => toggleComments(post.id)}
+                    commentsLoading={loadingComments.has(post.id)}
+                    onToggleComments={() => toggleComments(post)}
+                    onExpandComments={() => expandComments(post.id)}
                 />
             ))}
         </div>
     );
 };
 
-export default PostList; 
+export default PostList;

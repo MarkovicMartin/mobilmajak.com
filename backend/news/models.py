@@ -63,8 +63,8 @@ class Novinka(models.Model):
     
     @property
     def pocet_komentaru(self):
-        """Vrátí počet komentářů na příspěvek"""
-        return self.komentare.count()
+        """Vrátí počet aktivních komentářů na příspěvek"""
+        return self.komentare.filter(aktivni=True).count()
 
 class NovinkaSoubor(models.Model):
     """Model pro soubory připojené k novinkám"""

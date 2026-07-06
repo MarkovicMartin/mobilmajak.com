@@ -120,9 +120,15 @@
 }
 
 .points-leaderboard .cell-sub {
-    font-size: 0.75rem;
+    display: block;
+    font-size: 0.68rem;
     color: var(--text-secondary);
     font-weight: normal;
+    font-variant-numeric: tabular-nums;
+}
+
+.points-leaderboard .cell-sub--warn {
+    color: #b45309;
 }
 
 .points-leaderboard .stat-card-name {
@@ -392,15 +398,44 @@
 }
 
 .leaderboard-table .col-seller {
-    width: 22%;
+    width: 17%;
 }
 
 .leaderboard-table .col-store {
-    width: 14%;
+    width: 12%;
 }
 
 .leaderboard-table .col-num {
-    width: 7.5%;
+    width: 7%;
+    text-align: right;
+}
+
+.leaderboard-table .col-zasilkovna {
+    width: 11%;
+    text-align: right;
+}
+
+.leaderboard-table th.col-num,
+.leaderboard-table th.col-zasilkovna {
+    text-align: right;
+}
+
+.leaderboard-table td.col-num {
+    text-align: right;
+}
+
+.zasilkovna-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 1px;
+    line-height: 1.25;
+    min-width: 0;
+}
+
+.zasilkovna-cell__pct {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
 }
 
 .position-rank {

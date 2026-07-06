@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Backfill července s opravou Poznamka_dokladu + snapshot/compare.
+# Backfill položek + doplnění Poznamka_dokladu přes sync-doklad-notes (ne z exportu položek).
 set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 KEY="${MOBILMAJAK_SSH_KEY:-$REPO_ROOT/.ssh/webmajak_vps/mobilmajak_vps_ed25519}"
@@ -16,7 +16,9 @@ scp -i "$KEY" \
   "$REPO_ROOT/scripts/symplio-poznamka-fix/main.js" \
   "$REPO_ROOT/scripts/symplio-poznamka-fix/symplio-credentials.js" \
   "$REPO_ROOT/scripts/symplio-poznamka-fix/symplio-login.js" \
+  "$REPO_ROOT/scripts/symplio-poznamka-fix/sync-doklad-notes.js" \
   "$REPO_ROOT/scripts/symplio-poznamka-fix/fetch-doklad-notes.js" \
+  "$REPO_ROOT/scripts/symplio-poznamka-fix/apply-poznamka-dokladu.js" \
   "$REPO_ROOT/scripts/symplio-poznamka-fix/snapshot-july.js" \
   "$REPO_ROOT/scripts/symplio-poznamka-fix/compare-notes.js" \
   "$REPO_ROOT/scripts/symplio-poznamka-fix/restore-from-snapshot.js" \
@@ -28,14 +30,14 @@ echo "==> Snapshot BEFORE (pokud neexistuje)"
 ssh -i "$KEY" root@194.182.87.138 "cd ${ACTOR} && export DB_HOST='$DB_HOST' DB_USER='$DB_USER' DB_NAME='$DB_NAME' DB_PASSWORD='$DB_PASS' && \
   test -f reports/snapshot_2026-07_before.json || node snapshot-july.js --year 2026 --month 7 --out reports/snapshot_2026-07_before.json"
 
-echo "==> Fetch poznámek ze seznamu dokladů Symplio"
-ssh -i "$KEY" root@194.182.87.138 "cd ${ACTOR} && ${SYMPLIO_ENV} && node fetch-doklad-notes.js --from ${FROM} --to ${TO} --out reports/poznamka_dokladu_enrichment.json"
-
-echo "==> Backfill ${FROM}..${TO}"
-ssh -i "$KEY" root@194.182.87.138 "cd ${ACTOR} && export DB_HOST='$DB_HOST' DB_USER='$DB_USER' DB_NAME='$DB_NAME' DB_PASSWORD='$DB_PASS' \
-  POZNAMKA_DOKLADU_ENRICHMENT=reports/poznamka_dokladu_enrichment.json && \
+echo "==> Backfill položek ${FROM}..${TO} (Poznamka_dokladu jen přes sync-doklad-notes)"
+ssh -i "$KEY" root@194.182.87.138 "cd ${ACTOR} && export DB_HOST='$DB_HOST' DB_USER='$DB_USER' DB_NAME='$DB_NAME' DB_PASSWORD='$DB_PASS' && \
   node backfill-historical.js --from ${FROM} --to ${TO} --file reports/symplio_${FROM}_${TO}.xlsx 2>&1 | tee reports/backfill_poznamka_${FROM}_${TO}.log || \
   node backfill-historical.js --from ${FROM} --to ${TO} --download 2>&1 | tee reports/backfill_poznamka_${FROM}_${TO}.log"
+
+echo "==> Poznámky dokladů ze seznamu dokladů Symplio (fetch + apply)"
+ssh -i "$KEY" root@194.182.87.138 "cd ${ACTOR} && ${SYMPLIO_ENV} && HEADLESS=1 CHROME_BIN=/usr/bin/google-chrome node fetch-doklad-notes.js --from ${FROM} --to ${TO} --out reports/poznamka_dokladu_enrichment.json && \
+  node apply-poznamka-dokladu.js --json reports/poznamka_dokladu_enrichment.json --from ${FROM} --to ${TO}"
 
 echo "==> Compare notes"
 ssh -i "$KEY" root@194.182.87.138 "cd ${ACTOR} && export DB_HOST='$DB_HOST' DB_USER='$DB_USER' DB_NAME='$DB_NAME' DB_PASSWORD='$DB_PASS' && \

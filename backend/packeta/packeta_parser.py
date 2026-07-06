@@ -61,9 +61,8 @@ _DATE_EN_RE = re.compile(
 
 
 def normalize_zasilka(raw: str) -> str:
-    s = (raw or '').strip()
-    s = re.sub(r'\s+', ' ', s)
-    return s
+    """Kanonický tvar bez mezer – pro ukládání i porovnávání (Z4325018333)."""
+    return re.sub(r'\s+', '', (raw or '').strip())
 
 
 def parse_packeta_datetime(value: str) -> datetime:

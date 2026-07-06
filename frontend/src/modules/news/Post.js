@@ -1,6 +1,13 @@
 import React, { useState } from 'react';
 import CommentForm from './CommentForm';
 import CommentList from './CommentList';
+import {
+    REACTION_EMOJI,
+    REACTION_ORDER,
+    reactionNamesForType,
+    reactionSummaryLines,
+    reactionsByType,
+} from './reactionUtils';
 import './Post.css';
 
 const Post = ({ 
@@ -12,9 +19,14 @@ const Post = ({
     onAddComment, 
     onDeleteComment,
     showComments,
-    onToggleComments
+    commentsLoading,
+    onToggleComments,
+    onExpandComments,
 }) => {
     const [showCommentForm, setShowCommentForm] = useState(false);
+
+    const commentCount = Math.max(post.pocet_komentaru || 0, (post.komentare || []).length);
+    const reactionSummary = reactionSummaryLines(post.reakce);
 
     const formatDate = (dateString) => {
         const date = new Date(dateString);
@@ -39,22 +51,47 @@ const Post = ({
         }
     };
 
-    const getReactionCount = (type) => {
-        return post.reakce.filter(r => r.typ === type).length;
-    };
+    const getReactionCount = (type) => reactionsByType(post.reakce, type).length;
 
-    const isMyReaction = (type) => {
-        return post.moje_reakce && post.moje_reakce.typ === type;
-    };
+    const isMyReaction = (type) => post.moje_reakce && post.moje_reakce.typ === type;
 
-    const canDelete = () => {
-        return currentUser.role === 'ADMIN' || currentUser.id === post.autor.id;
-    };
+    const canDelete = () => currentUser.role === 'ADMIN' || currentUser.id === post.autor.id;
 
     const handleDelete = () => {
         if (window.confirm('Opravdu chcete smazat tento příspěvek?')) {
             onDelete(post.id);
         }
+    };
+
+    const handleAddComment = async (postId, commentData) => {
+        await onAddComment(postId, commentData);
+        onExpandComments?.(postId);
+        setShowCommentForm(false);
+    };
+
+    const renderReactionButton = (type) => {
+        const count = getReactionCount(type);
+        const names = reactionNamesForType(post.reakce, type);
+        const emoji = REACTION_EMOJI[type];
+
+        return (
+            <span key={type} className="reaction-btn-wrap">
+                <button 
+                    type="button"
+                    className={`reaction-btn ${isMyReaction(type) ? 'active' : ''}`}
+                    onClick={() => handleReaction(type)}
+                    aria-label={`${emoji} reakce`}
+                >
+                    {emoji} {count > 0 && count}
+                </button>
+                {count > 0 && (
+                    <span className="reaction-tooltip" role="tooltip">
+                        <strong>{emoji}</strong>
+                        <span>{names.join(', ')}</span>
+                    </span>
+                )}
+            </span>
+        );
     };
 
     const renderFile = (file) => {
@@ -64,15 +101,14 @@ const Post = ({
                     <img src={file.url} alt={file.nazev} className="image-preview" />
                 </div>
             );
-        } else {
-            return (
-                <div key={file.id} className="file-preview">
-                    <a href={file.url} target="_blank" rel="noopener noreferrer" className="file-link">
-                        📎 {file.nazev}
-                    </a>
-                </div>
-            );
         }
+        return (
+            <div key={file.id} className="file-preview">
+                <a href={file.url} target="_blank" rel="noopener noreferrer" className="file-link">
+                    📎 {file.nazev}
+                </a>
+            </div>
+        );
     };
 
     return (
@@ -88,7 +124,7 @@ const Post = ({
                     </div>
                 </div>
                 {canDelete() && (
-                    <button className="delete-btn" onClick={handleDelete}>
+                    <button type="button" className="delete-btn" onClick={handleDelete}>
                         🗑️
                     </button>
                 )}
@@ -120,55 +156,55 @@ const Post = ({
             )}
 
             <div className="post-stats">
-                <span className="reactions-count">
-                    {post.pocet_reakci > 0 && `${post.pocet_reakci} reakcí`}
-                </span>
-                <span className="comments-count">
-                    {post.pocet_komentaru > 0 && `${post.pocet_komentaru} komentářů`}
-                </span>
+                {post.pocet_reakci > 0 && (
+                    <span className="reactions-summary-wrap">
+                        <span className="reactions-count">
+                            {post.pocet_reakci} reakcí
+                        </span>
+                        {reactionSummary.length > 0 && (
+                            <span className="reaction-tooltip reaction-tooltip--summary" role="tooltip">
+                                {reactionSummary.map((line) => (
+                                    <span key={line} className="reaction-summary-line">{line}</span>
+                                ))}
+                            </span>
+                        )}
+                    </span>
+                )}
+                {commentCount > 0 && (
+                    <button
+                        type="button"
+                        className="comments-count-btn"
+                        onClick={onToggleComments}
+                    >
+                        {commentCount} komentářů
+                    </button>
+                )}
             </div>
 
             <div className="post-actions">
                 <div className="reactions">
-                    <button 
-                        className={`reaction-btn ${isMyReaction('like') ? 'active' : ''}`}
-                        onClick={() => handleReaction('like')}
-                    >
-                        👍 {getReactionCount('like') > 0 && getReactionCount('like')}
-                    </button>
-                    <button 
-                        className={`reaction-btn ${isMyReaction('srdce') ? 'active' : ''}`}
-                        onClick={() => handleReaction('srdce')}
-                    >
-                        ❤️ {getReactionCount('srdce') > 0 && getReactionCount('srdce')}
-                    </button>
-                    <button 
-                        className={`reaction-btn ${isMyReaction('smich') ? 'active' : ''}`}
-                        onClick={() => handleReaction('smich')}
-                    >
-                        😂 {getReactionCount('smich') > 0 && getReactionCount('smich')}
-                    </button>
-                    <button 
-                        className={`reaction-btn ${isMyReaction('prekvapeni') ? 'active' : ''}`}
-                        onClick={() => handleReaction('prekvapeni')}
-                    >
-                        😮 {getReactionCount('prekvapeni') > 0 && getReactionCount('prekvapeni')}
-                    </button>
+                    {REACTION_ORDER.map(renderReactionButton)}
                 </div>
 
                 <div className="action-buttons">
                     <button 
+                        type="button"
                         className="comment-btn"
                         onClick={() => setShowCommentForm(!showCommentForm)}
                     >
                         💬 Komentovat
                     </button>
-                    {post.pocet_komentaru > 0 && (
+                    {commentCount > 0 && (
                         <button 
+                            type="button"
                             className="show-comments-btn"
                             onClick={onToggleComments}
                         >
-                            {showComments ? 'Skrýt komentáře' : 'Zobrazit komentáře'}
+                            {commentsLoading
+                                ? 'Načítám…'
+                                : showComments
+                                    ? 'Skrýt komentáře'
+                                    : 'Zobrazit komentáře'}
                         </button>
                     )}
                 </div>
@@ -177,20 +213,24 @@ const Post = ({
             {showCommentForm && (
                 <CommentForm
                     postId={post.id}
-                    onSubmit={onAddComment}
+                    onSubmit={handleAddComment}
                     onCancel={() => setShowCommentForm(false)}
                 />
             )}
 
             {showComments && (
-                <CommentList
-                    comments={post.komentare}
-                    currentUser={currentUser}
-                    onDeleteComment={onDeleteComment}
-                />
+                commentsLoading ? (
+                    <div className="comments-loading">Načítám komentáře…</div>
+                ) : (
+                    <CommentList
+                        comments={post.komentare || []}
+                        currentUser={currentUser}
+                        onDeleteComment={onDeleteComment}
+                    />
+                )
             )}
         </div>
     );
 };
 
-export default Post; 
+export default Post;

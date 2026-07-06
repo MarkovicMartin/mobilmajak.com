@@ -3371,6 +3371,8 @@ def _attach_zasilkovna_metrics(result, user_id, date_from, date_to):
         'baliku_vydano': metrics.get('zasilkovna_baliku', 0),
         'prodeje': metrics.get('zasilkovna_prodeje', 0),
         'konverze_pct': metrics.get('zasilkovna_konverze_pct'),
+        'z_bez_cisla': metrics.get('zasilkovna_z_bez_cisla', 0),
+        'sleva_bez_baliku': metrics.get('zasilkovna_sleva_bez_baliku', 0),
     }
     return result
 
@@ -6598,6 +6600,8 @@ def _leaderboard_zero_month_row(user, prodejna_nazev, last_month_points, vykupy_
         'zasilkovna_baliku': 0,
         'zasilkovna_prodeje': 0,
         'zasilkovna_oznaceno': 0,
+        'zasilkovna_z_bez_cisla': 0,
+        'zasilkovna_sleva_bez_baliku': 0,
         'zasilkovna_konverze_pct': None,
     }
 
@@ -6772,6 +6776,8 @@ def web_prodeje_leaderboard_points(request):
                 'zasilkovna_baliku': z_stats.get('zasilkovna_baliku', 0),
                 'zasilkovna_prodeje': z_stats.get('zasilkovna_prodeje', 0),
                 'zasilkovna_oznaceno': z_stats.get('zasilkovna_oznaceno', 0),
+                'zasilkovna_z_bez_cisla': z_stats.get('zasilkovna_z_bez_cisla', 0),
+                'zasilkovna_sleva_bez_baliku': z_stats.get('zasilkovna_sleva_bez_baliku', 0),
                 'zasilkovna_konverze_pct': z_stats.get('zasilkovna_konverze_pct'),
             })
             seen_ids.add(row_id)

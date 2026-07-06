@@ -21,6 +21,8 @@ from analytics.zasilkovna_link import (
     prodeje_zasilkovna_by_prodejna,
     typ_skupina,
 )
+from users.prodejce_resolve import build_prodejce_key_to_user_id, resolve_web_user_id
+from users.models import WebUser
 from stores.models import Prodejna
 
 
@@ -28,6 +30,32 @@ def _pct(prodeje: int, navstevy: int) -> float | None:
     if not navstevy:
         return None
     return round(100 * prodeje / navstevy, 2)
+
+
+def _prodejce_display_map(linked: list[LinkedSale]) -> dict[int, str]:
+    """Mapuje raw id_prodejce ze Symplia → zobrazitelné jméno."""
+    key_map = build_prodejce_key_to_user_id()
+    raw_ids = {l.id_prodejce for l in linked if l.id_prodejce is not None}
+    canonical = {resolve_web_user_id(rid, key_map) for rid in raw_ids}
+    canonical.discard(None)
+    names = {
+        u.id: f'{u.jmeno} {u.prijmeni}'.strip()
+        for u in WebUser.objects.filter(id__in=canonical)
+    }
+    out: dict[int, str] = {}
+    for rid in raw_ids:
+        cid = resolve_web_user_id(rid, key_map)
+        if cid and names.get(cid):
+            out[rid] = names[cid]
+        else:
+            out[rid] = f'Prodejce {rid}'
+    return out
+
+
+def _prodejce_label(prodejce_map: dict[int, str], id_prodejce: int | None) -> str | None:
+    if id_prodejce is None:
+        return None
+    return prodejce_map.get(id_prodejce, f'Prodejce {id_prodejce}')
 
 
 def _linked_with_typ(linked: list[LinkedSale]) -> list[LinkedSale]:
@@ -94,15 +122,13 @@ def build_konverze_report(
     po_prodejne.sort(key=lambda x: -x['navstevy'])
 
     # Prodejci
-    from users.models import WebUser
-
     prodejci_stats = prodeje_by_prodejce(linked)
     baliky_map = baliky_vydane_by_prodejce(date_from, date_to, prodejna_id)
     user_ids = sorted(set(prodejci_stats) | set(baliky_map))
     users = {u.id: u for u in WebUser.objects.filter(id__in=user_ids)} if user_ids else {}
 
     prodejci = []
-    for uid in sorted(user_ids, key=lambda u: -baliky_map.get(u, 0)):
+    for uid in user_ids:
         stats = prodejci_stats.get(uid, {})
         baliku = baliky_map.get(uid, 0)
         prodeje = stats.get('zasilkovna_prodeje', 0)
@@ -114,9 +140,19 @@ def build_konverze_report(
             'zasilkovna_baliku': baliku,
             'zasilkovna_prodeje': prodeje,
             'zasilkovna_oznaceno': stats.get('zasilkovna_oznaceno', 0),
+            'zasilkovna_z_bez_cisla': stats.get('zasilkovna_z_bez_cisla', 0),
+            'zasilkovna_sleva_bez_baliku': stats.get('zasilkovna_sleva_bez_baliku', 0),
             'zasilkovna_konverze_pct': _pct(prodeje, baliku),
             'zasilkovna_konverze_z_pct': stats.get('zasilkovna_konverze_z_pct'),
         })
+    prodejci.sort(
+        key=lambda row: (
+            (row['zasilkovna_baliku'] or 0) > 0 or (row['zasilkovna_prodeje'] or 0) > 0,
+            row['zasilkovna_konverze_pct'] if row['zasilkovna_konverze_pct'] is not None else -1,
+            row['zasilkovna_baliku'] or 0,
+        ),
+        reverse=True,
+    )
 
     # Běžní zákazníci (účtenky bez Zásilkovna dopravy)
     bezni_qs = WebProdejeAll.objects.filter(typ__gte=date_from, typ__lte=date_to)
@@ -127,6 +163,8 @@ def build_konverze_report(
         .aggregate(v=Count(Coalesce('doklad', 'objednavka'), distinct=True))['v'] or 0
     )
 
+    prodejce_map = _prodejce_display_map(linked)
+
     detail = [
         {
             'doklad': l.doklad,
@@ -135,6 +173,7 @@ def build_konverze_report(
             'typ_skupina': l.typ_skupina,
             'datum_prodeje': l.datum_prodeje.isoformat() if l.datum_prodeje else None,
             'id_prodejce': l.id_prodejce,
+            'prodejce': _prodejce_label(prodejce_map, l.id_prodejce),
             'id_prodejny': l.id_prodejny,
             'match_source': l.match_source,
             'packeta_nalezeno': l.packeta_nalezeno,
@@ -143,12 +182,13 @@ def build_konverze_report(
         for l in sorted(linked_typed, key=lambda x: (x.datum_prodeje or date.min, x.doklad), reverse=True)[:300]
     ]
 
-    # Doklady označené Z bez propojení na Packeta (čekají na import nebo ruční opravu)
+    # Doklady označené Z bez propojení na Packeta (čekají na číslo balíku / import)
     chybi_propojeni = [
         {
             'doklad': l.doklad,
             'datum_prodeje': l.datum_prodeje.isoformat() if l.datum_prodeje else None,
             'id_prodejce': l.id_prodejce,
+            'prodejce': _prodejce_label(prodejce_map, l.id_prodejce),
             'id_prodejny': l.id_prodejny,
             'match_source': l.match_source,
             'z_marker': l.z_marker,
@@ -156,6 +196,18 @@ def build_konverze_report(
         }
         for l in linked
         if is_z_oznaceno(l) and not l.packeta_nalezeno
+    ][:100]
+
+    sleva_bez_baliku = [
+        {
+            'doklad': l.doklad,
+            'datum_prodeje': l.datum_prodeje.isoformat() if l.datum_prodeje else None,
+            'id_prodejce': l.id_prodejce,
+            'prodejce': _prodejce_label(prodejce_map, l.id_prodejce),
+            'id_prodejny': l.id_prodejny,
+        }
+        for l in linked
+        if l.match_source == 'sleva_fallback'
     ][:100]
 
     return {
@@ -169,6 +221,9 @@ def build_konverze_report(
             'prodeje_propojene': len(prodeje_propojene),
             'prodeje_oznacene_z': len(prodeje_z_note),
             'prodeje_sleva_fallback': len(prodeje_fallback),
+            'prodeje_z_bez_cisla': sum(
+                s.get('zasilkovna_z_bez_cisla', 0) for s in prodejci_stats.values()
+            ),
             'prodeje_celkem': len(prodeje_celkem),
             'konverze_pct': _pct(len(prodeje_propojene), navstevy),
             'neplatne_z': len(invalid_z),
@@ -180,6 +235,7 @@ def build_konverze_report(
         'detail': detail,
         'neplatne_z': invalid_z[:100],
         'chybi_propojeni': chybi_propojeni,
+        'sleva_bez_baliku': sleva_bez_baliku,
     }
 
 
@@ -197,6 +253,8 @@ def zasilkovna_leaderboard_map(date_from: date, date_to: date) -> dict[int, dict
             'zasilkovna_baliku': baliku,
             'zasilkovna_prodeje': prodeje,
             'zasilkovna_oznaceno': stats.get('zasilkovna_oznaceno', 0),
+            'zasilkovna_z_bez_cisla': stats.get('zasilkovna_z_bez_cisla', 0),
+            'zasilkovna_sleva_bez_baliku': stats.get('zasilkovna_sleva_bez_baliku', 0),
             'zasilkovna_konverze_pct': _pct(prodeje, baliku),
         }
     return result

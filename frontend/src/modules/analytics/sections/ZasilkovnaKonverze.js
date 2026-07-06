@@ -145,7 +145,11 @@ const ZasilkovnaKonverzeView = () => {
                         <div className="zk-kpi">
                             <span className="zk-kpi-label">Propojené prodeje</span>
                             <strong>{fmtNum(summary.prodeje_propojene)}</strong>
-                            <small>označeno Z: {fmtNum(summary.prodeje_oznacene_z)} · sleva fallback: {fmtNum(summary.prodeje_sleva_fallback)}</small>
+                            <small>
+                                označeno Z: {fmtNum(summary.prodeje_oznacene_z)}
+                                · Z bez čísla: {fmtNum(summary.prodeje_z_bez_cisla)}
+                                · sleva bez balíku: {fmtNum(summary.prodeje_sleva_fallback)}
+                            </small>
                         </div>
                         <div className="zk-kpi">
                             <span className="zk-kpi-label">Konverze balík → nákup</span>
@@ -219,11 +223,13 @@ const ZasilkovnaKonverzeView = () => {
                                         <th>Balíky vydané</th>
                                         <th>Prodeje</th>
                                         <th>Konverze</th>
+                                        <th>Z bez čísla</th>
+                                        <th>Sleva bez balíku</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {(data.prodejci || []).length === 0 && (
-                                        <tr><td colSpan={4}>Zatím žádná data – import Packeta + směny prodejce</td></tr>
+                                        <tr><td colSpan={6}>Zatím žádná data – import Packeta + směny prodejce</td></tr>
                                     )}
                                     {(data.prodejci || []).map((row) => (
                                         <tr key={row.id_prodejce}>
@@ -231,6 +237,8 @@ const ZasilkovnaKonverzeView = () => {
                                             <td>{fmtNum(row.zasilkovna_baliku)}</td>
                                             <td>{fmtNum(row.zasilkovna_prodeje)}</td>
                                             <td>{fmtPct(row.zasilkovna_konverze_pct)}</td>
+                                            <td>{fmtNum(row.zasilkovna_z_bez_cisla)}</td>
+                                            <td>{fmtNum(row.zasilkovna_sleva_bez_baliku)}</td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -252,6 +260,7 @@ const ZasilkovnaKonverzeView = () => {
                                 <thead>
                                     <tr>
                                         <th>Datum</th>
+                                        <th>Prodejce</th>
                                         <th>Doklad</th>
                                         <th>Zásilka</th>
                                         <th>Typ balíku</th>
@@ -262,6 +271,7 @@ const ZasilkovnaKonverzeView = () => {
                                     {data.detail.map((row) => (
                                         <tr key={`${row.doklad}-${row.zasilka}`}>
                                             <td>{row.datum_prodeje}</td>
+                                            <td>{row.prodejce || '—'}</td>
                                             <td>{row.doklad}</td>
                                             <td>{row.zasilka}</td>
                                             <td>{row.typ_provize}</td>
@@ -272,6 +282,58 @@ const ZasilkovnaKonverzeView = () => {
                             </table>
                         )}
                     </section>
+
+                    {(data.chybi_propojeni || []).length > 0 && (
+                        <section className="zk-panel zk-panel--wide">
+                            <h3>Z bez párování na balík</h3>
+                            <p className="zk-hint">Jen „Z“ v poznámce bez čísla – nepočítá se jako prodej, dokud není párování na zásilku.</p>
+                            <table className="zk-table zk-table--compact">
+                                <thead>
+                                    <tr>
+                                        <th>Datum</th>
+                                        <th>Prodejce</th>
+                                        <th>Doklad</th>
+                                        <th>Typ</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {data.chybi_propojeni.map((row) => (
+                                        <tr key={row.doklad}>
+                                            <td>{row.datum_prodeje}</td>
+                                            <td>{row.prodejce || '—'}</td>
+                                            <td>{row.doklad}</td>
+                                            <td>{row.z_marker ? 'Z bez čísla' : (row.zasilka || '—')}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </section>
+                    )}
+
+                    {(data.sleva_bez_baliku || []).length > 0 && (
+                        <section className="zk-panel zk-panel--wide">
+                            <h3>Sleva Zásilkovna bez balíku</h3>
+                            <p className="zk-hint">Řádek SLEVA „ZASILKOVNA ZASILKOVNA20“ bez Z / čísla balíku v poznámce – proti pravidlům.</p>
+                            <table className="zk-table zk-table--compact">
+                                <thead>
+                                    <tr>
+                                        <th>Datum</th>
+                                        <th>Prodejce</th>
+                                        <th>Doklad</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {data.sleva_bez_baliku.map((row) => (
+                                        <tr key={row.doklad}>
+                                            <td>{row.datum_prodeje}</td>
+                                            <td>{row.prodejce || '—'}</td>
+                                            <td>{row.doklad}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </section>
+                    )}
                 </>
             )}
         </AnalyticsSectionWrapper>

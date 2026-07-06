@@ -145,6 +145,82 @@
     font-weight: 500;
 }
 
+.comments-count-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    color: #666;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.comments-count-btn:hover {
+    color: var(--brand-pink);
+}
+
+.reactions-summary-wrap,
+.reaction-btn-wrap {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
+.reaction-tooltip {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    min-width: 140px;
+    max-width: 260px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: #1f2937;
+    color: #fff;
+    font-size: 13px;
+    line-height: 1.4;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+    z-index: 20;
+    pointer-events: none;
+    white-space: normal;
+}
+
+.reaction-tooltip strong {
+    display: block;
+    margin-bottom: 4px;
+}
+
+.reaction-tooltip--summary {
+    left: 0;
+    transform: none;
+    display: none;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.reaction-summary-line {
+    display: block;
+}
+
+.reactions-summary-wrap:hover .reaction-tooltip--summary,
+.reaction-btn-wrap:hover .reaction-tooltip {
+    display: flex;
+}
+
+.reaction-btn-wrap:hover .reaction-tooltip:not(.reaction-tooltip--summary) {
+    display: block;
+}
+
+.comments-loading {
+    margin-top: 16px;
+    padding: 12px 0;
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
 .post-actions {
     display: flex;
     justify-content: space-between;
