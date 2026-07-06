@@ -2,8 +2,6 @@
 from decimal import Decimal
 
 from shifts.vacation_service import (
-    DOVOLENA_ROCNI_FOND,
-    celkove_cerpano_rok,
     dovolena_rocni_narok,
     dovolena_stav,
     prevod_z_predchoziho_roku,
@@ -16,8 +14,10 @@ def normalize_prijmeni(prijmeni):
 
 def apply_dovolena_targets(user, rok, fond_h, cerpano_h, zbyva_h=None, dry_run=False):
     """
-    Nastaví dovolena_fond_extra_h a dovolena_korekce_cerpano_h tak,
-    aby fond a čerpání odpovídaly skutečnosti mimo evidenci směn.
+    Nastaví startovací bod z manuálního importu (k 31. 5. 2026):
+    - fond_extra: aby fond = fond_h z tabulky,
+    - korekce: absolutní čerpáno do konce května (ne delta k deficitu).
+    Od června se k čerpání přičítají jen deficity ukončených měsíců.
     """
     fond_h = float(fond_h)
     cerpano_h = float(cerpano_h)
@@ -30,16 +30,15 @@ def apply_dovolena_targets(user, rok, fond_h, cerpano_h, zbyva_h=None, dry_run=F
 
     prevod = prevod_z_predchoziho_roku(user.id, rok)
     fond_zaklad = float(dovolena_rocni_narok(user.id, rok)) + prevod
-    cerpano_sys = celkove_cerpano_rok(user.id, rok, user=user)
     fond_extra = round(fond_h - fond_zaklad, 2)
-    korekce = round(cerpano_h - cerpano_sys, 2)
+    korekce = round(cerpano_h, 2)
 
     before = dovolena_stav(user, rok) or {}
     changes = {
         'prijmeni': user.prijmeni,
         'fond_extra': fond_extra,
         'korekce_cerpano': korekce,
-        'cerpano_sys': round(cerpano_sys, 2),
+        'cerpano_import': korekce,
         'fond_zaklad': round(fond_zaklad, 2),
         'before': {
             'fond_h': before.get('fond_h'),

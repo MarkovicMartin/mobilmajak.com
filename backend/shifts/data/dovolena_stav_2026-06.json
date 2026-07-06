@@ -1,11 +1,11 @@
 {
   "rok": 2026,
-  "poznamka": "Skutečný stav dovolené – červen 2026 (sloupec Má mít / Opravdu čerpal / Zbývá)",
+  "poznamka": "Manuální import ke 31. 5. 2026 – fond / čerpáno / zbývá. Od června se odečítají deficity ukončených měsíců.",
   "uzivatele": {
     "Králik": { "fond_h": 200, "cerpano_h": 80, "zbyva_h": 120 },
     "Kováčik": { "fond_h": 200, "cerpano_h": 0, "zbyva_h": 200 },
     "Valenta": { "fond_h": 160, "cerpano_h": 48, "zbyva_h": 112 },
-    "Gabriel": { "fond_h": 170, "cerpano_h": 29, "zbyva_h": 141 },
+    "Gabriel": { "fond_h": 170, "cerpano_h": 0, "zbyva_h": 170 },
     "Babušík": { "fond_h": 160, "cerpano_h": 0, "zbyva_h": 160 },
     "Kolarčík": { "fond_h": 200, "cerpano_h": 8, "zbyva_h": 192 },
     "Vychodil": { "fond_h": 200, "cerpano_h": 24, "zbyva_h": 176 },

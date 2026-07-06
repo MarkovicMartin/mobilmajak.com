@@ -6,7 +6,6 @@ from users.mzda_utils import is_brigadnik
 from .labor_hours import HODINY_NA_PRACOVNI_DEN, fondu_hodin_mesic
 from .models import Smena
 from .czech_holidays import get_ceske_svatky
-from .shift_helpers import is_backoffice_user
 
 DOVOLENA_ROCNI_FOND = 160
 DOVOLENA_PREVOD_MAX = 40
@@ -22,8 +21,13 @@ def is_dovolena_eligible(user):
 
 
 def is_dovolena_admin_user(user):
-    """Admin – fond dovolené jen ze směn typu dovolená (bez deficitu měsíčního fondu)."""
+    """Jediní, u kterých se čerpání počítá z ručních směn typu dovolená."""
     return bool(user) and not is_brigadnik(user) and getattr(user, 'role', None) == 'ADMIN'
+
+
+def cerpana_ze_smen_dovolena(user):
+    """True jen u adminů – ostatní mají čerpání z deficitu (od 6/2026) nebo korekce/sync."""
+    return is_dovolena_admin_user(user)
 
 
 def is_dovolena_overview_user(user):
@@ -34,13 +38,11 @@ def is_dovolena_overview_user(user):
 def pocita_deficit_z_fondu(user):
     """
     Prodejci na prodejně – čerpání z nesplněného měsíčního fondu (přesčas se nezapočítává).
-    Admin / backoffice bez prodejny – jen směny typu dovolená (směny jinak neevidují).
+    Admin – výjimka, čerpá jen ze směn dovolená (cerpana_ze_smen_dovolena).
     """
     if not is_dovolena_eligible(user):
         return False
     if getattr(user, 'role', None) == 'ADMIN':
-        return False
-    if is_backoffice_user(user):
         return False
     return True
 
@@ -140,6 +142,16 @@ def _mesic_pocita_deficit(rok, mesic_cislo):
     return True
 
 
+def _cerpani_ze_smen_v_mesici(rok, mesic_cislo):
+    """
+    Směny dovolené přímo snižují fond jen v letech před 2026.
+    V roce 2026 (leden–květen) je startovací bod manuální import (korekce/fond_extra).
+    """
+    if rok < DOVOLENA_DEFICIT_OD_ROK:
+        return True
+    return False
+
+
 def _mesic_ukoncen(rok, mesic_cislo, referencni_datum=None):
     """True pokud kalendářní měsíc již skončil (ne aktuální ani budoucí)."""
     if referencni_datum is None:
@@ -171,7 +183,7 @@ def deficit_mesic_hodin(user_id, rok, mesic_cislo, hours_cache=None):
 
 
 def deficit_mesic_pro_dovolenou(user_id, rok, mesic_cislo, user=None, hours_cache=None):
-    """Deficit započítaný do dovolené – 0 před červnem 2026, před nástupem nebo u admin/backoffice."""
+    """Deficit započítaný do dovolené – 0 před červnem 2026, před nástupem nebo u admina."""
     if not _mesic_po_nastupu(user_id, rok, mesic_cislo):
         return 0.0
     if user is not None and not pocita_deficit_z_fondu(user):
@@ -201,28 +213,22 @@ def deficit_fondu_rok(user_id, rok, user=None, referencni_datum=None, hours_cach
 
 def celkove_cerpano_rok(user_id, rok, user=None, ignorovat_smena_id=None, referencni_datum=None, hours_cache=None):
     """
-    Čerpání ročního fondu:
-    - prodejci na prodejně (od 6/2026): deficit měsíčního fondu + směny dovolené v těchto měsících,
-    - prodejci před 6/2026: směny dovolené,
-    - admin / backoffice: jen směny typu dovolená.
+    Čerpání vypočtené ze směn/deficitů (bez manuálního importu v korekci):
+    - prodejci (od 6/2026): jen deficit ukončených měsíců od června,
+    - prodejci (leden–květen 2026): 0 – baseline je v dovolena_korekce_cerpano_h,
+    - prodejci (rok < 2026): směny dovolené,
+    - admin: jen směny typu dovolená.
     """
     if user is None:
         from users.models import WebUser
         user = WebUser.objects.get(pk=user_id)
     if pocita_deficit_z_fondu(user):
-        if referencni_datum is None:
-            referencni_datum = date.today()
-        cerpano = 0.0
-        for mesic in range(1, 13):
-            if not _mesic_ukoncen(rok, mesic, referencni_datum):
-                continue
-            if not _mesic_po_nastupu(user_id, rok, mesic):
-                continue
-            if _mesic_pocita_deficit(rok, mesic):
-                cerpano += deficit_mesic_hodin(user_id, rok, mesic, hours_cache=hours_cache)
-                cerpano += cerpana_dovolena_mesic(user_id, rok, mesic, hours_cache=hours_cache)
-            else:
-                cerpano += cerpana_dovolena_mesic(user_id, rok, mesic, hours_cache=hours_cache)
+        if rok < DOVOLENA_DEFICIT_OD_ROK:
+            cerpano = cerpana_dovolena_rok(user_id, rok, ignorovat_smena_id=ignorovat_smena_id)
+        else:
+            cerpano = deficit_fondu_rok(
+                user_id, rok, user=user, referencni_datum=referencni_datum, hours_cache=hours_cache,
+            )
     else:
         cerpano = cerpana_dovolena_rok(user_id, rok, ignorovat_smena_id=ignorovat_smena_id)
     return round(cerpano, 2)
@@ -256,6 +262,7 @@ def fond_extra_h(user):
 
 
 def korekce_cerpano_h(user):
+    """Absolutní čerpání z manuálního importu ke konci května 2026 (ne delta)."""
     val = getattr(user, 'dovolena_korekce_cerpano_h', None)
     return float(val) if val is not None else 0.0
 
@@ -283,31 +290,18 @@ def dovolena_stav(user, rok=None, hours_cache=None, referencni_datum=None):
     narok = dovolena_rocni_narok(user.id, rok)
     cerpano_smeny = cerpana_dovolena_rok(user.id, rok)
     if pocita_deficit_z_fondu(user):
-        if referencni_datum is None:
-            referencni_datum = date.today()
-        odeceno_deficit = deficit_fondu_rok(
-            user.id, rok, user=user, referencni_datum=referencni_datum, hours_cache=hours_cache,
-        )
-        cerpano_pred_cutoff = 0.0
-        cerpano_v_deficit_mesicich = 0.0
-        for mesic in range(1, 13):
-            if not _mesic_ukoncen(rok, mesic, referencni_datum):
-                continue
-            if not _mesic_po_nastupu(user.id, rok, mesic):
-                continue
-            if not _mesic_pocita_deficit(rok, mesic):
-                cerpano_pred_cutoff += cerpana_dovolena_mesic(
-                    user.id, rok, mesic, hours_cache=hours_cache,
-                )
-            else:
-                cerpano_v_deficit_mesicich += cerpana_dovolena_mesic(
-                    user.id, rok, mesic, hours_cache=hours_cache,
-                )
-        cerpano_zdroj = odeceno_deficit + cerpano_pred_cutoff + cerpano_v_deficit_mesicich
+        if rok < DOVOLENA_DEFICIT_OD_ROK:
+            odeceno_deficit = 0.0
+            cerpano_zdroj = cerpano_smeny
+        else:
+            odeceno_deficit = deficit_fondu_rok(
+                user.id, rok, user=user, referencni_datum=referencni_datum, hours_cache=hours_cache,
+            )
+            cerpano_zdroj = odeceno_deficit
     else:
         odeceno_deficit = 0.0
         cerpano_zdroj = cerpano_smeny
-    cerpano = round(cerpano_zdroj + korekce, 2)
+    cerpano = round(korekce + cerpano_zdroj, 2)
     zbyva = fond - cerpano
     return {
         'rok': rok,
@@ -334,9 +328,6 @@ def validate_dovolena_kapacita(user, datum, typ_smeny, ignorovat_smena_id=None, 
         user.id, rok, user=user, ignorovat_smena_id=ignorovat_smena_id,
         referencni_datum=referencni_datum,
     )
-    smeny = cerpana_dovolena_rok(user.id, rok, ignorovat_smena_id=ignorovat_smena_id)
-    if pocita_deficit_z_fondu(user):
-        cerpano = max(cerpano, smeny)
     cerpano += korekce_cerpano_h(user)
     if cerpano + nove_h > fond + 0.001:
         zbyva = max(0.0, fond - cerpano)
@@ -376,8 +367,7 @@ def cerpana_dovolena_mesic(user_id, rok, mesic_cislo, hours_cache=None):
 
 def mesicni_cerpani_dovolene(user_id, rok, mesic_cislo, user=None, referencni_datum=None, hours_cache=None):
     """
-    Čerpání fondu v měsíci – prodejci z deficitu fondu, admin/backoffice ze směn dovolené.
-    Směny dovolené jsou vždy ve výpisu (dovolena_smeny_h).
+    Čerpání fondu v měsíci – od 6/2026 jen deficit; leden–květen 2026 z manuálního importu.
     """
     if user is None:
         from users.models import WebUser
@@ -402,8 +392,8 @@ def mesicni_cerpani_dovolene(user_id, rok, mesic_cislo, user=None, referencni_da
     deficit_odeceno = round(deficit_h, 2) if ukoncen and pocita_deficit else 0.0
     if z_fondu:
         if pocita_deficit:
-            cerpano_h = deficit_odeceno + (smeny_h if ukoncen else 0.0)
-        elif ukoncen:
+            cerpano_h = deficit_odeceno
+        elif ukoncen and _cerpani_ze_smen_v_mesici(rok, mesic_cislo):
             cerpano_h = smeny_h
         else:
             cerpano_h = 0.0
