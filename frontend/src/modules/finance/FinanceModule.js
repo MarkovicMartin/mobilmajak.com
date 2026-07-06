@@ -4,6 +4,7 @@ import { financeAPI, storeAPI } from '../../services/api';
 import './FinanceModule.css';
 import FinanceFakturyPanel from './FinanceFakturyPanel';
 import FinancePrehledPanel from './FinancePrehledPanel';
+import FinanceKontrolaPanel from './FinanceKontrolaPanel';
 import FinanceDokladUpload from './FinanceDokladUpload';
 import FinanceZdrojFilter from './FinanceZdrojFilter';
 import { kategorieProZarazeni, movementLabel, parseStoreChoices, storeLabel, zdrojMeta } from './financeUtils';
@@ -182,6 +183,7 @@ const FinanceModule = () => {
                 <div className="finance-status-panel__row">
                     <span><strong>Čeká na fakturu:</strong> {counts.ceka_na_fakturu ?? '–'}</span>
                     <span><strong>Bez faktury (DPH):</strong> {counts.bez_faktury ?? '–'}</span>
+                    <span><strong>Ke kontrole FA:</strong> {counts.doklady_ke_kontrole ?? '–'}</span>
                     <span>
                         <strong>Poslední Fio import:</strong>{' '}
                         {lastImport?.vytvoreno
@@ -212,6 +214,13 @@ const FinanceModule = () => {
                     onClick={() => setTab('prehled')}
                 >
                     Přehled
+                </button>
+                <button
+                    type="button"
+                    className={tab === 'kontrola' ? 'active' : ''}
+                    onClick={() => setTab('kontrola')}
+                >
+                    Kontrola FA
                 </button>
                 <button
                     type="button"
@@ -362,6 +371,8 @@ const FinanceModule = () => {
             )}
 
             {tab === 'prehled' && <FinancePrehledPanel />}
+
+            {!loading && tab === 'kontrola' && <FinanceKontrolaPanel />}
 
             {!loading && tab === 'faktury' && (
                 <FinanceFakturyPanel intro="Výdaje čekající na fakturu – admin vidí všechny prodejny." />

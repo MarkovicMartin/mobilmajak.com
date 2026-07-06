@@ -114,6 +114,25 @@ def real_sales_staff_queryset():
     )
 
 
+def vacation_overview_users_queryset():
+    """Staff pro přehled dovolené – prodejci/vedoucí + aktivní admini (bez demo účtů)."""
+    staff_qs = real_sales_staff_queryset()
+    staff_ids = set(staff_qs.values_list('id', flat=True))
+    admin_ids = [
+        uid
+        for uid, jmeno, prijmeni in WebUser.objects.filter(
+            aktivni=True, role='ADMIN',
+        ).exclude(id__in=staff_ids).values_list('id', 'jmeno', 'prijmeni')
+        if _normalize_pair(jmeno, prijmeni) not in _EXCLUDED_NAME_PAIRS
+    ]
+    if not admin_ids:
+        return staff_qs.order_by('jmeno', 'prijmeni')
+    return (
+        WebUser.objects.filter(Q(id__in=staff_ids) | Q(id__in=admin_ids))
+        .order_by('jmeno', 'prijmeni')
+    )
+
+
 def excluded_users_q():
     """Q pro exclude v dotazech podle ID."""
     ids = get_excluded_report_user_ids()

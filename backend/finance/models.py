@@ -48,11 +48,30 @@ class NakladKategorie(models.Model):
 
 
 class FinanceDoklad(models.Model):
+    STAV_CEKA_NA_OCR = 'ceka_na_ocr'
+    STAV_KE_KONTROLE = 'ke_kontrole'
+    STAV_SCHVALENO = 'schvaleno'
+    STAV_ZAMITNUTO = 'zamitnuto'
+    STAV_ODESLANO_FLEXI = 'odeslano_flexi'
     STAV_NOVA = 'nova'
     STAV_SPAROVANA = 'sparovana'
     STAV_CHOICES = [
+        (STAV_CEKA_NA_OCR, 'Čeká na OCR'),
+        (STAV_KE_KONTROLE, 'Ke kontrole'),
+        (STAV_SCHVALENO, 'Schváleno'),
+        (STAV_ZAMITNUTO, 'Zamítnuto'),
+        (STAV_ODESLANO_FLEXI, 'Odesláno do Flexi'),
         (STAV_NOVA, 'Nová'),
         (STAV_SPAROVANA, 'Spárovaná'),
+    ]
+
+    MATCH_OK = 'ok'
+    MATCH_WARN = 'warn'
+    MATCH_FAIL = 'fail'
+    MATCH_CHOICES = [
+        (MATCH_OK, 'Sedí'),
+        (MATCH_WARN, 'Kontrola'),
+        (MATCH_FAIL, 'Nesedí'),
     ]
 
     soubor = models.CharField(max_length=500, blank=True, default='')
@@ -65,7 +84,11 @@ class FinanceDoklad(models.Model):
     castka_bez_dph = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     dph_castka = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     dph_sazba = models.IntegerField(null=True, blank=True)
-    stav = models.CharField(max_length=20, choices=STAV_CHOICES, default=STAV_NOVA)
+    stav = models.CharField(max_length=20, choices=STAV_CHOICES, default=STAV_CEKA_NA_OCR)
+    match_stav = models.CharField(max_length=10, choices=MATCH_CHOICES, blank=True, default='')
+    match_detail = models.JSONField(null=True, blank=True)
+    schvalil_user_id = models.IntegerField(null=True, blank=True)
+    schvaleno = SafeDateTimeField(null=True, blank=True)
     naklad_polozka = models.ForeignKey(
         'NakladPolozka', null=True, blank=True, on_delete=models.SET_NULL,
         related_name='doklady',

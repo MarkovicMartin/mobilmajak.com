@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom';
 import BugButton from '../BugButton';
 import { routeToLabel } from '../../utils/clarity';
 
-const AppTopBar = ({ user, onMenuClick, isDarkMode, toggleTheme, drawerOpen = false, onDrawerClose }) => {
+const AppTopBar = ({ user, onMenuClick, drawerOpen = false, onDrawerClose }) => {
     const location = useLocation();
     const pageTitle = routeToLabel(location.pathname);
 
@@ -24,14 +24,6 @@ const AppTopBar = ({ user, onMenuClick, isDarkMode, toggleTheme, drawerOpen = fa
                 {user && (
                     <BugButton user={user} variant="shell" />
                 )}
-                <button
-                    type="button"
-                    className="app-topbar__icon-btn"
-                    onClick={toggleTheme}
-                    title={isDarkMode ? 'Světlý režim' : 'Tmavý režim'}
-                >
-                    <i className={`fas ${isDarkMode ? 'fa-sun' : 'fa-moon'}`} />
-                </button>
             </div>
         </header>
     );

@@ -89,13 +89,13 @@ def link_doklad_to_polozka(
     has_amounts = bez is not None
     doklad = FinanceDoklad.objects.create(
         soubor=rel_path,
-        dodavatel_nazev=(dodavatel_nazev or '')[:200],
-        cislo_faktury=(cislo_faktury or '')[:64],
+        dodavatel_nazev=dodavatel_nazev,
+        cislo_faktury=cislo_faktury,
         castka_celkem=celkem,
         castka_bez_dph=bez,
         dph_castka=dph,
         dph_sazba=sazba,
-        stav=FinanceDoklad.STAV_SPAROVANA if has_amounts else FinanceDoklad.STAV_NOVA,
+        stav=FinanceDoklad.STAV_CEKA_NA_OCR,
         naklad_polozka=polozka,
     )
 
@@ -111,19 +111,43 @@ def link_doklad_to_polozka(
         'doklad', 'castka_bez_dph', 'dph_castka', 'dph_sazba', 'dph_stav',
         'upravil_user_id', 'upraveno',
     ])
+
+    from .faktura_process import process_doklad_ocr
+    process_doklad_ocr(doklad.id, overwrite_empty=not has_amounts)
+    doklad.refresh_from_db()
     return doklad
 
 
-def serialize_doklad(d: FinanceDoklad) -> dict:
-    return {
+def serialize_doklad(d: FinanceDoklad, *, include_polozka: bool = False) -> dict:
+    from .symplio_vydej_parse import faktura_hint_from_polozka
+
+    polozka = d.naklad_polozka
+    payload = {
         'id': d.id,
         'stav': d.stav,
+        'match_stav': d.match_stav or None,
+        'match_detail': d.match_detail,
         'dodavatel_nazev': d.dodavatel_nazev,
+        'dodavatel_ico': d.dodavatel_ico or None,
         'cislo_faktury': d.cislo_faktury,
+        'datum_vystaveni': d.datum_vystaveni.isoformat() if d.datum_vystaveni else None,
         'castka_celkem': str(d.castka_celkem) if d.castka_celkem is not None else None,
         'castka_bez_dph': str(d.castka_bez_dph) if d.castka_bez_dph is not None else None,
         'dph_castka': str(d.dph_castka) if d.dph_castka is not None else None,
         'dph_sazba': d.dph_sazba,
         'soubor_url': f'{settings.MEDIA_URL.rstrip("/")}/{d.soubor}' if d.soubor else None,
+        'schvaleno': d.schvaleno.isoformat() if d.schvaleno else None,
         'vytvoreno': d.vytvoreno.isoformat() if d.vytvoreno else None,
+        'ocr_zdroj': (d.ocr_raw or {}).get('extracted', {}).get('zdroj') if d.ocr_raw else None,
     }
+    if include_polozka and polozka:
+        payload['naklad_polozka'] = {
+            'id': polozka.id,
+            'datum': polozka.datum.isoformat(),
+            'castka': str(polozka.castka),
+            'popis': polozka.popis,
+            'prodejna_id': polozka.prodejna_id,
+            'zdroj': polozka.zdroj,
+            'faktura_hint': faktura_hint_from_polozka(polozka),
+        }
+    return payload

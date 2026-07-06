@@ -13,5 +13,10 @@ urlpatterns = [
     path('pravidla/', views.pravidla_list_create, name='finance-pravidla'),
     path('pravidla/<int:pravidlo_id>/', views.pravidlo_delete, name='finance-pravidlo-delete'),
     path('doklady/', views.doklady_list, name='finance-doklady-list'),
+    path('doklady/ke-kontrole/', views.doklady_ke_kontrole, name='finance-doklady-ke-kontrole'),
     path('doklady/upload/', views.doklad_upload, name='finance-doklad-upload'),
+    path('doklady/<int:doklad_id>/', views.doklad_update, name='finance-doklad-update'),
+    path('doklady/<int:doklad_id>/schvalit/', views.doklad_schvalit, name='finance-doklad-schvalit'),
+    path('doklady/<int:doklad_id>/zamitnout/', views.doklad_zamitnout, name='finance-doklad-zamitnout'),
+    path('doklady/<int:doklad_id>/reprocess-ocr/', views.doklad_reprocess_ocr, name='finance-doklad-reprocess'),
 ]

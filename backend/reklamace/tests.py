@@ -377,3 +377,7 @@ class ReklamaceReminderTests(TestCase):
             ReklamaceNotifikace.objects.filter(user=self.creator, read_at__isnull=True).count(),
             0,
         )
+        res = client.get('/api/reklamace/notifikace/?read=1')
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(len(res.data), 1)
+        self.assertIsNotNone(res.data[0]['read_at'])

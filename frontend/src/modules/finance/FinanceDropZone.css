@@ -1,0 +1,51 @@
+.finance-dropzone {
+    border: 2px dashed var(--mm-border, #c5cdd6);
+    border-radius: 10px;
+    padding: 1rem 1.1rem;
+    text-align: center;
+    cursor: pointer;
+    background: var(--mm-surface-muted, #f8fafc);
+    transition: border-color 0.15s, background 0.15s;
+}
+
+.finance-dropzone:hover,
+.finance-dropzone--active {
+    border-color: #2563eb;
+    background: #eff6ff;
+}
+
+.finance-dropzone--disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.finance-dropzone--compact {
+    padding: 0.55rem 0.75rem;
+}
+
+.finance-dropzone--compact .finance-dropzone__hint {
+    display: none;
+}
+
+.finance-dropzone__input {
+    display: none;
+}
+
+.finance-dropzone__icon {
+    display: block;
+    font-size: 1.5rem;
+    margin-bottom: 0.25rem;
+}
+
+.finance-dropzone__label {
+    display: block;
+    font-weight: 600;
+    font-size: 0.92rem;
+}
+
+.finance-dropzone__hint {
+    display: block;
+    margin-top: 0.35rem;
+    font-size: 0.8rem;
+    color: var(--mm-text-muted, #5c6570);
+}

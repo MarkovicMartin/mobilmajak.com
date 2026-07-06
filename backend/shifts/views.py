@@ -27,10 +27,11 @@ from .vacation_service import (
     dovolena_hodin_ze_smeny,
     dovolena_stav,
     is_dovolena_eligible,
+    is_dovolena_overview_user,
     normalize_dovolena_casy,
     validate_dovolena_kapacita,
 )
-from users.exclusions import real_sales_staff_queryset
+from users.exclusions import vacation_overview_users_queryset
 from users.models import WebUser
 from stores.models import Prodejna
 from .czech_holidays import get_ceske_svatky, get_nazev_svatku
@@ -795,7 +796,7 @@ def vacation_overview(request):
             return Response({'error': 'Nemáte oprávnění'}, status=status.HTTP_403_FORBIDDEN)
         users = [get_object_or_404(WebUser, id=uid)]
     elif request.user.role == 'ADMIN':
-        users = list(real_sales_staff_queryset().order_by('jmeno', 'prijmeni'))
+        users = list(vacation_overview_users_queryset())
     else:
         users = [request.user]
 
@@ -817,7 +818,7 @@ def vacation_overview(request):
         if overview:
             result_users.append(overview)
 
-    if not result_users and len(users) == 1 and not is_dovolena_eligible(users[0]):
+    if not result_users and len(users) == 1 and not is_dovolena_overview_user(users[0]):
         return Response({
             'rok': rok,
             'eligible': False,

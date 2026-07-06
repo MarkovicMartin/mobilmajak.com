@@ -48,3 +48,13 @@ class SymplioKategorizaceTests(TestCase):
         r = self._apply('Manuální výdej vklad hotovosti na účet')
         self.assertTrue(r.ignorovat)
         self.assertEqual(r.pravidlo, 'symplio:vklad_na_ucet')
+
+    def test_manualni_vydej_vykup(self):
+        NakladKategorie.objects.get_or_create(
+            nazev='Výkup',
+            defaults={'poradi': 903, 'typ_dph': 'bez'},
+        )
+        r = self._apply('Manuální výdej V26070023 Výkup')
+        self.assertEqual(r.pravidlo, 'symplio:vykup')
+        self.assertEqual(r.kategorie_id, NakladKategorie.objects.get(nazev='Výkup').id)
+        self.assertEqual(r.prodejna_id, 6)

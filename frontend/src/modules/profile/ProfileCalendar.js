@@ -9,6 +9,7 @@ import ProfileDayPanel from './ProfileDayPanel';
 import { useAuth } from '../../context/AuthContext';
 import { getClosureNotice } from '../../constants/prodejnaZavreni';
 import { urgencyClassName, urgencyForTask } from '../../utils/taskUrgency';
+import { openTask } from '../../utils/taskNavigation';
 import '../shifts/ShiftCalendar.css';
 import './ProfileModule.css';
 

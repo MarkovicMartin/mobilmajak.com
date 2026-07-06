@@ -5,8 +5,9 @@ from decimal import Decimal
 
 from django.utils import timezone
 
-from .models import FioKategorizacniPravidlo, NakladKategorie, NakladPolozka
+from .models import FinanceDoklad, FioKategorizacniPravidlo, NakladKategorie, NakladPolozka
 
+from .kategorizace import apply_all_rules
 from .symplio_vydej_parse import faktura_hint_from_polozka
 
 
@@ -258,6 +259,13 @@ def get_finance_counts() -> dict:
             dph_stav=NakladPolozka.DPH_STAV_CEKA,
             doklad__isnull=True,
         ).exclude(stav=NakladPolozka.STAV_IGNOROVAT).count(),
+        'doklady_ke_kontrole': FinanceDoklad.objects.filter(
+            stav__in=(
+                FinanceDoklad.STAV_CEKA_NA_OCR,
+                FinanceDoklad.STAV_KE_KONTROLE,
+                FinanceDoklad.STAV_NOVA,
+            ),
+        ).count(),
     }
 
 

@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import ShellBrand from '../brand/ShellBrand';
 import ShellNavLinks, { ShellProfileLinks } from './ShellNavLinks';
+import NotificationCenter from './NotificationCenter';
 
 const AppMobileDrawer = ({
     open,
@@ -67,33 +68,38 @@ const AppMobileDrawer = ({
                 </div>
 
                 <div className="app-drawer__footer">
-                    <ShellProfileLinks
-                        location={location}
-                        navigate={navigate}
-                        onNavigate={onClose}
-                        linkClass="app-drawer__link"
-                        activeClass="app-drawer__link--active"
-                        childClass="app-drawer__link--child"
-                    />
-                    <button
-                        type="button"
-                        className="app-drawer__link"
-                        onClick={() => toggleTheme()}
-                    >
-                        <i className={`fas ${isDarkMode ? 'fa-sun' : 'fa-moon'}`} aria-hidden="true" />
-                        {isDarkMode ? 'Světlý režim' : 'Tmavý režim'}
-                    </button>
-                    <button
-                        type="button"
-                        className="app-drawer__link app-drawer__link--logout"
-                        onClick={() => {
-                            logout();
-                            onClose();
-                        }}
-                    >
-                        <i className="fas fa-sign-out-alt" aria-hidden="true" />
-                        Odhlásit
-                    </button>
+                    <div className="app-drawer__footer-row">
+                        <ShellProfileLinks
+                            location={location}
+                            navigate={navigate}
+                            onNavigate={onClose}
+                            linkClass="app-drawer__link"
+                            activeClass="app-drawer__link--active"
+                            childClass="app-drawer__link--child"
+                        />
+                        <NotificationCenter />
+                    </div>
+                    <div className="app-drawer__footer-row app-drawer__footer-row--logout">
+                        <button
+                            type="button"
+                            className="app-drawer__link app-drawer__link--logout"
+                            onClick={() => {
+                                logout();
+                                onClose();
+                            }}
+                        >
+                            <i className="fas fa-sign-out-alt" aria-hidden="true" />
+                            Odhlásit
+                        </button>
+                        <button
+                            type="button"
+                            className="app-sidebar__icon-btn"
+                            onClick={() => toggleTheme()}
+                            title={isDarkMode ? 'Světlý režim' : 'Tmavý režim'}
+                        >
+                            <i className={`fas ${isDarkMode ? 'fa-sun' : 'fa-moon'}`} aria-hidden="true" />
+                        </button>
+                    </div>
                 </div>
             </nav>
         </>

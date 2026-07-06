@@ -101,11 +101,13 @@ class ReklamacePolozkaViewSet(ModelViewSet):
 @api_view(['GET'])
 @permission_classes([permissions.IsAuthenticated])
 def reklamace_notifications(request):
-    qs = ReklamaceNotifikace.objects.filter(
-        user=request.user,
-        read_at__isnull=True,
-    ).select_related('reklamace')[:50]
-    return Response(ReklamaceNotifikaceSerializer(qs, many=True).data)
+    qs = ReklamaceNotifikace.objects.filter(user=request.user).select_related('reklamace')
+    read_param = request.GET.get('read')
+    if read_param == '1':
+        qs = qs.filter(read_at__isnull=False)
+    else:
+        qs = qs.filter(read_at__isnull=True)
+    return Response(ReklamaceNotifikaceSerializer(qs.order_by('-created_at')[:50], many=True).data)
 
 
 @api_view(['POST'])

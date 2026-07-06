@@ -83,6 +83,33 @@ const ShellNavLinks = ({
         return <span className="shell-nav__emoji" aria-hidden="true">{icon}</span>;
     };
 
+    const renderSectionBadge = (sectionKey, collapsedMode, showLabel) => {
+        const count = sectionKey === 'tasks'
+            ? profileTaskBadge
+            : sectionKey === 'reklamace'
+                ? reklamaceNotifBadge
+                : 0;
+        if (count <= 0) return null;
+
+        const label = sectionKey === 'tasks'
+            ? `${count} upozornění`
+            : `${count} připomínek reklamací`;
+
+        if (collapsedMode && !showLabel) {
+            return (
+                <span className="app-sidebar__badge" aria-label={label}>
+                    {count > 99 ? '99+' : count}
+                </span>
+            );
+        }
+
+        return (
+            <span className="shell-nav__badge" aria-label={label}>
+                {count > 99 ? '99+' : count}
+            </span>
+        );
+    };
+
     const renderLink = (item, isChild = false, onClickOverride, showLabel = false) => {
         const active = isNavItemLinkActive(item, pathname, locationState);
         const cls = [
@@ -106,16 +133,7 @@ const ShellNavLinks = ({
                 {(!collapsed || showLabel) && (
                     <span className="shell-nav__label">{item.label}</span>
                 )}
-                {item.sectionKey === 'tasks' && profileTaskBadge > 0 && (!collapsed || showLabel) && (
-                    <span className="shell-nav__badge" aria-label={`${profileTaskBadge} upozornění`}>
-                        {profileTaskBadge > 99 ? '99+' : profileTaskBadge}
-                    </span>
-                )}
-                {item.sectionKey === 'reklamace' && reklamaceNotifBadge > 0 && (!collapsed || showLabel) && (
-                    <span className="shell-nav__badge" aria-label={`${reklamaceNotifBadge} připomínek reklamací`}>
-                        {reklamaceNotifBadge > 99 ? '99+' : reklamaceNotifBadge}
-                    </span>
-                )}
+                {renderSectionBadge(item.sectionKey, collapsed, showLabel)}
             </button>
         );
     };

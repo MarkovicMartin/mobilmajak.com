@@ -3,7 +3,6 @@ import json
 from pathlib import Path
 
 from django.core.management.base import BaseCommand
-from django.db.models import Q
 
 from shifts.dovolena_sync import apply_dovolena_targets, normalize_prijmeni
 from users.models import WebUser
@@ -34,10 +33,7 @@ class Command(BaseCommand):
         missing = []
         skipped = []
 
-        qs = WebUser.objects.filter(aktivni=True).filter(
-            Q(role__in=('PRODEJCE', 'VEDOUCI'))
-            | Q(jmeno__iexact='Martin', prijmeni__iexact='Markovič')
-        )
+        qs = WebUser.objects.filter(aktivni=True, role__in=('PRODEJCE', 'VEDOUCI'))
 
         by_prijmeni = {}
         for user in qs:

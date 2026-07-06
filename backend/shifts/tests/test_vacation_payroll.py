@@ -31,6 +31,9 @@ from shifts.vacation_service import (
     dovolena_fond_rok,
     dovolena_hodin_ze_smeny,
     dovolena_stav,
+    is_dovolena_eligible,
+    is_dovolena_admin_user,
+    is_dovolena_overview_user,
     is_pracovni_den,
     mesicni_cerpani_dovolene,
     pocita_deficit_z_fondu,
@@ -357,6 +360,37 @@ class VacationServiceTests(TestCase):
         self.assertEqual(stav['cerpano_smeny_h'], DOVOLENA_HODINY_ZA_DEN)
         self.assertEqual(stav['odeceno_deficit_h'], 0)
         self.assertEqual(stav['cerpano_h'], DOVOLENA_HODINY_ZA_DEN)
+
+    def test_admin_dovolena_jen_ze_smen(self):
+        user = WebUser.objects.create(
+            id=9027, uzivatelske_jmeno='admin.dov', jmeno='Admin', prijmeni='Dovolená',
+            heslo='x', role='ADMIN', aktivni=True,
+        )
+        self.assertFalse(is_dovolena_eligible(user))
+        self.assertTrue(is_dovolena_admin_user(user))
+        self.assertTrue(is_dovolena_overview_user(user))
+        self.assertFalse(pocita_deficit_z_fondu(user))
+        Smena.objects.create(
+            user=user, prodejna=self.prodejna, datum=date(2027, 7, 1),
+            cas_od=time(8, 0), cas_do=time(16, 0), typ_smeny='dovolena',
+        )
+        stav = dovolena_stav(user, 2027)
+        self.assertEqual(stav['cerpano_h'], DOVOLENA_HODINY_ZA_DEN)
+        self.assertEqual(stav['odeceno_deficit_h'], 0)
+
+    def test_vacation_overview_queryset_includes_admin(self):
+        from users.exclusions import vacation_overview_users_queryset
+        WebUser.objects.create(
+            id=9028, uzivatelske_jmeno='admin.overview', jmeno='Přehled', prijmeni='Admin',
+            heslo='x', role='ADMIN', aktivni=True,
+        )
+        WebUser.objects.create(
+            id=9029, uzivatelske_jmeno='admin.systemovy', jmeno='Administrátor', prijmeni='Systémový',
+            heslo='x', role='ADMIN', aktivni=True,
+        )
+        ids = set(vacation_overview_users_queryset().values_list('id', flat=True))
+        self.assertIn(9028, ids)
+        self.assertNotIn(9029, ids)
 
 
 class PayrollComputationTests(TestCase):

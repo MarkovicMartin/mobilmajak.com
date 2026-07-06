@@ -19,6 +19,7 @@ from .permissions import (
     user_can_upload_doklad,
 )
 from .doklady import link_doklad_to_polozka, serialize_doklad
+from .faktura_process import process_doklad_ocr, schvalit_doklad, zamitnout_doklad
 from .services import (
     get_finance_counts,
     get_last_fio_import_info,
@@ -329,10 +330,113 @@ def doklad_upload(request):
         return _no_store_response({'error': str(exc)}, status.HTTP_400_BAD_REQUEST)
 
     log_finance_audit(request, 'doklad_upload', f'polozka={polozka.id} doklad={doklad.id}')
+    polozka.refresh_from_db()
     return _no_store_response({
-        'doklad': serialize_doklad(doklad),
+        'doklad': serialize_doklad(doklad, include_polozka=True),
         'polozka': serialize_naklad_polozka(polozka),
     }, status.HTTP_201_CREATED)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+@finance_admin_view
+def doklady_ke_kontrole(request):
+    """Fronta faktur ke kontrole před Flexi."""
+    log_finance_audit(request, 'doklady_ke_kontrole')
+    qs = FinanceDoklad.objects.filter(
+        stav__in=(
+            FinanceDoklad.STAV_CEKA_NA_OCR,
+            FinanceDoklad.STAV_KE_KONTROLE,
+            FinanceDoklad.STAV_NOVA,
+        ),
+    ).select_related('naklad_polozka').order_by('-vytvoreno')
+    return _no_store_response([
+        serialize_doklad(d, include_polozka=True) for d in qs[:100]
+    ])
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@finance_admin_view
+def doklad_schvalit(request, doklad_id: int):
+    try:
+        doklad = FinanceDoklad.objects.select_related('naklad_polozka').get(pk=doklad_id)
+    except FinanceDoklad.DoesNotExist:
+        return _no_store_response({'error': 'Doklad nenalezen'}, status.HTTP_404_NOT_FOUND)
+    doklad = schvalit_doklad(doklad, request.user.id)
+    log_finance_audit(request, 'doklad_schvalit', f'id={doklad_id}')
+    return _no_store_response(serialize_doklad(doklad, include_polozka=True))
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@finance_admin_view
+def doklad_zamitnout(request, doklad_id: int):
+    try:
+        doklad = FinanceDoklad.objects.get(pk=doklad_id)
+    except FinanceDoklad.DoesNotExist:
+        return _no_store_response({'error': 'Doklad nenalezen'}, status.HTTP_404_NOT_FOUND)
+    duvod = (request.data.get('duvod') or '')[:500]
+    doklad = zamitnout_doklad(doklad, request.user.id, duvod=duvod)
+    log_finance_audit(request, 'doklad_zamitnout', f'id={doklad_id}')
+    return _no_store_response(serialize_doklad(doklad, include_polozka=True))
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@finance_admin_view
+def doklad_reprocess_ocr(request, doklad_id: int):
+    try:
+        doklad = process_doklad_ocr(doklad_id, overwrite_empty=False)
+    except FinanceDoklad.DoesNotExist:
+        return _no_store_response({'error': 'Doklad nenalezen'}, status.HTTP_404_NOT_FOUND)
+    log_finance_audit(request, 'doklad_reprocess_ocr', f'id={doklad_id}')
+    return _no_store_response(serialize_doklad(doklad, include_polozka=True))
+
+
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
+@finance_admin_view
+def doklad_update(request, doklad_id: int):
+    try:
+        doklad = FinanceDoklad.objects.select_related('naklad_polozka').get(pk=doklad_id)
+    except FinanceDoklad.DoesNotExist:
+        return _no_store_response({'error': 'Doklad nenalezen'}, status.HTTP_404_NOT_FOUND)
+
+    data = request.data
+    text_fields = ('dodavatel_nazev', 'cislo_faktury', 'dodavatel_ico')
+    for field in text_fields:
+        if field in data:
+            setattr(doklad, field, str(data[field] or '')[:200])
+
+    from decimal import Decimal, InvalidOperation
+    for field in ('castka_bez_dph', 'dph_castka', 'castka_celkem'):
+        if field in data:
+            raw = data[field]
+            if raw in (None, ''):
+                setattr(doklad, field, None)
+            else:
+                try:
+                    setattr(doklad, field, Decimal(str(raw).replace(',', '.')))
+                except InvalidOperation:
+                    return _no_store_response({'error': f'Neplatná částka: {field}'}, status.HTTP_400_BAD_REQUEST)
+
+    if 'dph_sazba' in data and data['dph_sazba'] not in (None, ''):
+        try:
+            doklad.dph_sazba = int(data['dph_sazba'])
+        except (TypeError, ValueError):
+            return _no_store_response({'error': 'Neplatná sazba DPH'}, status.HTTP_400_BAD_REQUEST)
+
+    from .faktura_match import match_doklad_to_polozka
+    match = match_doklad_to_polozka(doklad, doklad.naklad_polozka)
+    doklad.match_stav = match['stav']
+    doklad.match_detail = match
+    doklad.stav = FinanceDoklad.STAV_KE_KONTROLE
+    doklad.upraveno = timezone.now()
+    doklad.save()
+
+    log_finance_audit(request, 'doklad_update', f'id={doklad_id}')
+    return _no_store_response(serialize_doklad(doklad, include_polozka=True))
 
 
 @api_view(['GET'])
@@ -341,7 +445,13 @@ def doklad_upload(request):
 def doklady_list(request):
     """Nahráté faktury bez DPH (čekají na doplnění / OCR)."""
     log_finance_audit(request, 'doklady_list')
-    qs = FinanceDoklad.objects.filter(stav=FinanceDoklad.STAV_NOVA).select_related('naklad_polozka')
+    qs = FinanceDoklad.objects.filter(
+        stav__in=(
+            FinanceDoklad.STAV_CEKA_NA_OCR,
+            FinanceDoklad.STAV_KE_KONTROLE,
+            FinanceDoklad.STAV_NOVA,
+        ),
+    ).select_related('naklad_polozka')
     store_ids = accessible_store_ids(request.user)
     if store_ids is not None:
         qs = qs.filter(naklad_polozka__prodejna_id__in=store_ids)

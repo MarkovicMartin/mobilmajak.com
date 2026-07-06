@@ -45,6 +45,27 @@ def _text_blob(row: dict) -> str:
     return f'{row.get("popis") or ""} {row.get("zprava") or ""}'.strip().lower()
 
 
+def _ascii_cz(text: str) -> str:
+    """Pro porovnání klíčových slov bez ohledu na diakritiku."""
+    for src, dst in (
+        ('á', 'a'), ('č', 'c'), ('ď', 'd'), ('é', 'e'), ('ě', 'e'), ('í', 'i'),
+        ('ň', 'n'), ('ó', 'o'), ('ř', 'r'), ('š', 's'), ('ť', 't'), ('ú', 'u'),
+        ('ů', 'u'), ('ý', 'y'), ('ž', 'z'),
+    ):
+        text = text.replace(src, dst)
+    return text
+
+
+def _is_vykup(text: str) -> bool:
+    """Výkup z kasy / Fio – Úhrada výkupky, bazar, Manuální výdej V26… Výkup."""
+    t = _ascii_cz(text)
+    if any(k in t for k in ('vykupka', 'uhrada vykupky', 'bazar')):
+        return True
+    if re.search(r'\bvykup\b', t):
+        return True
+    return False
+
+
 def _kat(nazev: str) -> int | None:
     return NakladKategorie.objects.filter(nazev=nazev, aktivni=True).values_list('id', flat=True).first()
 
@@ -223,6 +244,11 @@ def apply_builtin_rules(row: dict, zdroj: str = '', prodejna_id: int | None = No
             return KategorizaceVysledek(
                 NakladPolozka.STAV_IGNOROVAT, None, prodejna_id, True, True, 'symplio:storno',
             )
+        if _is_vykup(text):
+            kid = _ensure_vykup_kategorie()
+            return KategorizaceVysledek(
+                NakladPolozka.STAV_ZARAZENO, kid, prodejna_id, False, True, 'symplio:vykup',
+            )
         if _is_spotreba_prodejny(text):
             kid = _kat('Spotřeba prodejny')
             if kid:
@@ -236,7 +262,7 @@ def apply_builtin_rules(row: dict, zdroj: str = '', prodejna_id: int | None = No
                     NakladPolozka.STAV_ZARAZENO, kid, prodejna_id, False, True, 'symplio:zbozi',
                 )
 
-    if any(k in text for k in ('vykupka', 'vykup', 'úhrada výkupky', 'uhrada vykupky', 'bazar')):
+    if _is_vykup(text):
         kid = _ensure_vykup_kategorie()
         return KategorizaceVysledek(
             NakladPolozka.STAV_ZARAZENO, kid, prodejna_id, False, True, 'vykup',

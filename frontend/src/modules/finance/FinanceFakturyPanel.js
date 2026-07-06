@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { financeAPI } from '../../services/api';
 import FinanceZdrojFilter from './FinanceZdrojFilter';
+import FinanceDropZone from './FinanceDropZone';
 import { movementLabel, zdrojMeta } from './financeUtils';
 import './FinanceFakturyPanel.css';
 
@@ -147,18 +148,17 @@ const FinanceFakturyPanel = ({ intro }) => {
                                 <p className="finance-faktury-card__meta">Kategorie: {p.kategorie_nazev}</p>
                             )}
                             <div className="finance-faktury-upload">
-                                <label>
-                                    Faktura (PDF, JPG, PNG)
-                                    <input
-                                        type="file"
-                                        accept=".pdf,.jpg,.jpeg,.png,.webp,image/*,application/pdf"
-                                        onChange={(e) => setFormField(
-                                            p.id,
-                                            'file',
-                                            e.target.files?.[0] || null,
-                                        )}
-                                    />
-                                </label>
+                                <FinanceDropZone
+                                    compact={Boolean(p.faktura_hint)}
+                                    disabled={uploadingId === p.id}
+                                    label="Přetáhněte fakturu sem (PDF / foto)"
+                                    onFile={(file) => setFormField(p.id, 'file', file)}
+                                />
+                                {form.file && (
+                                    <p className="finance-faktury-file-name">
+                                        Vybráno: {form.file.name}
+                                    </p>
+                                )}
                                 <div className="finance-faktury-upload__optional">
                                     <input
                                         type="text"

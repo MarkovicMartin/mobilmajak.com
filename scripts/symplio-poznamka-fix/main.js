@@ -12,6 +12,17 @@ const { loadSymplioCredentials } = require('./symplio-credentials');
 // Pomocná funkce pro čekání
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
+/** Symplio export používá „Poznámka zákaznika“ (bez ř), ne „zákazníka“. */
+function poznamkaZakaznikaColIndex(colMap) {
+    if (colMap['Poznámka zákazníka'] !== undefined) return colMap['Poznámka zákazníka'];
+    if (colMap['Poznámka zákaznika'] !== undefined) return colMap['Poznámka zákaznika'];
+    return null;
+}
+
+function getPoznamkaZakaznikaFromRow(g) {
+    return g('Poznámka zákazníka') || g('Poznámka zákaznika') || null;
+}
+
 // Pomocná funkce pro převod Excel data na MySQL formát
 function convertExcelDate(excelDate) {
     if (!excelDate) return null;
@@ -495,7 +506,7 @@ async function insertDataToWebProdejeAll(connection, headers, rows) {
                     g('Středisko') || null,
                     g('Poznámka') || null,
                     poznamkaDokladu,
-                    g('Poznámka zákazníka') || null,
+                    getPoznamkaZakaznikaFromRow(g),
                     g('Objednávku založil') || null,
                     parseInt(g('Počet kusů')) || 0,
                     cenaVal,
@@ -987,10 +998,10 @@ async function processDownloadedTable(filePath, techniciMap = {}, prodejciMap = 
             let kServisu = null;
             
             // Dynamické indexy sloupců dle mapy (nezávislé na pořadí)
-            const poznamkaZakaznikaIndex = excelColMap['Poznámka zákazníka'] ?? 9;
+            const poznamkaZakaznikaIndex = poznamkaZakaznikaColIndex(excelColMap);
             const kodIndex = excelColMap['Kód'] ?? 2;
             
-            if (poznamkaZakaznikaIndex < row.length && row[poznamkaZakaznikaIndex]) {
+            if (poznamkaZakaznikaIndex !== null && poznamkaZakaznikaIndex < row.length && row[poznamkaZakaznikaIndex]) {
                 const poznamkaZakaznika = row[poznamkaZakaznikaIndex].toString().trim();
                 
                 // Pokud je poznámka neprázdná, nastavíme k_servisu na "ANO"
@@ -1045,7 +1056,7 @@ async function processDownloadedTable(filePath, techniciMap = {}, prodejciMap = 
                 console.log(`  KATEGORIE [${numExcelCols + 3}]: ${newRow[numExcelCols + 3]}`);
                 console.log(`  Technik [${numExcelCols + 6}]: ${newRow[numExcelCols + 6]}`);
                 console.log(`  k_servisu [${numExcelCols + 7}]: ${newRow[numExcelCols + 7]}`);
-                console.log(`  Poznámka zákazníka [${poznamkaZakaznikaIndex}]: "${row[poznamkaZakaznikaIndex] || ''}"`);
+                console.log(`  Poznámka zákazníka [${poznamkaZakaznikaIndex}]: "${poznamkaZakaznikaIndex !== null ? (row[poznamkaZakaznikaIndex] || '') : ''}"`);
                 console.log(`  Kód položky [${kodIndex}]: "${row[kodIndex] || ''}"`);
             }
             

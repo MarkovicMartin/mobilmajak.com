@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import ShellBrand from '../brand/ShellBrand';
 import ShellNavLinks, { ShellProfileLinks } from './ShellNavLinks';
+import NotificationCenter from './NotificationCenter';
 
 const AppSidebar = ({
     isAdmin,
@@ -65,16 +66,9 @@ const AppSidebar = ({
                             childClass="app-sidebar__link--child"
                         />
                     </div>
-                    <button
-                        type="button"
-                        className="app-sidebar__icon-btn"
-                        onClick={toggleTheme}
-                        title={isDarkMode ? 'Světlý režim' : 'Tmavý režim'}
-                    >
-                        <i className={`fas ${isDarkMode ? 'fa-sun' : 'fa-moon'}`} />
-                    </button>
+                    <NotificationCenter collapsed={collapsed} />
                 </div>
-                <div className="app-sidebar__footer-row">
+                <div className="app-sidebar__footer-row app-sidebar__footer-row--logout">
                     <button
                         type="button"
                         className="app-sidebar__link app-sidebar__link--logout"
@@ -83,6 +77,14 @@ const AppSidebar = ({
                     >
                         <i className="fas fa-sign-out-alt" aria-hidden="true" />
                         {!collapsed && <span className="shell-nav__label">Odhlásit</span>}
+                    </button>
+                    <button
+                        type="button"
+                        className="app-sidebar__icon-btn"
+                        onClick={toggleTheme}
+                        title={isDarkMode ? 'Světlý režim' : 'Tmavý režim'}
+                    >
+                        <i className={`fas ${isDarkMode ? 'fa-sun' : 'fa-moon'}`} />
                     </button>
                 </div>
             </div>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import api from '../../services/api';
+import { dispatchNotificationsRefresh } from '../../services/notificationsService';
 import { PageHeader, Select } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
 import ReklamaceForm from './ReklamaceForm';
@@ -55,7 +56,7 @@ const ReklamaceModule = () => {
         try {
             await api.post('/reklamace/notifikace/mark-read/', { ids: notifications.map((n) => n.id) });
             setNotifications([]);
-            window.dispatchEvent(new Event('reklamace-notifications-refresh'));
+            dispatchNotificationsRefresh();
         } catch {
             /* ignore */
         }

@@ -28,22 +28,12 @@ def backoffice_surname_keys():
     return BACKOFFICE_SURNAME_KEYS
 
 
-def _is_markovic_active_seller(user) -> bool:
-    """Martin Markovič – prodej na pultu při roli ADMIN."""
-    return (
-        (getattr(user, 'jmeno', '') or '').strip().lower() == 'martin'
-        and (getattr(user, 'prijmeni', '') or '').strip().lower() == 'markovič'
-    )
-
-
 def is_backoffice_user(user) -> bool:
     """
     Backoffice – bez domovské prodejny, ve směnách jako Backoffice (ne Prodejce).
     Michaela Smčková je výslovně backoffice i při chybně nastavené prodejně.
     """
     if not user:
-        return False
-    if _is_markovic_active_seller(user):
         return False
     prijmeni = (getattr(user, 'prijmeni', '') or '').strip().lower()
     if prijmeni in BACKOFFICE_SURNAME_KEYS:

@@ -1,6 +1,5 @@
 """Porovnání hodin z Excel override vs. směny v systému (průměr dovolené)."""
 from django.core.management.base import BaseCommand
-from django.db.models import Q
 
 from shifts.payroll_service import _odpracovano_h_mesic, prumer_fixni_hodinove_detail
 from shifts.prumer_mzdy_override import load_prumer_mzdy_overrides, prumer_override_for_user
@@ -28,10 +27,7 @@ class Command(BaseCommand):
             self.stderr.write('Chybí shifts/data/prumer_mzdy_override.json')
             return
 
-        qs = WebUser.objects.filter(aktivni=True).filter(
-            Q(role__in=('PRODEJCE', 'VEDOUCI'))
-            | Q(jmeno__iexact='Martin', prijmeni__iexact='Markovič')
-        ).order_by('prijmeni')
+        qs = WebUser.objects.filter(aktivni=True, role__in=('PRODEJCE', 'VEDOUCI')).order_by('prijmeni')
 
         self.stdout.write(f'Průměr dovolené – kontrola hodin (rok {rok}, ref. měsíc {ref_mesic})')
         self.stdout.write('')

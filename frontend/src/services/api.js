@@ -442,6 +442,7 @@ export const financeAPI = {
         await api.get('/finance/naklady/prehled/', { params })
     ).data,
     getCekaNaFakturu: async () => (await api.get('/finance/naklady/ceka-na-fakturu/')).data,
+    getDokladyKeKontrole: async () => (await api.get('/finance/doklady/ke-kontrole/')).data,
     createManualNaklad: async (payload) => (
         await api.post('/finance/naklady/manual/', payload)
     ).data,
@@ -473,11 +474,24 @@ export const financeAPI = {
         });
         return response.data;
     },
+    schvalitDoklad: async (id) => (await api.post(`/finance/doklady/${id}/schvalit/`)).data,
+    zamitnoutDoklad: async (id, payload = {}) => (
+        await api.post(`/finance/doklady/${id}/zamitnout/`, payload)
+    ).data,
+    reprocessDokladOcr: async (id) => (
+        await api.post(`/finance/doklady/${id}/reprocess-ocr/`)
+    ).data,
 };
 
 export const reklamaceAPI = {
-    listUnreadNotifications: async () => {
-        const response = await api.get('/reklamace/notifikace/');
+    listNotifications: async ({ unread = true } = {}) => {
+        const params = unread ? {} : { read: '1' };
+        const response = await api.get('/reklamace/notifikace/', { params });
+        return response.data;
+    },
+    listUnreadNotifications: async () => reklamaceAPI.listNotifications({ unread: true }),
+    markNotificationsRead: async (ids) => {
+        const response = await api.post('/reklamace/notifikace/mark-read/', { ids });
         return response.data;
     },
 };

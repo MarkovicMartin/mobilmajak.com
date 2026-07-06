@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { financeAPI } from '../../services/api';
+import FinanceDropZone from './FinanceDropZone';
 
 const FinanceDokladUpload = ({ polozka, onUploaded, compact = false }) => {
     const [file, setFile] = useState(null);
@@ -10,8 +11,8 @@ const FinanceDokladUpload = ({ polozka, onUploaded, compact = false }) => {
         return <span className="finance-badge">FA ✓</span>;
     }
 
-    const handleUpload = async () => {
-        if (!file) {
+    const upload = async (selected) => {
+        if (!selected) {
             setError('Vyberte soubor');
             return;
         }
@@ -19,7 +20,7 @@ const FinanceDokladUpload = ({ polozka, onUploaded, compact = false }) => {
         setError('');
         try {
             await financeAPI.uploadDoklad({
-                file,
+                file: selected,
                 naklad_polozka_id: polozka.id,
                 cislo_faktury: polozka.faktura_hint?.cislo_faktury || '',
                 dodavatel_nazev: polozka.faktura_hint?.dodavatel_nazev || '',
@@ -33,18 +34,34 @@ const FinanceDokladUpload = ({ polozka, onUploaded, compact = false }) => {
         }
     };
 
+    if (compact) {
+        return (
+            <div className="finance-fa-upload finance-fa-upload--compact">
+                <FinanceDropZone
+                    compact
+                    disabled={uploading}
+                    label="FA"
+                    onFile={(f) => {
+                        setFile(f);
+                        upload(f);
+                    }}
+                />
+                {error && <span className="finance-fa-upload__err">{error}</span>}
+            </div>
+        );
+    }
+
     return (
-        <div className={compact ? 'finance-fa-upload finance-fa-upload--compact' : 'finance-fa-upload'}>
-            <input
-                type="file"
-                accept=".pdf,.jpg,.jpeg,.png,.webp,image/*,application/pdf"
-                onChange={(e) => {
-                    setFile(e.target.files?.[0] || null);
-                    setError('');
+        <div className="finance-fa-upload">
+            <FinanceDropZone
+                disabled={uploading}
+                onFile={(f) => {
+                    setFile(f);
                 }}
             />
-            <button type="button" disabled={uploading || !file} onClick={handleUpload}>
-                {uploading ? '…' : 'FA'}
+            {file && <p className="finance-fa-upload__name">{file.name}</p>}
+            <button type="button" disabled={uploading || !file} onClick={() => upload(file)}>
+                {uploading ? 'Nahrávám…' : 'Přiložit fakturu'}
             </button>
             {error && <span className="finance-fa-upload__err">{error}</span>}
         </div>

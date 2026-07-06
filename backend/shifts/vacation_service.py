@@ -6,7 +6,7 @@ from users.mzda_utils import is_brigadnik
 from .labor_hours import HODINY_NA_PRACOVNI_DEN, fondu_hodin_mesic
 from .models import Smena
 from .czech_holidays import get_ceske_svatky
-from .shift_helpers import _is_markovic_active_seller, is_backoffice_user
+from .shift_helpers import is_backoffice_user
 
 DOVOLENA_ROCNI_FOND = 160
 DOVOLENA_PREVOD_MAX = 40
@@ -18,9 +18,17 @@ DOVOLENA_DEFICIT_OD_MESIC = 6
 def is_dovolena_eligible(user):
     if not user or is_brigadnik(user):
         return False
-    if getattr(user, 'role', None) in ('PRODEJCE', 'VEDOUCI'):
-        return True
-    return _is_markovic_active_seller(user)
+    return getattr(user, 'role', None) in ('PRODEJCE', 'VEDOUCI')
+
+
+def is_dovolena_admin_user(user):
+    """Admin – fond dovolené jen ze směn typu dovolená (bez deficitu měsíčního fondu)."""
+    return bool(user) and not is_brigadnik(user) and getattr(user, 'role', None) == 'ADMIN'
+
+
+def is_dovolena_overview_user(user):
+    """Uživatel v admin přehledu dovolené – běžní prodejci + admini (oddělená pravidla čerpání)."""
+    return is_dovolena_eligible(user) or is_dovolena_admin_user(user)
 
 
 def pocita_deficit_z_fondu(user):
@@ -30,8 +38,6 @@ def pocita_deficit_z_fondu(user):
     """
     if not is_dovolena_eligible(user):
         return False
-    if _is_markovic_active_seller(user):
-        return True
     if getattr(user, 'role', None) == 'ADMIN':
         return False
     if is_backoffice_user(user):
@@ -213,7 +219,7 @@ def dovolena_fond_rok(user_id, rok, fond_extra=0.0, hours_cache=None):
 
 
 def dovolena_stav(user, rok=None, hours_cache=None, referencni_datum=None):
-    if not is_dovolena_eligible(user):
+    if not is_dovolena_overview_user(user):
         return None
     if rok is None:
         rok = date.today().year
@@ -260,7 +266,7 @@ def dovolena_stav(user, rok=None, hours_cache=None, referencni_datum=None):
 
 
 def validate_dovolena_kapacita(user, datum, typ_smeny, ignorovat_smena_id=None, referencni_datum=None):
-    if typ_smeny != 'dovolena' or not is_dovolena_eligible(user):
+    if typ_smeny != 'dovolena' or not is_dovolena_overview_user(user):
         return None
     nove_h = float(DOVOLENA_HODINY_ZA_DEN)
     rok = datum.year if isinstance(datum, date) else datum
@@ -366,7 +372,7 @@ def build_hours_cache_for_overview(rok, referencni_datum=None) -> dict:
 
 def build_vacation_overview_user(user, rok=None, referencni_datum=None, hours_cache=None, prumer_cache=None):
     """Přehled dovolené pro jednoho uživatele – roční tabulka měsíců a sazba výplaty."""
-    if not is_dovolena_eligible(user):
+    if not is_dovolena_overview_user(user):
         return None
     if rok is None:
         rok = date.today().year
