@@ -7,7 +7,7 @@ const MONTH_NAMES = [
     'Červenec', 'Srpen', 'Září', 'Říjen', 'Listopad', 'Prosinec',
 ];
 
-const CACHE_PREFIX = 'vacation-overview-v6';
+const CACHE_PREFIX = 'vacation-overview-v8';
 const CURRENT_YEAR_STALE_MS = 5 * 60 * 1000;
 const memoryCache = new Map();
 

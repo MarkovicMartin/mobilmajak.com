@@ -180,7 +180,8 @@ class VacationServiceTests(TestCase):
         stav = dovolena_stav(user, 2025)
         self.assertEqual(stav['cerpano_smeny_h'], DOVOLENA_HODINY_ZA_DEN)
         self.assertEqual(stav['cerpano_h'], DOVOLENA_HODINY_ZA_DEN)
-        self.assertEqual(stav['zbyva_h'], DOVOLENA_ROCNI_FOND - DOVOLENA_HODINY_ZA_DEN)
+        narok = stav['rocni_narok_h']
+        self.assertEqual(stav['zbyva_h'], round(narok - DOVOLENA_HODINY_ZA_DEN, 2))
 
     def test_deficit_jen_ukoncene_mesice(self):
         """Aktuální měsíc se do ročního deficitu nezapočítává."""
@@ -305,6 +306,35 @@ class VacationServiceTests(TestCase):
         stav = dovolena_stav(user, 2026, referencni_datum=date(2026, 7, 1))
         self.assertEqual(stav['odeceno_deficit_h'], deficit)
 
+    def test_dovolena_i_deficit_v_cervnu_2026(self):
+        """V měsíci s deficitem se počítá deficit fondu i směny typu dovolená."""
+        user = WebUser.objects.create(
+            id=9030, uzivatelske_jmeno='test_junvac', jmeno='Jun', prijmeni='Vac',
+            heslo='x', role='PRODEJCE', aktivni=True, prodejna_id=self.prodejna.id,
+        )
+        Smena.objects.create(
+            user=user, prodejna=self.prodejna, datum=date(2026, 6, 18),
+            cas_od=time(8, 0), cas_do=time(16, 0), typ_smeny='dovolena',
+        )
+        Smena.objects.create(
+            user=user, prodejna=self.prodejna, datum=date(2026, 6, 19),
+            cas_od=time(8, 0), cas_do=time(16, 0), typ_smeny='dovolena',
+        )
+        fond_cerven = fondu_hodin_mesic(2026, 6)
+        Smena.objects.create(
+            user=user, prodejna=self.prodejna, datum=date(2026, 6, 1),
+            cas_od=time(8, 0), cas_do=time(16, 0), typ_smeny='prace',
+        )
+        deficit = deficit_mesic_pro_dovolenou(user.id, 2026, 6)
+        self.assertEqual(deficit, round(fond_cerven - 8, 2))
+        stav = dovolena_stav(user, 2026, referencni_datum=date(2026, 7, 1))
+        self.assertEqual(stav['cerpano_smeny_h'], 16.0)
+        self.assertEqual(stav['odeceno_deficit_h'], deficit)
+        self.assertEqual(stav['cerpano_h'], round(deficit + 16, 2))
+        row = mesicni_cerpani_dovolene(user.id, 2026, 6, user=user, referencni_datum=date(2026, 7, 1))
+        self.assertEqual(row['dovolena_smeny_h'], 16.0)
+        self.assertEqual(row['cerpano_h'], round(deficit + 16, 2))
+
     def test_dovolena_smena_pred_cervnem_stale_pocita(self):
         user = WebUser.objects.create(
             id=9023, uzivatelske_jmeno='test_cutoff3', jmeno='Cut3', prijmeni='Off',
@@ -391,6 +421,23 @@ class VacationServiceTests(TestCase):
         ids = set(vacation_overview_users_queryset().values_list('id', flat=True))
         self.assertIn(9028, ids)
         self.assertNotIn(9029, ids)
+
+    def test_pomerovy_fond_nastup_v_cervenci(self):
+        """Nástup v červenci – polovina ročního fondu, bez deficitu před nástupem."""
+        user = WebUser.objects.create(
+            id=9031, uzivatelske_jmeno='test_jul', jmeno='Jul', prijmeni='Nový',
+            heslo='x', role='PRODEJCE', aktivni=True, prodejna_id=self.prodejna.id,
+        )
+        Smena.objects.create(
+            user=user, prodejna=self.prodejna, datum=date(2026, 7, 1),
+            cas_od=time(8, 0), cas_do=time(16, 0), typ_smeny='prace',
+        )
+        stav = dovolena_stav(user, 2026, referencni_datum=date(2026, 7, 6))
+        self.assertEqual(stav['rocni_narok_h'], 80.0)
+        self.assertEqual(stav['fond_h'], 80.0)
+        self.assertEqual(stav['odeceno_deficit_h'], 0.0)
+        self.assertEqual(stav['cerpano_h'], 0.0)
+        self.assertEqual(stav['zbyva_h'], 80.0)
 
 
 class PayrollComputationTests(TestCase):

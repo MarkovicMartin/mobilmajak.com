@@ -15,6 +15,7 @@ from analytics.zasilkovna_link import (
     baliky_zpracovane_by_prodejna,
     distinct_visit_counts,
     is_z_oznaceno,
+    counts_as_zasilkovna_prodej,
     is_zasilkovna_prodej,
     link_sales_to_packeta,
     load_packeta_visits,
@@ -76,7 +77,7 @@ def build_konverze_report(
 
     linked_typed = _linked_with_typ(linked)
     prodeje_z_note = {l.doklad for l in linked if is_z_oznaceno(l)}
-    prodeje_z_cislem = {l.doklad for l in linked if is_zasilkovna_prodej(l)}
+    prodeje_z_cislem = {l.doklad for l in linked if counts_as_zasilkovna_prodej(l)}
     prodeje_fallback = {l.doklad for l in linked if l.match_source == 'sleva_fallback'}
     prodeje_propojene = {l.doklad for l in linked if l.packeta_nalezeno}
     prodeje_celkem = {l.doklad for l in linked}
@@ -108,7 +109,7 @@ def build_konverze_report(
         visits_by_store[v.prodejna_id].add(v.zasilka)
     prodeje_by_store: dict[int, set[str]] = defaultdict(set)
     for item in linked:
-        if item.id_prodejny and is_zasilkovna_prodej(item):
+        if item.id_prodejny and counts_as_zasilkovna_prodej(item):
             prodeje_by_store[item.id_prodejny].add(item.doklad)
 
     po_prodejne = []
@@ -189,7 +190,7 @@ def build_konverze_report(
             'z_marker': l.z_marker,
         }
         for l in sorted(
-            [x for x in linked if is_zasilkovna_prodej(x)],
+            [x for x in linked if counts_as_zasilkovna_prodej(x)],
             key=lambda x: (x.datum_prodeje or date.min, x.doklad),
             reverse=True,
         )[:300]

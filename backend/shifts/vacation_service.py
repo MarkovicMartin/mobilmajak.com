@@ -74,6 +74,50 @@ def mel_fond_v_roce(user_id, rok):
     ).exists()
 
 
+def prvni_smena_datum_v_roce(user_id, rok):
+    """Datum první pracovní nebo dovolené směny v kalendářním roce."""
+    return (
+        Smena.objects.filter(
+            user_id=user_id,
+            datum__year=rok,
+            aktivni=True,
+            typ_smeny__in=('prace', 'dovolena'),
+        )
+        .order_by('datum')
+        .values_list('datum', flat=True)
+        .first()
+    )
+
+
+def mesicu_dovolene_v_roce(user_id, rok):
+    """Počet měsíců nároku v roce – od měsíce první směny do prosince (červenec = 6 → polovina fondu)."""
+    first = prvni_smena_datum_v_roce(user_id, rok)
+    if first is None:
+        return 12
+    if first.year < rok:
+        return 12
+    if first.year > rok:
+        return 0
+    return max(1, 13 - first.month)
+
+
+def dovolena_rocni_narok(user_id, rok):
+    """Roční nárok – 160 h poměrně podle měsíce nástupu (první směna v roce)."""
+    return round(DOVOLENA_ROCNI_FOND * mesicu_dovolene_v_roce(user_id, rok) / 12, 2)
+
+
+def _mesic_po_nastupu(user_id, rok, mesic_cislo):
+    """True pokud uživatel v daném měsíci již nastoupil (má/eviduje směny od tohoto měsíce)."""
+    first = prvni_smena_datum_v_roce(user_id, rok)
+    if first is None:
+        return True
+    if first.year < rok:
+        return True
+    if first.year > rok:
+        return False
+    return mesic_cislo >= first.month
+
+
 def cerpana_dovolena_rok(user_id, rok, ignorovat_smena_id=None):
     """Hodiny čerpané směnami typu dovolená (bez deficitu měsíčního fondu)."""
     smeny = Smena.objects.filter(
@@ -127,7 +171,9 @@ def deficit_mesic_hodin(user_id, rok, mesic_cislo, hours_cache=None):
 
 
 def deficit_mesic_pro_dovolenou(user_id, rok, mesic_cislo, user=None, hours_cache=None):
-    """Deficit započítaný do dovolené – 0 před červnem 2026 nebo u admin/backoffice."""
+    """Deficit započítaný do dovolené – 0 před červnem 2026, před nástupem nebo u admin/backoffice."""
+    if not _mesic_po_nastupu(user_id, rok, mesic_cislo):
+        return 0.0
     if user is not None and not pocita_deficit_z_fondu(user):
         return 0.0
     if not _mesic_pocita_deficit(rok, mesic_cislo):
@@ -145,6 +191,8 @@ def deficit_fondu_rok(user_id, rok, user=None, referencni_datum=None, hours_cach
     for mesic in range(1, 13):
         if not _mesic_ukoncen(rok, mesic, referencni_datum):
             continue
+        if not _mesic_po_nastupu(user_id, rok, mesic):
+            continue
         if not _mesic_pocita_deficit(rok, mesic):
             continue
         celkem += deficit_mesic_hodin(user_id, rok, mesic, hours_cache=hours_cache)
@@ -154,7 +202,7 @@ def deficit_fondu_rok(user_id, rok, user=None, referencni_datum=None, hours_cach
 def celkove_cerpano_rok(user_id, rok, user=None, ignorovat_smena_id=None, referencni_datum=None, hours_cache=None):
     """
     Čerpání ročního fondu:
-    - prodejci na prodejně (od 6/2026): deficit měsíčního fondu,
+    - prodejci na prodejně (od 6/2026): deficit měsíčního fondu + směny dovolené v těchto měsících,
     - prodejci před 6/2026: směny dovolené,
     - admin / backoffice: jen směny typu dovolená.
     """
@@ -168,8 +216,11 @@ def celkove_cerpano_rok(user_id, rok, user=None, ignorovat_smena_id=None, refere
         for mesic in range(1, 13):
             if not _mesic_ukoncen(rok, mesic, referencni_datum):
                 continue
+            if not _mesic_po_nastupu(user_id, rok, mesic):
+                continue
             if _mesic_pocita_deficit(rok, mesic):
                 cerpano += deficit_mesic_hodin(user_id, rok, mesic, hours_cache=hours_cache)
+                cerpano += cerpana_dovolena_mesic(user_id, rok, mesic, hours_cache=hours_cache)
             else:
                 cerpano += cerpana_dovolena_mesic(user_id, rok, mesic, hours_cache=hours_cache)
     else:
@@ -189,7 +240,7 @@ def prevod_z_predchoziho_roku(user_id, rok, _memo=None, hours_cache=None):
     if not mel_fond_v_roce(user_id, prev_rok):
         _memo[key] = 0.0
         return 0.0
-    fond_prev = DOVOLENA_ROCNI_FOND + prevod_z_predchoziho_roku(
+    fond_prev = dovolena_rocni_narok(user_id, prev_rok) + prevod_z_predchoziho_roku(
         user_id, prev_rok, _memo=_memo, hours_cache=hours_cache,
     )
     cerpano_prev = celkove_cerpano_rok(user_id, prev_rok, hours_cache=hours_cache)
@@ -211,7 +262,7 @@ def korekce_cerpano_h(user):
 
 def dovolena_fond_rok(user_id, rok, fond_extra=0.0, hours_cache=None):
     return round(
-        DOVOLENA_ROCNI_FOND
+        dovolena_rocni_narok(user_id, rok)
         + prevod_z_predchoziho_roku(user_id, rok, hours_cache=hours_cache)
         + float(fond_extra or 0),
         2,
@@ -229,6 +280,7 @@ def dovolena_stav(user, rok=None, hours_cache=None, referencni_datum=None):
     korekce = korekce_cerpano_h(user)
     prevod = prevod_z_predchoziho_roku(user.id, rok, hours_cache=hours_cache)
     fond = dovolena_fond_rok(user.id, rok, fond_extra=extra, hours_cache=hours_cache)
+    narok = dovolena_rocni_narok(user.id, rok)
     cerpano_smeny = cerpana_dovolena_rok(user.id, rok)
     if pocita_deficit_z_fondu(user):
         if referencni_datum is None:
@@ -237,14 +289,21 @@ def dovolena_stav(user, rok=None, hours_cache=None, referencni_datum=None):
             user.id, rok, user=user, referencni_datum=referencni_datum, hours_cache=hours_cache,
         )
         cerpano_pred_cutoff = 0.0
+        cerpano_v_deficit_mesicich = 0.0
         for mesic in range(1, 13):
             if not _mesic_ukoncen(rok, mesic, referencni_datum):
+                continue
+            if not _mesic_po_nastupu(user.id, rok, mesic):
                 continue
             if not _mesic_pocita_deficit(rok, mesic):
                 cerpano_pred_cutoff += cerpana_dovolena_mesic(
                     user.id, rok, mesic, hours_cache=hours_cache,
                 )
-        cerpano_zdroj = odeceno_deficit + cerpano_pred_cutoff
+            else:
+                cerpano_v_deficit_mesicich += cerpana_dovolena_mesic(
+                    user.id, rok, mesic, hours_cache=hours_cache,
+                )
+        cerpano_zdroj = odeceno_deficit + cerpano_pred_cutoff + cerpano_v_deficit_mesicich
     else:
         odeceno_deficit = 0.0
         cerpano_zdroj = cerpano_smeny
@@ -253,7 +312,7 @@ def dovolena_stav(user, rok=None, hours_cache=None, referencni_datum=None):
     return {
         'rok': rok,
         'fond_h': fond,
-        'rocni_narok_h': DOVOLENA_ROCNI_FOND,
+        'rocni_narok_h': narok,
         'prevod_h': prevod,
         'fond_extra_h': extra,
         'korekce_cerpano_h': korekce,
@@ -323,6 +382,15 @@ def mesicni_cerpani_dovolene(user_id, rok, mesic_cislo, user=None, referencni_da
     if user is None:
         from users.models import WebUser
         user = WebUser.objects.get(pk=user_id)
+    if not _mesic_po_nastupu(user_id, rok, mesic_cislo):
+        return {
+            'mesic': mesic_cislo,
+            'dovolena_smeny_h': 0.0,
+            'deficit_h': 0.0,
+            'deficit_predikce_h': 0.0,
+            'cerpano_h': 0.0,
+            'mesic_ukoncen': _mesic_ukoncen(rok, mesic_cislo, referencni_datum),
+        }
     smeny_h = cerpana_dovolena_mesic(user_id, rok, mesic_cislo, hours_cache=hours_cache)
     z_fondu = pocita_deficit_z_fondu(user)
     pocita_deficit = z_fondu and _mesic_pocita_deficit(rok, mesic_cislo)
@@ -334,7 +402,7 @@ def mesicni_cerpani_dovolene(user_id, rok, mesic_cislo, user=None, referencni_da
     deficit_odeceno = round(deficit_h, 2) if ukoncen and pocita_deficit else 0.0
     if z_fondu:
         if pocita_deficit:
-            cerpano_h = deficit_odeceno
+            cerpano_h = deficit_odeceno + (smeny_h if ukoncen else 0.0)
         elif ukoncen:
             cerpano_h = smeny_h
         else:
