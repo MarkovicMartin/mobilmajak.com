@@ -1,5 +1,7 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { financeAPI } from '../../services/api';
+import FinanceZdrojFilter from './FinanceZdrojFilter';
+import { movementLabel, zdrojMeta } from './financeUtils';
 import './FinanceFakturyPanel.css';
 
 const formatCurrency = (value) => {
@@ -12,13 +14,6 @@ const formatCurrency = (value) => {
     }).format(Math.round(n));
 };
 
-const movementLabel = (p) => {
-    if (p.zdroj === 'symplio_pokladna') {
-        return p.popis || p.zprava || '–';
-    }
-    return p.zprava || p.popis || '–';
-};
-
 const FinanceFakturyPanel = ({ intro }) => {
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -26,6 +21,7 @@ const FinanceFakturyPanel = ({ intro }) => {
     const [message, setMessage] = useState('');
     const [uploadingId, setUploadingId] = useState(null);
     const [forms, setForms] = useState({});
+    const [filterZdroj, setFilterZdroj] = useState('');
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -43,6 +39,11 @@ const FinanceFakturyPanel = ({ intro }) => {
     useEffect(() => {
         load();
     }, [load]);
+
+    const zobrazeno = useMemo(
+        () => (filterZdroj ? items.filter((p) => p.zdroj === filterZdroj) : items),
+        [items, filterZdroj],
+    );
 
     const setFormField = (id, field, value) => {
         setForms((prev) => ({
@@ -94,22 +95,31 @@ const FinanceFakturyPanel = ({ intro }) => {
             {loading && <p>Načítám…</p>}
             {error && <p className="finance-faktury-error">{error}</p>}
             {message && <p className="finance-faktury-message">{message}</p>}
-            {!loading && items.length === 0 && (
+            {!loading && items.length > 0 && (
+                <FinanceZdrojFilter
+                    value={filterZdroj}
+                    onChange={setFilterZdroj}
+                    items={items}
+                />
+            )}
+            {!loading && zobrazeno.length === 0 && (
                 <p className="finance-faktury-empty">Žádné výdaje nečekají na fakturu.</p>
             )}
-            {!loading && items.length > 0 && (
+            {!loading && zobrazeno.length > 0 && (
                 <div className="finance-faktury-list">
-                    {items.map((p) => (
-                        <article key={p.id} className="finance-faktury-card">
+                    {zobrazeno.map((p) => {
+                        const src = zdrojMeta(p.zdroj);
+                        return (
+                        <article key={p.id} className={`finance-faktury-card ${src.rowClass}`}>
                             <div className="finance-faktury-card__head">
+                                <span className={`finance-badge ${src.badgeClass}`}>{src.label}</span>
                                 <span>{p.datum}</span>
                                 <strong>{formatCurrency(p.castka)}</strong>
-                                {p.zdroj === 'symplio_pokladna' && (
-                                    <span className="finance-badge">kasa</span>
-                                )}
-                                {p.zdroj === 'fio' && <span className="finance-badge">fio</span>}
                             </div>
                             <p className="finance-faktury-card__text">{movementLabel(p)}</p>
+                            {p.prodejna_nazev && (
+                                <p className="finance-faktury-card__meta">Prodejna: {p.prodejna_nazev}</p>
+                            )}
                             {p.kategorie_nazev && (
                                 <p className="finance-faktury-card__meta">Kategorie: {p.kategorie_nazev}</p>
                             )}
@@ -161,7 +171,8 @@ const FinanceFakturyPanel = ({ intro }) => {
                                 </button>
                             </div>
                         </article>
-                    ))}
+                        );
+                    })}
                 </div>
             )}
         </section>

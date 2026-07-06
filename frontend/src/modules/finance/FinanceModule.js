@@ -3,6 +3,10 @@ import { PageHeader } from '../../components/ui';
 import { financeAPI, storeAPI } from '../../services/api';
 import './FinanceModule.css';
 import FinanceFakturyPanel from './FinanceFakturyPanel';
+import FinancePrehledPanel from './FinancePrehledPanel';
+import FinanceDokladUpload from './FinanceDokladUpload';
+import FinanceZdrojFilter from './FinanceZdrojFilter';
+import { kategorieProZarazeni, movementLabel, parseStoreChoices, storeLabel, zdrojMeta } from './financeUtils';
 
 const formatCurrency = (value) => {
     const n = Number(value) || 0;
@@ -27,6 +31,8 @@ const FinanceModule = () => {
     const [stores, setStores] = useState([]);
     const [nezarazene, setNezarazene] = useState([]);
     const [pravidla, setPravidla] = useState([]);
+    const [jenBezFaktury, setJenBezFaktury] = useState(false);
+    const [filterZdroj, setFilterZdroj] = useState('');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [message, setMessage] = useState('');
@@ -56,7 +62,7 @@ const FinanceModule = () => {
             const [st, kat, nz, storeChoices, rules] = await Promise.all([
                 financeAPI.getStatus(),
                 financeAPI.getKategorie(),
-                financeAPI.getNezarazene(),
+                financeAPI.getNezarazene(jenBezFaktury ? { bez_faktury: '1' } : {}),
                 storeAPI.getStoreChoices(),
                 financeAPI.getPravidla(),
             ]);
@@ -64,14 +70,13 @@ const FinanceModule = () => {
             setKategorie(Array.isArray(kat) ? kat : []);
             setNezarazene(Array.isArray(nz) ? nz : []);
             setPravidla(Array.isArray(rules) ? rules : []);
-            const list = Array.isArray(storeChoices) ? storeChoices : storeChoices?.results || [];
-            setStores(list);
+            setStores(parseStoreChoices(storeChoices));
         } catch (e) {
             setError(e.response?.data?.error || e.message || 'Chyba načítání');
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [jenBezFaktury]);
 
     useEffect(() => {
         loadAll();
@@ -102,10 +107,13 @@ const FinanceModule = () => {
             return;
         }
         const prodejnaId = document.getElementById(`store-${polozka.id}`)?.value;
+        const resolvedProdejna = prodejnaId
+            ? Number(prodejnaId)
+            : (polozka.prodejna_id ? Number(polozka.prodejna_id) : null);
         try {
             await financeAPI.updateNaklad(polozka.id, {
                 kategorie_id: Number(kategorieId),
-                prodejna_id: prodejnaId ? Number(prodejnaId) : null,
+                prodejna_id: resolvedProdejna,
                 zaradit: true,
                 poznamka_admin: document.getElementById(`note-${polozka.id}`)?.value || '',
             });
@@ -155,14 +163,25 @@ const FinanceModule = () => {
     const counts = status?.counts || {};
     const lastImport = status?.fio?.last_import;
 
+    const kategorieVyber = kategorieProZarazeni(kategorie);
+    const zobrazeno = filterZdroj
+        ? nezarazene.filter((p) => p.zdroj === filterZdroj)
+        : nezarazene;
+
     return (
         <div className="finance-module">
             <PageHeader title="Finance" subtitle="Admin sekce – náklady a Fio" />
 
             <div className="finance-status-panel" role="status">
                 <div className="finance-status-panel__row">
-                    <span><strong>Nezařazené:</strong> {counts.nezarazene ?? '–'}</span>
+                    <span><strong>Chybí zařazení:</strong> {counts.nezarazene ?? '–'}</span>
+                    <span><strong>Auto zařazeno:</strong> {counts.auto_zarazeno ?? '–'}</span>
+                    <span><strong>Ručně:</strong> {counts.rucne_zarazeno ?? '–'}</span>
+                    <span><strong>Ignorovat:</strong> {counts.ignorovano ?? '–'}</span>
+                </div>
+                <div className="finance-status-panel__row">
                     <span><strong>Čeká na fakturu:</strong> {counts.ceka_na_fakturu ?? '–'}</span>
+                    <span><strong>Bez faktury (DPH):</strong> {counts.bez_faktury ?? '–'}</span>
                     <span>
                         <strong>Poslední Fio import:</strong>{' '}
                         {lastImport?.vytvoreno
@@ -186,6 +205,13 @@ const FinanceModule = () => {
                     onClick={() => setTab('k-zarazeni')}
                 >
                     K zařazení
+                </button>
+                <button
+                    type="button"
+                    className={tab === 'prehled' ? 'active' : ''}
+                    onClick={() => setTab('prehled')}
+                >
+                    Přehled
                 </button>
                 <button
                     type="button"
@@ -217,31 +243,54 @@ const FinanceModule = () => {
             {!loading && tab === 'k-zarazeni' && (
                 <section className="finance-panel">
                     <p className="finance-panel__intro">
-                        Fronta nezařazených odchozích plateb (Fio / pokladna). Zařazení = kategorie + prodejna,
-                        bez ručního DPH.
+                        Fronta odchozích plateb (Fio / pokladna). U výdejů z kasy je prodejna
+                        doplněná z pokladny. Zařazení = kategorie + prodejna (u Reklamy/Nájmu stačí
+                        obecná kategorie a prodejna zvlášť).
                     </p>
-                    {nezarazene.length === 0 ? (
-                        <p className="finance-empty">Žádné nezařazené položky.</p>
+                    <label className="finance-checkbox-label finance-filter-row">
+                        <input
+                            type="checkbox"
+                            checked={jenBezFaktury}
+                            onChange={(e) => setJenBezFaktury(e.target.checked)}
+                        />
+                        Jen bez faktury (včetně už zařazených)
+                    </label>
+                    <FinanceZdrojFilter
+                        value={filterZdroj}
+                        onChange={setFilterZdroj}
+                        items={nezarazene}
+                    />
+                    {zobrazeno.length === 0 ? (
+                        <p className="finance-empty">Žádné položky pro zvolený filtr.</p>
                     ) : (
                         <div className="finance-table-wrap">
                             <table className="finance-table">
                                 <thead>
                                     <tr>
                                         <th>Datum</th>
+                                        <th>Účet</th>
                                         <th>Částka</th>
                                         <th>DPH</th>
                                         <th>Protiúčet</th>
-                                        <th>Zpráva</th>
+                                        <th>Popis</th>
                                         <th>Kategorie</th>
                                         <th>Prodejna</th>
+                                        <th>FA</th>
                                         <th>Akce</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {nezarazene.map((p) => (
-                                        <tr key={p.id}>
+                                    {zobrazeno.map((p) => {
+                                        const src = zdrojMeta(p.zdroj);
+                                        return (
+                                        <tr key={p.id} className={src.rowClass}>
                                             <td>{p.datum}</td>
-                                            <td>{formatCurrency(p.castka)}</td>
+                                            <td>
+                                                <span className={`finance-badge ${src.badgeClass}`} title={src.label}>
+                                                    {src.short}
+                                                </span>
+                                            </td>
+                                            <td className="finance-cell-castka">{formatCurrency(p.castka)}</td>
                                             <td>
                                                 {p.dph_stav === 'ceka_na_fakturu' ? (
                                                     <span className="finance-badge finance-badge--warn">
@@ -254,33 +303,42 @@ const FinanceModule = () => {
                                                 )}
                                             </td>
                                             <td>{p.protiucet || '–'}</td>
-                                            <td className="finance-cell-zprava">
-                                                {p.zdroj === 'symplio_pokladna' && (
-                                                    <span className="finance-badge" title="Symplio pokladna">kasa</span>
-                                                )}
-                                                {p.zdroj === 'fio' && (
-                                                    <span className="finance-badge" title="Fio banka">fio</span>
-                                                )}
-                                                {' '}
-                                                {p.zdroj === 'symplio_pokladna'
-                                                    ? (p.popis || p.zprava || '–')
-                                                    : (p.zprava || p.popis || '–')}
-                                            </td>
+                                            <td className="finance-cell-zprava">{movementLabel(p)}</td>
                                             <td>
-                                                <select id={`kat-${p.id}`} defaultValue="">
+                                                <select
+                                                    id={`kat-${p.id}`}
+                                                    defaultValue={p.kategorie_id || ''}
+                                                >
                                                     <option value="">— vyberte —</option>
-                                                    {kategorie.map((k) => (
+                                                    {kategorieVyber.map((k) => (
                                                         <option key={k.id} value={k.id}>{k.nazev}</option>
                                                     ))}
                                                 </select>
                                             </td>
                                             <td>
-                                                <select id={`store-${p.id}`} defaultValue="">
+                                                <select
+                                                    id={`store-${p.id}`}
+                                                    defaultValue={p.prodejna_id ? String(p.prodejna_id) : ''}
+                                                >
                                                     <option value="">— firma —</option>
                                                     {stores.map((s) => (
-                                                        <option key={s.id} value={s.id}>{s.nazev || s.label}</option>
+                                                        <option key={s.id} value={s.id}>
+                                                            {s.nazev || s.nazev_kratkiy || s.label}
+                                                        </option>
                                                     ))}
                                                 </select>
+                                                {p.prodejna_id && (
+                                                    <span className="finance-store-hint" title="Z importu pokladny">
+                                                        {p.prodejna_nazev || storeLabel(stores, p.prodejna_id)}
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td>
+                                                <FinanceDokladUpload
+                                                    polozka={p}
+                                                    compact
+                                                    onUploaded={loadAll}
+                                                />
                                             </td>
                                             <td>
                                                 <input
@@ -294,13 +352,16 @@ const FinanceModule = () => {
                                                 </button>
                                             </td>
                                         </tr>
-                                    ))}
+                                        );
+                                    })}
                                 </tbody>
                             </table>
                         </div>
                     )}
                 </section>
             )}
+
+            {tab === 'prehled' && <FinancePrehledPanel />}
 
             {!loading && tab === 'faktury' && (
                 <FinanceFakturyPanel intro="Výdaje čekající na fakturu – admin vidí všechny prodejny." />
@@ -335,7 +396,7 @@ const FinanceModule = () => {
                                 onChange={(e) => setManualForm((f) => ({ ...f, kategorie_id: e.target.value }))}
                             >
                                 <option value="">— bez kategorie —</option>
-                                {kategorie.map((k) => (
+                                {kategorieVyber.map((k) => (
                                     <option key={k.id} value={k.id}>{k.nazev}</option>
                                 ))}
                             </select>
@@ -402,7 +463,7 @@ const FinanceModule = () => {
                                 onChange={(e) => setPravidloForm((f) => ({ ...f, kategorie_id: e.target.value }))}
                             >
                                 <option value="">— ignorovat / bez —</option>
-                                {kategorie.map((k) => (
+                                {kategorieVyber.map((k) => (
                                     <option key={k.id} value={k.id}>{k.nazev}</option>
                                 ))}
                             </select>

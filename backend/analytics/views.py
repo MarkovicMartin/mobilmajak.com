@@ -6556,6 +6556,20 @@ def _leaderboard_zasilkovna_stats(zasilkovna_map, user, prodejce_id, row_id):
     return zasilkovna_map.get(canonical, {})
 
 
+def _leaderboard_row_zasilkovna(zasilkovna_map, user=None, prodejce_id=None, row_id=None):
+    z_stats = _leaderboard_zasilkovna_stats(
+        zasilkovna_map, user, prodejce_id, row_id if row_id is not None else prodejce_id,
+    )
+    return {
+        'zasilkovna_baliku': z_stats.get('zasilkovna_baliku', 0),
+        'zasilkovna_prodeje': z_stats.get('zasilkovna_prodeje', 0),
+        'zasilkovna_oznaceno': z_stats.get('zasilkovna_oznaceno', 0),
+        'zasilkovna_z_bez_cisla': z_stats.get('zasilkovna_z_bez_cisla', 0),
+        'zasilkovna_sleva_bez_baliku': z_stats.get('zasilkovna_sleva_bez_baliku', 0),
+        'zasilkovna_konverze_pct': z_stats.get('zasilkovna_konverze_pct'),
+    }
+
+
 def _leaderboard_prev_month_points_for_user(user, prev_month_points_map):
     """Body minulého měsíce – id prodejce v datech může být WebUser.id nebo technik_id."""
     pts = int(prev_month_points_map.get(user.id, 0) or 0)
@@ -6606,7 +6620,14 @@ def _leaderboard_zero_month_row(user, prodejna_nazev, last_month_points, vykupy_
     }
 
 
-def _leaderboard_servis_only_day_rows(servis_map, seen_ids, excluded_ids, last_shift_points_map, home_store_map):
+def _leaderboard_servis_only_day_rows(
+    servis_map,
+    seen_ids,
+    excluded_ids,
+    last_shift_points_map,
+    home_store_map,
+    zasilkovna_map=None,
+):
     """
     Řádky pro techniky s body ze servisu (sloupec Technik), kteří dnes nemají prodej pod svým id_prodejce.
     """
@@ -6638,6 +6659,50 @@ def _leaderboard_servis_only_day_rows(servis_map, seen_ids, excluded_ids, last_s
             'vykupy': 0,
             'prumer_polozek_uctu': 0.0,
             'prumer_hodnota_uctenky': 0.0,
+            **(_leaderboard_row_zasilkovna(zasilkovna_map or {}, user, uid, uid)),
+        })
+    return rows
+
+
+def _leaderboard_zasilkovna_only_day_rows(
+    zasilkovna_map,
+    seen_ids,
+    excluded_ids,
+    last_shift_points_map,
+    home_store_map,
+):
+    """Prodejci s balíky/prodeji Zásilkovna dnes bez záznamu v agregaci prodejů."""
+    extra_ids = []
+    for uid, stats in (zasilkovna_map or {}).items():
+        uid = int(uid)
+        if uid in excluded_ids or uid in seen_ids:
+            continue
+        if (stats.get('zasilkovna_baliku') or 0) > 0 or (stats.get('zasilkovna_prodeje') or 0) > 0:
+            extra_ids.append(uid)
+    if not extra_ids:
+        return []
+
+    users = {u.id: u for u in _leaderboard_webuser_queryset().filter(id__in=extra_ids)}
+    home_store_map.update(_leaderboard_home_store_map(users))
+    rows = []
+    for uid in extra_ids:
+        user = users.get(uid)
+        if not user:
+            continue
+        rows.append({
+            'id': uid,
+            'prodejce': f"{user.jmeno} {user.prijmeni}".strip(),
+            'prodejna': str(home_store_map.get(uid, 'Neznámá')),
+            'total_points': 0,
+            'last_shift_points': last_shift_points_map.get(uid, 0),
+            'polozky_nad_100': 0,
+            'viceprace_obrat': 0.0,
+            'sluzby_celkem': 0,
+            'servis_provize': 0,
+            'vykupy': 0,
+            'prumer_polozek_uctu': 0.0,
+            'prumer_hodnota_uctenky': 0.0,
+            **_leaderboard_row_zasilkovna(zasilkovna_map, user, uid, uid),
         })
     return rows
 
@@ -6759,7 +6824,6 @@ def web_prodeje_leaderboard_points(request):
                 int(prev_month_points_map.get(prodejce_id, 0) or 0)
             )
 
-            z_stats = _leaderboard_zasilkovna_stats(zasilkovna_map, user, prodejce_id, row_id)
             leaderboard.append({
                 'id': row_id,
                 'prodejce': prodejce_jmeno,
@@ -6773,12 +6837,7 @@ def web_prodeje_leaderboard_points(request):
                 'vykupy': vykupy,
                 'prumer_polozek_uctu': _leaderboard_prumer_polozek(item),
                 'prumer_hodnota_uctenky': _leaderboard_prumer_hodnota_uctenky(item),
-                'zasilkovna_baliku': z_stats.get('zasilkovna_baliku', 0),
-                'zasilkovna_prodeje': z_stats.get('zasilkovna_prodeje', 0),
-                'zasilkovna_oznaceno': z_stats.get('zasilkovna_oznaceno', 0),
-                'zasilkovna_z_bez_cisla': z_stats.get('zasilkovna_z_bez_cisla', 0),
-                'zasilkovna_sleva_bez_baliku': z_stats.get('zasilkovna_sleva_bez_baliku', 0),
-                'zasilkovna_konverze_pct': z_stats.get('zasilkovna_konverze_pct'),
+                **_leaderboard_row_zasilkovna(zasilkovna_map, user, prodejce_id, row_id),
             })
             seen_ids.add(row_id)
 
@@ -6835,6 +6894,13 @@ def web_prodeje_leaderboard_points_today(request):
         from .vykupy_config import vykupy_counts_map
         vykupy_map = vykupy_counts_map(typ_exact=today.strftime('%Y-%m-%d'))
 
+        zasilkovna_map = {}
+        try:
+            from analytics.zasilkovna_konverze import zasilkovna_leaderboard_map
+            zasilkovna_map = zasilkovna_leaderboard_map(today, today)
+        except Exception:
+            pass
+
         from users.exclusions import get_leaderboard_excluded_prodejce_ids
         excluded_ids = get_leaderboard_excluded_prodejce_ids()
 
@@ -6881,6 +6947,7 @@ def web_prodeje_leaderboard_points_today(request):
                 'vykupy': vykupy,
                 'prumer_polozek_uctu': _leaderboard_prumer_polozek(item),
                 'prumer_hodnota_uctenky': _leaderboard_prumer_hodnota_uctenky(item),
+                **_leaderboard_row_zasilkovna(zasilkovna_map, user, prodejce_id, prodejce_id),
             })
 
         seen_ids = {item['id'] for item in leaderboard}
@@ -6896,6 +6963,29 @@ def web_prodeje_leaderboard_points_today(request):
             ))
         leaderboard.extend(_leaderboard_servis_only_day_rows(
             servis_map,
+            seen_ids,
+            excluded_ids,
+            last_shift_points_map,
+            home_store_map,
+            zasilkovna_map=zasilkovna_map,
+        ))
+        seen_ids = {item['id'] for item in leaderboard}
+        zasilkovna_only_ids = [
+            int(uid) for uid in (zasilkovna_map or {})
+            if int(uid) not in excluded_ids and int(uid) not in seen_ids
+            and (
+                (zasilkovna_map[uid].get('zasilkovna_baliku') or 0) > 0
+                or (zasilkovna_map[uid].get('zasilkovna_prodeje') or 0) > 0
+            )
+        ]
+        if zasilkovna_only_ids:
+            last_shift_points_map.update(_compute_per_seller_last_shift_points_map(
+                today,
+                excluded_ids=excluded_ids,
+                seller_ids=zasilkovna_only_ids,
+            ))
+        leaderboard.extend(_leaderboard_zasilkovna_only_day_rows(
+            zasilkovna_map,
             seen_ids,
             excluded_ids,
             last_shift_points_map,

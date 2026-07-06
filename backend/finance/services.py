@@ -109,7 +109,10 @@ def serialize_doklad_brief(d) -> dict:
     return serialize_doklad(d)
 
 
-def serialize_naklad_polozka(p: NakladPolozka) -> dict:
+def serialize_naklad_polozka(p: NakladPolozka, prodejna_map: dict | None = None) -> dict:
+    prodejna_nazev = None
+    if p.prodejna_id and prodejna_map is not None:
+        prodejna_nazev = prodejna_map.get(p.prodejna_id)
     return {
         'id': p.id,
         'datum': p.datum.isoformat(),
@@ -127,6 +130,7 @@ def serialize_naklad_polozka(p: NakladPolozka) -> dict:
         'kategorie_id': p.kategorie_id,
         'kategorie_nazev': p.kategorie.nazev if p.kategorie_id else None,
         'prodejna_id': p.prodejna_id,
+        'prodejna_nazev': prodejna_nazev,
         'stav': p.stav,
         'zdroj': p.zdroj,
         'fio_id': p.fio_id,
@@ -136,11 +140,25 @@ def serialize_naklad_polozka(p: NakladPolozka) -> dict:
         'zprava': p.zprava,
         'ignorovat': p.ignorovat,
         'zarazeno_automaticky': p.zarazeno_automaticky,
+        'auto_pravidlo': p.auto_pravidlo or None,
         'poznamka_admin': p.poznamka_admin,
         'upravil_user_id': p.upravil_user_id,
         'upraveno': p.upraveno.isoformat() if p.upraveno else None,
         'vytvoreno': p.vytvoreno.isoformat() if p.vytvoreno else None,
     }
+
+
+def serialize_naklad_polozky(qs) -> list:
+    polozky = list(qs)
+    ids = {p.prodejna_id for p in polozky if p.prodejna_id}
+    prodejna_map = {}
+    if ids:
+        from stores.models import Prodejna
+        prodejna_map = {
+            row.id: row.nazev
+            for row in Prodejna.objects.filter(id__in=ids).only('id', 'nazev')
+        }
+    return [serialize_naklad_polozka(p, prodejna_map) for p in polozky]
 
 
 def serialize_pravidlo(rule: FioKategorizacniPravidlo) -> dict:
@@ -212,6 +230,7 @@ def upsert_fio_row(row: dict, dry_run: bool = False) -> str:
         'zprava': row.get('zprava', ''),
         'ignorovat': cat['ignorovat'],
         'zarazeno_automaticky': cat['zarazeno_automaticky'],
+        'auto_pravidlo': cat.get('auto_pravidlo', ''),
         'typ_platby': typ_platby,
         'dph_stav': dph_stav,
     }
@@ -222,12 +241,22 @@ def upsert_fio_row(row: dict, dry_run: bool = False) -> str:
 
 
 def get_finance_counts() -> dict:
+    odchozi = NakladPolozka.objects.filter(typ_platby=NakladPolozka.TYP_PLATBY_ODCHOZI)
     return {
-        'nezarazene': NakladPolozka.objects.filter(stav=NakladPolozka.STAV_NEZARAZENO).count(),
-        'ceka_na_fakturu': NakladPolozka.objects.filter(
+        'nezarazene': odchozi.filter(stav=NakladPolozka.STAV_NEZARAZENO).count(),
+        'ceka_na_fakturu': odchozi.filter(
             dph_stav=NakladPolozka.DPH_STAV_CEKA,
-            typ_platby=NakladPolozka.TYP_PLATBY_ODCHOZI,
         ).count(),
+        'auto_zarazeno': odchozi.filter(
+            stav=NakladPolozka.STAV_ZARAZENO,
+            zarazeno_automaticky=True,
+        ).count(),
+        'rucne_zarazeno': odchozi.filter(stav=NakladPolozka.STAV_RUCNE).count(),
+        'ignorovano': odchozi.filter(stav=NakladPolozka.STAV_IGNOROVAT).count(),
+        'bez_faktury': odchozi.filter(
+            dph_stav=NakladPolozka.DPH_STAV_CEKA,
+            doklad__isnull=True,
+        ).exclude(stav=NakladPolozka.STAV_IGNOROVAT).count(),
     }
 
 
@@ -286,6 +315,7 @@ def import_symplio_pokladna_file(
             'zprava': row.get('admin') or '',
             'ignorovat': cat['ignorovat'],
             'zarazeno_automaticky': cat['zarazeno_automaticky'],
+            'auto_pravidlo': cat.get('auto_pravidlo', ''),
             'typ_platby': NakladPolozka.TYP_PLATBY_ODCHOZI,
             'dph_stav': resolve_dph_stav(cat['kategorie_id'], NakladPolozka.TYP_PLATBY_ODCHOZI),
         }

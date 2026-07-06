@@ -27,6 +27,9 @@ const CoachingModule = lazy(() => import('../modules/coaching/CoachingModule'));
 const FinanceModule = FINANCE_MODULE_ENABLED
     ? lazy(() => import('../modules/finance/FinanceModule'))
     : null;
+const FinanceFakturyModule = FINANCE_MODULE_ENABLED
+    ? lazy(() => import('../modules/finance/FinanceFakturyModule'))
+    : null;
 const WreckPartsModule = lazy(() => import('../modules/wreckParts/WreckPartsModule'));
 const ReklamaceModule = lazy(() => import('../modules/reklamace/ReklamaceModule'));
 const DailyDutiesModule = DAILY_DUTIES_MODULE_ENABLED

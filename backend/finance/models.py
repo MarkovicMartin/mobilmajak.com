@@ -154,6 +154,7 @@ class NakladPolozka(models.Model):
     zprava = models.TextField(blank=True, default='')
     ignorovat = models.BooleanField(default=False)
     zarazeno_automaticky = models.BooleanField(default=False)
+    auto_pravidlo = models.CharField(max_length=64, blank=True, default='')
     poznamka_admin = models.TextField(blank=True, default='')
     upravil_user_id = models.IntegerField(null=True, blank=True)
     upraveno = SafeDateTimeField(null=True, blank=True)

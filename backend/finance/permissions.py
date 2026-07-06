@@ -4,12 +4,33 @@ from functools import wraps
 from rest_framework import status
 from rest_framework.response import Response
 
+from .models import NakladPolozka
+
 
 def _client_ip(request):
     forwarded = request.META.get('HTTP_X_FORWARDED_FOR')
     if forwarded:
         return forwarded.split(',')[0].strip()
     return request.META.get('REMOTE_ADDR', '')
+
+
+def is_finance_admin(user) -> bool:
+    return getattr(user, 'role', None) == 'ADMIN'
+
+
+def naklady_qs_for_invoice_user(qs, user):
+    """Běžní uživatelé vidí jen výdeje z pokladny – Fio je jen pro admina."""
+    if is_finance_admin(user):
+        return qs
+    return qs.filter(zdroj=NakladPolozka.ZDROJ_SYMPLIO_POKLADNA)
+
+
+def user_can_upload_doklad(user, polozka) -> bool:
+    if not user_can_access_polozka(user, polozka):
+        return False
+    if not is_finance_admin(user) and polozka.zdroj == NakladPolozka.ZDROJ_FIO:
+        return False
+    return True
 
 
 def accessible_store_ids(user) -> list[int] | None:

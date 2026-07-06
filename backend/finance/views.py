@@ -14,7 +14,9 @@ from .permissions import (
     accessible_store_ids,
     finance_admin_view,
     finance_invoice_view,
-    user_can_access_polozka,
+    is_finance_admin,
+    naklady_qs_for_invoice_user,
+    user_can_upload_doklad,
 )
 from .doklady import link_doklad_to_polozka, serialize_doklad
 from .services import (
@@ -23,6 +25,7 @@ from .services import (
     log_finance_audit,
     resolve_dph_stav,
     serialize_naklad_polozka,
+    serialize_naklad_polozky,
     serialize_pravidlo,
     typ_platby_from_castka,
 )
@@ -77,12 +80,53 @@ def naklad_kategorie_list(request):
 @finance_admin_view
 def naklady_nezarazene(request):
     log_finance_audit(request, 'naklady_nezarazene')
+    bez_faktury = request.GET.get('bez_faktury', '').strip().lower() in ('1', 'true', 'yes')
+    if bez_faktury:
+        qs = (
+            NakladPolozka.objects.filter(
+                dph_stav=NakladPolozka.DPH_STAV_CEKA,
+                typ_platby=NakladPolozka.TYP_PLATBY_ODCHOZI,
+                ignorovat=False,
+                doklad__isnull=True,
+            )
+            .exclude(stav=NakladPolozka.STAV_IGNOROVAT)
+            .select_related('kategorie', 'doklad')
+            .order_by('-datum', '-id')
+        )
+    else:
+        qs = (
+            NakladPolozka.objects.filter(stav=NakladPolozka.STAV_NEZARAZENO)
+            .select_related('kategorie', 'doklad')
+            .order_by('-datum', '-id')
+        )
+    return _no_store_response(serialize_naklad_polozky(qs[:500]))
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+@finance_admin_view
+def naklady_prehled(request):
+    """Přehled zařazení – auto / ručně / chybí."""
+    log_finance_audit(request, 'naklady_prehled')
+    stav = (request.GET.get('stav') or 'vse').strip().lower()
+    zdroj = (request.GET.get('zdroj') or '').strip()
     qs = (
-        NakladPolozka.objects.filter(stav=NakladPolozka.STAV_NEZARAZENO)
-        .select_related('kategorie')
+        NakladPolozka.objects.filter(typ_platby=NakladPolozka.TYP_PLATBY_ODCHOZI)
+        .select_related('kategorie', 'doklad')
         .order_by('-datum', '-id')
     )
-    return _no_store_response([serialize_naklad_polozka(p) for p in qs[:500]])
+    if stav == 'nezarazeno':
+        qs = qs.filter(stav=NakladPolozka.STAV_NEZARAZENO)
+    elif stav == 'auto':
+        qs = qs.filter(stav=NakladPolozka.STAV_ZARAZENO, zarazeno_automaticky=True)
+    elif stav == 'rucne':
+        qs = qs.filter(stav=NakladPolozka.STAV_RUCNE)
+    elif stav == 'ignorovat':
+        qs = qs.filter(stav=NakladPolozka.STAV_IGNOROVAT)
+  # vse = all outgoing
+    if zdroj in (NakladPolozka.ZDROJ_FIO, NakladPolozka.ZDROJ_SYMPLIO_POKLADNA):
+        qs = qs.filter(zdroj=zdroj)
+    return _no_store_response(serialize_naklad_polozky(qs[:400]))
 
 
 @api_view(['POST'])
@@ -243,7 +287,8 @@ def naklady_ceka_na_fakturu(request):
     store_ids = accessible_store_ids(request.user)
     if store_ids is not None:
         qs = qs.filter(prodejna_id__in=store_ids)
-    return _no_store_response([serialize_naklad_polozka(p) for p in qs[:300]])
+    qs = naklady_qs_for_invoice_user(qs, request.user)
+    return _no_store_response(serialize_naklad_polozky(qs[:300]))
 
 
 @api_view(['POST'])
@@ -266,7 +311,7 @@ def doklad_upload(request):
     except NakladPolozka.DoesNotExist:
         return _no_store_response({'error': 'Položka nenalezena'}, status.HTTP_404_NOT_FOUND)
 
-    if not user_can_access_polozka(request.user, polozka):
+    if not user_can_upload_doklad(request.user, polozka):
         return _no_store_response({'error': 'Nemáte oprávnění k této položce'}, status.HTTP_403_FORBIDDEN)
 
     try:
@@ -300,4 +345,6 @@ def doklady_list(request):
     store_ids = accessible_store_ids(request.user)
     if store_ids is not None:
         qs = qs.filter(naklad_polozka__prodejna_id__in=store_ids)
+    if not is_finance_admin(request.user):
+        qs = qs.filter(naklad_polozka__zdroj=NakladPolozka.ZDROJ_SYMPLIO_POKLADNA)
     return _no_store_response([serialize_doklad(d) for d in qs.order_by('-vytvoreno')[:50]])

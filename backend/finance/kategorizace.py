@@ -90,25 +90,151 @@ def _mzdy_admin(text: str) -> bool:
     return any(n in text for n in needles)
 
 
+def _is_mzda_vyplata(text: str) -> bool:
+    """DPP, jména adminů, externí výplaty (Daňková, Staštný…)."""
+    if _mzdy_admin(text):
+        return True
+    if re.search(r'\bdpp\b', text):
+        return True
+    if 'daňková' in text or 'dankova' in text:
+        return True
+    if 'poradenstv' in text and ('účetnictv' in text or 'ucetnictv' in text):
+        return True
+    if 'staštn' in text or 'stastny' in text or 'stastný' in text:
+        return True
+    if 'marketingov' in text and 'sluzb' in text:
+        return True
+    return False
+
+
+def _apply_fio_builtin(text: str) -> KategorizaceVysledek | None:
+    if 'prevod' in text and 'vlastn' in text:
+        return KategorizaceVysledek(
+            NakladPolozka.STAV_IGNOROVAT, None, None, True, True, 'fio:prevod_vlastni',
+        )
+    if _is_mzda_vyplata(text):
+        kid = _kat('Mzdy – zaměstnanci')
+        if kid:
+            return KategorizaceVysledek(
+                NakladPolozka.STAV_ZARAZENO, kid, None, False, True, 'fio:mzdy_vyplata',
+            )
+    if 'facebk' in text or 'facebook' in text:
+        kid = _kat('Reklama – firma / online')
+        if kid:
+            return KategorizaceVysledek(
+                NakladPolozka.STAV_ZARAZENO, kid, None, False, True, 'fio:facebook',
+            )
+    if ('eska posta' in text or 'ceska posta' in text or 'česká pošta' in text) and 'prepravne' in text:
+        kid = _kat('Doprava – Zásilkovna / kurýr')
+        if kid:
+            return KategorizaceVysledek(
+                NakladPolozka.STAV_ZARAZENO, kid, None, False, True, 'fio:ceska_posta',
+            )
+    if 'seznam.cz' in text or ('seznam' in text and ('kredit' in text or 'proklik' in text)):
+        kid = _kat('Reklama – firma / online')
+        if kid:
+            return KategorizaceVysledek(
+                NakladPolozka.STAV_ZARAZENO, kid, None, False, True, 'fio:seznam',
+            )
+    if 'webglobe' in text:
+        kid = _kat('IT – hosting / domény')
+        if kid:
+            return KategorizaceVysledek(
+                NakladPolozka.STAV_ZARAZENO, kid, None, False, True, 'fio:hosting',
+            )
+    if 'divadelni pikola' in text or ('promo' in text and 'olomouc' in text):
+        kid = _kat('Spotřeba – občerstvení')
+        if kid:
+            return KategorizaceVysledek(
+                NakladPolozka.STAV_ZARAZENO, kid, None, False, True, 'fio:porada_kava',
+            )
+    if 'aswo' in text and 'zbozi' in text:
+        kid = _kat('Zboží – nákup sklad')
+        if kid:
+            return KategorizaceVysledek(
+                NakladPolozka.STAV_ZARAZENO, kid, None, False, True, 'fio:aswo',
+            )
+    if 'moneylive' in text or ('ucetni' in text and 'uzaver' in text):
+        kid = _kat('Účetnictví a právní')
+        if kid:
+            return KategorizaceVysledek(
+                NakladPolozka.STAV_ZARAZENO, kid, None, False, True, 'fio:ucetnictvi',
+            )
+    return None
+
+
+def _is_prevod_pokladny(text: str) -> bool:
+    return any(
+        p in text
+        for p in (
+            'převod do pokladny',
+            'prevod do pokladny',
+            'převod z pokladny',
+            'prevod z pokladny',
+            'převod mezi pokladnami',
+            'prevod mezi pokladnami',
+        )
+    )
+
+
+def _is_vklad_na_ucet(text: str) -> bool:
+    """Výdej z kasy = vklad na účet / bankomat – ne náklad, páruje se s Fio."""
+    return any(
+        p in text
+        for p in (
+            'vklad hotovosti na účet',
+            'vklad hotovosti na ucet',
+            'převod na účet',
+            'prevod na ucet',
+            'vklad na účet',
+            'vklad na ucet',
+        )
+    )
+
+
+def _is_nakup_zbozi(text: str) -> bool:
+    """Dodavatel + servis / díly / zboží + č. FA v názvu výdeje."""
+    return bool(re.search(r'\b(servis|dily|díly|zbozi|zboží)\b', text, re.I))
+
+
+def _is_spotreba_prodejny(text: str) -> bool:
+    return bool(re.search(r'\bspotřeba\b|\bspotreba\b', text, re.I))
+
+
 def apply_builtin_rules(row: dict, zdroj: str = '', prodejna_id: int | None = None) -> KategorizaceVysledek | None:
     """Vrátí výsledek nebo None (= žádné vestavěné pravidlo)."""
     text = _text_blob(row)
 
     if zdroj == NakladPolozka.ZDROJ_FIO:
-        if 'prevod' in text and 'vlastn' in text:
-            return KategorizaceVysledek(
-                NakladPolozka.STAV_IGNOROVAT, None, None, True, True, 'fio:prevod_vlastni',
-            )
+        fio = _apply_fio_builtin(text)
+        if fio:
+            return fio
 
     if zdroj == NakladPolozka.ZDROJ_SYMPLIO_POKLADNA:
-        if 'převod do pokladny' in text or 'prevod do pokladny' in text:
+        if _is_prevod_pokladny(text):
             return KategorizaceVysledek(
                 NakladPolozka.STAV_IGNOROVAT, None, prodejna_id, True, True, 'symplio:prevod_pokladna',
+            )
+        if _is_vklad_na_ucet(text):
+            return KategorizaceVysledek(
+                NakladPolozka.STAV_IGNOROVAT, None, prodejna_id, True, True, 'symplio:vklad_na_ucet',
             )
         if text.startswith('storno '):
             return KategorizaceVysledek(
                 NakladPolozka.STAV_IGNOROVAT, None, prodejna_id, True, True, 'symplio:storno',
             )
+        if _is_spotreba_prodejny(text):
+            kid = _kat('Spotřeba prodejny')
+            if kid:
+                return KategorizaceVysledek(
+                    NakladPolozka.STAV_ZARAZENO, kid, prodejna_id, False, True, 'symplio:spotreba',
+                )
+        if _is_nakup_zbozi(text):
+            kid = _kat('Zboží – nákup sklad')
+            if kid:
+                return KategorizaceVysledek(
+                    NakladPolozka.STAV_ZARAZENO, kid, prodejna_id, False, True, 'symplio:zbozi',
+                )
 
     if any(k in text for k in ('vykupka', 'vykup', 'úhrada výkupky', 'uhrada vykupky', 'bazar')):
         kid = _ensure_vykup_kategorie()
@@ -144,11 +270,11 @@ def apply_builtin_rules(row: dict, zdroj: str = '', prodejna_id: int | None = No
                 NakladPolozka.STAV_ZARAZENO, kid, None, False, True, 'hpp',
             )
 
-    if _mzdy_admin(text):
+    if _is_mzda_vyplata(text):
         kid = _kat('Mzdy – zaměstnanci')
         if kid:
             return KategorizaceVysledek(
-                NakladPolozka.STAV_ZARAZENO, kid, None, False, True, 'mzdy_admin',
+                NakladPolozka.STAV_ZARAZENO, kid, None, False, True, 'mzdy_vyplata',
             )
 
     if 'codaruina' in text and ('splátka' in text or 'splatka' in text or 'úvěr' in text or 'uver' in text):
@@ -181,10 +307,13 @@ def apply_all_rules(row: dict, zdroj: str = '', prodejna_id: int | None = None) 
             'prodejna_id': builtin.prodejna_id if builtin.prodejna_id is not None else prodejna_id,
             'ignorovat': builtin.ignorovat,
             'zarazeno_automaticky': builtin.zarazeno_automaticky,
+            'auto_pravidlo': builtin.pravidlo or '',
         }
     db = apply_categorization_rules(row)
     if db.get('prodejna_id') is None and prodejna_id is not None:
         db['prodejna_id'] = prodejna_id
+    if db.get('zarazeno_automaticky'):
+        db['auto_pravidlo'] = 'db_pravidlo'
     return db
 
 
@@ -223,11 +352,12 @@ def apply_rules_to_polozka(p: NakladPolozka, dry_run: bool = False) -> str | Non
     p.prodejna_id = builtin.prodejna_id if builtin.prodejna_id is not None else p.prodejna_id
     p.ignorovat = builtin.ignorovat
     p.zarazeno_automaticky = True
+    p.auto_pravidlo = (builtin.pravidlo or 'db_pravidlo')[:64]
     from .services import resolve_dph_stav
 
     p.dph_stav = resolve_dph_stav(p.kategorie_id, p.typ_platby)
     p.save(update_fields=[
         'stav', 'kategorie_id', 'prodejna_id', 'ignorovat',
-        'zarazeno_automaticky', 'dph_stav',
+        'zarazeno_automaticky', 'auto_pravidlo', 'dph_stav',
     ])
     return builtin.pravidlo or 'db_pravidlo'

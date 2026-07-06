@@ -32,6 +32,10 @@ if [ "$HEALTH" != "200" ]; then
 fi
 echo "OK health"
 
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+SMOKE_SSH_TARGET="$TARGET" SMOKE_SSH_KEY="$SSH_KEY" \
+  "$REPO_ROOT/scripts/frontend-smoke-check.sh" "$BASE_URL" "$APP_PATH"
+
 ssh "${SSH_OPTS[@]}" "$TARGET" "sudo -u webmajak bash -lc '
   set -e
   cd $APP_PATH
