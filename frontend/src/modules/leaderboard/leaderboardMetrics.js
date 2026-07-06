@@ -60,7 +60,7 @@ export const METRICS = {
         sortKey: 'zasilkovna_konverze_pct',
         label: 'Zásilkovna',
         scoreLabel: '%',
-        rankSubtitle: 'úspěšnosti prodeje (prodeje / vydané balíky)',
+        rankSubtitle: 'úspěšnosti prodeje (prodeje / zpracované balíky)',
     },
 };
 

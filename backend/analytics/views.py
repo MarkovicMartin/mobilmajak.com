@@ -3368,7 +3368,7 @@ def _attach_zasilkovna_metrics(result, user_id, date_from, date_to):
     except Exception:
         metrics = {}
     result['zasilkovna'] = {
-        'baliku_vydano': metrics.get('zasilkovna_baliku', 0),
+        'baliku_zpracovano': metrics.get('zasilkovna_baliku', 0),
         'prodeje': metrics.get('zasilkovna_prodeje', 0),
         'konverze_pct': metrics.get('zasilkovna_konverze_pct'),
         'z_bez_cisla': metrics.get('zasilkovna_z_bez_cisla', 0),

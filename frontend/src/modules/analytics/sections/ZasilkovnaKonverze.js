@@ -220,7 +220,7 @@ const ZasilkovnaKonverzeView = () => {
                                 <thead>
                                     <tr>
                                         <th>Prodejce</th>
-                                        <th>Balíky vydané</th>
+                                        <th>Balíky zprac.</th>
                                         <th>Prodeje</th>
                                         <th>Konverze</th>
                                         <th>Z bez čísla</th>

@@ -213,8 +213,8 @@ const ProfileAnalytics = ({ userId }) => {
                         {data.zasilkovna && (
                             <>
                                 <div className="metric-item metric-item--mini">
-                                    <span className="metric-value">{data.zasilkovna.baliku_vydano ?? 0}</span>
-                                    <span className="metric-label">Balíky vyd.</span>
+                                    <span className="metric-value">{data.zasilkovna.baliku_zpracovano ?? 0}</span>
+                                    <span className="metric-label">Balíky</span>
                                 </div>
                                 <div className="metric-item metric-item--mini">
                                     <span className="metric-value">{data.zasilkovna.prodeje ?? 0}</span>

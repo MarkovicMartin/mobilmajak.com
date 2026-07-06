@@ -8,9 +8,17 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from .fio_status import FIO_DISABLED_MESSAGE, get_fio_import_status
-from .models import FioKategorizacniPravidlo, NakladKategorie, NakladPolozka
+from .models import FinanceDoklad, FioKategorizacniPravidlo, NakladKategorie, NakladPolozka
 from .permissions import finance_admin_view
-from .services import log_finance_audit, serialize_naklad_polozka
+from .services import (
+    get_finance_counts,
+    get_last_fio_import_info,
+    log_finance_audit,
+    resolve_dph_stav,
+    serialize_naklad_polozka,
+    serialize_pravidlo,
+    typ_platby_from_castka,
+)
 
 
 def _no_store_response(data, status_code=status.HTTP_200_OK):
@@ -24,13 +32,17 @@ def _no_store_response(data, status_code=status.HTTP_200_OK):
 @finance_admin_view
 def finance_status(request):
     fio = get_fio_import_status()
+    counts = get_finance_counts()
+    last_import = get_last_fio_import_info()
     log_finance_audit(request, 'status')
     return _no_store_response({
         'fio': {
             'available': fio['available'],
             'enabled': fio['enabled'],
             'message': fio['message'] or FIO_DISABLED_MESSAGE,
+            'last_import': last_import,
         },
+        'counts': counts,
         'manual_naklady': True,
     })
 
@@ -42,7 +54,13 @@ def naklad_kategorie_list(request):
     log_finance_audit(request, 'kategorie_list')
     rows = NakladKategorie.objects.filter(aktivni=True).order_by('poradi', 'nazev')
     return _no_store_response([
-        {'id': k.id, 'nazev': k.nazev, 'poradi': k.poradi}
+        {
+            'id': k.id,
+            'nazev': k.nazev,
+            'poradi': k.poradi,
+            'parent_id': k.parent_id,
+            'typ_dph': k.typ_dph,
+        }
         for k in rows
     ])
 
@@ -52,7 +70,11 @@ def naklad_kategorie_list(request):
 @finance_admin_view
 def naklady_nezarazene(request):
     log_finance_audit(request, 'naklady_nezarazene')
-    qs = NakladPolozka.objects.filter(stav=NakladPolozka.STAV_NEZARAZENO).select_related('kategorie')
+    qs = (
+        NakladPolozka.objects.filter(stav=NakladPolozka.STAV_NEZARAZENO)
+        .select_related('kategorie')
+        .order_by('-datum', '-id')
+    )
     return _no_store_response([serialize_naklad_polozka(p) for p in qs[:500]])
 
 
@@ -85,6 +107,9 @@ def naklad_manual_create(request):
     else:
         prodejna_id = None
 
+    typ_platby = typ_platby_from_castka(castka)
+    dph_stav = resolve_dph_stav(kategorie_id, typ_platby)
+
     polozka = NakladPolozka.objects.create(
         datum=datum,
         rok=datum.year,
@@ -96,6 +121,8 @@ def naklad_manual_create(request):
         zdroj=NakladPolozka.ZDROJ_MANUAL,
         popis=(data.get('popis') or '')[:500],
         poznamka_admin=(data.get('poznamka_admin') or '')[:2000],
+        typ_platby=typ_platby,
+        dph_stav=dph_stav,
         upravil_user_id=request.user.id,
         upraveno=timezone.now(),
     )
@@ -127,12 +154,24 @@ def naklad_update(request, polozka_id):
             polozka.stav = NakladPolozka.STAV_IGNOROVAT
     if 'poznamka_admin' in data:
         polozka.poznamka_admin = (data.get('poznamka_admin') or '')[:2000]
+    if 'dph_stav' in data:
+        new_dph = data['dph_stav']
+        if new_dph in dict(NakladPolozka.DPH_STAV_CHOICES):
+            if new_dph == NakladPolozka.DPH_STAV_BEZ and polozka.kategorie_id:
+                kat = NakladKategorie.objects.filter(pk=polozka.kategorie_id).first()
+                if kat and kat.typ_dph != NakladKategorie.TYP_DPH_BEZ:
+                    return _no_store_response(
+                        {'error': 'bez_dph lze nastavit jen u kategorií bez DPH (mzdy, odvody…)'},
+                        status.HTTP_400_BAD_REQUEST,
+                    )
+            polozka.dph_stav = new_dph
 
     if data.get('zaradit'):
         if not polozka.kategorie_id:
             return _no_store_response({'error': 'Pro zařazení vyberte kategorii'}, status.HTTP_400_BAD_REQUEST)
         polozka.stav = NakladPolozka.STAV_RUCNE
         polozka.ignorovat = False
+        polozka.dph_stav = resolve_dph_stav(polozka.kategorie_id, polozka.typ_platby)
 
     polozka.upravil_user_id = request.user.id
     polozka.upraveno = timezone.now()
@@ -141,10 +180,15 @@ def naklad_update(request, polozka_id):
     return _no_store_response(serialize_naklad_polozka(polozka))
 
 
-@api_view(['POST'])
+@api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 @finance_admin_view
-def pravidlo_create(request):
+def pravidla_list_create(request):
+    if request.method == 'GET':
+        log_finance_audit(request, 'pravidla_list')
+        qs = FioKategorizacniPravidlo.objects.select_related('kategorie').order_by('-id')
+        return _no_store_response([serialize_pravidlo(r) for r in qs[:200]])
+
     data = request.data
     rule = FioKategorizacniPravidlo.objects.create(
         protiucet=(data.get('protiucet') or '')[:64],
@@ -156,4 +200,52 @@ def pravidlo_create(request):
         vytvoril_user_id=request.user.id,
     )
     log_finance_audit(request, 'pravidlo_create', f'id={rule.id}')
-    return _no_store_response({'id': rule.id}, status.HTTP_201_CREATED)
+    return _no_store_response(serialize_pravidlo(rule), status.HTTP_201_CREATED)
+
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+@finance_admin_view
+def pravidlo_delete(request, pravidlo_id):
+    try:
+        rule = FioKategorizacniPravidlo.objects.get(pk=pravidlo_id)
+    except FioKategorizacniPravidlo.DoesNotExist:
+        return _no_store_response({'error': 'Pravidlo nenalezeno'}, status.HTTP_404_NOT_FOUND)
+    rule.delete()
+    log_finance_audit(request, 'pravidlo_delete', f'id={pravidlo_id}')
+    return _no_store_response({'ok': True})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@finance_admin_view
+def doklad_upload_stub(request):
+    """Scaffold pro F3 – upload faktury a OCR zatím není implementován."""
+    log_finance_audit(request, 'doklad_upload_stub')
+    return _no_store_response(
+        {
+            'error': 'Upload faktur bude dostupný ve fázi 3 (OCR).',
+            'scaffold': True,
+        },
+        status.HTTP_501_NOT_IMPLEMENTED,
+    )
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+@finance_admin_view
+def doklady_list_stub(request):
+    """Scaffold – seznam nespárovaných dokladů (F3)."""
+    log_finance_audit(request, 'doklady_list')
+    qs = FinanceDoklad.objects.filter(stav=FinanceDoklad.STAV_NOVA).order_by('-vytvoreno')[:50]
+    return _no_store_response([
+        {
+            'id': d.id,
+            'stav': d.stav,
+            'dodavatel_nazev': d.dodavatel_nazev,
+            'cislo_faktury': d.cislo_faktury,
+            'castka_celkem': str(d.castka_celkem) if d.castka_celkem is not None else None,
+            'vytvoreno': d.vytvoreno.isoformat() if d.vytvoreno else None,
+        }
+        for d in qs
+    ])

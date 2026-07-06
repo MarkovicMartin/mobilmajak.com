@@ -26,16 +26,11 @@ ZS_PLAIN_Z_RE = re.compile(r'(?i)^\s*ZS:\s*Z\s*$')
 
 Z_NOTE_SOURCES = frozenset({'poznamka', 'poznamka_dokladu', 'poznamka_zakaznika'})
 
-Z_NOTE_FILTER_Q = (
-    Q(poznamka_dokladu__iregex=r'(?i)^\s*Z\s*$')
-    | Q(poznamka_dokladu__iregex=r'ZS:\s*Z')
-    | Q(poznamka_dokladu__iregex=r'Z[0-9]')
-    | Q(poznamka__iregex=r'Z[0-9]')
-    | Q(poznamka__iregex=r'ZS:\s*Z')
-    | Q(poznamka__iregex=r'(?i)^\s*Z\s*$')
-    | Q(poznamka_zakaznika__iregex=r'Z[0-9]')
-    | Q(poznamka_zakaznika__iregex=r'ZS:\s*Z')
-    | Q(poznamka_zakaznika__iregex=r'(?i)^\s*Z\s*$')
+# SQL prefiltr – detekci řeší parse_z_note_fields() (mezery, ZS:, jen Z, …)
+Z_NOTE_PREFILTER_Q = (
+    Q(poznamka_dokladu__iregex=r'(?i)Z')
+    | Q(poznamka__iregex=r'(?i)Z')
+    | Q(poznamka_zakaznika__iregex=r'(?i)Z')
 )
 
 VYDANE_TYPY = frozenset({
@@ -212,6 +207,38 @@ def _packeta_index(visits: Iterable[PacketaVisit]) -> dict[tuple[int, str], list
     return idx
 
 
+def _merge_note_fields_from_rows(rows: Iterable[dict]) -> tuple[str | None, str | None, str | None]:
+    poznamka_dokladu = poznamka = poznamka_zakaznika = None
+    for row in rows:
+        if not poznamka_dokladu and (row.get('poznamka_dokladu') or '').strip():
+            poznamka_dokladu = row['poznamka_dokladu']
+        if not poznamka and (row.get('poznamka') or '').strip():
+            poznamka = row['poznamka']
+        if not poznamka_zakaznika and (row.get('poznamka_zakaznika') or '').strip():
+            poznamka_zakaznika = row['poznamka_zakaznika']
+    return poznamka_dokladu, poznamka, poznamka_zakaznika
+
+
+def _doklad_has_z_note(
+    doklad: str,
+    date_from: date,
+    date_to: date,
+    prodejna_id: int | None,
+) -> bool:
+    qs = WebProdejeAll.objects.filter(
+        doklad=doklad,
+        typ__gte=date_from,
+        typ__lte=date_to,
+    )
+    if prodejna_id:
+        qs = qs.filter(id_prodejny=prodejna_id)
+    pd, p, pz = _merge_note_fields_from_rows(qs.values(
+        'poznamka_dokladu', 'poznamka', 'poznamka_zakaznika',
+    ))
+    zasilka, _, z_marker = parse_z_note_fields(pd, p, pz)
+    return bool(zasilka or z_marker)
+
+
 def _scan_z_marked_doklady(
     date_from: date,
     date_to: date,
@@ -220,7 +247,7 @@ def _scan_z_marked_doklady(
     qs = WebProdejeAll.objects.filter(
         typ__gte=date_from,
         typ__lte=date_to,
-    ).filter(Z_NOTE_FILTER_Q)
+    ).filter(Z_NOTE_PREFILTER_Q)
     if prodejna_id:
         qs = qs.filter(id_prodejny=prodejna_id)
 
@@ -236,16 +263,14 @@ def _scan_z_marked_doklady(
         if not existing:
             by_doklad[doklad] = dict(row)
             continue
-        if not (existing.get('poznamka_dokladu') or '').strip() and (row.get('poznamka_dokladu') or '').strip():
-            existing['poznamka_dokladu'] = row['poznamka_dokladu']
+        for field in ('poznamka_dokladu', 'poznamka', 'poznamka_zakaznika'):
+            if not (existing.get(field) or '').strip() and (row.get(field) or '').strip():
+                existing[field] = row[field]
 
     rows = []
     for row in by_doklad.values():
-        zasilka, source, z_marker = parse_z_note_fields(
-            row.get('poznamka_dokladu'),
-            row.get('poznamka'),
-            row.get('poznamka_zakaznika'),
-        )
+        pd, p, pz = _merge_note_fields_from_rows([row])
+        zasilka, source, z_marker = parse_z_note_fields(pd, p, pz)
         if not zasilka and not z_marker:
             continue
         rows.append({
@@ -277,6 +302,8 @@ def _scan_sleva_fallback(
     ).iterator():
         doklad = row.get('doklad')
         if not doklad or doklad in known_doklady:
+            continue
+        if _doklad_has_z_note(doklad, date_from, date_to, prodejna_id):
             continue
         rows.append({
             **row,
@@ -442,25 +469,68 @@ def prodeje_by_prodejce(linked: Iterable[LinkedSale]) -> dict[int, dict]:
     return result
 
 
-def baliky_vydane_by_prodejce(
+def _baliky_distinct_by_prodejce(
     date_from: date,
     date_to: date,
+    typy: frozenset[str],
     prodejna_id: int | None = None,
+    *,
+    require_prodejce: bool = True,
 ) -> dict[int, int]:
-    """Vydané balíky přiřazené prodejci ze směny (DISTINCT zásilka, typ vydání)."""
+    """DISTINCT zásilka per prodejce pro zadané typy provize."""
     qs = PacketaProvizePolozka.objects.filter(
         cas__date__gte=date_from,
         cas__date__lte=date_to,
-        typ_provize__in=VYDANE_TYPY,
-        id_prodejce__isnull=False,
+        typ_provize__in=typy,
     )
+    if require_prodejce:
+        qs = qs.filter(id_prodejce__isnull=False)
     if prodejna_id:
         qs = qs.filter(prodejna_id=prodejna_id)
 
     by_prodejce: dict[int, set[str]] = defaultdict(set)
     for row in qs.values('id_prodejce', 'zasilka'):
-        by_prodejce[row['id_prodejce']].add(_zasilka_key(row['zasilka']))
+        if row['id_prodejce']:
+            by_prodejce[row['id_prodejce']].add(_zasilka_key(row['zasilka']))
     return {pid: len(zasilky) for pid, zasilky in by_prodejce.items()}
+
+
+def _baliky_distinct_by_prodejna(
+    date_from: date,
+    date_to: date,
+    typy: frozenset[str],
+) -> dict[int, int]:
+    """DISTINCT zásilka per prodejna pro zadané typy provize."""
+    qs = PacketaProvizePolozka.objects.filter(
+        cas__date__gte=date_from,
+        cas__date__lte=date_to,
+        typ_provize__in=typy,
+    )
+    by_prodejna: dict[int, set[str]] = defaultdict(set)
+    for row in qs.values('prodejna_id', 'zasilka'):
+        if row['prodejna_id']:
+            by_prodejna[row['prodejna_id']].add(_zasilka_key(row['zasilka']))
+    return {sid: len(zasilky) for sid, zasilky in by_prodejna.items()}
+
+
+def baliky_vydane_by_prodejce(
+    date_from: date,
+    date_to: date,
+    prodejna_id: int | None = None,
+) -> dict[int, int]:
+    """Vydané balíky přiřazené prodejci ze směny (DISTINCT zásilka)."""
+    return _baliky_distinct_by_prodejce(date_from, date_to, VYDANE_TYPY, prodejna_id)
+
+
+def baliky_zpracovane_by_prodejce(
+    date_from: date,
+    date_to: date,
+    prodejna_id: int | None = None,
+) -> dict[int, int]:
+    """Všechny zpracované balíky (vydané + přijaté) přiřazené prodejci ze směny."""
+    return _baliky_distinct_by_prodejce(
+        date_from, date_to, PACKETA_MAIN_VISIT_TYPES, prodejna_id,
+    )
 
 
 def baliky_vydane_by_prodejna(
@@ -468,16 +538,15 @@ def baliky_vydane_by_prodejna(
     date_to: date,
 ) -> dict[int, int]:
     """Vydané balíky po prodejně (DISTINCT zásilka)."""
-    qs = PacketaProvizePolozka.objects.filter(
-        cas__date__gte=date_from,
-        cas__date__lte=date_to,
-        typ_provize__in=VYDANE_TYPY,
-    )
-    by_prodejna: dict[int, set[str]] = defaultdict(set)
-    for row in qs.values('prodejna_id', 'zasilka'):
-        if row['prodejna_id']:
-            by_prodejna[row['prodejna_id']].add(_zasilka_key(row['zasilka']))
-    return {sid: len(zasilky) for sid, zasilky in by_prodejna.items()}
+    return _baliky_distinct_by_prodejna(date_from, date_to, VYDANE_TYPY)
+
+
+def baliky_zpracovane_by_prodejna(
+    date_from: date,
+    date_to: date,
+) -> dict[int, int]:
+    """Všechny zpracované balíky (vydané + přijaté) po prodejně."""
+    return _baliky_distinct_by_prodejna(date_from, date_to, PACKETA_MAIN_VISIT_TYPES)
 
 
 def prodeje_zasilkovna_by_prodejna(

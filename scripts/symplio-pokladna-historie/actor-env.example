@@ -1,0 +1,5 @@
+# Zkopírovat na VPS: scripts/symplio-pokladna-historie/.env (chmod 600)
+# Načítá run-symplio-pokladna-safe.sh přes: set -a && source .env && set +a
+
+SYMPLIO_SECRETS_FILE=/home/webmajak/secrets/mobilmajak-symplio.json
+SYMPLIO_POKLADNA_DAYS=7

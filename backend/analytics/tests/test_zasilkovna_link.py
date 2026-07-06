@@ -1,10 +1,12 @@
 """Testy parseru a propojení Zásilkovna."""
 from datetime import date, datetime
+from decimal import Decimal
 
 from django.test import TestCase
 
 from analytics.zasilkovna_link import (
     LinkedSale,
+    baliky_zpracovane_by_prodejce,
     is_plain_z_marker,
     is_z_oznaceno,
     parse_z_note_fields,
@@ -12,6 +14,29 @@ from analytics.zasilkovna_link import (
     prodeje_by_prodejce,
     typ_skupina,
 )
+from packeta.models import PacketaProvizePolozka
+
+
+class BalikyZpracovaneTests(TestCase):
+    def test_counts_vydane_and_prijate_distinct(self):
+        den = date(2026, 7, 1)
+        PacketaProvizePolozka.objects.create(
+            prodejna_id=3, cas=datetime(2026, 7, 1, 9, 0),
+            zasilka='Z1111111111', typ_provize='Podání C2C',
+            castka=Decimal('10'), import_batch='t', id_prodejce=10,
+        )
+        PacketaProvizePolozka.objects.create(
+            prodejna_id=3, cas=datetime(2026, 7, 1, 10, 0),
+            zasilka='Z2222222222', typ_provize='Zpracování zásilky',
+            castka=Decimal('10'), import_batch='t', id_prodejce=10,
+        )
+        PacketaProvizePolozka.objects.create(
+            prodejna_id=3, cas=datetime(2026, 7, 1, 11, 0),
+            zasilka='Z1111111111', typ_provize='Zpracování zásilky',
+            castka=Decimal('10'), import_batch='t', id_prodejce=10,
+        )
+        counts = baliky_zpracovane_by_prodejce(den, den)
+        self.assertEqual(counts[10], 2)
 
 
 class ParseZasilkaNoteTests(TestCase):
@@ -185,3 +210,93 @@ class LinkPacketaFormatTests(TestCase):
         self.assertTrue(linked[0].packeta_nalezeno)
         self.assertEqual(linked[0].zasilka, 'Z4325018333')
         self.assertEqual(linked[0].doklad, '32607037001')
+
+
+class SpacedZNoteFilterTests(TestCase):
+    def test_z_with_space_before_digits_pairs_packeta(self):
+        from decimal import Decimal
+
+        from analytics.models import WebProdejeAll
+        from analytics.zasilkovna_link import link_sales_to_packeta
+        from packeta.models import PacketaProvizePolozka
+
+        den = date(2026, 7, 2)
+        PacketaProvizePolozka.objects.create(
+            prodejna_id=4,
+            cas=datetime(2026, 7, 2, 15, 46),
+            zasilka='Z2003703604',
+            typ_provize='Podání C2C',
+            castka=Decimal('10'),
+            import_batch='test',
+        )
+        WebProdejeAll.objects.create(
+            typ=den,
+            doklad='32607029008',
+            kod='P135760',
+            nazev='Test',
+            pocet_kusu=1,
+            cena_ks_vcl_dph=Decimal('100'),
+            id_prodejce=22,
+            id_prodejny=4,
+            stredisko='Test',
+            poznamka_dokladu='Z 200 3703 604',
+        )
+        WebProdejeAll.objects.create(
+            typ=den,
+            doklad='32607029008',
+            kod='SLEVA',
+            nazev='zasilkovna20 20%',
+            pocet_kusu=1,
+            cena_ks_vcl_dph=Decimal('-20'),
+            id_prodejce=22,
+            id_prodejny=4,
+            stredisko='Test',
+            poznamka_dokladu='Z 200 3703 604',
+        )
+        linked, invalid_z = link_sales_to_packeta(den, den, prodejna_id=4)
+        doklad_links = [l for l in linked if l.doklad == '32607029008']
+        self.assertEqual(len(doklad_links), 1)
+        self.assertEqual(doklad_links[0].match_source, 'poznamka_dokladu')
+        self.assertTrue(doklad_links[0].packeta_nalezeno)
+        self.assertEqual(doklad_links[0].zasilka, 'Z2003703604')
+        self.assertEqual(invalid_z, [])
+
+    def test_spaced_z_vydany_balik(self):
+        from decimal import Decimal
+
+        from analytics.models import WebProdejeAll
+        from analytics.zasilkovna_link import link_sales_to_packeta
+        from packeta.models import PacketaProvizePolozka
+
+        den = date(2026, 7, 5)
+        PacketaProvizePolozka.objects.create(
+            prodejna_id=4,
+            cas=datetime(2026, 7, 5, 10, 16),
+            zasilka='Z3836610126',
+            typ_provize='Zpracování zásilky',
+            castka=Decimal('10'),
+            import_batch='test',
+        )
+        for kod, nazev, cena in (
+            ('P140996', 'Obal', Decimal('100')),
+            ('SLEVA', 'ZASILKOVNA ZASILKOVNA20', Decimal('-20')),
+        ):
+            WebProdejeAll.objects.create(
+                typ=den,
+                doklad='32607059006',
+                kod=kod,
+                nazev=nazev,
+                pocet_kusu=1,
+                cena_ks_vcl_dph=cena,
+                id_prodejce=22,
+                id_prodejny=4,
+                stredisko='Test',
+                poznamka_dokladu='Z 383 6610 126',
+            )
+        linked, invalid_z = link_sales_to_packeta(den, den, prodejna_id=4)
+        doklad_links = [l for l in linked if l.doklad == '32607059006']
+        self.assertEqual(len(doklad_links), 1)
+        self.assertEqual(doklad_links[0].match_source, 'poznamka_dokladu')
+        self.assertTrue(doklad_links[0].packeta_nalezeno)
+        self.assertEqual(doklad_links[0].zasilka, 'Z3836610126')
+        self.assertEqual(invalid_z, [])

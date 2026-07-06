@@ -442,7 +442,9 @@ export const financeAPI = {
     updateNaklad: async (id, payload) => (
         await api.patch(`/finance/naklady/${id}/`, payload)
     ).data,
+    getPravidla: async () => (await api.get('/finance/pravidla/')).data,
     createPravidlo: async (payload) => (await api.post('/finance/pravidla/', payload)).data,
+    deletePravidlo: async (id) => (await api.delete(`/finance/pravidla/${id}/`)).data,
 };
 
 export const coachingAPI = {

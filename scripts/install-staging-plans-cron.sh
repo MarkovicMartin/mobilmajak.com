@@ -26,8 +26,8 @@ sudo -u webmajak crontab -l 2>/dev/null | grep -v "\$MARKER" | grep -v 'ensure_m
 cat >> "\$TMP" <<CRON
 
 \$MARKER
-0 6 1 * * cd \$STAGING_PATH && source venv/bin/activate && export DJANGO_SETTINGS_MODULE=webapp.settings_production && python manage.py ensure_monthly_plans --rust 10 >> logs/ensure_monthly_plans.log 2>&1
-0 7 * * * cd \$STAGING_PATH && source venv/bin/activate && export DJANGO_SETTINGS_MODULE=webapp.settings_production && python manage.py prepocet_plan_prodejci >> logs/prepocet_plan_prodejci.log 2>&1
+0 6 1 * * /bin/bash -lc 'cd \$STAGING_PATH && source venv/bin/activate && export DJANGO_SETTINGS_MODULE=webapp.settings_production && python manage.py ensure_monthly_plans --rust 10 >> logs/ensure_monthly_plans.log 2>&1'
+0 7 * * * /bin/bash -lc 'cd \$STAGING_PATH && source venv/bin/activate && export DJANGO_SETTINGS_MODULE=webapp.settings_production && python manage.py prepocet_plan_prodejci >> logs/prepocet_plan_prodejci.log 2>&1'
 CRON
 
 sudo -u webmajak crontab "\$TMP"

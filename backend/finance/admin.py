@@ -2,6 +2,8 @@ from django.contrib import admin
 
 from .models import (
     FinanceAuditLog,
+    FinanceDoklad,
+    FinanceZustatek,
     FioKategorizacniPravidlo,
     NakladKategorie,
     NakladPolozka,
@@ -18,15 +20,29 @@ class FinanceAuditLogAdmin(admin.ModelAdmin):
 
 @admin.register(NakladKategorie)
 class NakladKategorieAdmin(admin.ModelAdmin):
-    list_display = ('nazev', 'poradi', 'aktivni')
+    list_display = ('nazev', 'parent', 'typ_dph', 'poradi', 'aktivni')
     ordering = ('poradi', 'nazev')
 
 
 @admin.register(NakladPolozka)
 class NakladPolozkaAdmin(admin.ModelAdmin):
-    list_display = ('datum', 'castka', 'stav', 'zdroj', 'kategorie', 'prodejna_id')
-    list_filter = ('stav', 'zdroj')
-    search_fields = ('popis', 'protiucet', 'zprava', 'fio_id')
+    list_display = (
+        'datum', 'castka', 'dph_stav', 'typ_platby', 'stav', 'zdroj', 'kategorie', 'prodejna_id',
+    )
+    list_filter = ('stav', 'zdroj', 'dph_stav', 'typ_platby')
+    search_fields = ('popis', 'protiucet', 'zprava', 'fio_id', 'symplio_doklad')
+
+
+@admin.register(FinanceDoklad)
+class FinanceDokladAdmin(admin.ModelAdmin):
+    list_display = ('id', 'dodavatel_nazev', 'cislo_faktury', 'castka_celkem', 'stav', 'vytvoreno')
+    list_filter = ('stav',)
+
+
+@admin.register(FinanceZustatek)
+class FinanceZustatekAdmin(admin.ModelAdmin):
+    list_display = ('datum', 'typ', 'label', 'castka', 'mena', 'vytvoreno')
+    list_filter = ('typ',)
 
 
 @admin.register(FioKategorizacniPravidlo)

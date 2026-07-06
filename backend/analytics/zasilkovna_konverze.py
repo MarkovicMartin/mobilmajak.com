@@ -11,8 +11,8 @@ from analytics.models import WebProdejeAll
 from analytics.receipt_metrics import leaderboard_doklad_q
 from analytics.zasilkovna_link import (
     LinkedSale,
-    baliky_vydane_by_prodejce,
-    baliky_vydane_by_prodejna,
+    baliky_zpracovane_by_prodejce,
+    baliky_zpracovane_by_prodejna,
     distinct_visit_counts,
     is_z_oznaceno,
     link_sales_to_packeta,
@@ -123,7 +123,7 @@ def build_konverze_report(
 
     # Prodejci
     prodejci_stats = prodeje_by_prodejce(linked)
-    baliky_map = baliky_vydane_by_prodejce(date_from, date_to, prodejna_id)
+    baliky_map = baliky_zpracovane_by_prodejce(date_from, date_to, prodejna_id)
     user_ids = sorted(set(prodejci_stats) | set(baliky_map))
     users = {u.id: u for u in WebUser.objects.filter(id__in=user_ids)} if user_ids else {}
 
@@ -243,7 +243,7 @@ def zasilkovna_leaderboard_map(date_from: date, date_to: date) -> dict[int, dict
     """Mapa id_prodejce → metriky pro žebříček."""
     linked, _ = link_sales_to_packeta(date_from, date_to)
     sales = prodeje_by_prodejce(linked)
-    baliky = baliky_vydane_by_prodejce(date_from, date_to)
+    baliky = baliky_zpracovane_by_prodejce(date_from, date_to)
     result: dict[int, dict] = {}
     for pid in set(sales) | set(baliky):
         stats = sales.get(pid, {})
@@ -264,7 +264,7 @@ def zasilkovna_store_leaderboard_map(date_from: date, date_to: date) -> dict[int
     """Mapa id_prodejny → metriky pro žebříček prodejen."""
     linked, _ = link_sales_to_packeta(date_from, date_to)
     prodeje = prodeje_zasilkovna_by_prodejna(linked)
-    baliky = baliky_vydane_by_prodejna(date_from, date_to)
+    baliky = baliky_zpracovane_by_prodejna(date_from, date_to)
     result: dict[int, dict] = {}
     for sid in set(prodeje) | set(baliky):
         baliku = baliky.get(sid, 0)

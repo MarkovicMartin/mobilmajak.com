@@ -18,9 +18,24 @@ class FinanceAuditLog(models.Model):
 
 
 class NakladKategorie(models.Model):
+    TYP_DPH_Z_FAKTURY = 'z_faktury'
+    TYP_DPH_BEZ = 'bez'
+    TYP_DPH_CHOICES = [
+        (TYP_DPH_Z_FAKTURY, 'DPH z faktury'),
+        (TYP_DPH_BEZ, 'Bez DPH'),
+    ]
+
     nazev = models.CharField(max_length=120, unique=True)
     poradi = models.IntegerField(default=0)
     aktivni = models.BooleanField(default=True)
+    parent = models.ForeignKey(
+        'self', null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='deti',
+    )
+    typ_dph = models.CharField(
+        max_length=20, choices=TYP_DPH_CHOICES,
+        default=TYP_DPH_Z_FAKTURY, blank=True,
+    )
 
     class Meta:
         db_table = 'finance_naklad_kategorie'
@@ -30,6 +45,40 @@ class NakladKategorie(models.Model):
 
     def __str__(self):
         return self.nazev
+
+
+class FinanceDoklad(models.Model):
+    STAV_NOVA = 'nova'
+    STAV_SPAROVANA = 'sparovana'
+    STAV_CHOICES = [
+        (STAV_NOVA, 'Nová'),
+        (STAV_SPAROVANA, 'Spárovaná'),
+    ]
+
+    soubor = models.CharField(max_length=500, blank=True, default='')
+    dodavatel_nazev = models.CharField(max_length=200, blank=True, default='')
+    dodavatel_ico = models.CharField(max_length=20, blank=True, default='')
+    cislo_faktury = models.CharField(max_length=64, blank=True, default='')
+    datum_vystaveni = models.DateField(null=True, blank=True)
+    datum_splatnosti = models.DateField(null=True, blank=True)
+    castka_celkem = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    castka_bez_dph = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    dph_castka = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    dph_sazba = models.IntegerField(null=True, blank=True)
+    stav = models.CharField(max_length=20, choices=STAV_CHOICES, default=STAV_NOVA)
+    naklad_polozka = models.ForeignKey(
+        'NakladPolozka', null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='doklady',
+    )
+    ocr_raw = models.JSONField(null=True, blank=True)
+    vytvoreno = SafeDateTimeField(auto_now_add=True)
+    upraveno = SafeDateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'finance_doklad'
+        ordering = ['-vytvoreno']
+        verbose_name = 'Finance doklad'
+        verbose_name_plural = 'Finance doklady'
 
 
 class NakladPolozka(models.Model):
@@ -47,16 +96,45 @@ class NakladPolozka(models.Model):
     ZDROJ_FIO = 'fio'
     ZDROJ_MANUAL = 'manual'
     ZDROJ_SHEETS = 'sheets_import'
+    ZDROJ_SYMPLIO_POKLADNA = 'symplio_pokladna'
     ZDROJ_CHOICES = [
         (ZDROJ_FIO, 'Fio'),
         (ZDROJ_MANUAL, 'Ruční'),
         (ZDROJ_SHEETS, 'Sheets import'),
+        (ZDROJ_SYMPLIO_POKLADNA, 'Symplio pokladna'),
+    ]
+
+    DPH_STAV_CEKA = 'ceka_na_fakturu'
+    DPH_STAV_SPAROVANO = 'sparovano'
+    DPH_STAV_BEZ = 'bez_dph'
+    DPH_STAV_CHOICES = [
+        (DPH_STAV_CEKA, 'Čeká na fakturu'),
+        (DPH_STAV_SPAROVANO, 'Spárováno'),
+        (DPH_STAV_BEZ, 'Bez DPH'),
+    ]
+
+    TYP_PLATBY_ODCHOZI = 'odchozi'
+    TYP_PLATBY_PRICHOZI = 'prichozi'
+    TYP_PLATBY_INTERNI = 'interni'
+    TYP_PLATBY_CHOICES = [
+        (TYP_PLATBY_ODCHOZI, 'Odchozí'),
+        (TYP_PLATBY_PRICHOZI, 'Příchozí'),
+        (TYP_PLATBY_INTERNI, 'Interní'),
     ]
 
     datum = models.DateField()
     rok = models.IntegerField()
     mesic = models.IntegerField()
     castka = models.DecimalField(max_digits=12, decimal_places=2)
+    castka_bez_dph = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    dph_castka = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    dph_sazba = models.IntegerField(null=True, blank=True)
+    dph_stav = models.CharField(
+        max_length=20, choices=DPH_STAV_CHOICES, default=DPH_STAV_CEKA,
+    )
+    typ_platby = models.CharField(
+        max_length=20, choices=TYP_PLATBY_CHOICES, default=TYP_PLATBY_ODCHOZI,
+    )
     kategorie = models.ForeignKey(
         NakladKategorie, null=True, blank=True, on_delete=models.SET_NULL,
         related_name='polozky',
@@ -65,6 +143,11 @@ class NakladPolozka(models.Model):
     stav = models.CharField(max_length=20, choices=STAV_CHOICES, default=STAV_NEZARAZENO)
     zdroj = models.CharField(max_length=20, choices=ZDROJ_CHOICES, default=ZDROJ_MANUAL)
     fio_id = models.CharField(max_length=64, blank=True, null=True, unique=True)
+    symplio_doklad = models.CharField(max_length=64, blank=True, default='')
+    doklad = models.ForeignKey(
+        FinanceDoklad, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='naklady',
+    )
     popis = models.CharField(max_length=500, blank=True, default='')
     protiucet = models.CharField(max_length=64, blank=True, default='')
     vs = models.CharField(max_length=32, blank=True, default='')
@@ -82,9 +165,36 @@ class NakladPolozka(models.Model):
         indexes = [
             models.Index(fields=['stav', 'datum']),
             models.Index(fields=['rok', 'mesic']),
+            models.Index(fields=['dph_stav']),
         ]
         verbose_name = 'Položka nákladu'
         verbose_name_plural = 'Položky nákladů'
+
+
+class FinanceZustatek(models.Model):
+    TYP_FIO = 'fio'
+    TYP_POKLADNA = 'pokladna'
+    TYP_CHOICES = [
+        (TYP_FIO, 'Fio účet'),
+        (TYP_POKLADNA, 'Pokladna'),
+    ]
+
+    datum = models.DateField()
+    typ = models.CharField(max_length=20, choices=TYP_CHOICES)
+    label = models.CharField(max_length=64, blank=True, default='')
+    prodejna_id = models.IntegerField(null=True, blank=True)
+    castka = models.DecimalField(max_digits=14, decimal_places=2)
+    mena = models.CharField(max_length=8, default='CZK')
+    vytvoreno = SafeDateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'finance_zustatek'
+        ordering = ['-datum', '-id']
+        indexes = [
+            models.Index(fields=['typ', 'datum']),
+        ]
+        verbose_name = 'Finance zůstatek'
+        verbose_name_plural = 'Finance zůstatky'
 
 
 class FioKategorizacniPravidlo(models.Model):

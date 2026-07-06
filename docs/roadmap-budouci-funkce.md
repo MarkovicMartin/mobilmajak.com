@@ -2,7 +2,7 @@
 
 Živý dokument pro plánování rozšíření. U každé oblasti: **stav dnes**, **varianty rozpracování**, **odhad náročnosti** (S/M/L/XL) a **vliv na kvalitu aplikace** (1–5, kde 5 = největší přínos pro provoz nebo řízení firmy).
 
-Poslední revize: 2026-07-02
+Poslední revize: 2026-07-06
 
 ---
 
@@ -157,6 +157,18 @@ ReklamacePolozka
 
 - Vedete reklamace hlavně z **výdejek**, nebo z **objednávek u dodavatele**?
 - Má reklamační sklad vlastní skladovou kartu v Symplio, ze které jde číst zůstatek?
+
+### Rozšíření z Mastersheet (2026-07-06)
+
+Zdroj: listy `Servis Reklamace`, `Přerov/Šternberk/Čepkov Servis Reklamace` — dnes evidence v Excelu (naše značka R25xxx, dodavatel, faktura, EAN, datum odeslání, číslo zásilky).
+
+| Varianta | Popis | Náročnost | Vliv |
+|----------|-------|-----------|------|
+| **R8 – Evidence odeslání** | Co kam šlo: dodavatel, zásilka, faktura, stav u partnera; náhrada za Excel listy | M | 5 |
+| **R9 – Propojení finance / dobropisy** | Vazba reklamace ↔ dobropis (WEB_PRODEJE_ALL / payroll panel) ↔ případná náhrada od dodavatele | L | 5 | Až po R3 |
+| **R10 – Import z Mastersheet** | Jednorázový bootstrap + šablona pro další importy | S | 3 |
+
+Doporučené pořadí po MVP: **R8** → **R9**.
 
 ---
 
@@ -373,10 +385,72 @@ flowchart LR
 
 ---
 
+## 14. Denní povinnosti (provozní checklist)
+
+### Stav dnes
+
+- List `Denní povinnosti` v Mastersheet — pravidla provozu (úklid, reklamace proklientsky, bazar, servis…), **ne v aplikaci**.
+- Modul **Úkoly** umí osobní/přiřazené úkoly a Slack notifikace; **ne** periodické povinnosti typu „objednej zboží“.
+
+### Cíl
+
+Pravidelné denní/týdenní povinnosti per prodejna nebo role — hlášení splnění v aplikaci (nebo Slack), eskalace když chybí.
+
+| Varianta | Popis | Náročnost | Vliv |
+|----------|-------|-----------|------|
+| **DP1 – Katalog povinností** | Admin definuje: název, periodicita (denně/po směně/týdně), prodejna/role | M | 4 |
+| **DP2 – Potvrzení v aplikaci** | Prodejce/vedoucí: checkbox „splněno“ + volitelná poznámka; historie | M | 5 |
+| **DP3 – Slack připomínka** | Večer DM vedoucímu: co nebylo potvrzeno (podobně jako denní report) | S | 4 |
+| **DP4 – Vazba na objednávky** | Povinnost „zkontroluj objednávky“ → odkaz do modulu Objednávky | S | 3 |
+
+Z Mastersheetu k převodu: např. úklid, kontrola nevyzvednutých objednávek, bazar zvlášť, servis — hlášení doby opravy.
+
+Doporučené pořadí: **DP1 + DP2** → **DP3** → **DP4**.
+
+---
+
+## 15. Díly z vraků (společný seznam)
+
+### Stav dnes
+
+- List `Díly z vraků` v Mastersheet — model + typ dílu (LCD…), **bez modulu v aplikaci**.
+- Souvislost s reklamacemi/servisem jen ručně.
+
+### Cíl
+
+Sdílený seznam dílů z vraků na kontrolu / případnou opravu — vidí servis i prodejny.
+
+| Varianta | Popis | Náročnost | Vliv |
+|----------|-------|-----------|------|
+| **V1 – Evidence položek** | Model, typ dílu, stav (k dispozici / v opravě / použito), prodejna | M | 4 |
+| **V2 – Import z Mastersheet** | Bootstrap z aktuálního listu | S | 2 |
+| **V3 – Propojení s reklamací** | Z vraku založit reklamaci nebo servisní úkol | M | 4 |
+
+Doporučené pořadí: **V1 + V2** → **V3** (po §4 R8).
+
+---
+
+## 16. Import přihlašovacích údajů (Mastersheet → Přístupy)
+
+### Stav dnes
+
+- Modul **Přístupy** (`WEB_PRISTUPY_PRODEJNY`) — CRUD v aplikaci.
+- Mastersheet list `Přihl.údaje`: **~393 záznamů**, **155 unikátních loginů**, sekce per prodejna (Globus, Šternberk, Senimo, Čepkov, Přerov, Vsetín, Litovelská…).
+- Export loginů (bez hesel): `docs/mastersheet-prihlasovaci-loginy.json`.
+
+### Doporučený postup
+
+1. **P2** (CSV/Excel import do Přístupů) — sloupce: prodejna, služba/URL, login, heslo, kategorie  
+2. Jednorázový import z Mastersheet (hesla zůstávají mimo git)  
+3. Nové údaje jen přes aplikaci
+
+---
+
 ## 10. Historie změn dokumentu
 
 | Datum | Změna |
 |-------|-------|
+| 2026-07-06 | §14 Denní povinnosti, §15 Díly z vraků, §16 Import logins; §4 R8–R10 z Mastersheet |
 | 2026-07-02 | §13 Zásilkovna – audit a ruční opravy konverze |
 | 2026-07-01 | §12 Novinky – kdo reagoval + audit komentářů pro ne-adminy |
 | 2026-06-30 | §11 Slack denní report + personalizace do budoucna |

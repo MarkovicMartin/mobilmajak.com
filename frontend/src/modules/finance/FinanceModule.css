@@ -19,6 +19,51 @@
     font-size: 0.88rem;
 }
 
+.finance-status-panel {
+    background: var(--mm-surface, #fff);
+    border: 1px solid var(--mm-border, #dde3ea);
+    border-radius: 8px;
+    padding: 0.65rem 1rem;
+    margin-bottom: 0.75rem;
+    font-size: 0.9rem;
+}
+
+.finance-status-panel__row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.25rem;
+}
+
+.finance-badge {
+    display: inline-block;
+    padding: 0.15rem 0.45rem;
+    border-radius: 4px;
+    font-size: 0.78rem;
+    background: var(--mm-surface-muted, #eef2f6);
+    color: var(--mm-text-muted, #5c6570);
+    white-space: nowrap;
+}
+
+.finance-badge--warn {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.finance-form--wide {
+    max-width: 640px;
+    margin-bottom: 1.25rem;
+}
+
+.finance-checkbox-label {
+    flex-direction: row !important;
+    align-items: center;
+    gap: 0.5rem !important;
+}
+
+.finance-table-wrap--top {
+    margin-top: 0.5rem;
+}
+
 .finance-tabs {
     display: flex;
     gap: 0.5rem;
