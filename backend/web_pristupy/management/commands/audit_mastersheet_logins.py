@@ -1,74 +1,19 @@
 """Porovnání loginů z Mastersheet s modulem Přístupy (bez hesel v git)."""
 
-import json
-import re
 from collections import defaultdict
 from pathlib import Path
 
-import openpyxl
 from django.core.management.base import BaseCommand
 
+from web_pristupy.mastersheet_logins import (
+    DEFAULT_EXCEL,
+    LOGINS_JSON,
+    PLACEHOLDER_PASSWORD,
+    load_mastersheet_logins,
+    normalize_key,
+    normalize_store,
+)
 from web_pristupy.models import WEB_PRISTUPY_PRODEJNY
-
-DEFAULT_EXCEL = Path.home() / 'Downloads' / 'Mastersheet - prodejny.xlsx'
-LOGINS_JSON = Path(__file__).resolve().parents[4] / 'docs' / 'mastersheet-prihlasovaci-loginy.json'
-
-STORE_ALIASES = {
-    'GLOBUS': 'Globus',
-    'ZLÍN ČEPKOV': 'Čepkov',
-    'ZLIN CEPKOV': 'Čepkov',
-    'ČEPKOV': 'Čepkov',
-    'ŠTERNBERK': 'Šternberk',
-    'STERNBERK': 'Šternberk',
-    'PŘEROV': 'Přerov',
-    'PREROV': 'Přerov',
-    'SENIMO': 'Senimo',
-    'VSETÍN': 'Vsetín',
-    'VSETIN': 'Vsetín',
-    'LITOVELSKÁ': 'Litovelská',
-    'LITOVELSKA': 'Litovelská',
-}
-
-
-def normalize_store(name: str) -> str:
-    key = re.sub(r'\s+', ' ', (name or '').strip()).upper()
-    return STORE_ALIASES.get(key, name.strip().title())
-
-
-def normalize_key(store, service, username):
-    return (
-        normalize_store(store).lower(),
-        re.sub(r'\s+', ' ', (service or '').strip()).lower(),
-        (username or '').strip().lower(),
-    )
-
-
-def load_mastersheet_logins(excel_path: Path, json_path: Path):
-    if json_path.is_file():
-        return json.loads(json_path.read_text(encoding='utf-8'))
-
-    wb = openpyxl.load_workbook(excel_path, read_only=True, data_only=True)
-    ws = wb['Přihl.údaje']
-    logins = []
-    current_store = None
-    for row in ws.iter_rows(values_only=True):
-        c0 = row[0] if row else None
-        c1 = row[1] if len(row) > 1 else None
-        if c0 and str(c0).startswith('Prodejna'):
-            current_store = str(c0).replace('Prodejna ', '').strip()
-            continue
-        if not current_store or not c1:
-            continue
-        service = str(c0).strip() if c0 else ''
-        if 'příhlašovací' in service.lower():
-            continue
-        logins.append({
-            'store': current_store,
-            'service': service,
-            'username': str(c1).strip(),
-        })
-    wb.close()
-    return logins
 
 
 class Command(BaseCommand):
@@ -174,7 +119,7 @@ class Command(BaseCommand):
                     company_name=item['service'][:200],
                     website_url='',
                     username=item['username'][:100],
-                    password='DOPLNIT_RUCNE',
+                    password=PLACEHOLDER_PASSWORD,
                     store=store,
                     added_by='mastersheet-import',
                     is_active=True,

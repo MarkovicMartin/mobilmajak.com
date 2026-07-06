@@ -19,6 +19,7 @@ const ShellNavLinks = ({
     collapsed = false,
     onNavigate,
     profileTaskBadge = 0,
+    reklamaceNotifBadge = 0,
 }) => {
     const { pathname, state: locationState } = location;
     const isAdminUser = auth.isAdmin();
@@ -108,6 +109,11 @@ const ShellNavLinks = ({
                 {item.sectionKey === 'tasks' && profileTaskBadge > 0 && (!collapsed || showLabel) && (
                     <span className="shell-nav__badge" aria-label={`${profileTaskBadge} upozornění`}>
                         {profileTaskBadge > 99 ? '99+' : profileTaskBadge}
+                    </span>
+                )}
+                {item.sectionKey === 'reklamace' && reklamaceNotifBadge > 0 && (!collapsed || showLabel) && (
+                    <span className="shell-nav__badge" aria-label={`${reklamaceNotifBadge} připomínek reklamací`}>
+                        {reklamaceNotifBadge > 99 ? '99+' : reklamaceNotifBadge}
                     </span>
                 )}
             </button>

@@ -1,28 +1,19 @@
-# Audit přihlašovacích údajů – Mastersheet
+# Audit přihlašovacích údajů – Mastersheet vs Přístupy
 
-Zdroj: `docs/mastersheet-prihlasovaci-loginy.json` (bez hesel).
+Zdroj Mastersheet: 395 záznamů (bez hesel).
+DB aktivní přístupy: 402.
+Shoda: **395** | Chybí v DB: **0**
 
-Celkem záznamů: **395** | Unikátních loginů: **~155**
+## Po prodejně
 
-## Po prodejně (Mastersheet)
+| Prodejna | Mastersheet | V DB (shoda) | Chybí | DB celkem |
+|----------|-------------|--------------|-------|-----------|
+| Globus | 52 | 52 | 0 | 54 |
+| Litovelská | 235 | 235 | 0 | 228 |
+| Přerov | 20 | 20 | 0 | 27 |
+| Senimo | 27 | 27 | 0 | 27 |
+| Vsetín | 11 | 11 | 0 | 11 |
+| Čepkov | 27 | 27 | 0 | 32 |
+| Šternberk | 23 | 23 | 0 | 23 |
 
-| Prodejna | Počet loginů |
-|----------|--------------|
-| Globus | 52 |
-| Šternberk | 23 |
-| Senimo | 27 |
-| Čepkov | 27 |
-| Přerov | 20 |
-| Vsetín | 11 |
-| Litovelská | 235 |
-
-## Porovnání s modulem Přístupy
-
-Spusťte s přístupem k DB:
-
-    ./scripts/backend-run.sh manage.py audit_mastersheet_logins
-
-Příkaz porovná (prodejna + služba + login) s tabulkou WEB_PRISTUPY_PRODEJNY.
-Existující záznamy se **nemění**. Volitelně `--import-missing` přidá chybějící s heslem DOPLNIT_RUCNE.
-
-Hesla zůstávají mimo git – doplnit ručně v modulu Přístupy.
+Hesla nejsou v git. Chybějící doplnit ručně v modulu Přístupy nebo `--import-missing` (placeholder heslo).

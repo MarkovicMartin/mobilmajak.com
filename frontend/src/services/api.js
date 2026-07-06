@@ -475,6 +475,13 @@ export const financeAPI = {
     },
 };
 
+export const reklamaceAPI = {
+    listUnreadNotifications: async () => {
+        const response = await api.get('/reklamace/notifikace/');
+        return response.data;
+    },
+};
+
 export const coachingAPI = {
     getFilters: async () => (await api.get('/coaching/filters/options/')).data,
     getRoster: async (params = {}) => (await api.get('/coaching/roster/', { params })).data,

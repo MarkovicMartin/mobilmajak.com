@@ -4,7 +4,7 @@ import AppSidebar from './AppSidebar';
 import AppMobileDrawer from './AppMobileDrawer';
 import AppTopBar from './AppTopBar';
 import { showAppToast } from '../AppToast';
-import { taskAPI } from '../../services/api';
+import { reklamaceAPI, taskAPI } from '../../services/api';
 import { useUnreadPoll } from '../../hooks/useUnreadPoll';
 import './AppShell.css';
 
@@ -67,6 +67,24 @@ const AppShell = ({
         refreshEventName: 'tasks-notifications-refresh',
     });
 
+    const fetchReklamaceNotifications = useCallback(async () => {
+        if (!user) return 0;
+        const items = await reklamaceAPI.listUnreadNotifications();
+        return Array.isArray(items) ? items.length : 0;
+    }, [user]);
+
+    const notifyReklamace = useCallback((delta) => {
+        const word = delta === 1 ? 'novou připomínku' : `${delta} nové připomínky`;
+        showAppToast(`↩️ Reklamace: máte ${word} – otevřete modul Reklamace`);
+    }, []);
+
+    const { count: reklamaceNotifBadge } = useUnreadPoll({
+        enabled: !!user,
+        fetchCount: fetchReklamaceNotifications,
+        onNotify: notifyReklamace,
+        refreshEventName: 'reklamace-notifications-refresh',
+    });
+
     useEffect(() => {
         setDrawerOpen(false);
     }, [location.pathname]);
@@ -105,6 +123,7 @@ const AppShell = ({
         isDarkMode,
         toggleTheme,
         profileTaskBadge,
+        reklamaceNotifBadge,
     };
 
     return (

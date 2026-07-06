@@ -55,6 +55,7 @@ const ReklamaceModule = () => {
         try {
             await api.post('/reklamace/notifikace/mark-read/', { ids: notifications.map((n) => n.id) });
             setNotifications([]);
+            window.dispatchEvent(new Event('reklamace-notifications-refresh'));
         } catch {
             /* ignore */
         }

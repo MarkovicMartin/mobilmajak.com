@@ -21,6 +21,8 @@ const FinanceDokladUpload = ({ polozka, onUploaded, compact = false }) => {
             await financeAPI.uploadDoklad({
                 file,
                 naklad_polozka_id: polozka.id,
+                cislo_faktury: polozka.faktura_hint?.cislo_faktury || '',
+                dodavatel_nazev: polozka.faktura_hint?.dodavatel_nazev || '',
             });
             setFile(null);
             onUploaded?.();

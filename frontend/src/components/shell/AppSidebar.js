@@ -11,6 +11,7 @@ const AppSidebar = ({
     isDarkMode,
     toggleTheme,
     profileTaskBadge,
+    reklamaceNotifBadge,
     collapsed,
     onToggleCollapse,
 }) => {
@@ -43,6 +44,7 @@ const AppSidebar = ({
                     navigate={navigate}
                     collapsed={collapsed}
                     profileTaskBadge={profileTaskBadge}
+                    reklamaceNotifBadge={reklamaceNotifBadge}
                     linkClass="app-sidebar__link"
                     activeClass="app-sidebar__link--active"
                     childClass="app-sidebar__link--child"

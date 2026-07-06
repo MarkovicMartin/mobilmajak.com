@@ -8,7 +8,7 @@ const FinanceFakturyModule = () => (
             title="Faktury k výdajům"
             subtitle="Přiložte fakturu k výdeji z pokladny"
         />
-        <FinanceFakturyPanel intro="Vyberte výdej z pokladny vaší prodejny a nahrajte PDF nebo fotku faktury. Platby z bankovního účtu (Fio) řeší administrátor." />
+        <FinanceFakturyPanel intro="U výdeje s nákupem zboží (servis/díly/zboží v popisu) doplníme dodavatele a číslo FA z pokladny. Stačí přiložit PDF nebo foto – DPH doplníme z faktury (OCR)." />
     </div>
 );
 

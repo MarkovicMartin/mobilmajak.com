@@ -7,7 +7,7 @@ from django.utils import timezone
 
 from .models import FioKategorizacniPravidlo, NakladKategorie, NakladPolozka
 
-from .kategorizace import apply_all_rules
+from .symplio_vydej_parse import faktura_hint_from_polozka
 
 
 def log_finance_audit(request, akce: str, detail: str = ''):
@@ -141,6 +141,7 @@ def serialize_naklad_polozka(p: NakladPolozka, prodejna_map: dict | None = None)
         'ignorovat': p.ignorovat,
         'zarazeno_automaticky': p.zarazeno_automaticky,
         'auto_pravidlo': p.auto_pravidlo or None,
+        'faktura_hint': faktura_hint_from_polozka(p),
         'poznamka_admin': p.poznamka_admin,
         'upravil_user_id': p.upravil_user_id,
         'upraveno': p.upraveno.isoformat() if p.upraveno else None,

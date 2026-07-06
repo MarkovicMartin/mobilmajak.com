@@ -10,6 +10,7 @@ from django.conf import settings
 from django.utils import timezone
 
 from .models import FinanceDoklad, NakladPolozka
+from .symplio_vydej_parse import faktura_hint_from_polozka
 
 ALLOWED_EXTENSIONS = {'.pdf', '.jpg', '.jpeg', '.png', '.webp'}
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
@@ -63,6 +64,10 @@ def link_doklad_to_polozka(
     if polozka.doklad_id:
         raise ValueError('K této položce je už faktura přiložena.')
 
+    hint = faktura_hint_from_polozka(polozka)
+    dodavatel_nazev = (dodavatel_nazev or (hint or {}).get('dodavatel_nazev') or '')[:200]
+    cislo_faktury = (cislo_faktury or (hint or {}).get('cislo_faktury') or '')[:64]
+
     rel_path, _orig = save_doklad_file(uploaded_file)
     bez = _parse_decimal(castka_bez_dph)
     dph = _parse_decimal(dph_castka)
@@ -78,6 +83,8 @@ def link_doklad_to_polozka(
         celkem = bez + dph
     elif bez is not None:
         celkem = bez
+    elif hint and hint.get('castka_celkem') and not castka_bez_dph:
+        celkem = _parse_decimal(hint['castka_celkem'])
 
     has_amounts = bez is not None
     doklad = FinanceDoklad.objects.create(

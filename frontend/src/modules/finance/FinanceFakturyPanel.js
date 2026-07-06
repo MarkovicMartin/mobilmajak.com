@@ -45,6 +45,17 @@ const FinanceFakturyPanel = ({ intro }) => {
         [items, filterZdroj],
     );
 
+    const hintDefaults = (p) => {
+        const h = p.faktura_hint;
+        if (!h) return {};
+        return {
+            dodavatel_nazev: h.dodavatel_nazev || '',
+            cislo_faktury: h.cislo_faktury || '',
+        };
+    };
+
+    const formFor = (p) => ({ ...hintDefaults(p), ...(forms[p.id] || {}) });
+
     const setFormField = (id, field, value) => {
         setForms((prev) => ({
             ...prev,
@@ -53,7 +64,7 @@ const FinanceFakturyPanel = ({ intro }) => {
     };
 
     const handleUpload = async (polozka) => {
-        const form = forms[polozka.id] || {};
+        const form = formFor(polozka);
         const file = form.file;
         if (!file) {
             setMessage('Vyberte soubor faktury (PDF nebo foto).');
@@ -109,6 +120,7 @@ const FinanceFakturyPanel = ({ intro }) => {
                 <div className="finance-faktury-list">
                     {zobrazeno.map((p) => {
                         const src = zdrojMeta(p.zdroj);
+                        const form = formFor(p);
                         return (
                         <article key={p.id} className={`finance-faktury-card ${src.rowClass}`}>
                             <div className="finance-faktury-card__head">
@@ -117,6 +129,17 @@ const FinanceFakturyPanel = ({ intro }) => {
                                 <strong>{formatCurrency(p.castka)}</strong>
                             </div>
                             <p className="finance-faktury-card__text">{movementLabel(p)}</p>
+                            {p.faktura_hint && (
+                                <p className="finance-faktury-card__parsed">
+                                    Rozpoznáno z pokladny:{' '}
+                                    <strong>{p.faktura_hint.dodavatel_nazev}</strong>
+                                    {', FA '}
+                                    <strong>{p.faktura_hint.cislo_faktury}</strong>
+                                    {p.faktura_hint.castka_celkem && (
+                                        <>, {formatCurrency(p.faktura_hint.castka_celkem)}</>
+                                    )}
+                                </p>
+                            )}
                             {p.prodejna_nazev && (
                                 <p className="finance-faktury-card__meta">Prodejna: {p.prodejna_nazev}</p>
                             )}
@@ -139,26 +162,26 @@ const FinanceFakturyPanel = ({ intro }) => {
                                 <div className="finance-faktury-upload__optional">
                                     <input
                                         type="text"
-                                        placeholder="Číslo faktury (volitelné)"
-                                        value={forms[p.id]?.cislo_faktury || ''}
+                                        placeholder="Číslo faktury"
+                                        value={form.cislo_faktury || ''}
                                         onChange={(e) => setFormField(p.id, 'cislo_faktury', e.target.value)}
                                     />
                                     <input
                                         type="text"
-                                        placeholder="Dodavatel (volitelné)"
-                                        value={forms[p.id]?.dodavatel_nazev || ''}
+                                        placeholder="Dodavatel"
+                                        value={form.dodavatel_nazev || ''}
                                         onChange={(e) => setFormField(p.id, 'dodavatel_nazev', e.target.value)}
                                     />
                                     <input
                                         type="text"
-                                        placeholder="Základ bez DPH (volitelné)"
-                                        value={forms[p.id]?.castka_bez_dph || ''}
+                                        placeholder="Základ bez DPH (z FA / OCR)"
+                                        value={form.castka_bez_dph || ''}
                                         onChange={(e) => setFormField(p.id, 'castka_bez_dph', e.target.value)}
                                     />
                                     <input
                                         type="text"
-                                        placeholder="DPH (volitelné)"
-                                        value={forms[p.id]?.dph_castka || ''}
+                                        placeholder="DPH (z FA / OCR)"
+                                        value={form.dph_castka || ''}
                                         onChange={(e) => setFormField(p.id, 'dph_castka', e.target.value)}
                                     />
                                 </div>

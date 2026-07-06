@@ -14,6 +14,7 @@ const AppMobileDrawer = ({
     isDarkMode,
     toggleTheme,
     profileTaskBadge,
+    reklamaceNotifBadge,
 }) => {
     const navigate = useNavigate();
     const location = useLocation();
@@ -55,6 +56,7 @@ const AppMobileDrawer = ({
                         navigate={navigate}
                         mobile
                         profileTaskBadge={profileTaskBadge}
+                        reklamaceNotifBadge={reklamaceNotifBadge}
                         onNavigate={onClose}
                         linkClass="app-drawer__link"
                         activeClass="app-drawer__link--active"
