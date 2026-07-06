@@ -3,13 +3,20 @@ from datetime import datetime
 
 from django.utils import timezone
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.parsers import FormParser, MultiPartParser
+from rest_framework.decorators import api_view, parser_classes, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from .fio_status import FIO_DISABLED_MESSAGE, get_fio_import_status
 from .models import FinanceDoklad, FioKategorizacniPravidlo, NakladKategorie, NakladPolozka
-from .permissions import finance_admin_view
+from .permissions import (
+    accessible_store_ids,
+    finance_admin_view,
+    finance_invoice_view,
+    user_can_access_polozka,
+)
+from .doklady import link_doklad_to_polozka, serialize_doklad
 from .services import (
     get_finance_counts,
     get_last_fio_import_info,
@@ -216,36 +223,81 @@ def pravidlo_delete(request, pravidlo_id):
     return _no_store_response({'ok': True})
 
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+@finance_invoice_view
+def naklady_ceka_na_fakturu(request):
+    """Výdaje čekající na přiložení faktury – prodejce vidí svou prodejnu."""
+    log_finance_audit(request, 'naklady_ceka_na_fakturu')
+    qs = (
+        NakladPolozka.objects.filter(
+            dph_stav=NakladPolozka.DPH_STAV_CEKA,
+            typ_platby=NakladPolozka.TYP_PLATBY_ODCHOZI,
+            ignorovat=False,
+            doklad__isnull=True,
+        )
+        .exclude(stav=NakladPolozka.STAV_IGNOROVAT)
+        .select_related('kategorie', 'doklad')
+        .order_by('-datum', '-id')
+    )
+    store_ids = accessible_store_ids(request.user)
+    if store_ids is not None:
+        qs = qs.filter(prodejna_id__in=store_ids)
+    return _no_store_response([serialize_naklad_polozka(p) for p in qs[:300]])
+
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
-@finance_admin_view
-def doklad_upload_stub(request):
-    """Scaffold pro F3 – upload faktury a OCR zatím není implementován."""
-    log_finance_audit(request, 'doklad_upload_stub')
-    return _no_store_response(
-        {
-            'error': 'Upload faktur bude dostupný ve fázi 3 (OCR).',
-            'scaffold': True,
-        },
-        status.HTTP_501_NOT_IMPLEMENTED,
-    )
+@parser_classes([MultiPartParser, FormParser])
+@finance_invoice_view
+def doklad_upload(request):
+    """Nahrání faktury (PDF/foto) k existující položce nákladu."""
+    upload = request.FILES.get('file')
+    if not upload:
+        return _no_store_response({'error': 'Chybí soubor (file)'}, status.HTTP_400_BAD_REQUEST)
+
+    try:
+        polozka_id = int(request.data.get('naklad_polozka_id', ''))
+    except (TypeError, ValueError):
+        return _no_store_response({'error': 'Chybí naklad_polozka_id'}, status.HTTP_400_BAD_REQUEST)
+
+    try:
+        polozka = NakladPolozka.objects.get(pk=polozka_id)
+    except NakladPolozka.DoesNotExist:
+        return _no_store_response({'error': 'Položka nenalezena'}, status.HTTP_404_NOT_FOUND)
+
+    if not user_can_access_polozka(request.user, polozka):
+        return _no_store_response({'error': 'Nemáte oprávnění k této položce'}, status.HTTP_403_FORBIDDEN)
+
+    try:
+        doklad = link_doklad_to_polozka(
+            polozka,
+            upload,
+            dodavatel_nazev=request.data.get('dodavatel_nazev', ''),
+            cislo_faktury=request.data.get('cislo_faktury', ''),
+            castka_bez_dph=request.data.get('castka_bez_dph'),
+            dph_castka=request.data.get('dph_castka'),
+            dph_sazba=request.data.get('dph_sazba'),
+            user_id=request.user.id,
+        )
+    except ValueError as exc:
+        return _no_store_response({'error': str(exc)}, status.HTTP_400_BAD_REQUEST)
+
+    log_finance_audit(request, 'doklad_upload', f'polozka={polozka.id} doklad={doklad.id}')
+    return _no_store_response({
+        'doklad': serialize_doklad(doklad),
+        'polozka': serialize_naklad_polozka(polozka),
+    }, status.HTTP_201_CREATED)
 
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
-@finance_admin_view
-def doklady_list_stub(request):
-    """Scaffold – seznam nespárovaných dokladů (F3)."""
+@finance_invoice_view
+def doklady_list(request):
+    """Nahráté faktury bez DPH (čekají na doplnění / OCR)."""
     log_finance_audit(request, 'doklady_list')
-    qs = FinanceDoklad.objects.filter(stav=FinanceDoklad.STAV_NOVA).order_by('-vytvoreno')[:50]
-    return _no_store_response([
-        {
-            'id': d.id,
-            'stav': d.stav,
-            'dodavatel_nazev': d.dodavatel_nazev,
-            'cislo_faktury': d.cislo_faktury,
-            'castka_celkem': str(d.castka_celkem) if d.castka_celkem is not None else None,
-            'vytvoreno': d.vytvoreno.isoformat() if d.vytvoreno else None,
-        }
-        for d in qs
-    ])
+    qs = FinanceDoklad.objects.filter(stav=FinanceDoklad.STAV_NOVA).select_related('naklad_polozka')
+    store_ids = accessible_store_ids(request.user)
+    if store_ids is not None:
+        qs = qs.filter(naklad_polozka__prodejna_id__in=store_ids)
+    return _no_store_response([serialize_doklad(d) for d in qs.order_by('-vytvoreno')[:50]])

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { PageHeader } from '../../components/ui';
 import { financeAPI, storeAPI } from '../../services/api';
 import './FinanceModule.css';
+import FinanceFakturyPanel from './FinanceFakturyPanel';
 
 const formatCurrency = (value) => {
     const n = Number(value) || 0;
@@ -188,6 +189,13 @@ const FinanceModule = () => {
                 </button>
                 <button
                     type="button"
+                    className={tab === 'faktury' ? 'active' : ''}
+                    onClick={() => setTab('faktury')}
+                >
+                    Faktury
+                </button>
+                <button
+                    type="button"
                     className={tab === 'manual' ? 'active' : ''}
                     onClick={() => setTab('manual')}
                 >
@@ -246,7 +254,18 @@ const FinanceModule = () => {
                                                 )}
                                             </td>
                                             <td>{p.protiucet || '–'}</td>
-                                            <td className="finance-cell-zprava">{p.zprava || p.popis || '–'}</td>
+                                            <td className="finance-cell-zprava">
+                                                {p.zdroj === 'symplio_pokladna' && (
+                                                    <span className="finance-badge" title="Symplio pokladna">kasa</span>
+                                                )}
+                                                {p.zdroj === 'fio' && (
+                                                    <span className="finance-badge" title="Fio banka">fio</span>
+                                                )}
+                                                {' '}
+                                                {p.zdroj === 'symplio_pokladna'
+                                                    ? (p.popis || p.zprava || '–')
+                                                    : (p.zprava || p.popis || '–')}
+                                            </td>
                                             <td>
                                                 <select id={`kat-${p.id}`} defaultValue="">
                                                     <option value="">— vyberte —</option>
@@ -281,6 +300,10 @@ const FinanceModule = () => {
                         </div>
                     )}
                 </section>
+            )}
+
+            {!loading && tab === 'faktury' && (
+                <FinanceFakturyPanel intro="Výdaje čekající na fakturu – admin vidí všechny prodejny." />
             )}
 
             {!loading && tab === 'manual' && (

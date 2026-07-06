@@ -11,6 +11,8 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument('--days', type=int, default=7, help='Počet dní zpět (výchozí 7)')
+        parser.add_argument('--date-from', default='', help='YYYY-MM-DD (místo --days)')
+        parser.add_argument('--date-to', default='', help='YYYY-MM-DD (výchozí dnes)')
         parser.add_argument('--dry-run', action='store_true', help='Bez zápisu do DB')
         parser.add_argument('--skip-balance', action='store_true', help='Neukládat snapshot zůstatku')
 
@@ -28,10 +30,16 @@ class Command(BaseCommand):
 
         from datetime import date, timedelta
 
-        days = max(1, options['days'])
         dry_run = options['dry_run']
-        date_to = date.today()
-        date_from = date_to - timedelta(days=days - 1)
+        date_from_s = (options['date_from'] or '').strip()
+        date_to_s = (options['date_to'] or '').strip()
+        if date_from_s:
+            date_from = date.fromisoformat(date_from_s)
+            date_to = date.fromisoformat(date_to_s) if date_to_s else date.today()
+        else:
+            days = max(1, options['days'])
+            date_to = date.today()
+            date_from = date_to - timedelta(days=days - 1)
 
         self.stdout.write(f'Fio import {date_from} – {date_to}' + (' [DRY RUN]' if dry_run else ''))
 

@@ -29,7 +29,10 @@ export const NAV_GROUPS = [
             { sectionKey: 'analytics', label: 'Analytika', path: '/analytics', adminOnly: true, icon: 'fa-chart-bar' },
             { sectionKey: 'plans', label: 'Plány', path: '/plans', adminOnly: true, icon: 'fa-tasks' },
             ...(FINANCE_MODULE_ENABLED
-                ? [{ sectionKey: 'finance', label: 'Finance', path: '/finance', adminOnly: true, icon: 'fa-coins' }]
+                ? [
+                    { sectionKey: 'finance-faktury', label: 'Faktury', path: '/finance/faktury', icon: 'fa-file-invoice' },
+                    { sectionKey: 'finance', label: 'Finance', path: '/finance', adminOnly: true, icon: 'fa-coins' },
+                ]
                 : []),
             { sectionKey: 'orders', label: 'Objednávky', path: '/orders', icon: 'fa-shopping-cart' },
             { sectionKey: 'reklamace', label: 'Reklamace', path: '/reklamace', icon: 'fa-undo-alt' },
@@ -148,6 +151,9 @@ export const getRouteLabel = (pathname) => {
     if (pathname.startsWith('/plans/')) {
         const section = PLANS_SECTIONS.find((s) => s.id === plansIdFromPath(pathname));
         return section?.tabLabel || 'Plány';
+    }
+    if (pathname.startsWith('/finance/faktury')) {
+        return 'Faktury';
     }
     if (pathname.startsWith('/finance')) {
         return 'Finance';

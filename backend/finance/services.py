@@ -7,6 +7,8 @@ from django.utils import timezone
 
 from .models import FioKategorizacniPravidlo, NakladKategorie, NakladPolozka
 
+from .kategorizace import apply_all_rules
+
 
 def log_finance_audit(request, akce: str, detail: str = ''):
     from .models import FinanceAuditLog
@@ -102,6 +104,11 @@ def apply_categorization_rules(row: dict) -> dict:
     }
 
 
+def serialize_doklad_brief(d) -> dict:
+    from .doklady import serialize_doklad
+    return serialize_doklad(d)
+
+
 def serialize_naklad_polozka(p: NakladPolozka) -> dict:
     return {
         'id': p.id,
@@ -116,6 +123,7 @@ def serialize_naklad_polozka(p: NakladPolozka) -> dict:
         'typ_platby': p.typ_platby,
         'symplio_doklad': p.symplio_doklad or None,
         'doklad_id': p.doklad_id,
+        'doklad': serialize_doklad_brief(p.doklad) if p.doklad_id else None,
         'kategorie_id': p.kategorie_id,
         'kategorie_nazev': p.kategorie.nazev if p.kategorie_id else None,
         'prodejna_id': p.prodejna_id,
@@ -186,7 +194,7 @@ def upsert_fio_row(row: dict, dry_run: bool = False) -> str:
         NakladPolozka.objects.create(**payload)
         return 'incoming'
 
-    cat = apply_categorization_rules(row)
+    cat = apply_all_rules(row, zdroj=NakladPolozka.ZDROJ_FIO)
     dph_stav = resolve_dph_stav(cat['kategorie_id'], typ_platby)
     payload = {
         'datum': row['datum'],
@@ -256,24 +264,30 @@ def import_symplio_pokladna_file(
 
         external_id = symplio_pokladna_external_id(prodejna_id, row)
         castka = Decimal(str(row['castka']))
+        rule_row = {
+            'popis': row.get('popis') or '',
+            'zprava': row.get('admin') or '',
+            'castka': castka,
+        }
+        cat = apply_all_rules(rule_row, zdroj=NakladPolozka.ZDROJ_SYMPLIO_POKLADNA, prodejna_id=prodejna_id)
         payload = {
             'datum': row['datum'],
             'rok': row['datum'].year,
             'mesic': row['datum'].month,
             'castka': castka,
-            'kategorie_id': None,
-            'prodejna_id': prodejna_id,
-            'stav': NakladPolozka.STAV_NEZARAZENO,
+            'kategorie_id': cat['kategorie_id'],
+            'prodejna_id': cat['prodejna_id'] or prodejna_id,
+            'stav': cat['stav'],
             'zdroj': NakladPolozka.ZDROJ_SYMPLIO_POKLADNA,
             'fio_id': external_id,
             'symplio_doklad': row.get('symplio_doklad') or '',
             'popis': row.get('popis') or '',
             'vs': row.get('objednavka') or '',
             'zprava': row.get('admin') or '',
-            'ignorovat': False,
-            'zarazeno_automaticky': False,
+            'ignorovat': cat['ignorovat'],
+            'zarazeno_automaticky': cat['zarazeno_automaticky'],
             'typ_platby': NakladPolozka.TYP_PLATBY_ODCHOZI,
-            'dph_stav': NakladPolozka.DPH_STAV_CEKA,
+            'dph_stav': resolve_dph_stav(cat['kategorie_id'], NakladPolozka.TYP_PLATBY_ODCHOZI),
         }
 
         existing = find_existing_symplio_polozka(prodejna_id, row)

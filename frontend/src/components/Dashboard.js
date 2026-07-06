@@ -80,8 +80,11 @@ const Dashboard = () => {
                             <Route path="/daily-duties" element={<DailyDutiesModule />} />
                         )}
                         <Route path="/plans/*" element={isAdmin() ? <PlansModule /> : <Navigate to="/" />} />
+                        {FINANCE_MODULE_ENABLED && FinanceFakturyModule && (
+                            <Route path="/finance/faktury" element={<FinanceFakturyModule />} />
+                        )}
                         {FINANCE_MODULE_ENABLED && (
-                            <Route path="/finance/*" element={isAdmin() ? <FinanceModule /> : <Navigate to="/" />} />
+                            <Route path="/finance/*" element={isAdmin() ? <FinanceModule /> : <Navigate to="/finance/faktury" />} />
                         )}
                         <Route path="/leaderboard" element={<LeaderboardModule />} />
                         <Route path="/profile" element={<ProfileModule />} />

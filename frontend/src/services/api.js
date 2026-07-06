@@ -436,6 +436,7 @@ export const financeAPI = {
     getStatus: async () => (await api.get('/finance/status/')).data,
     getKategorie: async () => (await api.get('/finance/kategorie/')).data,
     getNezarazene: async () => (await api.get('/finance/naklady/nezarazene/')).data,
+    getCekaNaFakturu: async () => (await api.get('/finance/naklady/ceka-na-fakturu/')).data,
     createManualNaklad: async (payload) => (
         await api.post('/finance/naklady/manual/', payload)
     ).data,
@@ -445,6 +446,28 @@ export const financeAPI = {
     getPravidla: async () => (await api.get('/finance/pravidla/')).data,
     createPravidlo: async (payload) => (await api.post('/finance/pravidla/', payload)).data,
     deletePravidlo: async (id) => (await api.delete(`/finance/pravidla/${id}/`)).data,
+    uploadDoklad: async ({
+        file,
+        naklad_polozka_id,
+        cislo_faktury,
+        dodavatel_nazev,
+        castka_bez_dph,
+        dph_castka,
+        dph_sazba,
+    }) => {
+        const form = new FormData();
+        form.append('file', file);
+        form.append('naklad_polozka_id', String(naklad_polozka_id));
+        if (cislo_faktury) form.append('cislo_faktury', cislo_faktury);
+        if (dodavatel_nazev) form.append('dodavatel_nazev', dodavatel_nazev);
+        if (castka_bez_dph) form.append('castka_bez_dph', castka_bez_dph);
+        if (dph_castka) form.append('dph_castka', dph_castka);
+        if (dph_sazba) form.append('dph_sazba', dph_sazba);
+        const response = await api.post('/finance/doklady/upload/', form, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        return response.data;
+    },
 };
 
 export const coachingAPI = {
