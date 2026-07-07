@@ -84,3 +84,26 @@ class BrigadnikPayrollTests(TestCase):
         # 4×150 + 4×100 = 1000
         self.assertEqual(row['zaklad_body'], 1000.0)
         self.assertGreater(row['provize_body'], 0)
+
+    def test_brigadnik_no_pol_dok_bonus_nor_penalizace(self):
+        self._shift(date(2026, 3, 7), rezim='prodejce')
+        hours_map = aggregate_hours_by_user(2026, 3)
+        uid = self.brigadnik.id
+        pol_dok_map = {uid: {'pol_dok': 3.5, 'unikatni_doklady': 12}}
+
+        row = build_payroll_row(
+            self.brigadnik, 2026, 3, hours_map, date(2026, 3, 1), {}, 160,
+            {uid: {'polozky_nad_100': 2}}, {uid: (0, None)}, {},
+            pol_dok_map=pol_dok_map,
+        )
+        self.assertGreater(row['pol_dok'], 2)
+        self.assertEqual(row['pol_dok_odmena_body'], 0.0)
+
+        pol_dok_map[uid] = {'pol_dok': 1.2, 'unikatni_doklady': 8}
+        row_pen = build_payroll_row(
+            self.brigadnik, 2026, 3, hours_map, date(2026, 3, 1), {}, 160,
+            {uid: {'polozky_nad_100': 2}}, {uid: (0, None)}, {},
+            pol_dok_map=pol_dok_map,
+        )
+        self.assertLess(row_pen['pol_dok'], 2)
+        self.assertEqual(row_pen['pol_dok_odmena_body'], 0.0)

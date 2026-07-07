@@ -193,6 +193,8 @@ def _odmena_mesic_pro_prumer(user, rok, mesic_cislo, prumer_cache=None):
 
 def _pol_dok_odmena_mesic(user, rok, mesic_cislo, prumer_cache=None):
     """Bonus/penalizace za průměr položek/účtenku – stejně jako ve výplatě."""
+    if is_brigadnik(user):
+        return Decimal('0')
     if prumer_cache is not None:
         row = prumer_cache.get((rok, mesic_cislo), {}).get(user.id)
         if row is not None:
@@ -285,9 +287,12 @@ def build_prumer_mzdy_cache_for_prumer(user_ids, rok, ref_mesic):
             odmena_row = odmeny_map.get(uid)
             odmena_mesic = Decimal(str(odmena_row.castka)) if odmena_row else Decimal('0')
             pol_info = pol_dok_map.get(uid) or {'pol_dok': 0.0, 'unikatni_doklady': 0}
-            pol_dok_odmena = pol_dok_odmena_body(
-                pol_info.get('pol_dok'), pol_info.get('unikatni_doklady'),
-            )
+            if is_brigadnik(user):
+                pol_dok_odmena = Decimal('0')
+            else:
+                pol_dok_odmena = pol_dok_odmena_body(
+                    pol_info.get('pol_dok'), pol_info.get('unikatni_doklady'),
+                )
             month_data[uid] = {
                 'provize_net': provize_net,
                 'provize_brutto': provize_brutto,
@@ -723,7 +728,10 @@ def build_payroll_row(user, rok, mesic_cislo, hours_map, mesic_date, prodejny_ca
     pol_dok_info = (pol_dok_map or {}).get(uid) or {'pol_dok': 0.0, 'unikatni_doklady': 0}
     pol_dok = float(pol_dok_info.get('pol_dok') or 0)
     pol_dok_unikatni = int(pol_dok_info.get('unikatni_doklady') or 0)
-    pol_dok_odmena = pol_dok_odmena_body(pol_dok, pol_dok_unikatni)
+    if is_brigadnik(user):
+        pol_dok_odmena = Decimal('0')
+    else:
+        pol_dok_odmena = pol_dok_odmena_body(pol_dok, pol_dok_unikatni)
 
     celkem_body = _body_whole(
         mzda_fixni + provize_body + odmena_mesic
