@@ -33,11 +33,16 @@ class Command(BaseCommand):
         missing = []
         skipped = []
 
-        qs = WebUser.objects.filter(aktivni=True, role__in=('PRODEJCE', 'VEDOUCI'))
+        qs = WebUser.objects.filter(aktivni=True, role__in=('PRODEJCE', 'VEDOUCI', 'ADMIN'))
 
         by_prijmeni = {}
         for user in qs:
-            by_prijmeni[normalize_prijmeni(user.prijmeni)] = user
+            key = normalize_prijmeni(user.prijmeni)
+            existing = by_prijmeni.get(key)
+            if existing is None:
+                by_prijmeni[key] = user
+            elif user.role in ('PRODEJCE', 'VEDOUCI'):
+                by_prijmeni[key] = user
 
         for prijmeni, row in targets.items():
             user = by_prijmeni.get(normalize_prijmeni(prijmeni))

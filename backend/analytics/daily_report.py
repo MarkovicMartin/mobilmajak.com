@@ -37,9 +37,9 @@ def _day_queryset(day: date):
 
 
 def build_daily_report(report_day: date | None = None) -> dict:
-    """Souhrn za jeden kalendářní den (výchozí: včera v Europe/Prague)."""
+    """Souhrn za jeden kalendářní den (výchozí: dnes v Europe/Prague)."""
     if report_day is None:
-        report_day = timezone.localdate() - timedelta(days=1)
+        report_day = timezone.localdate()
 
     qs = _day_queryset(report_day)
     agg = qs.aggregate(

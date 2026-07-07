@@ -2,7 +2,7 @@
 
 Živý dokument pro plánování rozšíření. U každé oblasti: **stav dnes**, **varianty rozpracování**, **odhad náročnosti** (S/M/L/XL) a **vliv na kvalitu aplikace** (1–5, kde 5 = největší přínos pro provoz nebo řízení firmy).
 
-Poslední revize: 2026-07-06
+Poslední revize: 2026-07-06 (večer – §11 oprava víkendu)
 
 ---
 
@@ -303,7 +303,11 @@ flowchart LR
 - Command `send_daily_slack_report` – DM přes `SLACK_BOT_TOKEN`, cron **20:30** denně na produkci.
 - Výchozí příjemci: **Radek Bulandra**, **Petr Valenta** (zapnuto v migraci).
 - V **Můj profil → Slack** lze vypnout/zapnout „Zasílat denní report“ (`WebUser.slack_daily_report`).
-- Obsah: celkový obrat/zisk, prodejny, top 3 prodejci za **předchozí kalendářní den**.
+- Obsah: celkový obrat/zisk, prodejny, top 3 prodejci za **dnešní kalendářní den** (cron ve 20:30 = výsledek dne).
+
+### Oprava (2026-07-07)
+
+Report dříve šel za **včerejší** den → v pondělí tedy za neděli (zavřeno). Výchozí den je teď **dnes** (`timezone.localdate()`); večer v 20:30 přijde souhrn právě proběhlého dne.
 
 ### Plánované rozšíření (personalizace)
 
@@ -450,6 +454,8 @@ Doporučené pořadí: **V1 + V2** → **V3** (po §4 R8).
 
 | Datum | Změna |
 |-------|-------|
+| 2026-07-07 | §11 oprava: denní report za dnešní den (cron 20:30) |
+| 2026-07-06 | §11 oprava: pondělí nesmí reportovat neděli (poslední otevřený den) |
 | 2026-07-06 | §14 Denní povinnosti, §15 Díly z vraků, §16 Import logins; §4 R8–R10 z Mastersheet |
 | 2026-07-02 | §13 Zásilkovna – audit a ruční opravy konverze |
 | 2026-07-01 | §12 Novinky – kdo reagoval + audit komentářů pro ne-adminy |

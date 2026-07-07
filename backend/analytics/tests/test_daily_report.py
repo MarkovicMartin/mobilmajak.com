@@ -4,6 +4,7 @@ from decimal import Decimal
 from unittest.mock import patch
 
 from django.test import TestCase
+from django.utils import timezone
 
 from analytics.daily_report import build_daily_report, format_daily_report_slack
 from analytics.daily_report_recipients import daily_report_recipient_queryset
@@ -47,6 +48,11 @@ class DailyReportTests(TestCase):
         self.assertEqual(report['day'], self.day)
         self.assertEqual(report['totals']['doklady'], 1)
         self.assertEqual(report['totals']['obrat_bez_dph'], 2000.0)
+
+    @patch.object(timezone, 'localdate', return_value=date(2026, 6, 15))
+    def test_build_daily_report_defaults_to_today(self, _localdate):
+        report = build_daily_report()
+        self.assertEqual(report['day'], date(2026, 6, 15))
 
     def test_format_contains_key_lines(self):
         report = build_daily_report(self.day)

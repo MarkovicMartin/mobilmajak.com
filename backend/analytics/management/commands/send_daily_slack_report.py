@@ -20,12 +20,12 @@ from users.models import WebUser
 
 
 class Command(BaseCommand):
-    help = 'Odešle denní report prodejů do Slacku jako DM (výchozí: včerejší den).'
+    help = 'Odešle denní report prodejů do Slacku jako DM (výchozí: dnešní den).'
 
     def add_arguments(self, parser):
         parser.add_argument(
             '--date',
-            help='Den reportu YYYY-MM-DD (výchozí: včera)',
+            help='Den reportu YYYY-MM-DD (výchozí: dnes)',
         )
         parser.add_argument(
             '--user',
