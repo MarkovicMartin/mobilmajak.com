@@ -19,6 +19,35 @@ const EMPTY_PENALIZACE_POLOZKA = { typ: 'procenta', hodnota: '10', duvod: '' };
 const memoryCache = new Map();
 const returnsMemoryCache = new Map();
 
+function isPageReload() {
+    try {
+        const nav = performance.getEntriesByType('navigation')[0];
+        return nav?.type === 'reload';
+    } catch {
+        return false;
+    }
+}
+
+function clearPayrollCachesOnPageReload() {
+    if (!isPageReload()) return;
+    memoryCache.clear();
+    returnsMemoryCache.clear();
+    try {
+        const keysToRemove = [];
+        for (let i = 0; i < sessionStorage.length; i += 1) {
+            const key = sessionStorage.key(i);
+            if (key?.startsWith(CACHE_PREFIX) || key?.startsWith(RETURNS_CACHE_PREFIX)) {
+                keysToRemove.push(key);
+            }
+        }
+        keysToRemove.forEach((key) => sessionStorage.removeItem(key));
+    } catch {
+        // ignore
+    }
+}
+
+clearPayrollCachesOnPageReload();
+
 function cacheKey(month) {
     return `${CACHE_PREFIX}:${month}`;
 }
@@ -763,7 +792,7 @@ function PayrollPanel({ month, onExport }) {
             });
             if (!res.ok) {
                 const data = await res.json().catch(() => ({}));
-                throw new Error(data.error || 'Uložení selhalo');
+                throw new Error(data.error || data.detail || `Uložení selhalo (${res.status})`);
             }
             closePenalizaceModal();
             invalidateCache(month);
@@ -798,7 +827,7 @@ function PayrollPanel({ month, onExport }) {
             });
             if (!res.ok) {
                 const data = await res.json().catch(() => ({}));
-                throw new Error(data.error || 'Uložení selhalo');
+                throw new Error(data.error || data.detail || `Uložení selhalo (${res.status})`);
             }
             closeOdmenaModal();
             invalidateCache(month);

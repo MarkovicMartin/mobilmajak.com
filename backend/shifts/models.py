@@ -191,7 +191,7 @@ class MzdovaPenalizaceMesic(models.Model):
         verbose_name="Hodnota (%, nebo body)",
     )
     vytvoril = models.ForeignKey(
-        'users.WebUser',
+        WebUser,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,

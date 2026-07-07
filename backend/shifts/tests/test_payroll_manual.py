@@ -3,6 +3,7 @@ from datetime import date
 from decimal import Decimal
 
 from django.test import TestCase
+from rest_framework.test import APIClient
 
 from shifts.models import MzdovaPenalizaceMesic
 from shifts.payroll_manual import (
@@ -72,3 +73,44 @@ class PayrollManualMergeTests(TestCase):
         row = apply_manual_adjustments_to_row(self.base_row, odmena_row=odmena)
         self.assertEqual(row['odmena_mesic_body'], 500.0)
         self.assertEqual(row['celkem_body'], 26500.0)
+
+
+class PayrollPenalizaceApiTests(TestCase):
+    def setUp(self):
+        self.admin = WebUser.objects.create(
+            id=99002,
+            uzivatelske_jmeno='admin_penalizace_test',
+            jmeno='Admin',
+            prijmeni='Test',
+            heslo='x',
+            role='ADMIN',
+            aktivni=True,
+        )
+        self.prodejce = WebUser.objects.create(
+            id=99003,
+            uzivatelske_jmeno='prodejce_penalizace_test',
+            jmeno='Jan',
+            prijmeni='Létal',
+            heslo='x',
+            role='PRODEJCE',
+            aktivni=True,
+            mzda_zaklad=Decimal('14000'),
+            mzda_doplnky=[],
+        )
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.admin)
+
+    def test_post_penalizace_past_month_sets_vytvoril_webuser(self):
+        res = self.client.post(
+            '/api/shifts/payroll/penalizace/',
+            {
+                'user_id': self.prodejce.id,
+                'mesic': '2026-06',
+                'polozky': [{'typ': 'procenta', 'hodnota': 20, 'duvod': 'výkupy'}],
+            },
+            format='json',
+        )
+        self.assertEqual(res.status_code, 201, res.content)
+        row = MzdovaPenalizaceMesic.objects.get(user=self.prodejce, mesic=date(2026, 6, 1), duvod='výkupy')
+        self.assertEqual(row.vytvoril_id, self.admin.id)
+        self.assertEqual(res.json()['count'], 1)
