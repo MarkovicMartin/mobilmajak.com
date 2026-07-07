@@ -66,7 +66,7 @@ class MzdovaOdmenaMesicAdmin(admin.ModelAdmin):
 
 @admin.register(MzdovaPenalizaceMesic)
 class MzdovaPenalizaceMesicAdmin(admin.ModelAdmin):
-    list_display = ['user', 'mesic', 'typ', 'hodnota', 'duvod', 'vytvoreno']
-    list_filter = ['mesic']
-    search_fields = ['user__jmeno', 'user__prijmeni', 'duvod']
+    list_display = ['user', 'mesic', 'typ', 'hodnota', 'duvod', 'vytvoril', 'vytvoreno']
+    list_filter = ['mesic', 'typ']
+    search_fields = ['user__jmeno', 'user__prijmeni', 'duvod', 'vytvoril__prijmeni']
     ordering = ['-mesic', '-vytvoreno']

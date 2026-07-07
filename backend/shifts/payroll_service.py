@@ -768,6 +768,10 @@ def build_payroll_row(user, rok, mesic_cislo, hours_map, mesic_date, prodejny_ca
                 'typ': p.typ or MzdovaPenalizaceMesic.TYP_PROCENTA,
                 'hodnota': float(p.hodnota or 0),
                 'vytvoreno': p.vytvoreno.isoformat() if p.vytvoreno else None,
+                'vytvoril_jmeno': (
+                    f'{p.vytvoril.jmeno} {p.vytvoril.prijmeni}'.strip()
+                    if p.vytvoril_id else None
+                ),
             }
             for p in penalizace_rows
         ],
@@ -778,7 +782,7 @@ def build_payroll_row(user, rok, mesic_cislo, hours_map, mesic_date, prodejny_ca
     }
 
 
-def build_payroll_preview(mesic_str, prodejna_id=None):
+def build_payroll_preview(mesic_str, prodejna_id=None, base_only=False):
     rok, mesic_cislo = map(int, mesic_str.split('-'))
     mesic_date = date(rok, mesic_cislo, 1)
     ym = f'{rok}-{mesic_cislo:02d}'
@@ -813,7 +817,9 @@ def build_payroll_preview(mesic_str, prodejna_id=None):
         for o in MzdovaOdmenaMesic.objects.filter(mesic=mesic_date, user_id__in=user_ids)
     }
     penalizace_map = {}
-    for p in MzdovaPenalizaceMesic.objects.filter(mesic=mesic_date, user_id__in=user_ids).order_by('vytvoreno'):
+    for p in MzdovaPenalizaceMesic.objects.filter(
+        mesic=mesic_date, user_id__in=user_ids,
+    ).select_related('vytvoril').order_by('vytvoreno'):
         penalizace_map.setdefault(p.user_id, []).append(p)
 
     provize_cache = build_prumer_mzdy_cache_for_prumer(user_ids, rok, mesic_cislo)
@@ -826,11 +832,19 @@ def build_payroll_preview(mesic_str, prodejna_id=None):
             hours_cache=hours_cache, pol_dok_map=pol_dok_map, prumer_cache=provize_cache,
         ))
 
+    from .payroll_manual import manual_payroll_revision, strip_manual_adjustments_from_row
+
+    manual_revision = manual_payroll_revision(mesic_date, odmeny_map, penalizace_map)
+    if base_only:
+        rows = [strip_manual_adjustments_from_row(r) for r in rows]
+
     celkem_bodu = int(round(sum(r.get('celkem_body', 0) for r in rows)))
     return {
         'mesic': mesic_str,
         'fondu_h': fondu_h,
         'celkem_bodu': celkem_bodu,
         'celkem_vyplata': celkem_bodu,
+        'manual_revision': manual_revision,
+        'base_only': bool(base_only),
         'rows': rows,
     }

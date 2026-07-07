@@ -190,6 +190,14 @@ class MzdovaPenalizaceMesic(models.Model):
         default=10,
         verbose_name="Hodnota (%, nebo body)",
     )
+    vytvoril = models.ForeignKey(
+        'users.WebUser',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='vytvorene_mzda_penalizace',
+        verbose_name='Zadal',
+    )
     vytvoreno = SafeDateTimeField(auto_now_add=True)
 
     class Meta:

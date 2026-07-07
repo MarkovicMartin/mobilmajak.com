@@ -11,7 +11,7 @@ import { manualNumberInputClass, preventNumberInputWheel } from '../../utils/man
 import SymplioDocLink from '../../components/SymplioDocLink';
 import './PayrollPanel.css';
 
-const CACHE_PREFIX = 'payroll-overview-v1';
+const CACHE_PREFIX = 'payroll-overview-v3';
 const CURRENT_MONTH_STALE_MS = 5 * 60 * 1000;
 const RETURNS_CACHE_PREFIX = 'payroll-returns-v1';
 const RETURNS_STALE_MS = 10 * 60 * 1000;
@@ -62,6 +62,39 @@ function needsBackgroundRefresh(month, cached, now = new Date()) {
     if (month < current) return false;
     if (month > current) return true;
     return Date.now() - (cached.fetchedAt || 0) > CURRENT_MONTH_STALE_MS;
+}
+
+async function fetchManualRevision(month) {
+    const res = await fetch(`/api/shifts/payroll/manual-revision/?mesic=${month}`, { credentials: 'include' });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.manual_revision ?? null;
+}
+
+async function mergeManualRows(month, baseRows) {
+    const res = await fetch('/api/shifts/payroll/merge-manual/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ mesic: month, rows: baseRows }),
+    });
+    if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Chyba při načítání manuálních úprav');
+    }
+    return res.json();
+}
+
+function buildPayrollCacheData(baseData, mergedData) {
+    return {
+        mesic: baseData.mesic,
+        fondu_h: baseData.fondu_h,
+        celkem_bodu: mergedData.celkem_bodu,
+        celkem_vyplata: mergedData.celkem_bodu,
+        manual_revision: mergedData.manual_revision,
+        baseRows: baseData.rows,
+        rows: mergedData.rows,
+    };
 }
 
 function returnsCacheKey(month, part) {
@@ -149,10 +182,12 @@ function currentMonthStr() {
 
 function formatPenalizaceLabel(p) {
     const duvod = (p.duvod || '').trim();
+    const autor = (p.vytvoril_jmeno || '').trim();
+    const suffix = autor ? ` (${autor})` : '';
     if (p.typ === 'fixni') {
-        return `−${formatPoints(p.hodnota)}: ${duvod}`;
+        return `−${formatPoints(p.hodnota)}: ${duvod}${suffix}`;
     }
-    return `−${formatNumber(p.hodnota)} %: ${duvod}`;
+    return `−${formatNumber(p.hodnota)} %: ${duvod}${suffix}`;
 }
 
 function PayrollPanel({ month, onExport }) {
@@ -230,20 +265,47 @@ function PayrollPanel({ month, onExport }) {
         }
         setError('');
 
-        if (!force && !needsBackgroundRefresh(month, cached)) {
-            return;
-        }
+        const syncManualFromCache = async () => {
+            const baseRows = cached?.data?.baseRows;
+            if (!baseRows?.length) return false;
+            const remoteRevision = await fetchManualRevision(month);
+            if (seq !== fetchSeq.current) return true;
+            const localRevision = cached?.manual_revision ?? cached?.data?.manual_revision ?? null;
+            if (remoteRevision === localRevision) return false;
+            const merged = await mergeManualRows(month, baseRows);
+            if (seq !== fetchSeq.current) return true;
+            const data = buildPayrollCacheData(
+                { mesic: month, fondu_h: cached.data.fondu_h, rows: baseRows },
+                merged,
+            );
+            writeCache(month, { data, manual_revision: merged.manual_revision });
+            applyPayrollPayload(data, setRows, setFonduH);
+            return true;
+        };
 
         try {
-            const res = await fetch(`/api/shifts/payroll/?mesic=${month}`, { credentials: 'include' });
+            const manualChanged = await syncManualFromCache();
+            if (seq !== fetchSeq.current) return;
+
+            if (!force && !needsBackgroundRefresh(month, cached) && !manualChanged) {
+                if (cached?.data?.baseRows?.length) {
+                    return;
+                }
+            }
+
+            const res = await fetch(`/api/shifts/payroll/?mesic=${month}&base_only=1`, { credentials: 'include' });
             if (!res.ok) {
                 const data = await res.json().catch(() => ({}));
                 throw new Error(data.error || 'Chyba při načítání výplaty');
             }
-            const data = await res.json();
+            const baseData = await res.json();
             if (seq !== fetchSeq.current) return;
 
-            writeCache(month, { data });
+            const merged = await mergeManualRows(month, baseData.rows || []);
+            if (seq !== fetchSeq.current) return;
+
+            const data = buildPayrollCacheData(baseData, merged);
+            writeCache(month, { data, manual_revision: merged.manual_revision });
             applyPayrollPayload(data, setRows, setFonduH);
         } catch (e) {
             if (seq !== fetchSeq.current) return;
@@ -650,6 +712,17 @@ function PayrollPanel({ month, onExport }) {
         () => rows.map((r) => ({ id: r.user_id, jmeno: r.jmeno })),
         [rows],
     );
+
+    const existingPenalizaceForForm = useMemo(() => {
+        if (!penalizaceForm.user_id) return [];
+        const row = rows.find((r) => String(r.user_id) === String(penalizaceForm.user_id));
+        return row?.penalizace || [];
+    }, [penalizaceForm.user_id, rows]);
+
+    const existingPenalizaceRow = useMemo(() => {
+        if (!penalizaceForm.user_id) return null;
+        return rows.find((r) => String(r.user_id) === String(penalizaceForm.user_id)) || null;
+    }, [penalizaceForm.user_id, rows]);
 
     const savePenalizace = async (e) => {
         e.preventDefault();
@@ -1558,7 +1631,18 @@ function PayrollPanel({ month, onExport }) {
                                                 <span className="payroll-sazba-hint"> ({row.body_za_hodinu}/h)</span>
                                             )}
                                         </td>
-                                        <td>{formatPoints(row.provize_body)}</td>
+                                        <td>
+                                            {formatPoints(row.provize_body)}
+                                            {Number(row.penalizace_srazka_body) > 0 && (
+                                                <span
+                                                    className="payroll-srazka-hint"
+                                                    title={row.penalizace_popis || 'Srážka z provize'}
+                                                >
+                                                    {' '}
+                                                    (−{formatPoints(row.penalizace_srazka_body)})
+                                                </span>
+                                            )}
+                                        </td>
                                         <td className="col-celkem"><strong>{formatPoints(row.celkem_body)}</strong></td>
                                     </tr>
                                     {isOpen && (
@@ -1632,6 +1716,31 @@ function PayrollPanel({ month, onExport }) {
                                     ))}
                                 </select>
                             </label>
+                            {existingPenalizaceForForm.length > 0 && (
+                                <div className="payroll-penalizace-existing">
+                                    <strong>Už zadané srážky za {formatMonthName(month)}</strong>
+                                    <ul>
+                                        {existingPenalizaceForForm.map((p) => (
+                                            <li key={p.id}>
+                                                {formatPenalizaceLabel(p)}
+                                                {p.vytvoreno ? (
+                                                    <span className="payroll-penalizace-meta">
+                                                        {' '}· {new Date(p.vytvoreno).toLocaleString('cs-CZ')}
+                                                    </span>
+                                                ) : null}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                    {existingPenalizaceRow && Number(existingPenalizaceRow.penalizace_srazka_body) > 0 && (
+                                        <p className="payroll-penalizace-sum">
+                                            Celkem srážka: −{formatPoints(existingPenalizaceRow.penalizace_srazka_body)}
+                                            {Number(existingPenalizaceRow.provize_body_brutto) > 0
+                                                ? ` z ${formatPoints(existingPenalizaceRow.provize_body_brutto)} hrubé provize`
+                                                : ''}
+                                        </p>
+                                    )}
+                                </div>
+                            )}
                             <div className="payroll-penalizace-polozky">
                                 {penalizaceForm.polozky.map((polozka, index) => (
                                     <div key={index} className="payroll-penalizace-polozka">

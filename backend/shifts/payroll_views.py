@@ -70,8 +70,58 @@ def payroll_preview(request):
     if not _parse_mesic(mesic):
         return Response({'error': 'Neplatný formát měsíce'}, status=status.HTTP_400_BAD_REQUEST)
     prodejna = request.GET.get('prodejna')
-    data = build_payroll_preview(mesic, prodejna_id=prodejna)
+    base_only = request.GET.get('base_only') in ('1', 'true', 'True')
+    data = build_payroll_preview(mesic, prodejna_id=prodejna, base_only=base_only)
     return Response(data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def payroll_manual_revision(request):
+    """Lehká kontrola změn manuálních úprav (odměny, penalizace)."""
+    denied = _require_admin(request)
+    if denied:
+        return denied
+    mesic = request.GET.get('mesic')
+    if not mesic:
+        return Response({'error': 'Chybí parametr mesic'}, status=status.HTTP_400_BAD_REQUEST)
+    parsed = _parse_mesic(mesic)
+    if not parsed:
+        return Response({'error': 'Neplatný formát měsíce'}, status=status.HTTP_400_BAD_REQUEST)
+    _, _, mesic_date = parsed
+    from .payroll_manual import manual_payroll_revision
+
+    return Response({
+        'mesic': mesic,
+        'manual_revision': manual_payroll_revision(mesic_date),
+    })
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def payroll_merge_manual(request):
+    """Aplikuje aktuální manuální úpravy na řádky z cache (bez přepočtu provizí)."""
+    denied = _require_admin(request)
+    if denied:
+        return denied
+    mesic = request.data.get('mesic')
+    rows = request.data.get('rows')
+    if not mesic:
+        return Response({'error': 'Chybí parametr mesic'}, status=status.HTTP_400_BAD_REQUEST)
+    if not _parse_mesic(mesic):
+        return Response({'error': 'Neplatný formát měsíce'}, status=status.HTTP_400_BAD_REQUEST)
+    if not isinstance(rows, list):
+        return Response({'error': 'Chybí řádky výplaty'}, status=status.HTTP_400_BAD_REQUEST)
+    from .payroll_manual import merge_manual_into_rows
+
+    merged, manual_revision = merge_manual_into_rows(rows, mesic)
+    celkem_bodu = int(round(sum(r.get('celkem_body', 0) for r in merged)))
+    return Response({
+        'mesic': mesic,
+        'manual_revision': manual_revision,
+        'celkem_bodu': celkem_bodu,
+        'rows': merged,
+    })
 
 
 @api_view(['GET'])
@@ -350,6 +400,7 @@ def payroll_penalizace(request):
             duvod=duvod,
             typ=typ,
             hodnota=hodnota,
+            vytvoril=request.user,
         )
         created.append(row)
 
@@ -364,6 +415,10 @@ def payroll_penalizace(request):
                 'typ': row.typ,
                 'hodnota': float(row.hodnota),
                 'vytvoreno': row.vytvoreno.isoformat() if row.vytvoreno else None,
+                'vytvoril_jmeno': (
+                    f'{row.vytvoril.jmeno} {row.vytvoril.prijmeni}'.strip()
+                    if row.vytvoril_id else None
+                ),
             }
             for row in created
         ],
