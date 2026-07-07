@@ -955,28 +955,30 @@ function PayrollPanel({ month, onExport }) {
         const fond = row.fondu_h;
 
         const lines = [];
+        const profilZaklad = zaklad + doplnky.reduce((s, d) => s + (Number(d.castka) || 0), 0);
+        const hDoFondu = Math.min(Number(row.odpracovano_h) || 0, Number(fond) || 0);
         lines.push(
-            <div key="zaklad" className="breakdown-line">
-                <span className="breakdown-label">Základ (fixní body)</span>
-                <span className="breakdown-value">{formatPoints(zaklad)}</span>
+            <div key="zaklad-profil" className="breakdown-line breakdown-line-muted">
+                <span className="breakdown-label">Základ z profilu (měsíčně)</span>
+                <span className="breakdown-value">{formatPoints(profilZaklad)}</span>
+            </div>
+        );
+        lines.push(
+            <div key="zaklad-pomer" className="breakdown-line">
+                <span className="breakdown-label">
+                    Základ poměrný ({formatNumber(hDoFondu)} h / fond {formatNumber(fond)} h)
+                </span>
+                <span className="breakdown-value">{formatPoints(fixni)}</span>
             </div>
         );
         doplnky.forEach((d, i) => {
             lines.push(
-                <div key={`d-${i}`} className="breakdown-line">
-                    <span className="breakdown-label">+ {d.nazev}</span>
+                <div key={`d-${i}`} className="breakdown-line breakdown-line-muted">
+                    <span className="breakdown-label">↳ v profilu: {d.nazev}</span>
                     <span className="breakdown-value">{formatPoints(d.castka)}</span>
                 </div>
             );
         });
-        if (doplnky.length > 0) {
-            lines.push(
-                <div key="fixni" className="breakdown-line">
-                    <span className="breakdown-label">= Fixní celkem</span>
-                    <span className="breakdown-value">{formatPoints(fixni)}</span>
-                </div>
-            );
-        }
         if (cestovne > 0) {
             lines.push(
                 <div key="cestovne" className="breakdown-line">
@@ -1203,7 +1205,8 @@ function PayrollPanel({ month, onExport }) {
 
             <p className="payroll-hint">
                 Rozklikněte řádek pro detail (vedoucí, cestovné, přesčas, provize).
-                Přesčas = (základ + variabilní z profilu) / fond × hodiny nad fondem. Dýška = obrat P63615 (1 bod = 1 Kč).
+                Základ = (základ + doplňky z profilu) × odpracované hodiny do fondu / fond.
+                Přesčas = stejná sazba × hodiny nad fondem. Dýška = obrat P63615 (1 bod = 1 Kč).
                 Cestovné a manuální bonus se do sazby přesčasu nepřičítají.
             </p>
 

@@ -203,9 +203,9 @@ def _pol_dok_odmena_mesic(user, rok, mesic_cislo, prumer_cache=None):
     return pol_dok_odmena_body(info.get('pol_dok'), info.get('unikatni_doklady'))
 
 
-def _zaklad_pro_prumer_dovolene(user, h, override_row=None):
-    """Základ + doplňky z profilu – bez cestovného."""
-    return _fixni_pro_prumer_mesic(user, h, override_row)
+def _zaklad_pro_prumer_dovolene(user, h, override_row=None, rok=None, mesic_cislo=None):
+    """Základ + doplňky poměrně za odpracované hodiny (bez cestovného)."""
+    return _fixni_pro_prumer_mesic(user, h, override_row, rok=rok, mesic_cislo=mesic_cislo)
 
 
 def _mzda_mesic_pro_prumer_dovolene(user, rok, mesic_cislo, h, override_row=None,
@@ -214,7 +214,7 @@ def _mzda_mesic_pro_prumer_dovolene(user, rok, mesic_cislo, h, override_row=None
     Měsíční mzda pro průměr dovolené – stejné složky jako výplata kromě
     cestovného, dýška/víceprací (P63615), dovolené a přesčasu.
     """
-    zaklad = _zaklad_pro_prumer_dovolene(user, h, override_row)
+    zaklad = _zaklad_pro_prumer_dovolene(user, h, override_row, rok=rok, mesic_cislo=mesic_cislo)
     provize = _provize_detail_mesic(user, rok, mesic_cislo, prumer_cache=prumer_cache)
     if prumer_cache is None and provize_cache is not None:
         provize_net = _provize_body_mesic(user, rok, mesic_cislo, provize_cache=provize_cache)
@@ -299,10 +299,13 @@ def build_prumer_mzdy_cache_for_prumer(user_ids, rok, ref_mesic):
     return cache
 
 
-def _fixni_pro_prumer_mesic(user, h, override_row=None):
-    """Fixní část pro průměr – z profilu; override fixni_body jen pokud je explicitně v JSON."""
+def _fixni_pro_prumer_mesic(user, h, override_row=None, rok=None, mesic_cislo=None):
+    """Fixní část pro průměr – poměrně za odpracované hodiny do fondu."""
     if override_row is not None and override_row.get('fixni_body') is not None:
         return Decimal(str(override_row['fixni_body']))
+    if not is_brigadnik(user) and rok and mesic_cislo:
+        fond = fondu_hodin_mesic(rok, mesic_cislo)
+        return zaklad_pomerovy_body(user, h, fond)
     return mzda_fixni_bez_cestovneho(user, float(h))
 
 
@@ -354,7 +357,7 @@ def _prumer_hodinove_body(
                 )
                 mzda = parts['mzda']
             else:
-                mzda = _fixni_pro_prumer_mesic(user, h, row)
+                mzda = _fixni_pro_prumer_mesic(user, h, row, rok=y, mesic_cislo=m)
             total_mzda += mzda
             total_h += h
     else:
@@ -371,7 +374,7 @@ def _prumer_hodinove_body(
                 )
                 mzda = parts['mzda']
             else:
-                mzda = mzda_fixni_bez_cestovneho(user, float(h))
+                mzda = _fixni_pro_prumer_mesic(user, h, None, rok=y, mesic_cislo=m)
             total_mzda += mzda
             total_h += h
 
@@ -379,9 +382,9 @@ def _prumer_hodinove_body(
         return _body_whole(total_mzda / total_h)
 
     fond = Decimal(str(fondu_hodin_mesic(rok, mesic_cislo) or 0))
-    zaklad = mzda_zaklad_raw(user)
-    if fond > 0 and zaklad > 0:
-        return _body_whole(zaklad / fond)
+    zaklad_vp = mzda_zaklad_pro_vicepraci(user)
+    if fond > 0 and zaklad_vp > 0:
+        return _body_whole(zaklad_vp / fond)
     return Decimal('0')
 
 
@@ -460,7 +463,7 @@ def _prumer_hodinove_detail(
             penalizace = provize_detail['penalizace_srazka']
             provize_brutto = provize_detail['provize_brutto']
         else:
-            zaklad = _fixni_pro_prumer_mesic(user, h, override_row) if override_row else mzda_fixni_bez_cestovneho(user, float(h))
+            zaklad = _fixni_pro_prumer_mesic(user, h, override_row, rok=y, mesic_cislo=m)
             provize_net = Decimal('0')
             penalizace = Decimal('0')
             odmena = Decimal('0')
@@ -507,7 +510,7 @@ def _prumer_hodinove_detail(
         zdroj = 'override_excel'
     elif total_h <= 0:
         fond_fb = Decimal(str(fondu_hodin_mesic(rok, mesic_cislo) or 0))
-        zaklad_fb = mzda_zaklad_raw(user)
+        zaklad_fb = mzda_zaklad_pro_vicepraci(user)
         if fond_fb > 0 and zaklad_fb > 0:
             zdroj = 'fallback_zaklad_fond'
             fallback_zaklad = float(zaklad_fb)
@@ -528,6 +531,22 @@ def _prumer_hodinove_detail(
         'fallback_zaklad_body': fallback_zaklad,
         'fallback_fond_h': fallback_fond,
     }
+
+
+def zaklad_pomerovy_body(user, odpracovano_h, fondu_h):
+    """
+    Základ + doplňky poměrně za odpracované hodiny do fondu (Excel).
+    Hodiny nad fond se počítají zvlášť jako přesčas.
+    """
+    if is_brigadnik(user):
+        return mzda_fixni_bez_cestovneho(user, float(odpracovano_h or 0))
+    zaklad_vp = mzda_zaklad_pro_vicepraci(user)
+    h = Decimal(str(odpracovano_h or 0))
+    fond = Decimal(str(fondu_h or 0))
+    if fond <= 0 or h <= 0:
+        return Decimal('0')
+    h_do_fondu = min(h, fond)
+    return _body_whole(zaklad_vp * h_do_fondu / fond)
 
 
 def prescas_body_vypocet(user, prescas_h, fondu_h):
@@ -651,7 +670,7 @@ def build_payroll_row(user, rok, mesic_cislo, hours_map, mesic_date, prodejny_ca
     else:
         zaklad = mzda_fixni_mesicni_body(user)
         sazba_h = None
-        mzda_fixni = mzda_fixni_body(user, odpracovano)
+        mzda_fixni = zaklad_pomerovy_body(user, odpracovano, fondu_h)
 
     odmena_row = odmeny_map.get(uid)
     if odmena_row:

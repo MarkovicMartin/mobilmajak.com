@@ -420,6 +420,29 @@ class VacationServiceTests(TestCase):
         self.assertEqual(stav['cerpano_h'], DOVOLENA_HODINY_ZA_DEN)
         self.assertEqual(stav['odeceno_deficit_h'], 0)
 
+    def test_admin_2026_import_baseline_plus_smeny_od_cervna(self):
+        """Admin – fond/čerpání z importu (k 31. 5.), od června ruční směny dovolená."""
+        user = WebUser.objects.create(
+            id=9032, uzivatelske_jmeno='admin.import', jmeno='Martin', prijmeni='Markovič',
+            heslo='x', role='ADMIN', aktivni=True,
+            dovolena_fond_extra_h=Decimal('80'),
+            dovolena_korekce_cerpano_h=Decimal('40'),
+        )
+        Smena.objects.create(
+            user=user, prodejna=self.prodejna, datum=date(2026, 7, 13),
+            cas_od=time(8, 0), cas_do=time(16, 0), typ_smeny='dovolena',
+        )
+        Smena.objects.create(
+            user=user, prodejna=self.prodejna, datum=date(2026, 7, 14),
+            cas_od=time(8, 0), cas_do=time(16, 0), typ_smeny='dovolena',
+        )
+        stav = dovolena_stav(user, 2026, referencni_datum=date(2026, 7, 15))
+        self.assertEqual(stav['fond_h'], 160.0)
+        self.assertEqual(stav['korekce_cerpano_h'], 40.0)
+        self.assertEqual(stav['cerpano_smeny_h'], 16.0)
+        self.assertEqual(stav['cerpano_h'], 56.0)
+        self.assertEqual(stav['zbyva_h'], 104.0)
+
     def test_vacation_overview_queryset_includes_admin(self):
         from users.exclusions import vacation_overview_users_queryset
         WebUser.objects.create(
@@ -492,7 +515,7 @@ class PayrollComputationTests(TestCase):
         prumer = prumer_fixni_hodinove_body(self.user, 2026, 6)
         fond = fondu_hodin_mesic(2026, 6)
         from decimal import ROUND_HALF_UP
-        expected = (Decimal('14000') / Decimal(str(fond))).quantize(Decimal('1'), rounding=ROUND_HALF_UP)
+        expected = (Decimal('15000') / Decimal(str(fond))).quantize(Decimal('1'), rounding=ROUND_HALF_UP)
         self.assertEqual(prumer, expected)
 
     def test_prumer_dovolena_vsechny_slozky_vyplaty(self):
@@ -521,7 +544,9 @@ class PayrollComputationTests(TestCase):
             ],
             prumer_cache=prumer_cache,
         )
-        expected = ((Decimal('14000') + Decimal('9000') + Decimal('5000') + Decimal('1000')) / h).quantize(Decimal('1'))
+        fond_brezen = Decimal(str(fondu_hodin_mesic(2026, 3)))
+        zaklad_brezen = (Decimal('14000') * h / fond_brezen).quantize(Decimal('1'))
+        expected = ((zaklad_brezen + Decimal('9000') + Decimal('5000') + Decimal('1000')) / h).quantize(Decimal('1'))
         self.assertEqual(prumer, expected)
 
     def test_build_payroll_row_includes_cestovne(self):
