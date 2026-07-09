@@ -13,6 +13,7 @@
     "Krumpolc": { "fond_h": 200, "cerpano_h": 32, "zbyva_h": 168 },
     "Létal": { "fond_h": 80, "cerpano_h": 40, "zbyva_h": 40 },
     "Karas": { "fond_h": 160, "cerpano_h": 32, "zbyva_h": 128 },
-    "Hekele": { "fond_h": 160, "cerpano_h": 63, "zbyva_h": 97 }
+    "Hekele": { "fond_h": 160, "cerpano_h": 63, "zbyva_h": 97 },
+    "Bulandra": { "fond_h": 160, "cerpano_h": 80, "zbyva_h": 80 }
   }
 }

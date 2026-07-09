@@ -2,7 +2,7 @@
 
 Živý dokument pro plánování rozšíření. U každé oblasti: **stav dnes**, **varianty rozpracování**, **odhad náročnosti** (S/M/L/XL) a **vliv na kvalitu aplikace** (1–5, kde 5 = největší přínos pro provoz nebo řízení firmy).
 
-Poslední revize: 2026-07-06 (večer – §11 oprava víkendu)
+Poslední revize: 2026-07-09 (§17 implementační vlny)
 
 ---
 
@@ -222,6 +222,8 @@ Doporučené pořadí po MVP: **R8** → **R9**.
 | **Symplio kategorie webhook** | Po ruční změně v Symplio označit položku v G2 jako vyřešenou | XL | 3 | Závislost na Symplio API |
 | **Novinky – kdo reagoval** | V UI u příspěvku zobrazit, kdo dal kterou emoji reakci (data už jsou v API) | S | 3 | Viz §12 |
 | **Audit komentářů pro ne-adminy** | Ověřit a otestovat, že komentovat mohou i běžní uživatelé (novinky + úkoly) | S | 4 | Viz §12 |
+| **Admin ruční hodiny a dovolená** | UI místo JSON override – hodiny za měsíc, korekce fondu, přečerpání při odchodu | M–L | 5 | Viz §17 |
+| **Role v čase + směna Backoffice** | Timeline rolí (brigádník → zaměstnanec) a virtuální pobočka Backoffice s poznámkou dne | M | 5 | Viz §17 |
 
 ---
 
@@ -450,10 +452,104 @@ Doporučené pořadí: **V1 + V2** → **V3** (po §4 R8).
 
 ---
 
+## 17. Směny / dovolená – admin ruční opravy
+
+### Stav dnes
+
+- Modul **Směny**: fond dovolené (160 h + převod max 40 h), měsíční deficit fondu (od 6/2026 u prodejců), přehled v `VacationPanel`.
+- **Prodejci / vedoucí:** čerpání z deficitu ukončených měsíců (nesplněný měsíční fond se odečte z roční dovolené).
+- **Admin účty:** výjimka – čerpání jen z ručních směn typu dovolená (`is_dovolena_admin_user`), ne z deficitu.
+- Ruční korekce dnes **jen přes JSON** v repu (deploy / import):
+  - `backend/shifts/data/dovolena_stav_2026-06.json` – baseline fond / čerpáno / zbývá k datu
+  - `backend/shifts/data/prumer_mzdy_override.json` – ruční `odpracovano_h` per měsíc pro průměr mzdy a výplatu dovolené
+- Při **odchodu zaměstnance** je často potřeba dovolenou „přečerpat“ (doplnit čerpání nad zůstatek nebo uzavřít záporný stav), aby finální výpočet nároku a výplaty seděl – dnes bez UI, ručně přes JSON nebo směny.
+- **Role uživatele** (`WebUser.role`) je jedna hodnota bez historie – přechod brigádník → zaměstnanec (např. Šnyrch od nového měsíce) vyžaduje ruční změnu role; výplata, dovolená a `brigadnik_rezim` se pak počítají jen podle aktuální role, ne podle data směny.
+- **Backoffice:** detekce přes `is_backoffice_user` (bez domovské prodejny / výjimky příjmení), pozice `backoffice` na směně; ve formuláři se stále vybírá fyzická **prodejna** ze seznamu poboček, chybí virtuální pobočka „Backoffice“. Pole `poznamka` na směně existuje, ale není vázané na backoffice ani povinné pro evidenci „co ten den dělal“.
+
+### Cíl
+
+Admin v aplikaci (ne v souborech) může:
+
+1. **Ručně upravit počet hodin** zaměstnance za měsíc (stejný účel jako `prumer_mzdy_override.json`).
+2. **Ručně přečerpat / korigovat dovolenou** – včetně scénáře ukončení zaměstnance, kdy má dojít k finálnímu přepočtu fondu, deficitu a výplaty dovolené.
+3. **Nastavit časovou osu rolí** – od kdy platí brigádník / prodejce / vedoucí (např. do konce měsíce brigádník, od 1. dne nového měsíce zaměstnanec).
+4. **Zadat směnu na pobočku Backoffice** s manuální poznámkou, kde co ten den dělal (místo výběru fyzické prodejny).
+
+### Varianty
+
+| Varianta | Popis | Náročnost | Vliv | Poznámka |
+|----------|-------|-----------|------|----------|
+| **DV1 – Ruční hodiny v UI** | Admin: uživatel + měsíc + `odpracovano_h` (volitelně fixní výplata); nahradí JSON override | M | 5 | Stejný model jako dnešní `prumer_mzdy_override.json`, ale CRUD v admin UI |
+| **DV2 – Korekce stavu dovolené** | Admin: úprava `fond_h` / `cerpano_h` / `zbyva_h` nebo jednorázová korekce (+/− h) s poznámkou a datem platnosti | M | 5 | Nahradí jednorázové importy typu `dovolena_stav_*.json` |
+| **DV3 – Přečerpání při odchodu** | Wizard „ukončení zaměstnance“: datum posledního dne, náhled zbývající dovolené vs. měsíční deficity, schválené přečerpání do záporného zůstatku → trigger finálního výpočtu | L | 5 | Typický use case: zaměstnanec končí v polovině měsíce / s nevyčerpanou dovolenou |
+| **DV4 – Audit log** | Kdo, kdy, proč změnil hodiny nebo dovolenou (vazba na uživatele a měsíc) | S | 4 | Důvěra v mzdová data; ladění sporů |
+| **DV5 – Okamžitý přepočet** | Po uložení korekce přepočet `VacationPanel` + náhled výplaty bez redeploye | M | 5 | Dnes vyžaduje změnu JSON + deploy |
+| **DV6 – Role v čase** | Model / UI: řádky `role` + `platnost_od` (volitelně `platnost_do`); výplata, dovolená, brigádní režim podle data směny, ne aktuální role | L | 5 | Use case: Šnyrch brigádník do konce měsíce, od nového měsíce prodejce |
+| **DV7 – Směna Backoffice** | Ve výběru pobočky položka **Backoffice** (virtuální / bez `prodejna_id`); u backoffice směny výrazné nebo povinné pole poznámky „co ten den“ | M | 4 | Dnes backoffice vybírá fyzickou prodejnu; `poznamka` je volitelná u všech |
+
+### Doporučené pořadí (varianty)
+
+**DV6** (role v čase – základ pro správné mzdy) → **DV1 + DV2** (ruční opravy) → **DV7** (backoffice směny) → **DV4** (audit) → **DV3** (odchod zaměstnance) → **DV5** (propojení s výplatou).
+
+### Implementační pořadí (jednoduchost × význam)
+
+Seřazeno pro postupné budování – nejdřív rychlé wins s existující infrastrukturou, pak větší refaktory.
+
+| # | Vlna | ID | Proč teď | Složitost | Vliv | Závislosti |
+|---|------|-----|----------|-----------|------|------------|
+| 1 | **A** | **DV7** | Izolovaná změna (`ShiftForm`, validace); `poznamka` a `pozice_smeny=backoffice` už existují | **S** | 4 | žádné |
+| 2 | **A** | **DV2** | Pole `dovolena_fond_extra_h` / `dovolena_korekce_cerpano_h` už v DB a v `vacation_service` | **S–M** | 5 | žádné |
+| 3 | **A** | **DV1** | Nahradí `prumer_mzdy_override.json` – nový model, ale jasný vzor a jedno API | **M** | 5 | žádné |
+| 4 | **B** | **DV4** | Audit přidat **současně** s DV1/DV2 (sloupce na nových tabulkách), ne jako dodatečný refactor | **S** | 4 | DV1, DV2 |
+| 5 | **B** | **DV5** | Není samostatná fáze – po uložení DV1/DV2 invalidace cache + refresh `VacationPanel` / payroll náhled | **S** | 5 | DV1, DV2 |
+| 6 | **C** | **DV6** | Velký zásah (`is_brigadnik`, payroll, dovolená, formuláře); nutné pro správné mzdy při přechodu rolí | **L** | 5 | ideálně po DV1/DV2 |
+| 7 | **C** | **DV3** | Wizard na vrcholu DV2 (+ DV6 pro přesný výpočet při odchodu) | **L** | 5 | DV2, DV6 |
+
+**Vlna A (1–2 týdny):** DV7 → DV2 → DV1 — okamžitě použitelné v provozu, bez deploye JSON.  
+**Vlna B (součást A):** DV4 + DV5 vestavět do DV1/DV2, neodkládat.  
+**Vlna C (3–5 týdnů):** DV6 → DV3 — až když admin UI pro korekce běží.
+
+#### Matice rozhodnutí
+
+```
+                    vysoký vliv
+                         │
+           DV2 ●    DV1 ●│● DV6
+           DV7 ●         │● DV3
+                         │
+    nízká ───────────────┼────────────── vysoká
+    složitost            │              složitost
+                         │
+                    DV4 ● DV5
+                         │
+                    nízký vliv (ale nutné pro důvěru v data)
+```
+
+#### Poznámky k prioritám
+
+- **DV7 první** – nejmenší riziko, backoffice hned přestane vybírat náhodnou pobočku.
+- **DV2 před DV1** – méně nového kódu (editace existujících polí na `WebUser` / panel dovolené).
+- **DV6 ne jako první** – i když je strategicky důležité, dotkne se desítek míst; výjimka: pokud přechod brigádník → zaměstnanec blokuje uzavření měsíce, posunout DV6 před DV3 (ne nutně před celou vlnu A).
+- **DV3 až na konec** – složený workflow; v mezidobí stačí DV2 (ruční korekce čerpání).
+
+### Otevřené otázky
+
+- Má přečerpání vyžadovat druhého admina / potvrzení (čtyřočkové schválení)?
+- Při odchodu: automaticky doplnit zbývající hodiny jako směny dovolené, nebo jen korekci čísla bez fiktivních směn?
+- Platí stejná pravidla pro admin účty (čerpání ze směn) i pro prodejce (deficit), nebo jednotné UI s různou logikou pod kapotou?
+- **DV6:** Při změně role zpětně přepočítat již uzavřené měsíce, nebo platí jen od data změny?
+- **DV6:** Stačí změna na 1. den měsíce, nebo i uprostřed měsíce (např. nástup v polovině)?
+- **DV7:** Má být poznámka u Backoffice povinná, nebo jen doporučená s upozorněním?
+
+---
+
 ## 10. Historie změn dokumentu
 
 | Datum | Změna |
 |-------|-------|
+| 2026-07-09 | §17 implementační vlny A/B/C (jednoduchost × význam) |
+| 2026-07-08 | §17 rozšíření: DV6 role v čase, DV7 směna Backoffice s poznámkou dne |
+| 2026-07-08 | §17 Směny – admin ruční opravy hodin a přečerpání dovolené (odchod zaměstnance) |
 | 2026-07-07 | §11 oprava: denní report za dnešní den (cron 20:30) |
 | 2026-07-06 | §11 oprava: pondělí nesmí reportovat neděli (poslední otevřený den) |
 | 2026-07-06 | §14 Denní povinnosti, §15 Díly z vraků, §16 Import logins; §4 R8–R10 z Mastersheet |
