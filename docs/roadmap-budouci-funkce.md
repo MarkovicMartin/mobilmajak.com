@@ -68,6 +68,7 @@ Poslední revize: 2026-07-09 (§17 implementační vlny)
 |----------|-------|-----------|------|----------|
 | **P1 – Jednorázový import** | Spustit `migrate_company_access` na produkci (+ audit duplicit) | S | 4 | Pokud `active_company_access` stále obsahuje kompletní data |
 | **P2 – Import z CSV/Excel** | Admin upload: sloupce firma, URL, login, heslo, prodejna, kategorie | S | 3 | Pro data mimo DB (KeePass export, tabulka) |
+| **P2b – URL dodavatele z Mastersheet** | Při importu logins doplnit `website_url` (odkaz na e-shop / portál dodavatele) z názvu služby nebo mapy známých dodavatelů | S | 3 | Dnes import ukládá prázdné URL — viz §16 |
 | **P3 – Sync z externího zdroje** | Pravidelný pull z Google Sheet / 1Password / Bitwarden API | L | 3 | Vyšší údržba; vhodné až po stabilizaci P1/P2 |
 | **P4 – Centralizace + šablony** | Globální přístupy (všichni) vs per-prodejna; šablona „nová prodejna“ | M | 4 | Sníží chaos při otevírání poboček |
 | **P5 – Audit a expirace** | `last_used`, upozornění na neaktivní / duplicitní účty, rotace hesel | M | 3 | Bezpečnostní hygiena |
@@ -452,12 +453,20 @@ Doporučené pořadí: **V1 + V2** → **V3** (po §4 R8).
 - Modul **Přístupy** (`WEB_PRISTUPY_PRODEJNY`) — CRUD v aplikaci.
 - Mastersheet list `Přihl.údaje`: **~393 záznamů**, **155 unikátních loginů**, sekce per prodejna (Globus, Šternberk, Senimo, Čepkov, Přerov, Vsetín, Litovelská…).
 - Export loginů (bez hesel): `docs/mastersheet-prihlasovaci-loginy.json`.
+- Command `audit_mastersheet_logins --import-missing` importuje chybějící záznamy, ale ukládá **`website_url` prázdné** — v UI chybí odkaz na dodavatele / e-shop (jen název firmy v `company_name`).
+
+### Na doplnění
+
+- [ ] **Import Mastersheet logins – přidat odkaz na e-shop** (`website_url`): odvodit z názvu služby (např. `alza.cz` → `https://alza.cz`) nebo udržovat mapu dodavatel → URL; backfill existujících záznamů z `mastersheet-import`
+- [ ] Rozšířit `mastersheet_logins.py` / import o pole URL (Excel sloupec, pokud existuje, jinak heuristika z `service`)
+- [ ] Po doplnění znovu audit `--import-missing` vs ruční kontrola vzorku na prodejně
 
 ### Doporučený postup
 
 1. **P2** (CSV/Excel import do Přístupů) — sloupce: prodejna, služba/URL, login, heslo, kategorie  
 2. Jednorázový import z Mastersheet (hesla zůstávají mimo git)  
-3. Nové údaje jen přes aplikaci
+3. **P2b** — doplnit `website_url` u importovaných i existujících záznamů  
+4. Nové údaje jen přes aplikaci
 
 ---
 
@@ -594,6 +603,7 @@ Jeden servisní účet, jeden secrets soubor, jeden sdílený modul – všechny
 
 | Datum | Změna |
 |-------|-------|
+| 2026-07-09 | §16 + P2b: import Mastersheet logins – doplnit odkaz na e-shop (`website_url`) |
 | 2026-07-09 | §18 Symplio jeden zdroj přihlášení pro actory (termín červenec 2026) |
 | 2026-07-09 | Plány cron přesun na produkci (`install-production-plans-cron.sh`) |
 | 2026-07-09 | §17 implementační vlny A/B/C (jednoduchost × význam) |
