@@ -110,7 +110,7 @@ const ProfileSlackPrefs = ({ user, onSaved }) => {
             <div className="slack-prefs-group">
                 <h4>Denní report prodejů</h4>
                 <p className="slack-prefs-subtitle">
-                    Každý večer souhrn za předchozí den (obrat, prodejny, top prodejci).
+                    Každý večer souhrn za dnešní den (obrat bez DPH, prodejny, top prodejci podle položek nad 100 Kč).
                 </p>
                 <ul className="slack-prefs-list">
                     <li>

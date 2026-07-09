@@ -48,6 +48,13 @@ class DailyReportTests(TestCase):
         self.assertEqual(report['day'], self.day)
         self.assertEqual(report['totals']['doklady'], 1)
         self.assertEqual(report['totals']['obrat_bez_dph'], 2000.0)
+        self.assertEqual(report['top_sellers'][0]['obrat'], 2000.0)
+
+    def test_format_uses_bez_dph_labels(self):
+        report = build_daily_report(self.day)
+        text = format_daily_report_slack(report)
+        self.assertIn('bez DPH', text)
+        self.assertNotIn('s DPH', text)
 
     @patch.object(timezone, 'localdate', return_value=date(2026, 6, 15))
     def test_build_daily_report_defaults_to_today(self, _localdate):

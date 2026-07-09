@@ -39,6 +39,13 @@ def sum_obrat_s_dph(queryset):
     )['total'] or 0
 
 
+def sum_obrat_bez_dph(queryset):
+    """Celkový obrat bez DPH včetně storn (záporné ceny)."""
+    return queryset.aggregate(
+        total=Sum(F('pocet_kusu') * F('cena_ks_bez_dph'), default=0),
+    )['total'] or 0
+
+
 def prumer_polozek_uctu(polozky_nad_29, unikatni_doklady):
     if not unikatni_doklady:
         return 0

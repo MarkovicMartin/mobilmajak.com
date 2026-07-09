@@ -61,9 +61,9 @@ def build_daily_report(report_day: date | None = None) -> dict:
         doklady=Count('doklad', distinct=True),
     )
 
-    obrat_s = float(agg['obrat_s_dph'] or 0)
+    obrat_bez = float(agg['obrat_bez_dph'] or 0)
     zisk = float(agg['zisk'] or 0)
-    marze_pct = round((zisk / obrat_s) * 100, 1) if obrat_s > 0 else 0.0
+    marze_pct = round((zisk / obrat_bez) * 100, 1) if obrat_bez > 0 else 0.0
 
     stores = list(
         qs.exclude(stredisko__isnull=True)
@@ -85,16 +85,30 @@ def build_daily_report(report_day: date | None = None) -> dict:
         end_date=report_day.isoformat(),
         period_start=report_day,
         period_end=report_day,
-        metrics={'polozky_nad_100', 'celkovy_obrat'},
+        metrics={'polozky_nad_100'},
         include_profit=False,
     )
     sellers = aggregate_polozky_by_salesperson(params, limit=5)
+    top_sellers = sellers[:3]
+    top_ids = [row['id_prodejce'] for row in top_sellers if row.get('id_prodejce') is not None]
+    obrat_by_seller = {
+        row['id_prodejce']: float(row['obrat'] or 0)
+        for row in qs.filter(id_prodejce__in=top_ids)
+        .values('id_prodejce')
+        .annotate(
+            obrat=Sum(
+                F('pocet_kusu') * F('cena_ks_bez_dph'),
+                output_field=models.DecimalField(max_digits=15, decimal_places=2),
+                default=0,
+            ),
+        )
+    }
 
     return {
         'day': report_day,
         'totals': {
-            'obrat_bez_dph': float(agg['obrat_bez_dph'] or 0),
-            'obrat_s_dph': obrat_s,
+            'obrat_bez_dph': obrat_bez,
+            'obrat_s_dph': float(agg['obrat_s_dph'] or 0),
             'zisk': zisk,
             'polozky': int(agg['polozky'] or 0),
             'doklady': int(agg['doklady'] or 0),
@@ -112,9 +126,9 @@ def build_daily_report(report_day: date | None = None) -> dict:
             {
                 'name': row.get('prodejce') or f"#{row.get('id_prodejce')}",
                 'polozky_nad_100': int(row.get('polozky_nad_100') or 0),
-                'obrat': float(row.get('celkovy_obrat') or 0),
+                'obrat': obrat_by_seller.get(row['id_prodejce'], 0.0),
             }
-            for row in sellers[:3]
+            for row in top_sellers
         ],
     }
 
@@ -128,9 +142,10 @@ def format_daily_report_slack(report: dict) -> str:
     day_label = f"{_CZ_WEEKDAYS[day.weekday()]} {day.day}. {day.month}. {day.year}"
     lines = [
         f"📊 *Denní report MOBILMAJAK* – {day_label}",
+        '_Všechny částky bez DPH. Top prodejci podle počtu položek nad 100 Kč (ne bodový žebříček)._',
         '',
         '*Celkem*',
-        f"• Obrat bez DPH: {_fmt_czk(t['obrat_bez_dph'])}",
+        f"• Obrat: {_fmt_czk(t['obrat_bez_dph'])}",
         f"• Zisk: {_fmt_czk(t['zisk'])} (marže {_fmt_pct(t['marze_pct'])})",
         f"• Doklady: {t['doklady']} | Položky: {t['polozky']}",
     ]
@@ -145,11 +160,11 @@ def format_daily_report_slack(report: dict) -> str:
 
     if report['top_sellers']:
         lines.append('')
-        lines.append('*Top prodejci* (položky nad 100 Kč)')
+        lines.append('*Top prodejci* (položky nad 100 Kč, bez servisních bodů)')
         for i, seller in enumerate(report['top_sellers'], 1):
             lines.append(
                 f"{i}. {seller['name']} – {seller['polozky_nad_100']} ks, "
-                f"{_fmt_czk(seller['obrat'])}"
+                f"obrat {_fmt_czk(seller['obrat'])}"
             )
 
     if t['doklady'] == 0:
