@@ -19,6 +19,7 @@ class Smena(models.Model):
     POZICE_SMENY = [
         ('prodej', 'Prodej'),
         ('servis', 'Servisní technik'),
+        ('skoleni', 'Školení'),
         ('backoffice', 'Backoffice'),
         ('home_office', 'Home office'),
     ]

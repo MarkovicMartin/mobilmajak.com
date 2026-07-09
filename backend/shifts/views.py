@@ -37,6 +37,9 @@ from stores.models import Prodejna
 from .czech_holidays import get_ceske_svatky, get_nazev_svatku
 from .shift_helpers import (
     apply_calendar_prodejna_filter,
+    apply_backoffice_calendar_filter,
+    is_backoffice_calendar_key,
+    BACKOFFICE_BARVA,
     find_overlapping_shift,
     is_absence_shift,
     parse_shift_time,
@@ -67,6 +70,9 @@ def _normalize_pozice_smeny(prodejna, typ_smeny, raw_pozice, user=None):
         return 'home_office'
     if pozice == 'backoffice':
         return 'backoffice'
+    from shifts.shift_helpers import is_senimo_prodejna
+    if pozice == 'skoleni':
+        return 'skoleni' if is_senimo_prodejna(prodejna) else 'prodej'
     if not prodejna or not getattr(prodejna, 'povolena_pozice_servis', False):
         return 'prodej'
     return pozice if pozice in ('prodej', 'servis') else 'prodej'
@@ -158,11 +164,14 @@ def smeny_list(request):
                 pass
         
         if prodejna:
-            try:
-                prodejna_obj = Prodejna.objects.get(id=int(prodejna))
-                smeny = apply_calendar_prodejna_filter(smeny, prodejna_obj)
-            except (Prodejna.DoesNotExist, ValueError, TypeError):
-                smeny = smeny.filter(prodejna=prodejna)
+            if is_backoffice_calendar_key(prodejna):
+                smeny = apply_backoffice_calendar_filter(smeny)
+            else:
+                try:
+                    prodejna_obj = Prodejna.objects.get(id=int(prodejna))
+                    smeny = apply_calendar_prodejna_filter(smeny, prodejna_obj)
+                except (Prodejna.DoesNotExist, ValueError, TypeError):
+                    smeny = smeny.filter(prodejna=prodejna)
             
         if user_id and request.user.role in ['ADMIN', 'VEDOUCI']:
             smeny = smeny.filter(user_id=user_id)
@@ -580,7 +589,7 @@ def _shift_calendar_payload(smena):
         store_color = '#5f6368'
     elif pozice == 'backoffice' and not smena.prodejna_id:
         store_name = 'Backoffice'
-        store_color = '#5f6368'
+        store_color = BACKOFFICE_BARVA
     elif p:
         store_name = (p.nazev_kratkiy or p.nazev or '').strip()
         store_color = p.barva or '#0066cc'
@@ -642,6 +651,7 @@ def kalendar_data(request):
 
         mine_scope = str(request.GET.get('scope', '')).lower() == 'mine'
         all_stores = str(prodejna_id or '').lower() in ('vse', 'all', '0')
+        backoffice_calendar = is_backoffice_calendar_key(prodejna_id)
         shifts_team_calendar = getattr(settings, 'SHIFTS_CALENDAR_SEE_ALL_EMPLOYEES', False)
         see_all_employees = False
         show_store_colleagues = False
@@ -653,7 +663,9 @@ def kalendar_data(request):
                 else:
                     return Response({'error': 'Chybí parametr prodejna.'},
                                   status=status.HTTP_400_BAD_REQUEST)
-            if not all_stores and prodejna_id:
+            elif backoffice_calendar:
+                pass
+            else:
                 try:
                     prodejna = Prodejna.objects.get(id=int(prodejna_id), aktivni=True)
                 except (Prodejna.DoesNotExist, ValueError, TypeError):
@@ -667,17 +679,19 @@ def kalendar_data(request):
             datum__month=mesic_cislo,
             aktivni=True,
         ).select_related('user', 'prodejna')
-        if prodejna is not None:
+        if backoffice_calendar:
+            smeny = apply_backoffice_calendar_filter(smeny)
+        elif prodejna is not None:
             smeny = apply_calendar_prodejna_filter(smeny, prodejna)
         if mine_scope:
             smeny = smeny.filter(user=request.user)
         elif shifts_team_calendar:
             see_all_employees = True
-            if prodejna is not None and request.user.role in ('PRODEJCE', 'VEDOUCI'):
+            if (prodejna is not None or backoffice_calendar) and request.user.role in ('PRODEJCE', 'VEDOUCI'):
                 show_store_colleagues = True
         else:
             see_all_employees = request.user.role == 'ADMIN'
-            if prodejna is not None and request.user.role in ('PRODEJCE', 'VEDOUCI'):
+            if (prodejna is not None or backoffice_calendar) and request.user.role in ('PRODEJCE', 'VEDOUCI'):
                 show_store_colleagues = True
                 see_all_employees = True
             if not see_all_employees:

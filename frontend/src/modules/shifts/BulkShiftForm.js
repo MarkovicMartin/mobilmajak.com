@@ -3,15 +3,18 @@ import Modal from '../../components/Modal';
 import { userAPI, storeAPI } from '../../services/api';
 import './BulkShiftForm.css';
 import UnifiedCalendar from './UnifiedCalendar';
-import { isBackofficeUser, isAdminUser, isHomeOfficePozice, BACKOFFICE_LOCATION, isBackofficeLocation, isBackofficeWorkShift } from './shiftBackoffice';
+import { isBackofficeUser, isAdminUser, BACKOFFICE_LOCATION, isBackofficeLocation, isBackofficeWorkShift, isHomeOfficeWorkShift, getAdminWorkMode, ADMIN_WORK_HOME_OFFICE, ADMIN_WORK_BACKOFFICE, ADMIN_WORK_STORE } from './shiftBackoffice';
+import { isSenimoStore, extraPoziceSelectEnabled } from './shiftStoreHelpers';
 import { format } from 'date-fns';
 import { userMayEditShiftOnDate } from './shiftEditPolicy';
 
 function BulkShiftForm({ user, onClose, onSuccess, initialDates = [], initialMonth = null }) {
     const [formData, setFormData] = useState(() => {
         const backoffice = isBackofficeUser(user);
+        const admin = isAdminUser(user);
         return {
             prodejna: backoffice ? BACKOFFICE_LOCATION : (user?.prodejna_id || null),
+            admin_work_mode: admin ? ADMIN_WORK_HOME_OFFICE : null,
             cas_od: '08:00',
             cas_do: '20:00',
             typ_smeny: 'prace',
@@ -60,11 +63,23 @@ function BulkShiftForm({ user, onClose, onSuccess, initialDates = [], initialMon
                 ...prev,
                 prodejna: BACKOFFICE_LOCATION,
                 pozice_smeny: 'backoffice',
+                admin_work_mode: null,
+            }));
+        } else if (isAdminUser(selected)) {
+            setFormData((prev) => ({
+                ...prev,
+                admin_work_mode: ADMIN_WORK_HOME_OFFICE,
+                pozice_smeny: 'prodej',
+                prodejna: prev.prodejna && !isBackofficeLocation(prev.prodejna) ? prev.prodejna : (stores[0]?.id ?? null),
             }));
         } else if (selected.prodejna_id) {
-            setFormData((prev) => ({ ...prev, prodejna: selected.prodejna_id }));
+            setFormData((prev) => ({
+                ...prev,
+                prodejna: selected.prodejna_id,
+                admin_work_mode: null,
+            }));
         }
-    }, [formData.user_id, users, user]);
+    }, [formData.user_id, users, user, stores]);
 
     useEffect(() => {
         if (isBackofficeLocation(formData.prodejna)) return;
@@ -162,17 +177,32 @@ function BulkShiftForm({ user, onClose, onSuccess, initialDates = [], initialMon
     const selectedUser = users.find((u) => u.id === formData.user_id) || user;
     const selectedStore = stores.find((s) => s.id === formData.prodejna);
     const servisPoziceEnabled = Boolean(selectedStore?.povolena_pozice_servis);
+    const isSenimo = isSenimoStore(selectedStore);
+    const extraPoziceEnabled = extraPoziceSelectEnabled(selectedStore);
     const backofficeUser = isBackofficeUser(selectedUser);
     const adminUser = isAdminUser(selectedUser);
-    const homeOfficeShift = isHomeOfficePozice(formData.pozice_smeny);
+    const isAbsence = formData.typ_smeny === 'dovolena' || formData.typ_smeny === 'nemoc';
+    const adminWorkMode = adminUser
+        ? (formData.admin_work_mode ?? getAdminWorkMode(formData.prodejna, formData.pozice_smeny))
+        : null;
+    const homeOfficeShift = isHomeOfficeWorkShift(
+        selectedUser,
+        formData.typ_smeny,
+        formData.pozice_smeny,
+        adminWorkMode,
+    );
     const backofficeShift = isBackofficeWorkShift(
         selectedUser,
         formData.typ_smeny,
         formData.pozice_smeny,
         formData.prodejna,
+        adminWorkMode,
     );
-    const showPoziceSelect = (servisPoziceEnabled || backofficeUser || adminUser) && formData.typ_smeny === 'prace' && !backofficeShift;
-    const isAbsence = formData.typ_smeny === 'dovolena' || formData.typ_smeny === 'nemoc';
+    const storeWorkShift = !isAbsence && !homeOfficeShift && !backofficeShift;
+    const showPoziceSelect = storeWorkShift && formData.typ_smeny === 'prace' && (
+        (adminUser && adminWorkMode === ADMIN_WORK_STORE) ||
+        (!adminUser && (extraPoziceEnabled || backofficeUser) && !isBackofficeLocation(formData.prodejna))
+    );
     const isBrigadnikShift = selectedUser?.role === 'BRIGADNIK' && formData.typ_smeny === 'prace';
 
     const handleSubmit = async () => {
@@ -203,7 +233,18 @@ function BulkShiftForm({ user, onClose, onSuccess, initialDates = [], initialMon
             if (homeOfficeShift || backofficeShift) {
                 delete requestData.prodejna;
             }
-            if (backofficeShift) {
+            if (adminUser) {
+                if (adminWorkMode === ADMIN_WORK_HOME_OFFICE) {
+                    requestData.pozice_smeny = 'home_office';
+                    delete requestData.prodejna;
+                } else if (adminWorkMode === ADMIN_WORK_BACKOFFICE) {
+                    requestData.pozice_smeny = 'backoffice';
+                    delete requestData.prodejna;
+                } else if (!showPoziceSelect) {
+                    requestData.pozice_smeny = 'prodej';
+                }
+                delete requestData.admin_work_mode;
+            } else if (backofficeShift) {
                 requestData.pozice_smeny = 'backoffice';
             }
             if (isAbsence) {
@@ -308,7 +349,46 @@ function BulkShiftForm({ user, onClose, onSuccess, initialDates = [], initialMon
                                         </select>
                                     </div>
                                 )}
-                                {!isAbsence && (
+                                {!isAbsence && adminUser && (
+                                    <div className="form-group">
+                                        <label className="form-label">Místo práce:</label>
+                                        <select
+                                            className="form-select"
+                                            value={adminWorkMode}
+                                            onChange={(e) => {
+                                                const mode = e.target.value;
+                                                if (mode === ADMIN_WORK_STORE) {
+                                                    setFormData(prev => ({
+                                                        ...prev,
+                                                        admin_work_mode: mode,
+                                                        pozice_smeny: 'prodej',
+                                                        prodejna: prev.prodejna && !isBackofficeLocation(prev.prodejna)
+                                                            ? prev.prodejna
+                                                            : (stores[0]?.id ?? null),
+                                                    }));
+                                                } else if (mode === ADMIN_WORK_HOME_OFFICE) {
+                                                    setFormData(prev => ({
+                                                        ...prev,
+                                                        admin_work_mode: mode,
+                                                        pozice_smeny: 'home_office',
+                                                    }));
+                                                } else {
+                                                    setFormData(prev => ({
+                                                        ...prev,
+                                                        admin_work_mode: mode,
+                                                        prodejna: BACKOFFICE_LOCATION,
+                                                        pozice_smeny: 'backoffice',
+                                                    }));
+                                                }
+                                            }}
+                                        >
+                                            <option value={ADMIN_WORK_HOME_OFFICE}>Home office</option>
+                                            <option value={ADMIN_WORK_BACKOFFICE}>Backoffice (popis v poznámce)</option>
+                                            <option value={ADMIN_WORK_STORE}>Prodejna</option>
+                                        </select>
+                                    </div>
+                                )}
+                                {!isAbsence && storeWorkShift && (
                                 <div className="form-group">
                                     <label className="form-label">Pobočka:</label>
                                     <select
@@ -334,11 +414,10 @@ function BulkShiftForm({ user, onClose, onSuccess, initialDates = [], initialMon
                                         {backofficeUser && (
                                             <option value={BACKOFFICE_LOCATION}>Backoffice</option>
                                         )}
-                                        {!backofficeUser && stores.map(s => (
-                                            <option key={s.id} value={s.id}>{s.nazev}</option>
-                                        ))}
-                                        {backofficeUser && stores.map(s => (
-                                            <option key={s.id} value={s.id}>{s.nazev} (výpomoc)</option>
+                                        {stores.map(s => (
+                                            <option key={s.id} value={s.id}>
+                                                {backofficeUser ? `${s.nazev} (výpomoc)` : s.nazev}
+                                            </option>
                                         ))}
                                     </select>
                                 </div>
@@ -379,10 +458,9 @@ function BulkShiftForm({ user, onClose, onSuccess, initialDates = [], initialMon
                                             value={formData.pozice_smeny}
                                             onChange={(e) => setFormData(prev => ({ ...prev, pozice_smeny: e.target.value }))}
                                         >
-                                            {!backofficeUser && !homeOfficeShift && <option value="prodej">Prodej</option>}
-                                            {backofficeUser && <option value="backoffice">Backoffice</option>}
-                                            {adminUser && <option value="home_office">Home office</option>}
-                                            {servisPoziceEnabled && !homeOfficeShift && <option value="servis">Servisní technik</option>}
+                                            <option value="prodej">Prodej</option>
+                                            {isSenimo && <option value="skoleni">Školení</option>}
+                                            {servisPoziceEnabled && <option value="servis">Servisní technik</option>}
                                         </select>
                                     </div>
                                 )}

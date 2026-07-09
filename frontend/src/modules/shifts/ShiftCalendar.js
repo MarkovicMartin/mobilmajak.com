@@ -8,6 +8,7 @@ import { groupDayShiftsByStore } from './shiftRosterUtils';
 import { format, parse, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
 import { userMayEditShiftMonth, userMayEditShiftOnDate } from './shiftEditPolicy';
 import { isStoreExpectingShift, getClosureNotice } from '../../constants/prodejnaZavreni';
+import { isBackofficeCalendarFilter, BACKOFFICE_CALENDAR_COLOR } from './shiftBackoffice';
 
 const isWorkShift = (shift) => shift.typ_smeny === 'prace';
 
@@ -135,7 +136,7 @@ function ShiftCalendar({
 
     const getShiftsForDate = (dateStr) => kalendarData[dateStr] || [];
 
-    const showStaffingGaps = seeAllEmployees;
+    const showStaffingGaps = seeAllEmployees && !isBackofficeCalendarFilter(prodejna);
 
     const monthCoverage = useMemo(() => {
         if (!showStaffingGaps) {
@@ -294,34 +295,37 @@ function ShiftCalendar({
         onRequestBulkAdd(dates);
     }, [onRequestBulkAdd]);
 
+    const isBackofficeView = isBackofficeCalendarFilter(prodejna);
+    const useStoreColors = allStores || isBackofficeView;
+
     const renderShiftRow = (shift, dateStr, { hideStoreName = false } = {}) => {
         const isOwnShift = String(shift.user_id) === String(user?.id);
         const shiftClasses = [
             'shift-item',
             isOwnShift ? 'mine' : 'other',
-            allStores ? 'shift-item--store-colored' : '',
+            useStoreColors ? 'shift-item--store-colored' : '',
             hideStoreName ? 'shift-item--in-store-group' : '',
-            !allStores && !shift.je_domaci_prodejna && isOwnShift ? 'foreign-store' : '',
+            !useStoreColors && !shift.je_domaci_prodejna && isOwnShift ? 'foreign-store' : '',
         ].filter(Boolean).join(' ');
         const roleLabel = shiftRoleLabel(shift, { short: true });
         const titleParts = [
-            !hideStoreName && allStores && shift.prodejna_nazev ? shift.prodejna_nazev : null,
+            !hideStoreName && useStoreColors && shift.prodejna_nazev ? shift.prodejna_nazev : null,
             shift.user_jmeno,
             roleLabel,
             `${formatTime(shift.cas_od)}-${formatTime(shift.cas_do)}`,
-            !allStores && !shift.je_domaci_prodejna && isOwnShift ? 'výpomoc na jiné prodejně' : null,
+            !useStoreColors && !shift.je_domaci_prodejna && isOwnShift ? 'výpomoc na jiné prodejně' : null,
         ].filter(Boolean);
         return (
             <div
                 key={shift.id}
                 className={shiftClasses}
-                style={allStores ? getShiftStyle(shift) : undefined}
+                style={useStoreColors ? getShiftStyle(shift) : undefined}
                 onMouseDown={(e) => e.stopPropagation()}
                 onClick={(e) => handleShiftClick(shift, dateStr, e)}
                 title={titleParts.join(' · ')}
             >
                 <div className="shift-content">
-                    {!hideStoreName && allStores && shift.prodejna_nazev && (
+                    {!hideStoreName && useStoreColors && shift.prodejna_nazev && (
                         <div className="shift-store">{shift.prodejna_nazev}</div>
                     )}
                     <div className="shift-name">
@@ -338,7 +342,7 @@ function ShiftCalendar({
         );
     };
 
-    const isSellerView = user?.role === 'PRODEJCE' || user?.role === 'VEDOUCI';
+    const isSellerView = (user?.role === 'PRODEJCE' || user?.role === 'VEDOUCI') && !isBackofficeView;
     const isAdminAllStores = user?.role === 'ADMIN' && allStores && seeAllEmployees;
 
     const renderWorkShifts = (workShifts, dateStr) => {
@@ -426,6 +430,13 @@ function ShiftCalendar({
                             {store.nazev_kratkiy || store.nazev}
                         </span>
                     ))}
+                    <span className="legend-item">
+                        <span
+                            className="legend-swatch"
+                            style={{ backgroundColor: BACKOFFICE_CALENDAR_COLOR }}
+                        />
+                        Backoffice
+                    </span>
                     {showStaffingGaps && (
                         <>
                             <span className="legend-item legend-item--alert">

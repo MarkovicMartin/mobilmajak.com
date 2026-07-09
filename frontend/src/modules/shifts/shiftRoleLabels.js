@@ -19,6 +19,7 @@ export const shiftRoleLabel = (shift, { short = false } = {}) => {
             ? 'Servisní technik (zaškolení)'
             : 'Servisní technik';
     }
+    if (shift.pozice_smeny === 'skoleni') return short ? 'Školení' : 'Školení';
     if (shift.brigadnik_rezim === 'vypomoc') return 'Výpomoc';
     return 'Prodejce';
 };

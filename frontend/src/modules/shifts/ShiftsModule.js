@@ -13,6 +13,7 @@ import AttendanceLogPanel from './AttendanceLogPanel';
 import AbsentStoresPanel from './AbsentStoresPanel';
 import VacationPanel from './VacationPanel';
 import ShiftsNav from './ShiftsNav';
+import { BACKOFFICE_LOCATION } from './shiftBackoffice';
 import './ShiftsModule.css';
 
 const ALL_PRODEJNY = 'vse';
@@ -172,6 +173,10 @@ function ShiftsModule() {
             value: String(store.id),
             label: storeLabel(store),
         })),
+        {
+            value: BACKOFFICE_LOCATION,
+            label: 'Backoffice',
+        },
     ], [stores, user?.prodejna_id, user?.role, shiftsSeeAllEmployees]);
 
     const showMonthControls = activeView === 'calendar' || activeView === 'overview' || activeView === 'payroll';

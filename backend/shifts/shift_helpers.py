@@ -14,6 +14,9 @@ BACKOFFICE_SURNAME_KEYS = frozenset({
     'smčková', 'smckova', 'smrčková', 'smrckova',
 })
 
+BACKOFFICE_CALENDAR_KEY = 'backoffice'
+BACKOFFICE_BARVA = '#5c4d8a'
+
 
 def is_admin_user(user) -> bool:
     return getattr(user, 'role', None) == 'ADMIN'
@@ -25,6 +28,14 @@ def is_home_office_pozice(pozice) -> bool:
 
 def is_backoffice_pozice(pozice) -> bool:
     return (pozice or '').strip() == 'backoffice'
+
+
+def is_skoleni_pozice(pozice) -> bool:
+    return (pozice or '').strip() == 'skoleni'
+
+
+def is_senimo_prodejna(prodejna) -> bool:
+    return bool(prodejna) and (getattr(prodejna, 'nazev', None) or '').strip() == 'Senimo'
 
 
 def backoffice_poznamka_chyba(typ_smeny, pozice, poznamka) -> str | None:
@@ -239,5 +250,21 @@ def apply_calendar_prodejna_filter(qs, prodejna):
             prodejna__isnull=True,
             typ_smeny__in=ABSENCE_SHIFT_TYPES,
             user__prodejna_id=prodejna.id,
+        )
+    )
+
+
+def is_backoffice_calendar_key(value) -> bool:
+    return str(value or '').strip().lower() == BACKOFFICE_CALENDAR_KEY
+
+
+def apply_backoffice_calendar_filter(qs):
+    """Virtuální pobočka Backoffice – směny bez fyzické prodejny + absence backoffice lidí."""
+    return qs.filter(
+        Q(pozice_smeny='backoffice', prodejna__isnull=True, typ_smeny='prace')
+        | Q(
+            typ_smeny__in=ABSENCE_SHIFT_TYPES,
+            prodejna__isnull=True,
+            user__prodejna_id__isnull=True,
         )
     )
