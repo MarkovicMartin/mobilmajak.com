@@ -220,6 +220,23 @@ function formatPenalizaceLabel(p) {
     return `−${formatNumber(p.hodnota)} %: ${duvod}${suffix}`;
 }
 
+function formatPenalizaceBreakdownLabel(p) {
+    const duvod = (p.duvod || '').trim();
+    const autor = (p.vytvoril_jmeno || '').trim();
+    const suffix = autor ? ` (${autor})` : '';
+    if (p.typ === 'fixni') {
+        return `− Penalizace ${formatPoints(p.hodnota)} b: ${duvod}${suffix}`;
+    }
+    return `− Penalizace ${formatNumber(p.hodnota)} %: ${duvod}${suffix}`;
+}
+
+function formatOdmenaBreakdownLabel(o) {
+    const poznamka = (o.poznamka || '').trim();
+    const autor = (o.vytvoril_jmeno || '').trim();
+    const suffix = autor ? ` (${autor})` : '';
+    return poznamka ? `+ Příplatek: ${poznamka}${suffix}` : `+ Manuální příplatek${suffix}`;
+}
+
 function PayrollPanel({ month, onExport }) {
     const [rows, setRows] = useState([]);
     const [fonduH, setFonduH] = useState(null);
@@ -770,6 +787,20 @@ function PayrollPanel({ month, onExport }) {
         return rows.find((r) => String(r.user_id) === String(penalizaceForm.user_id)) || null;
     }, [penalizaceForm.user_id, rows]);
 
+    const existingOdmenyForForm = useMemo(() => {
+        if (!odmenaForm.user_id) return [];
+        const row = rows.find((r) => String(r.user_id) === String(odmenaForm.user_id));
+        if (row?.odmeny?.length) return row.odmeny;
+        if (Number(row?.odmena_mesic_body) > 0) {
+            return [{
+                castka: row.odmena_mesic_body,
+                poznamka: row.odmena_mesic_poznamka || '',
+                vytvoril_jmeno: null,
+            }];
+        }
+        return [];
+    }, [odmenaForm.user_id, rows]);
+
     const savePenalizace = async (e) => {
         e.preventDefault();
         if (!penalizaceForm.user_id) {
@@ -831,7 +862,7 @@ function PayrollPanel({ month, onExport }) {
         setSavingOdmena(true);
         try {
             const res = await fetch('/api/shifts/payroll/odmena/', {
-                method: 'PUT',
+                method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
                 body: JSON.stringify({
@@ -839,7 +870,6 @@ function PayrollPanel({ month, onExport }) {
                     mesic: month,
                     castka,
                     poznamka: odmenaForm.poznamka || '',
-                    add: true,
                 }),
             });
             if (!res.ok) {
@@ -930,7 +960,7 @@ function PayrollPanel({ month, onExport }) {
         return (
             <div className="payroll-detail-section">
                 <h4>Výpočet brigádníka</h4>
-                <div className="payroll-breakdown payroll-breakdown-grid">
+                <div className="payroll-breakdown payroll-breakdown-souhrn">
                     {vypomocH > 0 && (
                         <div className="breakdown-line">
                             <span className="breakdown-label">Výpomoc</span>
@@ -966,12 +996,28 @@ function PayrollPanel({ month, onExport }) {
                     )}
                     {renderPolDokLine(row)}
                     {(row.doplnky_body > 0 || row.odmena_mesic_body > 0) && (
-                        <div className="breakdown-line">
-                            <span className="breakdown-label">+ Doplňky / měsíční bonus</span>
-                            <span className="breakdown-value">
-                                {formatPoints((row.doplnky_body || 0) + (row.odmena_mesic_body || 0))}
-                            </span>
-                        </div>
+                        <>
+                            {(row.odmeny?.length ? row.odmeny : (
+                                Number(row.odmena_mesic_body) > 0
+                                    ? [{
+                                        castka: row.odmena_mesic_body,
+                                        poznamka: row.odmena_mesic_poznamka || '',
+                                        vytvoril_jmeno: null,
+                                    }]
+                                    : []
+                            )).map((o, i) => (
+                                <div key={`odmena-br-${i}`} className="breakdown-line">
+                                    <span className="breakdown-label">{formatOdmenaBreakdownLabel(o)}</span>
+                                    <span className="breakdown-value">{formatPoints(o.castka)}</span>
+                                </div>
+                            ))}
+                            {row.doplnky_body > 0 && (
+                                <div className="breakdown-line">
+                                    <span className="breakdown-label">+ Doplňky z profilu</span>
+                                    <span className="breakdown-value">{formatPoints(row.doplnky_body)}</span>
+                                </div>
+                            )}
+                        </>
                     )}
                     <div className="breakdown-line breakdown-line-total">
                         <span className="breakdown-label">Celkem</span>
@@ -995,6 +1041,15 @@ function PayrollPanel({ month, onExport }) {
         const zakladVp = row.zaklad_pro_vicepraci_body;
         const dovolena = Number(row.dovolena_body) || 0;
         const manual = Number(row.odmena_mesic_body) || 0;
+        const odmeny = row.odmeny?.length
+            ? row.odmeny
+            : (manual > 0
+                ? [{
+                    castka: manual,
+                    poznamka: row.odmena_mesic_poznamka || '',
+                    vytvoril_jmeno: null,
+                }]
+                : []);
         const provize = Number(row.provize_body) || 0;
         const fixni = Number(row.mzda_fixni_body) || 0;
         const celkem = Number(row.celkem_body) || 0;
@@ -1043,29 +1098,14 @@ function PayrollPanel({ month, onExport }) {
                 </div>
             );
             (row.penalizace || []).forEach((p, i) => {
+                const srazkaBody = Number(p.srazka_body) || 0;
                 lines.push(
                     <div key={`pen-${i}`} className="breakdown-line breakdown-line-deduction">
-                        <span className="breakdown-label">− Penalizace {formatPenalizaceLabel(p)}</span>
-                        <span className="breakdown-value">—</span>
+                        <span className="breakdown-label">{formatPenalizaceBreakdownLabel(p)}</span>
+                        <span className="breakdown-value">−{formatPoints(srazkaBody)}</span>
                     </div>
                 );
             });
-            const pctLabel = Number(row.penalizace_procent) > 0
-                ? `${formatNumber(row.penalizace_procent)} %`
-                : null;
-            const fixLabel = Number(row.penalizace_fixni_body) > 0
-                ? `${formatPoints(row.penalizace_fixni_body)} b`
-                : null;
-            const srazkaParts = [pctLabel, fixLabel].filter(Boolean);
-            lines.push(
-                <div key="provize-srazka" className="breakdown-line breakdown-line-deduction">
-                    <span className="breakdown-label">
-                        − Srážka z provize
-                        {srazkaParts.length ? ` (${srazkaParts.join(' + ')})` : ''}
-                    </span>
-                    <span className="breakdown-value">−{formatPoints(srazka)}</span>
-                </div>
-            );
         }
         lines.push(
             <div key="provize" className="breakdown-line">
@@ -1174,16 +1214,15 @@ function PayrollPanel({ month, onExport }) {
                 </div>
             );
         }
-        if (manual > 0) {
-            lines.push(
-                <div key="manual" className="breakdown-line">
-                    <span className="breakdown-label">
-                        + Manuální příplatek
-                        {row.odmena_mesic_poznamka ? ` (${row.odmena_mesic_poznamka})` : ''}
-                    </span>
-                    <span className="breakdown-value">{formatPoints(manual)}</span>
-                </div>
-            );
+        if (odmeny.length > 0) {
+            odmeny.forEach((o, i) => {
+                lines.push(
+                    <div key={`odmena-${i}`} className="breakdown-line">
+                        <span className="breakdown-label">{formatOdmenaBreakdownLabel(o)}</span>
+                        <span className="breakdown-value">{formatPoints(o.castka)}</span>
+                    </div>
+                );
+            });
         }
         lines.push(
             <div key="celkem" className="breakdown-line breakdown-line-total">
@@ -1195,7 +1234,7 @@ function PayrollPanel({ month, onExport }) {
         return (
             <div className="payroll-detail-section">
                 <h4>Výpočet výplaty</h4>
-                <div className="payroll-breakdown payroll-breakdown-grid">{lines}</div>
+                <div className="payroll-breakdown payroll-breakdown-souhrn">{lines}</div>
             </div>
         );
     };
@@ -1934,8 +1973,23 @@ function PayrollPanel({ month, onExport }) {
                                     type="text"
                                     value={odmenaForm.poznamka}
                                     onChange={(e) => setOdmenaForm((f) => ({ ...f, poznamka: e.target.value }))}
+                                    placeholder="Pro audit / výpis"
                                 />
                             </label>
+                            {existingOdmenyForForm.length > 0 && (
+                                <div className="payroll-penalizace-existing payroll-odmeny-existing">
+                                    <strong>Stávající příplatky v měsíci</strong>
+                                    <ul>
+                                        {existingOdmenyForForm.map((o, i) => (
+                                            <li key={o.id || `odmena-${i}`}>
+                                                {formatOdmenaBreakdownLabel(o)}
+                                                {' '}
+                                                <span className="breakdown-value">{formatPoints(o.castka)}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
                 </Modal>
             )}
         </div>

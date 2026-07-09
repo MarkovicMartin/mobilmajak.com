@@ -148,9 +148,26 @@
 
 .payroll-breakdown-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 0.5rem 2rem;
     width: 100%;
+}
+
+.payroll-breakdown-souhrn {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: none;
+}
+
+.payroll-breakdown-souhrn .breakdown-line {
+    width: 100%;
+}
+
+.payroll-breakdown-souhrn .payroll-prumer-dovolena-wrap {
+    width: 100%;
+    margin: 0.25rem 0 0.5rem;
+    overflow-x: auto;
 }
 
 .payroll-breakdown .breakdown-line {
@@ -823,8 +840,9 @@
     color: #991b1b;
 }
 
-.pairing-row--bez_paru td {
-    background: #fff7f7;
+.payroll-odmeny-existing {
+    border-color: #c8e6c9;
+    background: #f6fff6;
 }
 
 .col-bez-paru-hint {
@@ -850,7 +868,7 @@
 }
 
 .payroll-prumer-dovolena-wrap {
-    grid-column: 1 / -1;
+    width: 100%;
     margin: 0.25rem 0 0.5rem;
     overflow-x: auto;
 }

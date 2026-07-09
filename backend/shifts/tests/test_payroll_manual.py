@@ -59,6 +59,7 @@ class PayrollManualMergeTests(TestCase):
         row = merged[0]
         self.assertEqual(row['penalizace_srazka_body'], 2000.0)
         self.assertEqual(row['provize_body'], 8000.0)
+        self.assertEqual(row['penalizace'][0]['srazka_body'], 2000.0)
         self.assertEqual(row['celkem_body'], 24000.0)
 
     def test_apply_manual_odmena(self):
@@ -70,8 +71,10 @@ class PayrollManualMergeTests(TestCase):
             castka=Decimal('500'),
             poznamka='bonus',
         )
-        row = apply_manual_adjustments_to_row(self.base_row, odmena_row=odmena)
+        row = apply_manual_adjustments_to_row(self.base_row, odmeny_rows=[odmena])
         self.assertEqual(row['odmena_mesic_body'], 500.0)
+        self.assertEqual(len(row['odmeny']), 1)
+        self.assertEqual(row['odmeny'][0]['poznamka'], 'bonus')
         self.assertEqual(row['celkem_body'], 26500.0)
 
 
@@ -114,3 +117,21 @@ class PayrollPenalizaceApiTests(TestCase):
         row = MzdovaPenalizaceMesic.objects.get(user=self.prodejce, mesic=date(2026, 6, 1), duvod='výkupy')
         self.assertEqual(row.vytvoril_id, self.admin.id)
         self.assertEqual(res.json()['count'], 1)
+
+    def test_post_odmena_creates_row_with_vytvoril(self):
+        from shifts.models import MzdovaOdmenaMesic
+
+        res = self.client.post(
+            '/api/shifts/payroll/odmena/',
+            {
+                'user_id': self.prodejce.id,
+                'mesic': '2026-06',
+                'castka': 500,
+                'poznamka': 'Nevyčerpaná dovolená',
+            },
+            format='json',
+        )
+        self.assertEqual(res.status_code, 201, res.content)
+        row = MzdovaOdmenaMesic.objects.get(user=self.prodejce, mesic=date(2026, 6, 1), poznamka='Nevyčerpaná dovolená')
+        self.assertEqual(row.vytvoril_id, self.admin.id)
+        self.assertEqual(float(row.castka), 500.0)

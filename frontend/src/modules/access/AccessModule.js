@@ -170,10 +170,10 @@ const AccessModule = () => {
 
         if (filters.search) {
             const searchTerm = filters.search.toLowerCase();
-            filtered = filtered.filter(access => 
-                access.company_name.toLowerCase().includes(searchTerm) ||
-                access.description.toLowerCase().includes(searchTerm) ||
-                access.website_url.toLowerCase().includes(searchTerm)
+            filtered = filtered.filter(access =>
+                (access.company_name || '').toLowerCase().includes(searchTerm) ||
+                (access.description || '').toLowerCase().includes(searchTerm) ||
+                (access.website_url || '').toLowerCase().includes(searchTerm)
             );
         }
 

@@ -32,6 +32,12 @@ def _body_float(val):
     return float(_body_whole(val))
 
 
+def _sum_odmeny_from_map(rows):
+    rows = list(rows or [])
+    total = sum(Decimal(str(r.castka or 0)) for r in rows)
+    return total, rows
+
+
 def provize_po_penalizaci(provize_brutto, penalizace_rows):
     """
     Srážky z hrubé provize:
@@ -185,10 +191,8 @@ def _odmena_mesic_pro_prumer(user, rok, mesic_cislo, prumer_cache=None):
             return Decimal(str(row.get('odmena_mesic') or 0))
         return Decimal('0')
     mesic_date = date(rok, mesic_cislo, 1)
-    row = MzdovaOdmenaMesic.objects.filter(mesic=mesic_date, user_id=user.id).first()
-    if not row:
-        return Decimal('0')
-    return Decimal(str(row.castka or 0))
+    rows = MzdovaOdmenaMesic.objects.filter(mesic=mesic_date, user_id=user.id)
+    return sum(Decimal(str(r.castka or 0)) for r in rows)
 
 
 def _pol_dok_odmena_mesic(user, rok, mesic_cislo, prumer_cache=None):
@@ -266,10 +270,9 @@ def build_prumer_mzdy_cache_for_prumer(user_ids, rok, ref_mesic):
         penalizace_map = {}
         for p in MzdovaPenalizaceMesic.objects.filter(mesic=mesic_date, user_id__in=user_ids).order_by('vytvoreno'):
             penalizace_map.setdefault(p.user_id, []).append(p)
-        odmeny_map = {
-            o.user_id: o
-            for o in MzdovaOdmenaMesic.objects.filter(mesic=mesic_date, user_id__in=user_ids)
-        }
+        odmeny_map = {}
+        for o in MzdovaOdmenaMesic.objects.filter(mesic=mesic_date, user_id__in=user_ids):
+            odmeny_map.setdefault(o.user_id, []).append(o)
         month_data = {}
         for uid in user_ids:
             user = users_by_id.get(uid)
@@ -284,8 +287,7 @@ def build_prumer_mzdy_cache_for_prumer(user_ids, rok, ref_mesic):
             provize_net, srazka, _, _ = provize_po_penalizaci(
                 provize_brutto, penalizace_map.get(uid) or [],
             )
-            odmena_row = odmeny_map.get(uid)
-            odmena_mesic = Decimal(str(odmena_row.castka)) if odmena_row else Decimal('0')
+            odmena_mesic, _ = _sum_odmeny_from_map(odmeny_map.get(uid))
             pol_info = pol_dok_map.get(uid) or {'pol_dok': 0.0, 'unikatni_doklady': 0}
             if is_brigadnik(user):
                 pol_dok_odmena = Decimal('0')
@@ -677,13 +679,10 @@ def build_payroll_row(user, rok, mesic_cislo, hours_map, mesic_date, prodejny_ca
         sazba_h = None
         mzda_fixni = zaklad_pomerovy_body(user, odpracovano, fondu_h)
 
-    odmena_row = odmeny_map.get(uid)
-    if odmena_row:
-        odmena_mesic = Decimal(str(odmena_row.castka))
-        odmena_poznamka = odmena_row.poznamka or ''
-    else:
-        odmena_mesic = Decimal('0')
-        odmena_poznamka = ''
+    odmena_mesic, odmeny_rows = _sum_odmeny_from_map(odmeny_map.get(uid))
+    odmena_poznamka = '; '.join(
+        (o.poznamka or '').strip() for o in odmeny_rows if (o.poznamka or '').strip()
+    )
 
     ym = f'{rok}-{mesic_cislo:02d}'
     metrics = metrics_map.get(uid) or _empty_metrics()
@@ -794,17 +793,31 @@ def build_payroll_row(user, rok, mesic_cislo, hours_map, mesic_date, prodejny_ca
                 'duvod': p.duvod or '',
                 'typ': p.typ or MzdovaPenalizaceMesic.TYP_PROCENTA,
                 'hodnota': float(p.hodnota or 0),
+                'srazka_body': float((penalizace_detail[i] or {}).get('srazka_body') or 0),
                 'vytvoreno': p.vytvoreno.isoformat() if p.vytvoreno else None,
                 'vytvoril_jmeno': (
                     f'{p.vytvoril.jmeno} {p.vytvoril.prijmeni}'.strip()
                     if p.vytvoril_id else None
                 ),
             }
-            for p in penalizace_rows
+            for i, p in enumerate(penalizace_rows)
         ],
         'provize_breakdown': breakdown,
         'odmena_mesic_body': _body_float(odmena_mesic),
         'odmena_mesic_poznamka': odmena_poznamka,
+        'odmeny': [
+            {
+                'id': o.id,
+                'castka': float(o.castka or 0),
+                'poznamka': o.poznamka or '',
+                'vytvoreno': o.vytvoreno.isoformat() if o.vytvoreno else None,
+                'vytvoril_jmeno': (
+                    f'{o.vytvoril.jmeno} {o.vytvoril.prijmeni}'.strip()
+                    if getattr(o, 'vytvoril_id', None) else None
+                ),
+            }
+            for o in odmeny_rows
+        ],
         'celkem_body': _body_float(celkem_body),
     }
 
@@ -839,10 +852,11 @@ def build_payroll_preview(mesic_str, prodejna_id=None, base_only=False):
     servis_map = batch_servis_points_for_month(users_list, ym)
     dyska_map = batch_dyska_for_month(rok, mesic_cislo, user_ids)
     pol_dok_map = batch_pol_dok_for_month(rok, mesic_cislo, user_ids)
-    odmeny_map = {
-        o.user_id: o
-        for o in MzdovaOdmenaMesic.objects.filter(mesic=mesic_date, user_id__in=user_ids)
-    }
+    odmeny_map = {}
+    for o in MzdovaOdmenaMesic.objects.filter(
+        mesic=mesic_date, user_id__in=user_ids,
+    ).select_related('vytvoril').order_by('vytvoreno'):
+        odmeny_map.setdefault(o.user_id, []).append(o)
     penalizace_map = {}
     for p in MzdovaPenalizaceMesic.objects.filter(
         mesic=mesic_date, user_id__in=user_ids,

@@ -15,12 +15,13 @@ def _penalizace_namespace(row):
     )
 
 
-def serialize_penalizace(p):
+def serialize_penalizace(p, srazka_body=None):
     return {
         'id': p.id,
         'duvod': p.duvod or '',
         'typ': p.typ or MzdovaPenalizaceMesic.TYP_PROCENTA,
         'hodnota': float(p.hodnota or 0),
+        'srazka_body': float(srazka_body or 0),
         'vytvoreno': p.vytvoreno.isoformat() if p.vytvoreno else None,
         'vytvoril_jmeno': (
             f'{p.vytvoril.jmeno} {p.vytvoril.prijmeni}'.strip()
@@ -29,23 +30,42 @@ def serialize_penalizace(p):
     }
 
 
+def serialize_odmena(o):
+    return {
+        'id': o.id,
+        'castka': float(o.castka or 0),
+        'poznamka': o.poznamka or '',
+        'vytvoreno': o.vytvoreno.isoformat() if o.vytvoreno else None,
+        'vytvoril_jmeno': (
+            f'{o.vytvoril.jmeno} {o.vytvoril.prijmeni}'.strip()
+            if getattr(o, 'vytvoril_id', None) else None
+        ),
+    }
+
+
+def _sum_odmeny(odmeny_rows):
+    rows = list(odmeny_rows or [])
+    total = sum(Decimal(str(r.castka or 0)) for r in rows)
+    return total, rows
+
+
 def manual_payroll_revision(mesic_date, odmeny_map=None, penalizace_map=None):
     """ISO timestamp poslední změny manuálních úprav v měsíci."""
     times = []
     if odmeny_map is None:
-        odmeny_map = {
-            o.user_id: o
-            for o in MzdovaOdmenaMesic.objects.filter(mesic=mesic_date)
-        }
+        odmeny_map = {}
+        for o in MzdovaOdmenaMesic.objects.filter(mesic=mesic_date):
+            odmeny_map.setdefault(o.user_id, []).append(o)
     if penalizace_map is None:
         penalizace_map = {}
         for p in MzdovaPenalizaceMesic.objects.filter(mesic=mesic_date):
             penalizace_map.setdefault(p.user_id, []).append(p)
-    for o in odmeny_map.values():
-        if o.upraveno:
-            times.append(o.upraveno)
-        if o.vytvoreno:
-            times.append(o.vytvoreno)
+    for rows in odmeny_map.values():
+        for o in rows:
+            if o.upraveno:
+                times.append(o.upraveno)
+            if o.vytvoreno:
+                times.append(o.vytvoreno)
     for rows in penalizace_map.values():
         for p in rows:
             if p.vytvoreno:
@@ -68,20 +88,15 @@ def _celkem_from_parts(row, provize_body, odmena_mesic):
     )
 
 
-def apply_manual_adjustments_to_row(row, odmena_row=None, penalizace_rows=None):
+def apply_manual_adjustments_to_row(row, odmeny_rows=None, penalizace_rows=None):
     """
-    Aplikuje měsíční odměnu a penalizace na řádek výplaty.
+    Aplikuje měsíční odměny a penalizace na řádek výplaty.
     row musí obsahovat provize_body_brutto (nebo provize_body jako brutto před srážkami).
     """
     row = dict(row)
     provize_brutto = _body_whole(row.get('provize_body_brutto') or row.get('provize_body') or 0)
 
-    if odmena_row:
-        odmena_mesic = Decimal(str(odmena_row.castka or 0))
-        odmena_poznamka = odmena_row.poznamka or ''
-    else:
-        odmena_mesic = Decimal('0')
-        odmena_poznamka = ''
+    odmena_mesic, odmeny_rows = _sum_odmeny(odmeny_rows)
 
     penalizace_rows = list(penalizace_rows or [])
     provize_body, penalizace_srazka, penalizace_procent, penalizace_detail = provize_po_penalizaci(
@@ -94,7 +109,10 @@ def apply_manual_adjustments_to_row(row, odmena_row=None, penalizace_rows=None):
     )
 
     row['odmena_mesic_body'] = _body_float(odmena_mesic)
-    row['odmena_mesic_poznamka'] = odmena_poznamka
+    row['odmena_mesic_poznamka'] = '; '.join(
+        (o.poznamka or '').strip() for o in odmeny_rows if (o.poznamka or '').strip()
+    )
+    row['odmeny'] = [serialize_odmena(o) for o in odmeny_rows]
     row['provize_body_brutto'] = _body_float(provize_brutto)
     row['provize_body'] = _body_float(provize_body)
     row['penalizace_pocet'] = len(penalizace_rows)
@@ -104,7 +122,10 @@ def apply_manual_adjustments_to_row(row, odmena_row=None, penalizace_rows=None):
     row['penalizace_popis'] = '; '.join(
         (p.duvod or '').strip() for p in penalizace_rows if (p.duvod or '').strip()
     )
-    row['penalizace'] = [serialize_penalizace(p) for p in penalizace_rows]
+    row['penalizace'] = [
+        serialize_penalizace(p, d.get('srazka_body'))
+        for p, d in zip(penalizace_rows, penalizace_detail)
+    ]
     row['celkem_body'] = _body_float(_celkem_from_parts(row, provize_body, odmena_mesic))
     return row
 
@@ -116,6 +137,7 @@ def strip_manual_adjustments_from_row(row):
     row['provize_body_brutto'] = _body_float(provize_brutto)
     row['odmena_mesic_body'] = 0.0
     row['odmena_mesic_poznamka'] = ''
+    row['odmeny'] = []
     row['penalizace_pocet'] = 0
     row['penalizace_procent'] = 0.0
     row['penalizace_fixni_body'] = 0.0
@@ -130,7 +152,7 @@ def strip_manual_adjustments_from_row(row):
 
 
 def load_manual_maps(mesic_date, user_ids=None):
-    odmeny_qs = MzdovaOdmenaMesic.objects.filter(mesic=mesic_date)
+    odmeny_qs = MzdovaOdmenaMesic.objects.filter(mesic=mesic_date).select_related('vytvoril').order_by('vytvoreno')
     penalizace_qs = MzdovaPenalizaceMesic.objects.filter(
         mesic=mesic_date,
     ).select_related('vytvoril').order_by('vytvoreno')
@@ -138,7 +160,9 @@ def load_manual_maps(mesic_date, user_ids=None):
         user_ids = list(user_ids)
         odmeny_qs = odmeny_qs.filter(user_id__in=user_ids)
         penalizace_qs = penalizace_qs.filter(user_id__in=user_ids)
-    odmeny_map = {o.user_id: o for o in odmeny_qs}
+    odmeny_map = {}
+    for o in odmeny_qs:
+        odmeny_map.setdefault(o.user_id, []).append(o)
     penalizace_map = {}
     for p in penalizace_qs:
         penalizace_map.setdefault(p.user_id, []).append(p)

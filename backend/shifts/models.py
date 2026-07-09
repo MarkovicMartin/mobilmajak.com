@@ -152,6 +152,14 @@ class MzdovaOdmenaMesic(models.Model):
     mesic = models.DateField(verbose_name="Měsíc (první den)")
     castka = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name="Odměna (body)")
     poznamka = models.TextField(blank=True, null=True)
+    vytvoril = models.ForeignKey(
+        WebUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='vytvorene_mzda_odmeny',
+        verbose_name='Zadal',
+    )
     vytvoreno = SafeDateTimeField(auto_now_add=True)
     upraveno = SafeDateTimeField(auto_now=True)
 
@@ -159,8 +167,7 @@ class MzdovaOdmenaMesic(models.Model):
         db_table = 'WEB_MZDOVAODMENA_MESIC'
         verbose_name = 'Měsíční odměna'
         verbose_name_plural = 'Měsíční odměny'
-        unique_together = ['user', 'mesic']
-        ordering = ['-mesic']
+        ordering = ['mesic', 'vytvoreno']
 
     def __str__(self):
         return f"{self.user_id} – {self.mesic.strftime('%m/%Y')}: {self.castka} bodů"

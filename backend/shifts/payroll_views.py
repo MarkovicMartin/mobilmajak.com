@@ -297,7 +297,7 @@ def payroll_vydejky(request):
     })
 
 
-@api_view(['PUT'])
+@api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def payroll_odmena(request):
     denied = _require_admin(request)
@@ -315,33 +315,32 @@ def payroll_odmena(request):
         castka = float(request.data.get('castka') or 0)
     except (TypeError, ValueError):
         return Response({'error': 'Neplatná castka'}, status=status.HTTP_400_BAD_REQUEST)
-    if castka < 0:
-        castka = 0
+    if castka <= 0:
+        return Response({'error': 'Castka musí být větší než 0'}, status=status.HTTP_400_BAD_REQUEST)
     poznamka = (request.data.get('poznamka') or '').strip()
-    pridat = request.data.get('add') in (True, 'true', '1', 1)
     user = WebUser.objects.filter(id=user_id).first()
     if not user:
         return Response({'error': 'Uživatel nenalezen'}, status=status.HTTP_404_NOT_FOUND)
-    existing = MzdovaOdmenaMesic.objects.filter(user=user, mesic=mesic_date).first()
-    if pridat and existing:
-        nova_castka = float(existing.castka) + castka
-        if poznamka and existing.poznamka:
-            poznamka = f'{existing.poznamka}; {poznamka}'
-        elif not poznamka:
-            poznamka = existing.poznamka or ''
-    else:
-        nova_castka = castka
-    row, _created = MzdovaOdmenaMesic.objects.update_or_create(
+    row = MzdovaOdmenaMesic.objects.create(
         user=user,
         mesic=mesic_date,
-        defaults={'castka': nova_castka, 'poznamka': poznamka},
+        castka=castka,
+        poznamka=poznamka,
+        vytvoril=request.user,
     )
     return Response({
         'user_id': user.id,
         'mesic': mesic,
-        'odmena_mesic_body': float(row.castka),
-        'poznamka': row.poznamka,
-    })
+        'odmena': {
+            'id': row.id,
+            'castka': float(row.castka),
+            'poznamka': row.poznamka or '',
+            'vytvoril_jmeno': (
+                f'{request.user.jmeno} {request.user.prijmeni}'.strip()
+                if request.user else None
+            ),
+        },
+    }, status=status.HTTP_201_CREATED)
 
 
 @api_view(['POST'])
