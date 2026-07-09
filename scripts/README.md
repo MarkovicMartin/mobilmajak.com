@@ -23,7 +23,8 @@ Přehled – co je provozní, co plánované rozšíření. Nepřidávejte jedno
 
 | Skript | Účel |
 |--------|------|
-| `install-staging-plans-cron.sh` | Jednorázově nastaví cron `ensure_monthly_plans` + `prepocet_plan_prodejci` pro uživatele `webmajak` |
+| `install-staging-plans-cron.sh` | Deprecated – plány na staging; použij `install-production-plans-cron.sh` |
+| `install-production-plans-cron.sh` | Cron `ensure_monthly_plans` + `prepocet_plan_prodejci` na produkci (`webmajak`) |
 
 Detaily a ruční řádky crontab: [`docs/secrets-setup.md`](../docs/secrets-setup.md).
 

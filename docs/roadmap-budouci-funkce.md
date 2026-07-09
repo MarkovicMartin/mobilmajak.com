@@ -167,8 +167,9 @@ Zdroj: listy `Servis Reklamace`, `Přerov/Šternberk/Čepkov Servis Reklamace` �
 | **R8 – Evidence odeslání** | Co kam šlo: dodavatel, zásilka, faktura, stav u partnera; náhrada za Excel listy | M | 5 |
 | **R9 – Propojení finance / dobropisy** | Vazba reklamace ↔ dobropis (WEB_PRODEJE_ALL / payroll panel) ↔ případná náhrada od dodavatele | L | 5 | Až po R3 |
 | **R10 – Import z Mastersheet** | Jednorázový bootstrap + šablona pro další importy | S | 3 |
+| **R11 – Automatické připomínky** | Cron `check_reklamace_reminders`: tracking 2d (in-app), stav 10d (in-app), 30d (Slack); backend hotový, cron zatím jen staging | S | 4 | **Cíl: produkce do srpna 2026** – zapnout cron na produkci + ověřit notifikace s reálnými reklamacemi |
 
-Doporučené pořadí po MVP: **R8** → **R9**.
+Doporučené pořadí po MVP: **R8** → **R9** → **R11** (až po R3 workflow stavů).
 
 ---
 
@@ -237,6 +238,14 @@ Doporučené pořadí po MVP: **R8** → **R9**.
 | 2 | Přístupy P1/P2 (import hesel) | Okamžitě užitečné na prodejnách |
 | 3 | Objednávky O1, O2, O3 | Méně ztracených dílů |
 | 4 | Alerting digest | Levné, viditelné |
+| 5 | **§18 Symplio login S1–S4** | Konec opakovaných pádů actorů po změně hesla |
+
+### Vlna 1b — červenec 2026 (provoz / infra)
+
+| # | Položka | Termín |
+|---|---------|--------|
+| A | §18 Symplio sdílený login modul | do 31. 7. 2026 |
+| B | §4 R11 reklamace reminders na produkci | do 31. 8. 2026 |
 
 ### Vlna 2 — propojení modulů (2–4 měsíce)
 
@@ -543,10 +552,50 @@ Seřazeno pro postupné budování – nejdřív rychlé wins s existující inf
 
 ---
 
+## 18. Symplio přihlášení – jeden zdroj pro všechny actory
+
+### Stav dnes (2026-07-09)
+
+- Secrets **navrženy správně**: `/home/webmajak/secrets/mobilmajak-symplio.json` + env `SYMPLIO_SECRETS_FILE`.
+- V praxi ale **každý actor** má vlastní kopii `symplio-credentials.js` / `symplio-login.js` nebo inline login s fallbackem `APIFY/Apify123!`.
+- Důsledek: změna hesla nebo úprava login flow = opakované pády výkupů, skladových výdejek atd., i když prodejní actor už funguje.
+
+### Cíl (červenec 2026 – dodělat)
+
+Jeden servisní účet, jeden secrets soubor, jeden sdílený modul – všechny Selenium actory jen importují.
+
+| Krok | Popis | Náročnost |
+|------|-------|-----------|
+| **S1 – Sdílený modul** | `/opt/scripts/symplio-shared/` (`symplio-credentials.js`, `symplio-login.js` s parametrem výběru prodejny/skladu) | S |
+| **S2 – Env všude** | Každý actor + wrapper: `SYMPLIO_SECRETS_FILE` + `SYMPLIO_SCRIPTS_DIR=/opt/scripts/symplio-shared` | S |
+| **S3 – Zákaz fallbacků** | Žádné hardcoded `APIFY` v kódu – chybí secrets = okamžitý fail | S |
+| **S4 – Deploy skript** | `scripts/symplio-shared/deploy.sh` – jedním příkazem na VPS + symlink/kopie do actorů | S |
+| **S5 – Dokumentace** | `docs/secrets-setup.md` – rotace hesla = jeden JSON, restart není nutný (další cron běh) | S |
+
+### Dotčené actory
+
+- `ACTOR_FINALL_WEB_PRODEJE_ALL` (prodeje, poznámky dokladů)
+- `ACTOR_VYKUPY`
+- `import-sklad-vydejky.js`
+- `symplio-pokladna-historie`
+
+### Rizika centralizace
+
+- **Nízká** – všechny boty používají stejný Symplio účet; jeden soubor je provozně bezpečnější než roztříštěné fallbacky.
+- Výjimka do budoucna: pokud by některý actor potřeboval **jiný** účet (read-only), přidat druhý secrets soubor – ne vracet hardcoded hesla.
+
+### Doporučené pořadí
+
+**S1 → S2 → S3 → S4** v jedné relaci; ověřit jeden ruční běh každého actoru.
+
+---
+
 ## 10. Historie změn dokumentu
 
 | Datum | Změna |
 |-------|-------|
+| 2026-07-09 | §18 Symplio jeden zdroj přihlášení pro actory (termín červenec 2026) |
+| 2026-07-09 | Plány cron přesun na produkci (`install-production-plans-cron.sh`) |
 | 2026-07-09 | §17 implementační vlny A/B/C (jednoduchost × význam) |
 | 2026-07-08 | §17 rozšíření: DV6 role v čase, DV7 směna Backoffice s poznámkou dne |
 | 2026-07-08 | §17 Směny – admin ruční opravy hodin a přečerpání dovolené (odchod zaměstnance) |

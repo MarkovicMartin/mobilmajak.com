@@ -1175,6 +1175,21 @@ def _parse_optional_decimal(value):
         raise ValueError('Neplatná číselná hodnota') from exc
 
 
+def _vacation_overview_snapshot(user, rok=None):
+    """Aktuální řádek přehledu dovolené pro jednoho uživatele (DV5)."""
+    from .payroll_service import build_prumer_mzdy_cache_for_prumer
+
+    rok = rok or date.today().year
+    referencni_datum = date.today()
+    hours_cache = build_hours_cache_for_overview(rok, referencni_datum=referencni_datum)
+    ref_mesic = _reference_month_for_prumer(rok, referencni_datum)
+    prumer_cache = build_prumer_mzdy_cache_for_prumer([user.id], rok, ref_mesic)
+    return build_vacation_overview_user(
+        user, rok, referencni_datum=referencni_datum,
+        hours_cache=hours_cache, prumer_cache=prumer_cache,
+    )
+
+
 @api_view(['PATCH'])
 @permission_classes([IsAuthenticated])
 def vacation_corrections_update(request, user_id):
@@ -1210,7 +1225,12 @@ def vacation_corrections_update(request, user_id):
     )
 
     stav = dovolena_stav(user, date.today().year)
-    return Response({'message': 'Korekce dovolené uložena', 'stav': stav})
+    rok = date.today().year
+    return Response({
+        'message': 'Korekce dovolené uložena',
+        'stav': stav,
+        'overview': _vacation_overview_snapshot(user, rok),
+    })
 
 
 @api_view(['GET', 'POST'])
@@ -1223,6 +1243,7 @@ def prumer_overrides(request):
 
     from .models import PrumerMzdyMesicOverride
     from .prumer_mzdy_override import clear_prumer_mzdy_override_cache, serialize_prumer_override
+    from .admin_audit import log_prumer_override_change
 
     if request.method == 'GET':
         qs = PrumerMzdyMesicOverride.objects.select_related('zmenil', 'user')
@@ -1249,6 +1270,10 @@ def prumer_overrides(request):
     if not (1 <= mesic <= 12):
         return Response({'error': 'Neplatný měsíc'}, status=status.HTTP_400_BAD_REQUEST)
 
+    existing = PrumerMzdyMesicOverride.objects.filter(user=user, rok=rok, mesic=mesic).first()
+    pred_odprac = existing.odpracovano_h if existing else None
+    pred_fixni = existing.fixni_body if existing else None
+
     row, _created = PrumerMzdyMesicOverride.objects.update_or_create(
         user=user,
         rok=rok,
@@ -1260,9 +1285,26 @@ def prumer_overrides(request):
             'zmenil': request.user,
         },
     )
+    log_prumer_override_change(
+        user=user,
+        zmenil=request.user,
+        akce='create' if _created else 'update',
+        rok=rok,
+        mesic=mesic,
+        override=row,
+        odpracovano_h_pred=pred_odprac,
+        odpracovano_h_po=row.odpracovano_h,
+        fixni_body_pred=pred_fixni,
+        fixni_body_po=row.fixni_body,
+        poznamka=row.poznamka,
+    )
     clear_prumer_mzdy_override_cache()
     return Response(
-        {'message': 'Ruční hodiny uloženy', 'override': serialize_prumer_override(row)},
+        {
+            'message': 'Ruční hodiny uloženy',
+            'override': serialize_prumer_override(row),
+            'overview': _vacation_overview_snapshot(user, rok),
+        },
         status=status.HTTP_201_CREATED,
     )
 
@@ -1277,15 +1319,36 @@ def prumer_override_detail(request, override_id):
 
     from .models import PrumerMzdyMesicOverride
     from .prumer_mzdy_override import clear_prumer_mzdy_override_cache, serialize_prumer_override
+    from .admin_audit import log_prumer_override_change
 
     row = get_object_or_404(PrumerMzdyMesicOverride, id=override_id)
 
     if request.method == 'DELETE':
+        log_prumer_override_change(
+            user=row.user,
+            zmenil=request.user,
+            akce='delete',
+            rok=row.rok,
+            mesic=row.mesic,
+            override=None,
+            odpracovano_h_pred=row.odpracovano_h,
+            odpracovano_h_po=None,
+            fixni_body_pred=row.fixni_body,
+            fixni_body_po=None,
+            poznamka=row.poznamka,
+        )
+        user = row.user
+        rok = row.rok
         row.delete()
         clear_prumer_mzdy_override_cache()
-        return Response({'message': 'Ruční hodiny smazány'})
+        return Response({
+            'message': 'Ruční hodiny smazány',
+            'overview': _vacation_overview_snapshot(user, rok),
+        })
 
     data = request.data
+    pred_odprac = row.odpracovano_h
+    pred_fixni = row.fixni_body
     try:
         if 'odpracovano_h' in data:
             val = _parse_optional_decimal(data.get('odpracovano_h'))
@@ -1301,6 +1364,49 @@ def prumer_override_detail(request, override_id):
 
     row.zmenil = request.user
     row.save()
+    log_prumer_override_change(
+        user=row.user,
+        zmenil=request.user,
+        akce='update',
+        rok=row.rok,
+        mesic=row.mesic,
+        override=row,
+        odpracovano_h_pred=pred_odprac,
+        odpracovano_h_po=row.odpracovano_h,
+        fixni_body_pred=pred_fixni,
+        fixni_body_po=row.fixni_body,
+        poznamka=row.poznamka,
+    )
     clear_prumer_mzdy_override_cache()
-    return Response({'message': 'Ruční hodiny aktualizovány', 'override': serialize_prumer_override(row)})
+    return Response({
+        'message': 'Ruční hodiny aktualizovány',
+        'override': serialize_prumer_override(row),
+        'overview': _vacation_overview_snapshot(row.user, row.rok),
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def admin_adjustment_audit(request):
+    """Admin: historie korekcí dovolené a ručních hodin."""
+    denied = _admin_required_response(request)
+    if denied:
+        return denied
+
+    user_id = request.GET.get('user_id')
+    if not user_id:
+        return Response({'error': 'Chybí user_id'}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        uid = int(user_id)
+    except (TypeError, ValueError):
+        return Response({'error': 'Neplatné user_id'}, status=status.HTTP_400_BAD_REQUEST)
+
+    limit_param = request.GET.get('limit', '30')
+    try:
+        limit = min(max(int(limit_param), 1), 100)
+    except (TypeError, ValueError):
+        limit = 30
+
+    from .admin_audit import fetch_admin_adjustment_audit
+    return Response({'entries': fetch_admin_adjustment_audit(uid, limit)})
 

@@ -302,3 +302,49 @@ class DovolenaKorekceLog(models.Model):
 
     def __str__(self):
         return f'{self.user_id} – {self.vytvoreno:%Y-%m-%d %H:%M}'
+
+
+class PrumerMzdyMesicOverrideLog(models.Model):
+    """Audit změn ručních hodin pro průměr mzdy."""
+
+    AKCE = [
+        ('create', 'Vytvoření'),
+        ('update', 'Úprava'),
+        ('delete', 'Smazání'),
+    ]
+
+    user = models.ForeignKey(
+        WebUser, on_delete=models.CASCADE, related_name='prumer_mzdy_override_logy',
+    )
+    zmenil = models.ForeignKey(
+        WebUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='prumer_mzdy_override_logy_provedl',
+    )
+    override = models.ForeignKey(
+        PrumerMzdyMesicOverride,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='audit_logy',
+    )
+    akce = models.CharField(max_length=20, choices=AKCE)
+    rok = models.PositiveSmallIntegerField()
+    mesic = models.PositiveSmallIntegerField()
+    odpracovano_h_pred = models.DecimalField(max_digits=7, decimal_places=2, null=True, blank=True)
+    odpracovano_h_po = models.DecimalField(max_digits=7, decimal_places=2, null=True, blank=True)
+    fixni_body_pred = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    fixni_body_po = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    poznamka = models.TextField(blank=True, default='')
+    vytvoreno = SafeDateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'WEB_PRUMER_MZDY_OVERRIDE_LOG'
+        verbose_name = 'Log ručních hodin'
+        verbose_name_plural = 'Logy ručních hodin'
+        ordering = ['-vytvoreno']
+
+    def __str__(self):
+        return f'{self.user_id} {self.rok}-{self.mesic:02d} {self.akce}'

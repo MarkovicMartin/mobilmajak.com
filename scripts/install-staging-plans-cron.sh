@@ -1,5 +1,6 @@
 #!/bin/bash
-# Přidá cron pro plány na staging VPS (webmajak user). Idempotentní.
+# Cron pro plány na staging VPS (webmajak user). Idempotentní.
+# POZOR: produkce používá install-production-plans-cron.sh – tento skript jen pro dočasný staging test.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"

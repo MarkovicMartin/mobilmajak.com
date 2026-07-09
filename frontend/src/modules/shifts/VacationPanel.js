@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { formatPoints, formatNumber } from '../../utils/formatBody';
+import { dispatchAdminAdjustmentSaved } from './adminAdjustmentSync';
 import './VacationPanel.css';
 
 const MONTH_NAMES = [
@@ -68,13 +69,35 @@ function clearVacationCache(rok) {
     }
 }
 
-function VacationAdminSection({ row, rok, onSaved }) {
+const AUDIT_FIELD_LABELS = {
+    fond_extra_h: 'Navýšení fondu',
+    korekce_cerpano_h: 'Korekce čerpání',
+    odpracovano_h: 'Odpracováno',
+    fixni_body: 'Fixní body',
+};
+
+function formatAuditValue(pole, value) {
+    if (value == null || value === '') return '—';
+    if (pole === 'fixni_body') return formatPoints(value);
+    return `${formatNumber(value)} h`;
+}
+
+function formatAuditEntryTitle(entry) {
+    if (entry.typ === 'dovolena') return 'Korekce dovolené';
+    const akce = { create: 'Nový měsíc', update: 'Úprava měsíce', delete: 'Smazání měsíce' };
+    const mesicLabel = entry.mesic ? MONTH_NAMES[entry.mesic - 1] : '';
+    return `Průměr – ${akce[entry.akce] || entry.akce} ${mesicLabel} ${entry.rok || ''}`.trim();
+}
+
+function VacationAdminSection({ row, rok, onSaved, onUserUpdated }) {
     const [fondExtra, setFondExtra] = useState(row.fond_extra_h ?? '');
     const [korekce, setKorekce] = useState(row.korekce_cerpano_h ?? '');
     const [poznamka, setPoznamka] = useState('');
     const [saving, setSaving] = useState(false);
     const [adminError, setAdminError] = useState('');
     const [overrides, setOverrides] = useState([]);
+    const [auditEntries, setAuditEntries] = useState([]);
+    const [auditLoading, setAuditLoading] = useState(false);
     const [newOverride, setNewOverride] = useState({
         mesic: '',
         odpracovano_h: '',
@@ -97,6 +120,24 @@ function VacationAdminSection({ row, rok, onSaved }) {
         }
     }, [row.user_id, rok]);
 
+    const loadAudit = useCallback(async () => {
+        setAuditLoading(true);
+        try {
+            const res = await fetch(
+                `/api/shifts/admin-adjustment-audit/?user_id=${row.user_id}`,
+                { credentials: 'include' },
+            );
+            if (res.ok) {
+                const data = await res.json();
+                setAuditEntries(data.entries || []);
+            }
+        } catch {
+            setAuditEntries([]);
+        } finally {
+            setAuditLoading(false);
+        }
+    }, [row.user_id]);
+
     useEffect(() => {
         setFondExtra(row.fond_extra_h ?? '');
         setKorekce(row.korekce_cerpano_h ?? '');
@@ -104,7 +145,17 @@ function VacationAdminSection({ row, rok, onSaved }) {
 
     useEffect(() => {
         loadOverrides();
-    }, [loadOverrides]);
+        loadAudit();
+    }, [loadOverrides, loadAudit]);
+
+    const applySaveResult = async (data, { mesic } = {}) => {
+        if (data.overview) {
+            onUserUpdated?.(data.overview);
+        }
+        dispatchAdminAdjustmentSaved({ rok, mesic });
+        await loadAudit();
+        onSaved();
+    };
 
     const saveCorrections = async () => {
         setSaving(true);
@@ -123,7 +174,7 @@ function VacationAdminSection({ row, rok, onSaved }) {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Uložení korekce selhalo');
             setPoznamka('');
-            onSaved();
+            await applySaveResult(data);
         } catch (e) {
             setAdminError(e.message);
         } finally {
@@ -132,6 +183,7 @@ function VacationAdminSection({ row, rok, onSaved }) {
     };
 
     const saveOverride = async () => {
+        const mesicNum = Number(newOverride.mesic);
         setSaving(true);
         setAdminError('');
         try {
@@ -142,7 +194,7 @@ function VacationAdminSection({ row, rok, onSaved }) {
                 body: JSON.stringify({
                     user_id: row.user_id,
                     rok,
-                    mesic: Number(newOverride.mesic),
+                    mesic: mesicNum,
                     odpracovano_h: newOverride.odpracovano_h,
                     fixni_body: newOverride.fixni_body || null,
                     poznamka: newOverride.poznamka,
@@ -152,7 +204,7 @@ function VacationAdminSection({ row, rok, onSaved }) {
             if (!res.ok) throw new Error(data.error || 'Uložení hodin selhalo');
             setNewOverride({ mesic: '', odpracovano_h: '', fixni_body: '', poznamka: '' });
             await loadOverrides();
-            onSaved();
+            await applySaveResult(data, { mesic: mesicNum });
         } catch (e) {
             setAdminError(e.message);
         } finally {
@@ -161,6 +213,7 @@ function VacationAdminSection({ row, rok, onSaved }) {
     };
 
     const deleteOverride = async (id) => {
+        const target = overrides.find((o) => o.id === id);
         setSaving(true);
         setAdminError('');
         try {
@@ -168,12 +221,12 @@ function VacationAdminSection({ row, rok, onSaved }) {
                 method: 'DELETE',
                 credentials: 'include',
             });
+            const data = await res.json().catch(() => ({}));
             if (!res.ok) {
-                const data = await res.json();
                 throw new Error(data.error || 'Smazání selhalo');
             }
             await loadOverrides();
-            onSaved();
+            await applySaveResult(data, { mesic: target?.mesic });
         } catch (e) {
             setAdminError(e.message);
         } finally {
@@ -269,6 +322,49 @@ function VacationAdminSection({ row, rok, onSaved }) {
             )}
 
             {adminError && <p className="vacation-admin-error">{adminError}</p>}
+
+            <h4>Historie změn</h4>
+            {auditLoading && auditEntries.length === 0 && (
+                <p className="vacation-audit-loading">Načítám historii…</p>
+            )}
+            {!auditLoading && auditEntries.length === 0 && (
+                <p className="vacation-audit-empty">Zatím žádné záznamy.</p>
+            )}
+            {auditEntries.length > 0 && (
+                <ul className="vacation-audit-list">
+                    {auditEntries.map((entry) => (
+                        <li key={`${entry.typ}-${entry.id}`} className="vacation-audit-item">
+                            <div className="vacation-audit-head">
+                                <strong>{formatAuditEntryTitle(entry)}</strong>
+                                <span className="vacation-audit-meta">
+                                    {entry.vytvoreno
+                                        ? new Date(entry.vytvoreno).toLocaleString('cs-CZ')
+                                        : ''}
+                                    {entry.zmenil_jmeno ? ` · ${entry.zmenil_jmeno}` : ''}
+                                </span>
+                            </div>
+                            <ul className="vacation-audit-changes">
+                                {(entry.zmeny || []).map((zmena) => {
+                                    if (zmena.pred == null && zmena.po == null) return null;
+                                    if (zmena.pred === zmena.po) return null;
+                                    return (
+                                        <li key={zmena.pole}>
+                                            {AUDIT_FIELD_LABELS[zmena.pole] || zmena.pole}:
+                                            {' '}
+                                            {formatAuditValue(zmena.pole, zmena.pred)}
+                                            {' → '}
+                                            {formatAuditValue(zmena.pole, zmena.po)}
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                            {entry.poznamka ? (
+                                <p className="vacation-audit-note">{entry.poznamka}</p>
+                            ) : null}
+                        </li>
+                    ))}
+                </ul>
+            )}
         </div>
     );
 }
@@ -283,9 +379,9 @@ function VacationPanel({ user }) {
     const [expandedId, setExpandedId] = useState(null);
     const fetchSeq = useRef(0);
 
-    const loadOverview = useCallback(async () => {
+    const loadOverview = useCallback(async ({ force = false } = {}) => {
         const seq = ++fetchSeq.current;
-        const cached = readCache(rok);
+        const cached = force ? null : readCache(rok);
         const hasCachedUsers = Boolean(cached?.data?.users?.length);
 
         if (cached?.data) {
@@ -296,7 +392,7 @@ function VacationPanel({ user }) {
         }
         setError('');
 
-        if (!needsBackgroundRefresh(rok, cached)) {
+        if (!force && !needsBackgroundRefresh(rok, cached)) {
             return;
         }
 
@@ -336,9 +432,23 @@ function VacationPanel({ user }) {
         setRok((y) => y + delta);
     };
 
+    const patchUserOverview = useCallback((overview) => {
+        if (!overview?.user_id) return;
+        setUsers((prev) => prev.map((u) => (
+            u.user_id === overview.user_id ? { ...u, ...overview } : u
+        )));
+        const cached = readCache(rok);
+        if (cached?.data?.users) {
+            const nextUsers = cached.data.users.map((u) => (
+                u.user_id === overview.user_id ? { ...u, ...overview } : u
+            ));
+            writeCache(rok, { data: { ...cached.data, users: nextUsers } });
+        }
+    }, [rok]);
+
     const reloadOverview = useCallback(() => {
         clearVacationCache(rok);
-        loadOverview();
+        return loadOverview({ force: true });
     }, [rok, loadOverview]);
 
     const isAdmin = user?.role === 'ADMIN';
@@ -512,7 +622,12 @@ function VacationPanel({ user }) {
                         )}
 
                         {isAdmin && (
-                            <VacationAdminSection row={row} rok={rok} onSaved={reloadOverview} />
+                            <VacationAdminSection
+                                row={row}
+                                rok={rok}
+                                onSaved={reloadOverview}
+                                onUserUpdated={patchUserOverview}
+                            />
                         )}
                     </div>
                 )}

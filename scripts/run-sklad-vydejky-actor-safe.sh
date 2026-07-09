@@ -40,6 +40,13 @@ TO=$(date +%Y-%m-%d)
 echo "$(date '+%Y-%m-%d %H:%M:%S') - Start sklad-vydejky actor ($FROM .. $TO)" >> "$LOG_FILE"
 
 cd "$ACTOR_DIR" || exit 1
+if [[ -f "$ACTOR_DIR/.env" ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "$ACTOR_DIR/.env"
+  set +a
+fi
+export SYMPLIO_SCRIPTS_DIR="$ACTOR_DIR"
 set +e
 HEADLESS=1 CHROME_BIN=/usr/bin/google-chrome /usr/bin/node import-sklad-vydejky.js --from "$FROM" --to "$TO" >> "$LOG_FILE" 2>&1
 EXIT_CODE=$?

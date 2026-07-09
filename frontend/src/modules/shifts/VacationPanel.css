@@ -76,3 +76,48 @@
     font-size: 13px;
     margin: 8px 0 0;
 }
+
+.vacation-audit-loading,
+.vacation-audit-empty {
+    font-size: 13px;
+    color: #666;
+    margin: 0 0 8px;
+}
+
+.vacation-audit-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    font-size: 13px;
+}
+
+.vacation-audit-item {
+    padding: 10px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.vacation-audit-head {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: space-between;
+    margin-bottom: 4px;
+}
+
+.vacation-audit-meta {
+    color: #666;
+    font-size: 12px;
+}
+
+.vacation-audit-changes {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    color: #333;
+}
+
+.vacation-audit-note {
+    margin: 6px 0 0;
+    font-style: italic;
+    color: #555;
+}

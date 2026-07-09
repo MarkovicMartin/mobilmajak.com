@@ -9,6 +9,7 @@ import {
 import { formatPoints, formatNumber } from '../../utils/formatBody';
 import { manualNumberInputClass, preventNumberInputWheel } from '../../utils/manualNumberInput';
 import SymplioDocLink from '../../components/SymplioDocLink';
+import { ADMIN_ADJUSTMENT_EVENT } from './adminAdjustmentSync';
 import './PayrollPanel.css';
 
 const CACHE_PREFIX = 'payroll-overview-v3';
@@ -714,6 +715,22 @@ function PayrollPanel({ month, onExport }) {
             loadVydejkyRows({ background: true });
         }
     }, [month, vydejkyTotals.doklady, loadVydejkyRows]);
+
+    useEffect(() => {
+        const handler = (event) => {
+            const { months } = event.detail || {};
+            if (!month || !months?.includes(month)) return;
+            memoryCache.delete(month);
+            try {
+                sessionStorage.removeItem(cacheKey(month));
+            } catch {
+                // ignore
+            }
+            loadPayroll({ force: true });
+        };
+        window.addEventListener(ADMIN_ADJUSTMENT_EVENT, handler);
+        return () => window.removeEventListener(ADMIN_ADJUSTMENT_EVENT, handler);
+    }, [month, loadPayroll]);
 
     useEffect(() => {
         if (discountedOpen && discountedCount > 0 && !discountedRowsLoadedRef.current) {
