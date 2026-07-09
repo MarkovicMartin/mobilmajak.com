@@ -82,6 +82,31 @@ class BackofficePositionTest(TestCase):
         pozice = _normalize_pozice_smeny(self.prodejna, 'prace', 'prodej', user=user)
         self.assertEqual(pozice, 'backoffice')
 
+    def test_backoffice_poznamka_povinna(self):
+        from shifts.shift_helpers import backoffice_poznamka_chyba
+
+        self.assertIsNotNone(backoffice_poznamka_chyba('prace', 'backoffice', ''))
+        self.assertIsNone(backoffice_poznamka_chyba('prace', 'backoffice', 'Fakturace'))
+        self.assertIsNone(backoffice_poznamka_chyba('prace', 'prodej', ''))
+
+    def test_resolve_work_shift_prodejna_backoffice(self):
+        from shifts.views import _resolve_work_shift_prodejna
+
+        user = WebUser(
+            id=9908,
+            jmeno='Centr',
+            prijmeni='Staff',
+            role='PRODEJCE',
+            prodejna_id=None,
+        )
+        prodejna = _resolve_work_shift_prodejna(
+            {'prodejna': self.prodejna.id},
+            'prace',
+            user,
+            'backoffice',
+        )
+        self.assertIsNone(prodejna)
+
     def test_migration_sets_existing_shifts(self):
         user = WebUser.objects.create(
             id=9904,

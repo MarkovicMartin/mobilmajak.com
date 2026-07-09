@@ -73,14 +73,19 @@ def _normalize_pozice_smeny(prodejna, typ_smeny, raw_pozice, user=None):
 
 
 def _resolve_work_shift_prodejna(data, typ_smeny, user, raw_pozice=None):
-    """Home office a absence nemají prodejnu; jinak povinná prodejna."""
+    """Home office, backoffice a absence nemají prodejnu; jinak povinná prodejna."""
     if is_absence_shift(typ_smeny):
         return None
     pozice = _normalize_pozice_smeny(None, typ_smeny, raw_pozice, user=user)
-    from shifts.shift_helpers import is_home_office_pozice
-    if is_home_office_pozice(pozice):
+    from shifts.shift_helpers import smena_bez_prodejny
+    if smena_bez_prodejny(pozice):
         return None
     return resolve_prodejna(data.get('prodejna'), typ_smeny)
+
+
+def _validate_shift_poznamka(typ_smeny, pozice, poznamka):
+    from shifts.shift_helpers import backoffice_poznamka_chyba
+    return backoffice_poznamka_chyba(typ_smeny, pozice, poznamka)
 
 
 @api_view(['GET'])
@@ -247,6 +252,13 @@ def smeny_list(request):
             elif is_absence_shift(typ_smeny):
                 cas_od, cas_do = normalize_dovolena_casy(shift_datum, cas_od, cas_do)
 
+            pozice = _normalize_pozice_smeny(
+                prodejna_obj, typ_smeny, data.get('pozice_smeny'), user=user,
+            )
+            poznamka_err = _validate_shift_poznamka(typ_smeny, pozice, data.get('poznamka', ''))
+            if poznamka_err:
+                return Response({'error': poznamka_err}, status=status.HTTP_400_BAD_REQUEST)
+
             with transaction.atomic():
                 Smena.objects.select_for_update().filter(
                     user=user, datum=shift_datum, aktivni=True,
@@ -348,6 +360,13 @@ def smeny_bulk_create(request):
         except ValueError as exc:
             return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
+        pozice = _normalize_pozice_smeny(
+            prodejna_obj, typ_smeny, data.get('pozice_smeny'), user=user,
+        )
+        poznamka_err = _validate_shift_poznamka(typ_smeny, pozice, poznamka)
+        if poznamka_err:
+            return Response({'error': poznamka_err}, status=status.HTTP_400_BAD_REQUEST)
+
         for datum_str in datumy:
             try:
                 datum = datetime.strptime(datum_str, '%Y-%m-%d').date()
@@ -441,14 +460,14 @@ def smena_detail(request, smena_id):
             if is_absence_shift(smena.typ_smeny):
                 smena.prodejna = None
             elif 'pozice_smeny' in data or 'typ_smeny' in data or 'prodejna' in data:
-                from shifts.shift_helpers import is_home_office_pozice
+                from shifts.shift_helpers import smena_bez_prodejny
                 smena.pozice_smeny = _normalize_pozice_smeny(
                     smena.prodejna,
                     smena.typ_smeny,
                     data.get('pozice_smeny', smena.pozice_smeny),
                     user=smena.user,
                 )
-                if is_home_office_pozice(smena.pozice_smeny):
+                if smena_bez_prodejny(smena.pozice_smeny):
                     smena.prodejna = None
                 elif 'prodejna' in data:
                     try:
@@ -488,6 +507,20 @@ def smena_detail(request, smena_id):
                 )
             if 'poznamka' in data:
                 smena.poznamka = data['poznamka']
+
+            if not is_absence_shift(smena.typ_smeny):
+                from shifts.shift_helpers import smena_bez_prodejny
+                smena.pozice_smeny = _normalize_pozice_smeny(
+                    smena.prodejna,
+                    smena.typ_smeny,
+                    smena.pozice_smeny,
+                    user=smena.user,
+                )
+                if smena_bez_prodejny(smena.pozice_smeny):
+                    smena.prodejna = None
+            poznamka_err = _validate_shift_poznamka(smena.typ_smeny, smena.pozice_smeny, smena.poznamka)
+            if poznamka_err:
+                return Response({'error': poznamka_err}, status=status.HTTP_400_BAD_REQUEST)
 
             conflict = find_overlapping_shift(
                 smena.user,
@@ -545,6 +578,9 @@ def _shift_calendar_payload(smena):
     elif pozice == 'home_office' and not smena.prodejna_id:
         store_name = 'Home office'
         store_color = '#5f6368'
+    elif pozice == 'backoffice' and not smena.prodejna_id:
+        store_name = 'Backoffice'
+        store_color = '#5f6368'
     elif p:
         store_name = (p.nazev_kratkiy or p.nazev or '').strip()
         store_color = p.barva or '#0066cc'
@@ -579,6 +615,11 @@ def _format_smena_info(smena, include_store=False):
         if smena.prodejna_id:
             store = (smena.prodejna.nazev_kratkiy or smena.prodejna.nazev or '').strip()
             return f"{store}: {smena.user.prijmeni} ({cas})"
+        from shifts.shift_helpers import is_backoffice_pozice
+        if is_backoffice_pozice(smena.pozice_smeny):
+            return f"Backoffice: {smena.user.prijmeni} ({cas})"
+        if (smena.pozice_smeny or '') == 'home_office':
+            return f"Home office: {smena.user.prijmeni} ({cas})"
         return f"{smena.user.prijmeni} ({cas})"
     return f"{smena.user.prijmeni} ({cas})"
 
@@ -831,9 +872,18 @@ def vacation_overview(request):
 
 def _smena_detail_row(smena):
     """Jeden řádek detailního rozpisu – plán + skutečná docházka."""
+    from shifts.shift_helpers import is_backoffice_pozice
+    if smena.prodejna_id:
+        prodejna_label = smena.prodejna.nazev
+    elif is_backoffice_pozice(smena.pozice_smeny):
+        prodejna_label = 'Backoffice'
+    elif (smena.pozice_smeny or '') == 'home_office':
+        prodejna_label = 'Home office'
+    else:
+        prodejna_label = ''
     row = {
         'datum': smena.datum,
-        'prodejna': smena.prodejna.nazev if smena.prodejna_id else '',
+        'prodejna': prodejna_label,
         'cas_od': smena.cas_od,
         'cas_do': smena.cas_do,
         'hodiny': dovolena_hodin_ze_smeny(smena) if smena.typ_smeny == 'dovolena' else smena.delka_smeny_hodin,
@@ -1090,4 +1140,153 @@ def export_smeny(request):
         import traceback
         traceback.print_exc()
         return Response({'error': f'Chyba při exportu: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+def _admin_required_response(request):
+    if getattr(request.user, 'role', None) != 'ADMIN':
+        return Response(
+            {'error': 'Přístup pouze pro administrátory'},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+    return None
+
+
+def _parse_optional_decimal(value):
+    if value is None or value == '':
+        return None
+    from decimal import Decimal, InvalidOperation
+    try:
+        return Decimal(str(value))
+    except InvalidOperation as exc:
+        raise ValueError('Neplatná číselná hodnota') from exc
+
+
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
+def vacation_corrections_update(request, user_id):
+    """Admin: úprava dovolena_fond_extra_h / dovolena_korekce_cerpano_h."""
+    denied = _admin_required_response(request)
+    if denied:
+        return denied
+
+    user = get_object_or_404(WebUser, id=user_id)
+    data = request.data
+    pred_fond = user.dovolena_fond_extra_h
+    pred_korekce = user.dovolena_korekce_cerpano_h
+
+    try:
+        if 'dovolena_fond_extra_h' in data:
+            user.dovolena_fond_extra_h = _parse_optional_decimal(data.get('dovolena_fond_extra_h'))
+        if 'dovolena_korekce_cerpano_h' in data:
+            user.dovolena_korekce_cerpano_h = _parse_optional_decimal(data.get('dovolena_korekce_cerpano_h'))
+    except ValueError as exc:
+        return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+    user.save(update_fields=['dovolena_fond_extra_h', 'dovolena_korekce_cerpano_h', 'datum_upravy'])
+
+    from .models import DovolenaKorekceLog
+    DovolenaKorekceLog.objects.create(
+        user=user,
+        zmenil=request.user,
+        fond_extra_h_pred=pred_fond,
+        fond_extra_h_po=user.dovolena_fond_extra_h,
+        korekce_cerpano_h_pred=pred_korekce,
+        korekce_cerpano_h_po=user.dovolena_korekce_cerpano_h,
+        poznamka=(data.get('poznamka') or '').strip(),
+    )
+
+    stav = dovolena_stav(user, date.today().year)
+    return Response({'message': 'Korekce dovolené uložena', 'stav': stav})
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def prumer_overrides(request):
+    """Admin: seznam / vytvoření ručních hodin pro průměr mzdy."""
+    denied = _admin_required_response(request)
+    if denied:
+        return denied
+
+    from .models import PrumerMzdyMesicOverride
+    from .prumer_mzdy_override import clear_prumer_mzdy_override_cache, serialize_prumer_override
+
+    if request.method == 'GET':
+        qs = PrumerMzdyMesicOverride.objects.select_related('zmenil', 'user')
+        user_id = request.GET.get('user_id')
+        rok = request.GET.get('rok')
+        if user_id:
+            qs = qs.filter(user_id=int(user_id))
+        if rok:
+            qs = qs.filter(rok=int(rok))
+        return Response({'overrides': [serialize_prumer_override(r) for r in qs]})
+
+    data = request.data
+    try:
+        user = get_object_or_404(WebUser, id=int(data['user_id']))
+        rok = int(data['rok'])
+        mesic = int(data['mesic'])
+        odpracovano_h = _parse_optional_decimal(data.get('odpracovano_h'))
+        if odpracovano_h is None:
+            return Response({'error': 'Chybí odpracovano_h'}, status=status.HTTP_400_BAD_REQUEST)
+        fixni_body = _parse_optional_decimal(data.get('fixni_body')) if 'fixni_body' in data else None
+    except (KeyError, TypeError, ValueError) as exc:
+        return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+    if not (1 <= mesic <= 12):
+        return Response({'error': 'Neplatný měsíc'}, status=status.HTTP_400_BAD_REQUEST)
+
+    row, _created = PrumerMzdyMesicOverride.objects.update_or_create(
+        user=user,
+        rok=rok,
+        mesic=mesic,
+        defaults={
+            'odpracovano_h': odpracovano_h,
+            'fixni_body': fixni_body,
+            'poznamka': (data.get('poznamka') or '').strip(),
+            'zmenil': request.user,
+        },
+    )
+    clear_prumer_mzdy_override_cache()
+    return Response(
+        {'message': 'Ruční hodiny uloženy', 'override': serialize_prumer_override(row)},
+        status=status.HTTP_201_CREATED,
+    )
+
+
+@api_view(['PUT', 'DELETE'])
+@permission_classes([IsAuthenticated])
+def prumer_override_detail(request, override_id):
+    """Admin: úprava / smazání ručních hodin."""
+    denied = _admin_required_response(request)
+    if denied:
+        return denied
+
+    from .models import PrumerMzdyMesicOverride
+    from .prumer_mzdy_override import clear_prumer_mzdy_override_cache, serialize_prumer_override
+
+    row = get_object_or_404(PrumerMzdyMesicOverride, id=override_id)
+
+    if request.method == 'DELETE':
+        row.delete()
+        clear_prumer_mzdy_override_cache()
+        return Response({'message': 'Ruční hodiny smazány'})
+
+    data = request.data
+    try:
+        if 'odpracovano_h' in data:
+            val = _parse_optional_decimal(data.get('odpracovano_h'))
+            if val is None:
+                return Response({'error': 'odpracovano_h je povinné'}, status=status.HTTP_400_BAD_REQUEST)
+            row.odpracovano_h = val
+        if 'fixni_body' in data:
+            row.fixni_body = _parse_optional_decimal(data.get('fixni_body'))
+        if 'poznamka' in data:
+            row.poznamka = (data.get('poznamka') or '').strip()
+    except ValueError as exc:
+        return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+    row.zmenil = request.user
+    row.save()
+    clear_prumer_mzdy_override_cache()
+    return Response({'message': 'Ruční hodiny aktualizovány', 'override': serialize_prumer_override(row)})
 

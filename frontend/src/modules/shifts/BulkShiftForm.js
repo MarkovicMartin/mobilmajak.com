@@ -3,20 +3,23 @@ import Modal from '../../components/Modal';
 import { userAPI, storeAPI } from '../../services/api';
 import './BulkShiftForm.css';
 import UnifiedCalendar from './UnifiedCalendar';
-import { isBackofficeUser, isAdminUser, isHomeOfficePozice } from './shiftBackoffice';
+import { isBackofficeUser, isAdminUser, isHomeOfficePozice, BACKOFFICE_LOCATION, isBackofficeLocation, isBackofficeWorkShift } from './shiftBackoffice';
 import { format } from 'date-fns';
 import { userMayEditShiftOnDate } from './shiftEditPolicy';
 
 function BulkShiftForm({ user, onClose, onSuccess, initialDates = [], initialMonth = null }) {
-    const [formData, setFormData] = useState({
-        prodejna: user?.prodejna_id || null,
-        cas_od: '08:00',
-        cas_do: '20:00',
-        typ_smeny: 'prace',
-        brigadnik_rezim: 'prodejce',
-        pozice_smeny: 'prodej',
-        poznamka: '',
-        user_id: (user && ['ADMIN', 'VEDOUCI'].includes(user.role)) ? user.id : undefined,
+    const [formData, setFormData] = useState(() => {
+        const backoffice = isBackofficeUser(user);
+        return {
+            prodejna: backoffice ? BACKOFFICE_LOCATION : (user?.prodejna_id || null),
+            cas_od: '08:00',
+            cas_do: '20:00',
+            typ_smeny: 'prace',
+            brigadnik_rezim: 'prodejce',
+            pozice_smeny: backoffice ? 'backoffice' : 'prodej',
+            poznamka: '',
+            user_id: (user && ['ADMIN', 'VEDOUCI'].includes(user.role)) ? user.id : undefined,
+        };
     });
     const [users, setUsers] = useState([]);
     const [stores, setStores] = useState([]);
@@ -40,12 +43,31 @@ function BulkShiftForm({ user, onClose, onSuccess, initialDates = [], initialMon
                 const data = await storeAPI.getStoreChoices();
                 const list = data.stores || [];
                 setStores(list);
-                setFormData(prev => ({ ...prev, prodejna: prev.prodejna || user?.prodejna_id || (list[0]?.id ?? null) }));
+                setFormData(prev => {
+                    if (isBackofficeLocation(prev.prodejna)) return prev;
+                    return { ...prev, prodejna: prev.prodejna || user?.prodejna_id || (list[0]?.id ?? null) };
+                });
             } catch (_e) {}
         })();
     }, [user]);
 
     useEffect(() => {
+        if (!(user && ['ADMIN', 'VEDOUCI'].includes(user.role))) return;
+        const selected = users.find((u) => u.id === formData.user_id);
+        if (!selected) return;
+        if (isBackofficeUser(selected)) {
+            setFormData((prev) => ({
+                ...prev,
+                prodejna: BACKOFFICE_LOCATION,
+                pozice_smeny: 'backoffice',
+            }));
+        } else if (selected.prodejna_id) {
+            setFormData((prev) => ({ ...prev, prodejna: selected.prodejna_id }));
+        }
+    }, [formData.user_id, users, user]);
+
+    useEffect(() => {
+        if (isBackofficeLocation(formData.prodejna)) return;
         const storeName = stores.find(s => s.id === formData.prodejna)?.nazev;
         if (storeName === 'Senimo') {
             setFormData(prev => ({
@@ -143,13 +165,23 @@ function BulkShiftForm({ user, onClose, onSuccess, initialDates = [], initialMon
     const backofficeUser = isBackofficeUser(selectedUser);
     const adminUser = isAdminUser(selectedUser);
     const homeOfficeShift = isHomeOfficePozice(formData.pozice_smeny);
-    const showPoziceSelect = (servisPoziceEnabled || backofficeUser || adminUser) && formData.typ_smeny === 'prace';
+    const backofficeShift = isBackofficeWorkShift(
+        selectedUser,
+        formData.typ_smeny,
+        formData.pozice_smeny,
+        formData.prodejna,
+    );
+    const showPoziceSelect = (servisPoziceEnabled || backofficeUser || adminUser) && formData.typ_smeny === 'prace' && !backofficeShift;
     const isAbsence = formData.typ_smeny === 'dovolena' || formData.typ_smeny === 'nemoc';
     const isBrigadnikShift = selectedUser?.role === 'BRIGADNIK' && formData.typ_smeny === 'prace';
 
     const handleSubmit = async () => {
         if (selectedDates.size === 0) {
             setError('Vyberte alespoň jeden den');
+            return;
+        }
+        if (backofficeShift && !formData.poznamka?.trim()) {
+            setError('U směny Backoffice je povinná poznámka – popište, co jste ten den dělali.');
             return;
         }
 
@@ -168,8 +200,11 @@ function BulkShiftForm({ user, onClose, onSuccess, initialDates = [], initialMon
             if (!showPoziceSelect) {
                 delete requestData.pozice_smeny;
             }
-            if (homeOfficeShift) {
+            if (homeOfficeShift || backofficeShift) {
                 delete requestData.prodejna;
+            }
+            if (backofficeShift) {
+                requestData.pozice_smeny = 'backoffice';
             }
             if (isAbsence) {
                 delete requestData.prodejna;
@@ -275,16 +310,35 @@ function BulkShiftForm({ user, onClose, onSuccess, initialDates = [], initialMon
                                 )}
                                 {!isAbsence && (
                                 <div className="form-group">
-                                    <label className="form-label">Prodejna:</label>
-                                    <select 
+                                    <label className="form-label">Pobočka:</label>
+                                    <select
                                         className="form-select"
-                                        value={formData.prodejna || ''}
-                                        onChange={(e) => setFormData(prev => ({...prev, prodejna: Number(e.target.value)}))}
+                                        value={backofficeShift ? BACKOFFICE_LOCATION : (formData.prodejna || '')}
+                                        onChange={(e) => {
+                                            const raw = e.target.value;
+                                            if (raw === BACKOFFICE_LOCATION) {
+                                                setFormData(prev => ({
+                                                    ...prev,
+                                                    prodejna: BACKOFFICE_LOCATION,
+                                                    pozice_smeny: 'backoffice',
+                                                }));
+                                            } else {
+                                                setFormData(prev => ({
+                                                    ...prev,
+                                                    prodejna: Number(raw),
+                                                    pozice_smeny: prev.pozice_smeny === 'backoffice' ? 'prodej' : prev.pozice_smeny,
+                                                }));
+                                            }
+                                        }}
                                     >
-                                        {stores.map(s => (
-                                            <option key={s.id} value={s.id}>
-                                                {s.nazev}
-                                            </option>
+                                        {backofficeUser && (
+                                            <option value={BACKOFFICE_LOCATION}>Backoffice</option>
+                                        )}
+                                        {!backofficeUser && stores.map(s => (
+                                            <option key={s.id} value={s.id}>{s.nazev}</option>
+                                        ))}
+                                        {backofficeUser && stores.map(s => (
+                                            <option key={s.id} value={s.id}>{s.nazev} (výpomoc)</option>
                                         ))}
                                     </select>
                                 </div>
@@ -365,12 +419,17 @@ function BulkShiftForm({ user, onClose, onSuccess, initialDates = [], initialMon
                             </div>
 
                             <div className="form-group" style={{marginTop: '20px'}}>
-                                <label className="form-label">Poznámka (volitelné):</label>
-                                <textarea 
+                                <label className="form-label">
+                                    {backofficeShift ? 'Co jste ten den dělali *' : 'Poznámka (volitelné)'}:
+                                </label>
+                                <textarea
                                     className="form-textarea"
-                                    placeholder="Doplňující informace ke směně..."
+                                    placeholder={backofficeShift
+                                        ? 'Např. fakturace, objednávky u dodavatelů…'
+                                        : 'Doplňující informace ke směně...'}
                                     value={formData.poznamka}
-                                    onChange={(e) => setFormData(prev => ({...prev, poznamka: e.target.value}))}
+                                    onChange={(e) => setFormData(prev => ({...prev, poznamka: e.target.value }))}
+                                    required={backofficeShift}
                                 />
                             </div>
                         </div>

@@ -237,3 +237,67 @@ class ProdejnaPohybUdalost(models.Model):
     def __str__(self):
         st = 'pohyb' if self.pohyb else 'klid'
         return f'{self.prodejna_id} – {st} – {self.cas}'
+
+
+class PrumerMzdyMesicOverride(models.Model):
+    """Ruční hodiny (a volitelně fixní výplata) pro průměr dovolené – náhrada JSON override."""
+
+    user = models.ForeignKey(
+        WebUser, on_delete=models.CASCADE, related_name='prumer_mzdy_overrides',
+    )
+    rok = models.PositiveSmallIntegerField()
+    mesic = models.PositiveSmallIntegerField()
+    odpracovano_h = models.DecimalField(max_digits=7, decimal_places=2)
+    fixni_body = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True,
+        verbose_name='Fixní výplata za měsíc (body)',
+    )
+    poznamka = models.TextField(blank=True, default='')
+    zmenil = models.ForeignKey(
+        WebUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='prumer_mzdy_overrides_zmenil',
+    )
+    vytvoreno = SafeDateTimeField(auto_now_add=True)
+    upraveno = SafeDateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'WEB_PRUMER_MZDY_OVERRIDE'
+        verbose_name = 'Ruční hodiny pro průměr mzdy'
+        verbose_name_plural = 'Ruční hodiny pro průměr mzdy'
+        unique_together = ['user', 'rok', 'mesic']
+        ordering = ['-rok', '-mesic']
+
+    def __str__(self):
+        return f'{self.user_id} {self.rok}-{self.mesic:02d}: {self.odpracovano_h} h'
+
+
+class DovolenaKorekceLog(models.Model):
+    """Audit změn admin korekce fondu / čerpání dovolené."""
+
+    user = models.ForeignKey(
+        WebUser, on_delete=models.CASCADE, related_name='dovolena_korekce_logy',
+    )
+    zmenil = models.ForeignKey(
+        WebUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='dovolena_korekce_provedl',
+    )
+    fond_extra_h_pred = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    fond_extra_h_po = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    korekce_cerpano_h_pred = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    korekce_cerpano_h_po = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    poznamka = models.TextField(blank=True, default='')
+    vytvoreno = SafeDateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'WEB_DOVOLENA_KOREKCE_LOG'
+        verbose_name = 'Log korekce dovolené'
+        verbose_name_plural = 'Logy korekcí dovolené'
+        ordering = ['-vytvoreno']
+
+    def __str__(self):
+        return f'{self.user_id} – {self.vytvoreno:%Y-%m-%d %H:%M}'

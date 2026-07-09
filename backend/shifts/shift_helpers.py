@@ -23,6 +23,23 @@ def is_home_office_pozice(pozice) -> bool:
     return (pozice or '').strip() == 'home_office'
 
 
+def is_backoffice_pozice(pozice) -> bool:
+    return (pozice or '').strip() == 'backoffice'
+
+
+def backoffice_poznamka_chyba(typ_smeny, pozice, poznamka) -> str | None:
+    """Backoffice směna vyžaduje neprázdnou poznámku – co ten den dělal."""
+    if typ_smeny != 'prace' or not is_backoffice_pozice(pozice):
+        return None
+    if not (poznamka or '').strip():
+        return 'U směny Backoffice je povinná poznámka – popište, co jste ten den dělali.'
+    return None
+
+
+def smena_bez_prodejny(pozice) -> bool:
+    return is_home_office_pozice(pozice) or is_backoffice_pozice(pozice)
+
+
 def backoffice_surname_keys():
     """Všechny varianty příjmení pro mapování (Excel, JSON override)."""
     return BACKOFFICE_SURNAME_KEYS

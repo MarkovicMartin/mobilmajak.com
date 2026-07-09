@@ -595,9 +595,20 @@
 }
 
 .dark-mode .uc-shift-chip,
-.dark-mode .profile-calendar .shift-item.mine {
-    background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
+.dark-mode .shift-item.mine {
+    background: linear-gradient(135deg, var(--brand-navy-hover), var(--brand-navy)) !important;
     color: #fff !important;
+}
+
+.dark-mode .shift-calendar .shift-item.other {
+    background: var(--bg-card) !important;
+    color: var(--text-primary) !important;
+    border-color: color-mix(in srgb, var(--brand-pink) 50%, transparent) !important;
+}
+
+.dark-mode .shift-calendar .shift-item.other .shift-time,
+.dark-mode .shift-calendar .shift-item.other .shift-role-badge {
+    color: var(--text-secondary) !important;
 }
 
 .dark-mode .uc-task-chip {

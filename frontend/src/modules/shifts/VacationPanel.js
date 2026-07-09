@@ -7,7 +7,7 @@ const MONTH_NAMES = [
     'Červenec', 'Srpen', 'Září', 'Říjen', 'Listopad', 'Prosinec',
 ];
 
-const CACHE_PREFIX = 'vacation-overview-v9';
+const CACHE_PREFIX = 'vacation-overview-v10';
 const CURRENT_YEAR_STALE_MS = 5 * 60 * 1000;
 const memoryCache = new Map();
 
@@ -57,6 +57,220 @@ function needsBackgroundRefresh(rok, cached, now = new Date()) {
     if (rok > currentYear) return true;
     // Běžící rok: na pozadí max. jednou za 5 min (hlavička + měsíční tabulka z API).
     return Date.now() - (cached.fetchedAt || 0) > CURRENT_YEAR_STALE_MS;
+}
+
+function clearVacationCache(rok) {
+    memoryCache.delete(rok);
+    try {
+        sessionStorage.removeItem(cacheKey(rok));
+    } catch {
+        // sessionStorage plné
+    }
+}
+
+function VacationAdminSection({ row, rok, onSaved }) {
+    const [fondExtra, setFondExtra] = useState(row.fond_extra_h ?? '');
+    const [korekce, setKorekce] = useState(row.korekce_cerpano_h ?? '');
+    const [poznamka, setPoznamka] = useState('');
+    const [saving, setSaving] = useState(false);
+    const [adminError, setAdminError] = useState('');
+    const [overrides, setOverrides] = useState([]);
+    const [newOverride, setNewOverride] = useState({
+        mesic: '',
+        odpracovano_h: '',
+        fixni_body: '',
+        poznamka: '',
+    });
+
+    const loadOverrides = useCallback(async () => {
+        try {
+            const res = await fetch(
+                `/api/shifts/prumer-overrides/?user_id=${row.user_id}&rok=${rok}`,
+                { credentials: 'include' },
+            );
+            if (res.ok) {
+                const data = await res.json();
+                setOverrides(data.overrides || []);
+            }
+        } catch {
+            setOverrides([]);
+        }
+    }, [row.user_id, rok]);
+
+    useEffect(() => {
+        setFondExtra(row.fond_extra_h ?? '');
+        setKorekce(row.korekce_cerpano_h ?? '');
+    }, [row.fond_extra_h, row.korekce_cerpano_h, row.user_id]);
+
+    useEffect(() => {
+        loadOverrides();
+    }, [loadOverrides]);
+
+    const saveCorrections = async () => {
+        setSaving(true);
+        setAdminError('');
+        try {
+            const res = await fetch(`/api/shifts/vacation-corrections/${row.user_id}/`, {
+                method: 'PATCH',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    dovolena_fond_extra_h: fondExtra === '' ? null : fondExtra,
+                    dovolena_korekce_cerpano_h: korekce === '' ? null : korekce,
+                    poznamka,
+                }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Uložení korekce selhalo');
+            setPoznamka('');
+            onSaved();
+        } catch (e) {
+            setAdminError(e.message);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const saveOverride = async () => {
+        setSaving(true);
+        setAdminError('');
+        try {
+            const res = await fetch('/api/shifts/prumer-overrides/', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    user_id: row.user_id,
+                    rok,
+                    mesic: Number(newOverride.mesic),
+                    odpracovano_h: newOverride.odpracovano_h,
+                    fixni_body: newOverride.fixni_body || null,
+                    poznamka: newOverride.poznamka,
+                }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Uložení hodin selhalo');
+            setNewOverride({ mesic: '', odpracovano_h: '', fixni_body: '', poznamka: '' });
+            await loadOverrides();
+            onSaved();
+        } catch (e) {
+            setAdminError(e.message);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const deleteOverride = async (id) => {
+        setSaving(true);
+        setAdminError('');
+        try {
+            const res = await fetch(`/api/shifts/prumer-overrides/${id}/`, {
+                method: 'DELETE',
+                credentials: 'include',
+            });
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || 'Smazání selhalo');
+            }
+            await loadOverrides();
+            onSaved();
+        } catch (e) {
+            setAdminError(e.message);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <div className="vacation-admin-section">
+            <h4>Admin – korekce dovolené</h4>
+            <div className="vacation-admin-grid">
+                <label>
+                    Navýšení fondu (h)
+                    <input
+                        type="number"
+                        step="0.5"
+                        value={fondExtra}
+                        onChange={(e) => setFondExtra(e.target.value)}
+                    />
+                </label>
+                <label>
+                    Korekce čerpání (h)
+                    <input
+                        type="number"
+                        step="0.5"
+                        value={korekce}
+                        onChange={(e) => setKorekce(e.target.value)}
+                    />
+                </label>
+                <label className="vacation-admin-note">
+                    Důvod změny
+                    <input
+                        type="text"
+                        value={poznamka}
+                        onChange={(e) => setPoznamka(e.target.value)}
+                        placeholder="Pro audit log"
+                    />
+                </label>
+                <button type="button" className="vacation-admin-save" onClick={saveCorrections} disabled={saving}>
+                    Uložit korekci
+                </button>
+            </div>
+
+            <h4>Admin – ruční hodiny pro průměr mzdy</h4>
+            <div className="vacation-admin-grid">
+                <label>
+                    Měsíc
+                    <select
+                        value={newOverride.mesic}
+                        onChange={(e) => setNewOverride((p) => ({ ...p, mesic: e.target.value }))}
+                    >
+                        <option value="">—</option>
+                        {MONTH_NAMES.map((name, i) => (
+                            <option key={name} value={i + 1}>{name}</option>
+                        ))}
+                    </select>
+                </label>
+                <label>
+                    Odpracováno (h)
+                    <input
+                        type="number"
+                        step="0.5"
+                        value={newOverride.odpracovano_h}
+                        onChange={(e) => setNewOverride((p) => ({ ...p, odpracovano_h: e.target.value }))}
+                    />
+                </label>
+                <label>
+                    Fixní body (volitelné)
+                    <input
+                        type="number"
+                        step="1"
+                        value={newOverride.fixni_body}
+                        onChange={(e) => setNewOverride((p) => ({ ...p, fixni_body: e.target.value }))}
+                    />
+                </label>
+                <button type="button" className="vacation-admin-save" onClick={saveOverride} disabled={saving}>
+                    Přidat / přepsat měsíc
+                </button>
+            </div>
+
+            {overrides.length > 0 && (
+                <ul className="vacation-override-list">
+                    {overrides.map((o) => (
+                        <li key={o.id}>
+                            {MONTH_NAMES[o.mesic - 1]} {o.rok}: {formatNumber(o.odpracovano_h)} h
+                            {o.fixni_body != null ? `, fix ${formatPoints(o.fixni_body)}` : ''}
+                            <button type="button" onClick={() => deleteOverride(o.id)} disabled={saving}>
+                                Smazat
+                            </button>
+                        </li>
+                    ))}
+                </ul>
+            )}
+
+            {adminError && <p className="vacation-admin-error">{adminError}</p>}
+        </div>
+    );
 }
 
 function VacationPanel({ user }) {
@@ -122,6 +336,13 @@ function VacationPanel({ user }) {
         setRok((y) => y + delta);
     };
 
+    const reloadOverview = useCallback(() => {
+        clearVacationCache(rok);
+        loadOverview();
+    }, [rok, loadOverview]);
+
+    const isAdmin = user?.role === 'ADMIN';
+
     const renderUserCard = (row) => {
         const isOpen = expandedId === row.user_id;
         const mesice = row.mesice || [];
@@ -168,8 +389,11 @@ function VacationPanel({ user }) {
                             </div>
                         </div>
 
-                        {(row.cerpano_smeny_h > 0 || row.odeceno_deficit_h > 0 || row.prevod_h > 0 || row.korekce_cerpano_h) && (
+                        {(row.fond_extra_h > 0 || row.korekce_cerpano_h > 0 || row.cerpano_smeny_h > 0 || row.odeceno_deficit_h > 0 || row.prevod_h > 0) && (
                             <div className="vacation-meta">
+                                {row.fond_extra_h > 0 && (
+                                    <span>Navýšení fondu: <strong>{formatNumber(row.fond_extra_h)} h</strong></span>
+                                )}
                                 {row.cerpano_smeny_h > 0 && (
                                     <span>Směny dovolené: <strong>{formatNumber(row.cerpano_smeny_h)} h</strong></span>
                                 )}
@@ -285,6 +509,10 @@ function VacationPanel({ user }) {
                         </div>
                         {mesice.some((m) => m.deficit_predikce_h > 0) && (
                             <p className="vacation-footnote">* Předpokládaný deficit – odečte se po skončení měsíce</p>
+                        )}
+
+                        {isAdmin && (
+                            <VacationAdminSection row={row} rok={rok} onSaved={reloadOverview} />
                         )}
                     </div>
                 )}

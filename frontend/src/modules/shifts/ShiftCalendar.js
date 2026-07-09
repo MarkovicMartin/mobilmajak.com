@@ -59,7 +59,7 @@ const getShiftStyle = (shift) => {
     if (shift.typ_smeny === 'dovolena' || shift.typ_smeny === 'nemoc') {
         return undefined;
     }
-    const color = shift.prodejna_barva || '#1a73e8';
+    const color = shift.prodejna_barva || '#1b2848';
     return {
         backgroundColor: color,
         borderLeft: `3px solid ${color}`,
@@ -294,17 +294,11 @@ function ShiftCalendar({
         onRequestBulkAdd(dates);
     }, [onRequestBulkAdd]);
 
-    const isSellerView = user?.role === 'PRODEJCE' || user?.role === 'VEDOUCI';
-    const isAdminAllStores = user?.role === 'ADMIN' && allStores && seeAllEmployees;
-    const showCounterShiftLabel = ['ADMIN', 'VEDOUCI'].includes(user?.role);
-
     const renderShiftRow = (shift, dateStr, { hideStoreName = false } = {}) => {
         const isOwnShift = String(shift.user_id) === String(user?.id);
-        const isCounterShift = !isOwnShift && !allStores;
         const shiftClasses = [
             'shift-item',
             isOwnShift ? 'mine' : 'other',
-            isCounterShift ? 'counter-shift' : '',
             allStores ? 'shift-item--store-colored' : '',
             hideStoreName ? 'shift-item--in-store-group' : '',
             !allStores && !shift.je_domaci_prodejna && isOwnShift ? 'foreign-store' : '',
@@ -312,9 +306,10 @@ function ShiftCalendar({
         const roleLabel = shiftRoleLabel(shift, { short: true });
         const titleParts = [
             !hideStoreName && allStores && shift.prodejna_nazev ? shift.prodejna_nazev : null,
-            isCounterShift && showCounterShiftLabel ? `Protisměna: ${shift.user_jmeno}` : shift.user_jmeno,
+            shift.user_jmeno,
             roleLabel,
             `${formatTime(shift.cas_od)}-${formatTime(shift.cas_do)}`,
+            !allStores && !shift.je_domaci_prodejna && isOwnShift ? 'výpomoc na jiné prodejně' : null,
         ].filter(Boolean);
         return (
             <div
@@ -330,9 +325,6 @@ function ShiftCalendar({
                         <div className="shift-store">{shift.prodejna_nazev}</div>
                     )}
                     <div className="shift-name">
-                        {isCounterShift && showCounterShiftLabel && (
-                            <span className="counter-shift-badge">Protisměna</span>
-                        )}
                         {shift.user_jmeno}
                     </div>
                     <div className="shift-time">
@@ -342,12 +334,12 @@ function ShiftCalendar({
                         <div className="shift-servis-badge shift-role-badge">{roleLabel}</div>
                     )}
                 </div>
-                {!allStores && !shift.je_domaci_prodejna && user?.id === shift.user_id && (
-                    <div className="foreign-indicator">📍</div>
-                )}
             </div>
         );
     };
+
+    const isSellerView = user?.role === 'PRODEJCE' || user?.role === 'VEDOUCI';
+    const isAdminAllStores = user?.role === 'ADMIN' && allStores && seeAllEmployees;
 
     const renderWorkShifts = (workShifts, dateStr) => {
         if (isAdminAllStores) {
@@ -455,12 +447,10 @@ function ShiftCalendar({
                         <span className="legend-swatch legend-swatch--mine" />
                         Moje směna
                     </span>
-                    {showCounterShiftLabel && (
-                        <span className="legend-item">
-                            <span className="legend-swatch legend-swatch--counter" />
-                            Protisměna
-                        </span>
-                    )}
+                    <span className="legend-item">
+                        <span className="legend-swatch legend-swatch--other" />
+                        Ostatní
+                    </span>
                 </div>
             )}
 

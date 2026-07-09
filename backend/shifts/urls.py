@@ -25,6 +25,9 @@ urlpatterns = [
     path('overview/', views.smeny_prehled, name='smeny_prehled'),
     path('vacation-balance/', views.vacation_balance, name='vacation_balance'),
     path('vacation-overview/', views.vacation_overview, name='vacation_overview'),
+    path('vacation-corrections/<int:user_id>/', views.vacation_corrections_update, name='vacation_corrections_update'),
+    path('prumer-overrides/', views.prumer_overrides, name='prumer_overrides'),
+    path('prumer-overrides/<int:override_id>/', views.prumer_override_detail, name='prumer_override_detail'),
     
     # Export pro účetní
     path('export/', views.export_smeny, name='export_smeny'),

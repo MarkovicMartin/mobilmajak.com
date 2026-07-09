@@ -349,7 +349,7 @@
 
 /* DNEŠNÍ DATUM - MODRÉ KOLEČKO */
 .calendar-day.today .day-number {
-    background: #1a73e8;
+    background: var(--brand-navy);
     color: #fff;
     font-weight: 600;
     width: 22px;
@@ -390,7 +390,7 @@
 
 /* SMĚNA - SKUTEČNĚ CELÁ ŠÍŘKA OKÝNKA */
 .shift-item {
-    background: #1a73e8;
+    background: var(--brand-navy);
     color: #fff;
     padding: 3px 5px;
     border-radius: 3px;
@@ -409,7 +409,7 @@
 
 .shift-item.shift-item--store-colored.mine,
 .shift-item.shift-item--store-colored.other {
-    background: var(--shift-store-bg, #1a73e8);
+    background: var(--shift-store-bg, var(--brand-navy));
 }
 
 .shift-store {
@@ -451,37 +451,30 @@
     margin-top: 1px;
 }
 
-/* Moje směna (přihlášený uživatel) */
+/* Moje směna – firemní modrá (profil, směny, unified calendar) */
 .shift-item.mine {
-    background: linear-gradient(135deg, #2563eb, #1d4ed8);
-    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.25);
+    background: linear-gradient(135deg, var(--brand-navy), var(--brand-navy-hover));
+    color: #fff;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
 }
 
-/* Směny ostatních (tlumenější) */
-.shift-item.other {
-    background: #60a5fa;
-    color: #0b318f;
+.shift-item.mine.foreign-store {
+    box-shadow:
+        inset 3px 0 0 var(--brand-pink),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.12);
 }
 
-/* Protisměna – kolega na stejné prodejně */
-.shift-item.counter-shift {
-    background: #fef3c7;
-    color: #92400e;
-    border: 1px dashed #d97706;
-    box-shadow: none;
+/* Směny ostatních – bílé pozadí, růžový akcent z CI */
+.shift-calendar .shift-item.other {
+    background: var(--bg-card, #fff);
+    color: var(--brand-navy);
+    border: 1px solid color-mix(in srgb, var(--brand-pink) 35%, transparent);
+    box-shadow: 0 1px 0 rgba(27, 40, 72, 0.06);
 }
 
-.shift-item.counter-shift .counter-shift-badge {
-    display: inline-block;
-    margin-right: 3px;
-    padding: 0 3px;
-    border-radius: 2px;
-    background: rgba(217, 119, 6, 0.2);
-    font-size: 7px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-    vertical-align: middle;
+.shift-calendar .shift-item.other .shift-time,
+.shift-calendar .shift-item.other .shift-role-badge {
+    color: var(--brand-navy-muted);
 }
 
 .shifts-legend--seller {
@@ -489,12 +482,12 @@
 }
 
 .legend-swatch--mine {
-    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    background: linear-gradient(135deg, var(--brand-navy), var(--brand-navy-hover));
 }
 
-.legend-swatch--counter {
-    background: #fef3c7;
-    border: 1px dashed #d97706;
+.legend-swatch--other {
+    background: var(--bg-card, #fff);
+    border: 1px solid color-mix(in srgb, var(--brand-pink) 45%, transparent);
 }
 
 .shift-item:hover {
@@ -503,10 +496,6 @@
 
 .shift-item.vacation {
     background: #34a853;
-}
-
-.shift-item.foreign-store {
-    background: #9c27b0;
 }
 
 .shift-item.sick {
@@ -570,7 +559,6 @@
 }
 
 /* INDIKÁTORY */
-.foreign-indicator,
 .vacation-indicator {
     position: absolute;
     top: 2px;
@@ -796,7 +784,7 @@
     border-radius: 4px;
     overflow: hidden;
     margin-bottom: 2px;
-    background: var(--shift-store-bg, #1a73e8);
+    background: var(--shift-store-bg, var(--brand-navy));
     color: #fff;
 }
 

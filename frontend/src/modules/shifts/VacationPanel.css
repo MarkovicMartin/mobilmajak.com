@@ -1,196 +1,78 @@
-.vacation-panel {
-    padding: 20px;
+.vacation-admin-section {
+    margin-top: 20px;
+    padding: 16px;
+    border: 1px dashed var(--border-color, #ccc);
+    border-radius: 8px;
+    background: rgba(26, 115, 232, 0.04);
 }
 
-.vacation-panel.loading {
-    text-align: center;
-    padding: 40px;
-    color: var(--text-secondary);
-}
-
-.vacation-header {
-    margin-bottom: 24px;
-    padding-bottom: 16px;
-    border-bottom: 2px solid #e0e0e0;
-}
-
-.year-navigation {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-}
-
-.year-navigation button {
-    padding: 8px 15px;
-    border: 1px solid #ddd;
-    background: var(--bg-card);
-    cursor: pointer;
-    border-radius: 6px;
+.vacation-admin-section h4 {
+    margin: 0 0 12px;
     font-size: 14px;
 }
 
-.year-navigation button:hover {
-    background: #f0f0f0;
-    border-color: #007bff;
-}
-
-.year-navigation h3 {
-    margin: 0;
-    font-size: 24px;
-    min-width: 80px;
-    text-align: center;
-}
-
-.vacation-ineligible,
-.vacation-empty {
-    color: var(--text-secondary);
-    padding: 20px;
-    text-align: center;
-}
-
-.vacation-users {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.vacation-user-card {
-    background: var(--bg-card);
-    border-radius: 10px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-    overflow: hidden;
-}
-
-.vacation-user-header {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 14px 18px;
-    border: none;
-    background: transparent;
-    cursor: pointer;
-    text-align: left;
-    font-size: 15px;
-}
-
-.vacation-user-header:hover {
-    background: rgba(0, 0, 0, 0.03);
-}
-
-.vacation-user-header.open {
-    border-bottom: 1px solid #e8e8e8;
-}
-
-.vacation-user-name {
-    font-weight: 600;
-    flex: 1;
-}
-
-.vacation-user-summary {
-    color: var(--text-secondary);
-    font-size: 14px;
-}
-
-.vacation-expand-icon {
-    color: var(--text-secondary);
-    font-size: 12px;
-}
-
-.vacation-user-body {
-    padding: 16px 18px 20px;
-}
-
-.vacation-stats-grid {
+.vacation-admin-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
     gap: 12px;
+    align-items: end;
     margin-bottom: 16px;
 }
 
-.vacation-stat {
-    background: #f8f9fa;
-    border-radius: 8px;
-    padding: 12px;
-    text-align: center;
-}
-
-.vacation-stat.highlight {
-    background: linear-gradient(135deg, #fff8e6, #fff3cd);
-    border: 1px solid #ffc107;
-}
-
-.vacation-stat-value {
-    font-size: 20px;
-    font-weight: 700;
-    color: var(--text-strong);
-}
-
-.vacation-stat-label {
-    font-size: 12px;
-    color: var(--text-secondary);
-    margin-top: 4px;
-}
-
-.vacation-meta {
+.vacation-admin-grid label {
     display: flex;
-    flex-wrap: wrap;
-    gap: 16px;
-    font-size: 14px;
-    margin-bottom: 12px;
-    color: var(--text-secondary);
+    flex-direction: column;
+    gap: 4px;
+    font-size: 12px;
 }
 
-.vacation-rate-hint {
-    font-size: 14px;
-    color: var(--text-secondary);
-    margin: 0 0 16px;
-    padding: 10px 12px;
-    background: #f0f7ff;
-    border-radius: 6px;
-    border-left: 3px solid #007bff;
+.vacation-admin-grid input,
+.vacation-admin-grid select {
+    padding: 6px 8px;
+    border: 1px solid var(--border-color, #ccc);
+    border-radius: 4px;
 }
 
-.vacation-table-wrap {
-    overflow-x: auto;
+.vacation-admin-note {
+    grid-column: span 2;
 }
 
-.vacation-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 14px;
-}
-
-.vacation-table th,
-.vacation-table td {
+.vacation-admin-save {
     padding: 8px 12px;
-    text-align: left;
+    border: none;
+    border-radius: 4px;
+    background: #1a73e8;
+    color: #fff;
+    cursor: pointer;
+}
+
+.vacation-admin-save:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.vacation-override-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    font-size: 13px;
+}
+
+.vacation-override-list li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 6px 0;
     border-bottom: 1px solid #eee;
 }
 
-.vacation-table th {
-    font-weight: 600;
-    background: #f8f9fa;
-}
-
-.vacation-table tr.has-usage td {
-    background: rgba(255, 193, 7, 0.06);
-}
-
-.vacation-table tfoot td {
-    font-weight: 600;
-    border-top: 2px solid #ddd;
-}
-
-.vacation-pending {
-    color: #856404;
-    font-style: italic;
-    margin-left: 4px;
-}
-
-.vacation-footnote {
+.vacation-override-list button {
+    margin-left: auto;
     font-size: 12px;
-    color: var(--text-secondary);
-    margin-top: 8px;
-    font-style: italic;
+}
+
+.vacation-admin-error {
+    color: #c5221f;
+    font-size: 13px;
+    margin: 8px 0 0;
 }
