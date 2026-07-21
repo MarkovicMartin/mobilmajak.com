@@ -4,19 +4,8 @@ import { PageHeader, Select, DateRangePicker } from '../../components/ui';
 import KanbanBoard from './KanbanBoard';
 import OrderForm from './OrderForm';
 import OrderDetail from './OrderDetail';
+import { FILTER_STATUS_OPTIONS, statusLabel } from './orderHelpers';
 import './OrdersModule.css';
-
-const STATUS_OPTIONS = [
-    { value: '', label: 'Všechny stavy' },
-    { value: 'nove', label: 'Nové' },
-    { value: 'objednano', label: 'Objednáno' },
-    { value: 'v_kosiku', label: 'V košíku' },
-    { value: 'predobjednano', label: 'Předobjednáno' },
-    { value: 'neni_skladem', label: 'Není skladem' },
-    { value: 'storno', label: 'Storno' },
-    { value: 'dorazilo_ceka', label: 'Dorazilo čeká na zákazníka' },
-    { value: 'hotovo', label: 'Hotovo' },
-];
 
 const OrdersModule = () => {
     const [kanbanData, setKanbanData] = useState({});
@@ -50,13 +39,12 @@ const OrdersModule = () => {
         </div>
     ), [dashboardStats]);
 
-    // Načtení dat pro kanban board
     const loadKanbanData = useCallback(async () => {
         try {
             setLoading(true);
             const params = new URLSearchParams();
-            
-            Object.keys(filters).forEach(key => {
+
+            Object.keys(filters).forEach((key) => {
                 if (filters[key]) {
                     params.append(key, filters[key]);
                 }
@@ -68,13 +56,12 @@ const OrdersModule = () => {
         } catch (err) {
             console.error('Chyba při načítání objednávek:', err);
             setError('Nepodařilo se načíst objednávky');
-            setKanbanData({}); // Fallback na prázdný objekt
+            setKanbanData({});
         } finally {
             setLoading(false);
         }
     }, [filters]);
 
-    // Načtení statistik pro dashboard
     const loadDashboardStats = useCallback(async () => {
         try {
             const response = await api.get('/orders/dashboard-stats/');
@@ -89,39 +76,48 @@ const OrdersModule = () => {
         loadDashboardStats();
     }, [filters, loadKanbanData, loadDashboardStats]);
 
-    // Periodické obnovování dat každé 2 minuty
     useEffect(() => {
         const interval = setInterval(() => {
             loadKanbanData();
             loadDashboardStats();
         }, 120000);
-
         return () => clearInterval(interval);
     }, [filters, loadKanbanData, loadDashboardStats]);
 
-    // Zpracování změny stavu objednávky (drag & drop)
-    const handleStatusChange = async (orderId, newStatus, poznamka = '') => {
+    const handleStatusChange = async (orderId, newStatus, poznamka = '', dodavatel = null) => {
         try {
-            await api.patch(`/orders/orders/${orderId}/update_status/`, {
+            const body = {
                 novy_status: newStatus,
-                poznamka: poznamka
-            });
-            
-            // Obnovíme data
+                poznamka: poznamka,
+            };
+            if (dodavatel != null) {
+                body.dodavatel = dodavatel;
+            }
+            await api.patch(`/orders/orders/${orderId}/update_status/`, body);
+
             await loadKanbanData();
             await loadDashboardStats();
-            
+
+            setSelectedOrder((prev) => {
+                if (!prev || prev.id !== orderId) return prev;
+                return {
+                    ...prev,
+                    status: newStatus,
+                    status_display: statusLabel(newStatus),
+                    ...(dodavatel != null ? { dodavatel } : {}),
+                };
+            });
+
             return { success: true };
         } catch (err) {
             console.error('Chyba při změně stavu:', err);
-            return { 
-                success: false, 
-                error: err.response?.data?.error || 'Nepodařilo se změnit stav objednávky' 
+            return {
+                success: false,
+                error: err.response?.data || 'Nepodařilo se změnit stav objednávky',
             };
         }
     };
 
-    // Vytvoření nové objednávky
     const handleCreateOrder = async (orderData) => {
         try {
             await api.post('/orders/orders/', orderData);
@@ -131,14 +127,13 @@ const OrdersModule = () => {
             return { success: true };
         } catch (err) {
             console.error('Chyba při vytváření objednávky:', err);
-            return { 
-                success: false, 
-                error: err.response?.data || 'Nepodařilo se vytvořit objednávku' 
+            return {
+                success: false,
+                error: err.response?.data || 'Nepodařilo se vytvořit objednávku',
             };
         }
     };
 
-    // Smazání objednávky
     const handleDeleteOrder = async (orderId) => {
         if (!window.confirm('Opravdu chcete smazat tuto objednávku?')) {
             return;
@@ -155,21 +150,19 @@ const OrdersModule = () => {
         }
     };
 
-    // Změna filtrů
     const handleFilterChange = (key, value) => {
-        setFilters(prev => ({
+        setFilters((prev) => ({
             ...prev,
-            [key]: value
+            [key]: value,
         }));
     };
 
-    // Vymazání filtrů
     const clearFilters = () => {
         setFilters({
             search: '',
             status: '',
             date_from: '',
-            date_to: ''
+            date_to: '',
         });
     };
 
@@ -218,14 +211,14 @@ const OrdersModule = () => {
                 <div className="filters">
                     <input
                         type="text"
-                        placeholder="Hledat podle jména, telefonu, e-mailu…"
+                        placeholder="Hledat podle jména, telefonu, modelu…"
                         value={filters.search}
                         onChange={(e) => handleFilterChange('search', e.target.value)}
                         className="filter-input input"
                     />
 
                     <Select
-                        options={STATUS_OPTIONS}
+                        options={FILTER_STATUS_OPTIONS}
                         value={filters.status}
                         onChange={(v) => handleFilterChange('status', v)}
                         aria-label="Filtr stavu objednávky"
@@ -255,25 +248,24 @@ const OrdersModule = () => {
                 </div>
             )}
 
-            {/* Kanban board */}
-            <KanbanBoard 
+            <KanbanBoard
                 kanbanData={kanbanData}
                 onStatusChange={handleStatusChange}
                 onOrderClick={setSelectedOrder}
                 onDeleteOrder={handleDeleteOrder}
                 loading={loading}
+                statusFilter={filters.status}
             />
 
-            {/* Modální okna */}
             {showForm && (
-                <OrderForm 
+                <OrderForm
                     onClose={() => setShowForm(false)}
                     onSubmit={handleCreateOrder}
                 />
             )}
 
             {selectedOrder && (
-                <OrderDetail 
+                <OrderDetail
                     order={selectedOrder}
                     onClose={() => setSelectedOrder(null)}
                     onDelete={handleDeleteOrder}
@@ -284,4 +276,4 @@ const OrdersModule = () => {
     );
 };
 
-export default OrdersModule; 
+export default OrdersModule;

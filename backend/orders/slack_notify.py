@@ -61,11 +61,6 @@ def build_order_message(order: Order, event: str, *, days_in_status: int | None 
     status_label = order.get_status_display()
     if event == "created":
         return f"Nová objednávka {summary}\nStav: {status_label}\n{_escape(link)}"
-    if event == "dorazilo_ceka":
-        return (
-            f"Objednávka dorazila – čeká na zákazníka\n"
-            f"{summary}\n{_escape(link)}"
-        )
     if event == "sla":
         days = days_in_status if days_in_status is not None else order.days_in_current_status()
         return (
@@ -116,14 +111,6 @@ def notify_order_created(order: Order) -> int:
         return send_order_slack_to_recipients(order, "created")
     except Exception:
         logger.exception("notify_order_created selhalo pro #%s", order.id)
-        return 0
-
-
-def notify_order_dorazilo_ceka(order: Order) -> int:
-    try:
-        return send_order_slack_to_recipients(order, "dorazilo_ceka")
-    except Exception:
-        logger.exception("notify_order_dorazilo_ceka selhalo pro #%s", order.id)
         return 0
 
 

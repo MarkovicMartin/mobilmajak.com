@@ -1,57 +1,62 @@
 import React from 'react';
 import { useDroppable } from '@dnd-kit/core';
-import OrderCard from './OrderCard';
+import OrderRow from './OrderRow';
 import './KanbanColumn.css';
+import './OrderRow.css';
 
-const KanbanColumn = ({ 
-    id, 
-    title, 
-    icon, 
-    color, 
+const ROW_HEADERS = [
+    'Datum', 'Typ', 'Věc', 'Barva', 'Serviska', 'Zákazník',
+    'Telefon', 'Cena', 'Zadal', 'Prodejna', 'Dodavatel', '',
+];
+
+const KanbanColumn = ({
+    id,
+    title,
+    color,
     textColor,
-    orders, 
-    count, 
+    orders,
+    count,
     isDropTarget,
     onOrderClick,
-    onDeleteOrder 
+    onDeleteOrder,
 }) => {
     const { setNodeRef, isOver } = useDroppable({
         id: `column-${id}`,
     });
 
     return (
-        <div 
+        <div
             ref={setNodeRef}
-            className={`kanban-column ${isOver || isDropTarget ? 'drag-over' : ''}`}
+            className={`kanban-column kanban-column--dense ${isOver || isDropTarget ? 'drag-over' : ''}`}
         >
-            {/* Header sloupce */}
-            <div 
+            <div
                 className="column-header"
-                style={{ 
+                style={{
                     backgroundColor: color,
-                    color: textColor
+                    color: textColor,
                 }}
             >
                 <div className="header-content">
-                    <span className="column-icon">{icon}</span>
                     <span className="column-title">{title}</span>
                     <span className="column-count">({count})</span>
                 </div>
             </div>
 
-            {/* Seznam objednávek */}
-            <div className="column-content">
+            <div className="column-content column-content--dense">
+                <div className="order-row-header" aria-hidden="true">
+                    {ROW_HEADERS.map((label, i) => (
+                        <span key={`${label}-${i}`}>{label}</span>
+                    ))}
+                </div>
+
                 {orders.length === 0 ? (
-                    <div className="empty-column">
-                        <div className="empty-message">
-                            <span className="empty-icon">📋</span>
-                            <p>Žádné objednávky</p>
-                        </div>
+                    <div className="empty-column empty-column--dense">
+                        <p>Žádné objednávky</p>
                     </div>
                 ) : (
-                    <div className="orders-list">
-                        {orders.map(order => (
-                            <OrderCard
+                    <div className="orders-list orders-list--dense">
+                        {orders.map((order) => (
+                            <OrderRow
                                 key={order.id}
                                 order={order}
                                 onOrderClick={onOrderClick}
@@ -62,12 +67,10 @@ const KanbanColumn = ({
                 )}
             </div>
 
-            {/* Drop zone indikátor */}
             {(isOver || isDropTarget) && (
                 <div className="drop-zone-indicator">
                     <div className="drop-zone-content">
-                        <span className="drop-icon">📥</span>
-                        <p>Přetáhněte sem objednávku</p>
+                        <p>Přetáhněte sem</p>
                     </div>
                 </div>
             )}
@@ -75,4 +78,4 @@ const KanbanColumn = ({
     );
 };
 
-export default KanbanColumn; 
+export default KanbanColumn;

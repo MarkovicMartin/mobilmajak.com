@@ -63,6 +63,10 @@ const OrderForm = ({ onClose, onSubmit }) => {
             newErrors.dil = 'Díl je povinný';
         }
 
+        if (!formData.servisni_cislo.trim()) {
+            newErrors.servisni_cislo = 'Servisní číslo je povinné';
+        }
+
         if (formData.cena && isNaN(parseFloat(formData.cena))) {
             newErrors.cena = 'Cena musí být číslo';
         }
@@ -289,15 +293,19 @@ const OrderForm = ({ onClose, onSubmit }) => {
                             </div>
 
                             <div className="form-group">
-                                <label htmlFor="servisni_cislo">Servisní číslo</label>
+                                <label htmlFor="servisni_cislo">Servisní číslo *</label>
                                 <input
                                     type="text"
                                     id="servisni_cislo"
                                     name="servisni_cislo"
                                     value={formData.servisni_cislo}
                                     onChange={handleInputChange}
-                                    placeholder="S123456"
+                                    className={errors.servisni_cislo ? 'error' : ''}
+                                    placeholder="952501099"
                                 />
+                                {errors.servisni_cislo && (
+                                    <span className="error-message">{errors.servisni_cislo}</span>
+                                )}
                             </div>
                         </div>
 

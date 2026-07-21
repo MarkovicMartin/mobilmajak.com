@@ -1,7 +1,7 @@
-"""Testy Objednávky O1 (Slack), O2 (symplio_id), O3 (SLA bez auto statusu)."""
+"""Testy Objednávky: Slack O1, Symplio O2, SLA O3, redesign (prodejna/serviska/dodavatel)."""
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import time, timedelta
 from unittest.mock import patch
 
 from django.test import TestCase, override_settings
@@ -10,6 +10,8 @@ from rest_framework.test import APIClient
 
 from orders.models import Order, OrderStatusHistory
 from orders.sla import orders_past_sla, run_orders_sla_reminders, sla_days_threshold
+from orders.status_config import MAIN_STATUS_KEYS
+from shifts.models import Smena
 from stores.models import Prodejna
 from users.models import WebUser
 
@@ -36,6 +38,7 @@ def _order_payload(**overrides):
         "telefon_zakaznika": "+420777123456",
         "typ_telefonu": "iPhone 13",
         "dil": "baterie",
+        "servisni_cislo": "952501099",
     }
     data.update(overrides)
     return data
@@ -95,7 +98,7 @@ class OrdersO1SlackTests(TestCase):
 
     @patch("orders.slack_notify.send_slack_dm", return_value=True)
     @patch("orders.slack_notify.slack_user_id_for_web_user", side_effect=lambda u: f"U{u.id}" if u else None)
-    def test_status_dorazilo_ceka_notifies(self, _lookup, mock_dm):
+    def test_status_dorazilo_ceka_does_not_notify(self, _lookup, mock_dm):
         with patch("orders.serializers.notify_order_created", return_value=0):
             resp = self.client.post("/api/orders/orders/", _order_payload(), format="json")
         order_id = resp.data["id"]
@@ -108,9 +111,8 @@ class OrdersO1SlackTests(TestCase):
         )
         self.assertEqual(resp2.status_code, 200, resp2.content)
         self.assertEqual(resp2.data["status"], "dorazilo_ceka")
-        self.assertEqual(mock_dm.call_count, 2)
-        texts = [c.args[1] for c in mock_dm.call_args_list]
-        self.assertTrue(any("dorazila" in t.lower() or "Dorazila" in t or "dorazilo" in t.lower() for t in texts))
+        self.assertEqual(resp2.data["status_display"], "připraveno")
+        mock_dm.assert_not_called()
 
     @patch("orders.slack_notify.send_slack_dm", return_value=True)
     @patch("orders.slack_notify.slack_user_id_for_web_user", return_value=None)
@@ -140,6 +142,7 @@ class OrdersO3SlaTests(TestCase):
             telefon_zakaznika="777",
             typ_telefonu="iPhone",
             dil="LCD",
+            servisni_cislo="111",
             status=status,
             zalozil=self.user,
             posledni_zmena_uzivatel=self.user,
@@ -184,11 +187,7 @@ class OrdersO3SlaTests(TestCase):
         mock_notify.assert_called()
 
     def test_serializer_sla_overdue_flag(self):
-        client = APIClient()
-        client.force_authenticate(user=self.user)
         order = self._make_order(status="objednano", days_ago=10)
-        with patch("orders.serializers.notify_order_created", return_value=0):
-            pass
         from orders.serializers import OrderSerializer
 
         data = OrderSerializer(order).data
@@ -206,3 +205,147 @@ class OrdersO3SlaTests(TestCase):
         order = Order.objects.get(status="objednano")
         self.assertIsNone(order.sla_reminder_sent_at)
         self.assertEqual(order.status, "objednano")
+
+
+@override_settings(SLACK_BOT_TOKEN="xoxb-test", MOBILMAJAK_APP_URL="https://mobilmajak.com")
+class OrdersRedesignTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.store = Prodejna.objects.create(
+            id=210,
+            nazev="Čepkov Test",
+            nazev_kratkiy="Čepkov",
+            aktivni=True,
+        )
+        self.shift_store = Prodejna.objects.create(
+            id=211,
+            nazev="Přerov Test",
+            nazev_kratkiy="Přerov",
+            aktivni=True,
+        )
+        self.user = _make_user(9310, "PRODEJCE", prodejna_id=self.store.id)
+        self.client.force_authenticate(user=self.user)
+
+    def test_create_requires_servisni_cislo_and_autofills(self):
+        with patch("orders.serializers.notify_order_created", return_value=0):
+            missing = self.client.post(
+                "/api/orders/orders/",
+                _order_payload(servisni_cislo=""),
+                format="json",
+            )
+        self.assertEqual(missing.status_code, 400)
+        self.assertIn("servisni_cislo", missing.data)
+
+        with patch("orders.serializers.notify_order_created", return_value=0):
+            resp = self.client.post("/api/orders/orders/", _order_payload(), format="json")
+        self.assertEqual(resp.status_code, 201, resp.content)
+        self.assertEqual(resp.data["zalozil"]["id"], self.user.id)
+        self.assertEqual(resp.data["status"], "nove")
+        self.assertEqual(resp.data["servisni_cislo"], "952501099")
+        self.assertIsNotNone(resp.data["datum_vytvoreni"])
+        # fallback na domovskou prodejnu bez směny
+        self.assertEqual(resp.data["prodejna"]["id"], self.store.id)
+        self.assertEqual(resp.data["status_display"], "Nové")
+
+    def test_create_prodejna_from_today_shift(self):
+        today = timezone.localdate()
+        Smena.objects.create(
+            user=self.user,
+            prodejna=self.shift_store,
+            datum=today,
+            cas_od=time(8, 0),
+            cas_do=time(16, 0),
+            typ_smeny="prace",
+            aktivni=True,
+        )
+        with patch("orders.serializers.notify_order_created", return_value=0):
+            resp = self.client.post("/api/orders/orders/", _order_payload(), format="json")
+        self.assertEqual(resp.status_code, 201, resp.content)
+        self.assertEqual(resp.data["prodejna"]["id"], self.shift_store.id)
+
+    def test_create_requires_typ_and_dil(self):
+        with patch("orders.serializers.notify_order_created", return_value=0):
+            resp = self.client.post(
+                "/api/orders/orders/",
+                _order_payload(typ_telefonu="", dil=""),
+                format="json",
+            )
+        self.assertEqual(resp.status_code, 400)
+        self.assertTrue("typ_telefonu" in resp.data or "dil" in resp.data)
+
+    def test_dodavatel_required_for_v_kosiku_and_objednano(self):
+        with patch("orders.serializers.notify_order_created", return_value=0):
+            resp = self.client.post("/api/orders/orders/", _order_payload(), format="json")
+        order_id = resp.data["id"]
+
+        bad = self.client.patch(
+            f"/api/orders/orders/{order_id}/update_status/",
+            {"novy_status": "v_kosiku"},
+            format="json",
+        )
+        self.assertEqual(bad.status_code, 400)
+        self.assertIn("dodavatel", bad.data)
+
+        ok = self.client.patch(
+            f"/api/orders/orders/{order_id}/update_status/",
+            {"novy_status": "v_kosiku", "dodavatel": "ASWO"},
+            format="json",
+        )
+        self.assertEqual(ok.status_code, 200, ok.content)
+        self.assertEqual(ok.data["status"], "v_kosiku")
+        self.assertEqual(ok.data["dodavatel"], "ASWO")
+
+        bad2 = self.client.patch(
+            f"/api/orders/orders/{order_id}/update_status/",
+            {"novy_status": "objednano", "dodavatel": ""},
+            format="json",
+        )
+        # empty dodavatel in payload clears / fails — must reject
+        self.assertEqual(bad2.status_code, 400)
+
+        ok2 = self.client.patch(
+            f"/api/orders/orders/{order_id}/update_status/",
+            {"novy_status": "objednano"},
+            format="json",
+        )
+        # already has ASWO on order → OK without re-sending
+        self.assertEqual(ok2.status_code, 200, ok2.content)
+        self.assertEqual(ok2.data["status"], "objednano")
+        self.assertEqual(ok2.data["status_display"], "objednáno")
+
+    def test_kanban_main_columns_and_labels(self):
+        with patch("orders.serializers.notify_order_created", return_value=0):
+            created = self.client.post("/api/orders/orders/", _order_payload(), format="json")
+        order_id = created.data["id"]
+        self.client.patch(
+            f"/api/orders/orders/{order_id}/update_status/",
+            {"novy_status": "hotovo"},
+            format="json",
+        )
+
+        # legacy predobjednano folded into objednano column
+        Order.objects.create(
+            jmeno_zakaznika="X",
+            prijmeni_zakaznika="Y",
+            telefon_zakaznika="1",
+            typ_telefonu="iP",
+            dil="LCD",
+            servisni_cislo="999",
+            status="predobjednano",
+            zalozil=self.user,
+            posledni_zmena_uzivatel=self.user,
+        )
+
+        resp = self.client.get("/api/orders/orders/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data["main_columns"], MAIN_STATUS_KEYS)
+        kd = resp.data["kanban_data"]
+        self.assertEqual(kd["nove"]["label"], "Nové")
+        self.assertEqual(kd["v_kosiku"]["label"], "v košíku")
+        self.assertEqual(kd["objednano"]["label"], "objednáno")
+        self.assertEqual(kd["dorazilo_ceka"]["label"], "připraveno")
+        self.assertEqual(kd["hotovo"]["label"], "vyřízeno")
+        self.assertTrue(any(o["id"] == order_id for o in kd["hotovo"]["orders"]))
+        self.assertTrue(any(o["status"] == "predobjednano" for o in kd["objednano"]["orders"]))
+        self.assertIn("storno", kd)
+        self.assertFalse(kd["storno"].get("main", True))

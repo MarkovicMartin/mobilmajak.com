@@ -90,15 +90,17 @@ Poslední revize: 2026-07-09 (§17 implementační vlny)
 
 ### Stav dnes
 
-- Plně funkční kanban (`OrdersModule`): stavy, drag & drop, historie, filtry, dashboard stats.
-- Model: zákazník, typ telefonu, díl, barva, dodavatel, servisní číslo — **bez vazby na Symplio objednávku**.
+- Kanban s **5 hlavními sloupci** (Nové | v košíku | objednáno | připraveno | vyřízeno) a hustými Excel-like řádky.
+- Autofill: datum z `datum_vytvoreni`, zadal = přihlášený uživatel, prodejna ze směny / domovské.
+- **MyRepair odkaz (live):** buňka Serviska → `https://workspace.myrepair.app/calendar/search.php?query=` + `servisni_cislo` (nová záložka).
+- Model: zákazník, typ telefonu, díl, barva, dodavatel, servisní číslo, `prodejna`, Symplio ID.
 - Backend analytics endpoint existuje (`analytics_data`), frontend ho zatím nevyužívá.
 
 ### Co „dokončit“ typicky znamená
 
 | Varianta | Popis | Náročnost | Vliv | Poznámka |
 |----------|-------|-----------|------|----------|
-| **O1 – Notifikace** | Slack/e-mail při nové objednávce, změně na „dorazilo čeká“, dlouho visící ve stavu | M | 4 | Okamžitý provozní přínos |
+| **O1 – Notifikace** | Slack při nové objednávce + SLA připomínky (dlouho visící ve stavu); změna na „dorazilo čeká“ bez Slacku | M | 4 | Okamžitý provozní přínos |
 | **O2 – Vazba na Symplio** | Pole `symplio_objednavka_id`, odkaz jako v `AuditZbytekPanel` | S | 3 | Konzistence s ostatními moduly |
 | **O3 – SLA / eskalace** | Po X dnech ve stavu zvýraznit / eskalovat vedoucímu | M | 4 | Méně „zapomenutých“ dílů |
 | **O4 – Admin analytika UI** | Grafy průměrné doby stavů (API už je) | S | 3 | Řízení servisního skladu |
@@ -106,6 +108,7 @@ Poslední revize: 2026-07-09 (§17 implementační vlny)
 | **O6 – Dodavatel / objednávkový list** | Export pro MobilPohotovost, BP apod. | M | 4 | Snížení copy-paste |
 | **O7 – Mobilní zjednodušený formulář** | Rychlé založení z telefonu na prodejně | M | 4 | Adopce prodejci |
 | **O8 – Propojení s reklamacemi** | Objednávka dílu z reklamační evidence (viz §4) | L | 5 | Synergie modulů |
+| **O9 – MyRepair deep-link** | Klik na servisku → workspace search | S | 4 | **Hotovo** (live v buňce Serviska) |
 
 ### Doporučené pořadí
 

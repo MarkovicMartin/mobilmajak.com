@@ -12,11 +12,18 @@ from .serializers import (
     OrderSerializer, OrderCreateSerializer, OrderUpdateStatusSerializer,
     OrderStatusHistorySerializer
 )
+from .status_config import (
+    MAIN_STATUS_COLUMNS,
+    MAIN_STATUS_KEYS,
+    STATUS_COLUMN_FOLD,
+)
 
 
 class OrderViewSet(ModelViewSet):
     """ViewSet pro správu objednávek"""
-    queryset = Order.objects.all().select_related('zalozil', 'posledni_zmena_uzivatel').prefetch_related('historie_stavu__uzivatel')
+    queryset = Order.objects.all().select_related(
+        'zalozil', 'posledni_zmena_uzivatel', 'prodejna'
+    ).prefetch_related('historie_stavu__uzivatel')
     permission_classes = [permissions.IsAuthenticated]
     
     def get_serializer_class(self):
@@ -54,23 +61,37 @@ class OrderViewSet(ModelViewSet):
         if date_to:
             queryset = queryset.filter(datum_vytvoreni__date__lte=date_to)
         
-        # Organizace podle stavů pro kanban board
+        # 5 hlavních sloupců; predobjednano → objednano; filtr-only stavy zvlášť
         kanban_data = {}
-        for choice in Order.STATUS_CHOICES:
-            status_key = choice[0]
-            status_label = choice[1]
-            
-            status_orders = queryset.filter(status=status_key).order_by('-datum_vytvoreni')
+        for status_key, status_label in MAIN_STATUS_COLUMNS:
+            folded = [
+                src for src, dest in STATUS_COLUMN_FOLD.items() if dest == status_key
+            ]
+            status_keys = [status_key, *folded]
+            status_orders = queryset.filter(status__in=status_keys).order_by('-datum_vytvoreni')
             serialized_orders = OrderSerializer(status_orders, many=True).data
-            
             kanban_data[status_key] = {
                 'label': status_label,
                 'orders': serialized_orders,
-                'count': len(serialized_orders)
+                'count': len(serialized_orders),
+                'main': True,
+            }
+
+        for status_key, status_label in Order.STATUS_CHOICES:
+            if status_key in MAIN_STATUS_KEYS or status_key in STATUS_COLUMN_FOLD:
+                continue
+            status_orders = queryset.filter(status=status_key).order_by('-datum_vytvoreni')
+            serialized_orders = OrderSerializer(status_orders, many=True).data
+            kanban_data[status_key] = {
+                'label': status_label,
+                'orders': serialized_orders,
+                'count': len(serialized_orders),
+                'main': False,
             }
         
         return Response({
             'kanban_data': kanban_data,
+            'main_columns': MAIN_STATUS_KEYS,
             'total_count': queryset.count(),
             'filters': {
                 'search': search,

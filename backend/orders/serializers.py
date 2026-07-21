@@ -2,15 +2,24 @@ from rest_framework import serializers
 
 from .models import Order, OrderStatusHistory
 from users.models import WebUser
-from .slack_notify import notify_order_created, notify_order_dorazilo_ceka
+from stores.models import Prodejna
+from .slack_notify import notify_order_created
 from .sla import sla_days_threshold
+from .prodejna_resolve import resolve_order_prodejna
+from .status_config import STATUSES_REQUIRING_DODAVATEL
 
 
 class WebUserSimpleSerializer(serializers.ModelSerializer):
     """Jednoduchý serializer pro uživatele"""
     class Meta:
         model = WebUser
-        fields = ['id', 'jmeno']
+        fields = ['id', 'jmeno', 'prijmeni']
+
+
+class ProdejnaSimpleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Prodejna
+        fields = ['id', 'nazev', 'nazev_kratkiy']
 
 
 class OrderStatusHistorySerializer(serializers.ModelSerializer):
@@ -49,6 +58,7 @@ class OrderSerializer(serializers.ModelSerializer):
     """Hlavní serializer pro objednávky"""
     zalozil = WebUserSimpleSerializer(read_only=True)
     posledni_zmena_uzivatel = WebUserSimpleSerializer(read_only=True)
+    prodejna = ProdejnaSimpleSerializer(read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     historie_stavu = OrderStatusHistorySerializer(many=True, read_only=True)
     celkova_doba_procesu_text = serializers.SerializerMethodField()
@@ -64,12 +74,12 @@ class OrderSerializer(serializers.ModelSerializer):
             'id', 'jmeno_zakaznika', 'prijmeni_zakaznika', 'telefon_zakaznika',
             'typ_telefonu', 'dil', 'barva', 'status', 'status_display',
             'datum_vytvoreni', 'datum_aktualizace', 'zalozil', 'posledni_zmena_uzivatel',
-            'poznamka', 'cena', 'dodavatel', 'servisni_cislo',
+            'prodejna', 'poznamka', 'cena', 'dodavatel', 'servisni_cislo',
             'symplio_objednavka_id', 'symplio_url',
             'historie_stavu', 'celkova_doba_procesu_text', 'doba_od_vytvoreni',
             'dni_ve_stavu', 'sla_overdue', 'sla_days_threshold',
         ]
-        read_only_fields = ['datum_vytvoreni', 'datum_aktualizace']
+        read_only_fields = ['datum_vytvoreni', 'datum_aktualizace', 'prodejna']
     
     def get_celkova_doba_procesu_text(self, obj):
         """Převede celkovou dobu procesu na čitelný text"""
@@ -122,6 +132,7 @@ class OrderSerializer(serializers.ModelSerializer):
 
 class OrderCreateSerializer(serializers.ModelSerializer):
     """Serializer pro vytváření nových objednávek"""
+    servisni_cislo = serializers.CharField(required=True, allow_blank=False, max_length=50)
     
     class Meta:
         model = Order
@@ -131,11 +142,30 @@ class OrderCreateSerializer(serializers.ModelSerializer):
             'dodavatel', 'servisni_cislo', 'symplio_objednavka_id',
         ]
     
+    def validate_servisni_cislo(self, value):
+        value = (value or '').strip()
+        if not value:
+            raise serializers.ValidationError('Servisní číslo je povinné.')
+        return value
+
+    def validate_typ_telefonu(self, value):
+        value = (value or '').strip()
+        if not value:
+            raise serializers.ValidationError('Typ telefonu je povinný.')
+        return value
+
+    def validate_dil(self, value):
+        value = (value or '').strip()
+        if not value:
+            raise serializers.ValidationError('Díl je povinný.')
+        return value
+    
     def create(self, validated_data):
         """Vytvoří novou objednávku a nastaví aktuálního uživatele jako zakladatele"""
         request = self.context.get('request')
         validated_data['zalozil'] = request.user
         validated_data['posledni_zmena_uzivatel'] = request.user
+        validated_data['prodejna'] = resolve_order_prodejna(request.user)
         
         order = Order.objects.create(**validated_data)
         
@@ -156,6 +186,23 @@ class OrderUpdateStatusSerializer(serializers.Serializer):
     """Serializer pro změnu stavu objednávky"""
     novy_status = serializers.ChoiceField(choices=Order.STATUS_CHOICES)
     poznamka = serializers.CharField(required=False, allow_blank=True)
+    dodavatel = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+
+    def validate(self, attrs):
+        instance = self.instance
+        novy_status = attrs['novy_status']
+        incoming = attrs.get('dodavatel', None)
+        if incoming is not None:
+            resolved = (incoming or '').strip()
+        else:
+            resolved = (instance.dodavatel or '').strip() if instance else ''
+
+        if novy_status in STATUSES_REQUIRING_DODAVATEL and not resolved:
+            raise serializers.ValidationError({
+                'dodavatel': 'Dodavatel je povinný při přesunu do v košíku / objednáno.',
+            })
+        attrs['_resolved_dodavatel'] = resolved if incoming is not None else None
+        return attrs
     
     def update(self, instance, validated_data):
         """Aktualizuje stav objednávky a vytvoří záznam v historii"""
@@ -163,13 +210,19 @@ class OrderUpdateStatusSerializer(serializers.Serializer):
         puvodni_status = instance.status
         novy_status = validated_data['novy_status']
         poznamka = validated_data.get('poznamka', '')
+        new_dodavatel = validated_data.get('_resolved_dodavatel')
+
+        update_fields = ['datum_aktualizace']
+        if new_dodavatel is not None:
+            instance.dodavatel = new_dodavatel or None
+            update_fields.append('dodavatel')
         
         if puvodni_status != novy_status:
             instance.status = novy_status
             instance.posledni_zmena_uzivatel = request.user
             instance.sla_reminder_sent_at = None
-            instance.save(update_fields=[
-                'status', 'posledni_zmena_uzivatel', 'sla_reminder_sent_at', 'datum_aktualizace',
+            update_fields.extend([
+                'status', 'posledni_zmena_uzivatel', 'sla_reminder_sent_at',
             ])
             
             OrderStatusHistory.objects.create(
@@ -180,7 +233,6 @@ class OrderUpdateStatusSerializer(serializers.Serializer):
                 poznamka=poznamka
             )
 
-            if novy_status == 'dorazilo_ceka':
-                notify_order_dorazilo_ceka(instance)
+        instance.save(update_fields=list(dict.fromkeys(update_fields)))
         
         return instance

@@ -281,7 +281,7 @@ const AccessModule = () => {
         }
     };
 
-    const canEdit = user && (user.role === 'ADMIN' || user.role === 'PRODEJCE');
+    const canEdit = !!user;
     const canDelete = user && user.role === 'ADMIN';
 
     if (loading) {
@@ -376,24 +376,6 @@ const AccessModule = () => {
                 stores={stores}
                 categories={categories}
             />
-
-            <div className="access-stats">
-                <div className="stats-card">
-                    <h4>📊 Statistiky</h4>
-                    <p>Celkem přístupů: <strong>{accesses.length}</strong></p>
-                    <p>Zobrazených: <strong>{filteredAccesses.length}</strong></p>
-                </div>
-                
-                <div className="stores-overview">
-                    <h4>🏪 Prodejny</h4>
-                    {stores.map(store => (
-                        <div key={store.store} className="store-stat">
-                            <span>{store.store}</span>
-                            <span className="count">{store.count}</span>
-                        </div>
-                    ))}
-                </div>
-            </div>
 
             <AccessList
                 accesses={filteredAccesses}

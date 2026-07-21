@@ -1,14 +1,15 @@
 .kanban-board {
     width: 100%;
-    min-height: 60vh;
+    min-height: 40vh;
 }
 
-.kanban-columns {
+.kanban-board--dense .kanban-columns--stacked {
     display: flex;
-    gap: 20px;
-    overflow-x: auto;
-    padding: 10px 0;
-    min-height: 500px;
+    flex-direction: column;
+    gap: 14px;
+    overflow-x: visible;
+    padding: 4px 0;
+    min-height: auto;
 }
 
 .loading-board {
@@ -16,72 +17,28 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    min-height: 400px;
+    min-height: 280px;
     background: var(--bg-card);
-    border-radius: 15px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .loading-board .spinner {
-    width: 50px;
-    height: 50px;
-    border: 5px solid #f3f3f3;
-    border-top: 5px solid var(--brand-navy);
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid var(--brand-navy);
     border-radius: 50%;
     animation: spin 1s linear infinite;
-    margin-bottom: 20px;
+    margin-bottom: 16px;
 }
 
 .loading-board p {
-    font-size: 18px;
+    font-size: 16px;
     color: #666;
     margin: 0;
 }
 
-/* Scrollbar styling pro horizontální scroll */
-.kanban-columns::-webkit-scrollbar {
-    height: 8px;
+@keyframes spin {
+    to { transform: rotate(360deg); }
 }
-
-.kanban-columns::-webkit-scrollbar-track {
-    background: rgba(0, 0, 0, 0.1);
-    border-radius: 10px;
-}
-
-.kanban-columns::-webkit-scrollbar-thumb {
-    background: linear-gradient(135deg, var(--brand-navy) 0%, var(--brand-navy-hover) 100%);
-    border-radius: 10px;
-}
-
-.kanban-columns::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
-}
-
-/* Responzivní design */
-@media (max-width: 1200px) {
-    .kanban-columns {
-        gap: 15px;
-    }
-}
-
-@media (max-width: 768px) {
-    .kanban-columns {
-        gap: 10px;
-        padding: 5px 0;
-    }
-    
-    .kanban-board {
-        margin: 0 -10px;
-    }
-}
-
-@media (max-width: 480px) {
-    .kanban-columns {
-        flex-direction: column;
-        overflow-x: visible;
-    }
-    
-    .kanban-board {
-        margin: 0;
-    }
-} 

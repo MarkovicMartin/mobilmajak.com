@@ -7,13 +7,13 @@ class Order(models.Model):
     
     STATUS_CHOICES = [
         ('nove', 'Nové'),
-        ('objednano', 'Objednáno'),
-        ('v_kosiku', 'V košíku'),
-        ('predobjednano', 'Předobjednáno'),
-        ('neni_skladem', 'Není skladem'),
-        ('storno', 'Storno'),
-        ('dorazilo_ceka', 'Dorazilo čeká na zákazníka'),
-        ('hotovo', 'Hotovo'),
+        ('v_kosiku', 'v košíku'),
+        ('objednano', 'objednáno'),
+        ('predobjednano', 'Předobjednáno'),  # legacy → sloupec objednáno
+        ('neni_skladem', 'Není skladem'),  # filtr, ne hlavní sloupec
+        ('storno', 'Storno'),  # filtr, ne hlavní sloupec
+        ('dorazilo_ceka', 'připraveno'),  # DB klíč zachován (dříve „dorazilo čeká“)
+        ('hotovo', 'vyřízeno'),
     ]
     
     # Informace o zákazníkovi
@@ -38,13 +38,23 @@ class Order(models.Model):
     
     # Kdo naposledy změnil stav
     posledni_zmena_uzivatel = models.ForeignKey(WebUser, on_delete=models.CASCADE, related_name='zmenene_objednavky', verbose_name="Poslední změna uživatel")
+
+    # Prodejna (auto ze směny / domovská)
+    prodejna = models.ForeignKey(
+        'stores.Prodejna',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='objednavky',
+        verbose_name='Prodejna',
+    )
     
     # Doplňující informace
     poznamka = models.TextField(blank=True, null=True, verbose_name="Poznámka")
     cena = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True, verbose_name="Cena")
     dodavatel = models.CharField(max_length=100, blank=True, null=True, verbose_name="Dodavatel")
     
-    # Servisní číslo nebo číslo zákazníka
+    # Servisní číslo nebo číslo zákazníka (povinné při vytváření přes API)
     servisni_cislo = models.CharField(max_length=50, blank=True, null=True, verbose_name="Servisní číslo")
 
     # Vazba na Symplio objednávku (O2)
