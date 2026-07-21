@@ -6,6 +6,7 @@ from web_pristupy.mastersheet_logins import (
     needs_password_update,
     normalize_key,
     plan_password_updates,
+    resolve_website_url,
 )
 from web_pristupy.models import WEB_PRISTUPY_PRODEJNY
 
@@ -39,6 +40,28 @@ class MastersheetPasswordLogicTests(SimpleTestCase):
     def test_normalize_key_matches_across_casing(self):
         key = normalize_key('GLOBUS', 'ADART', 'Globus')
         self.assertEqual(key, ('globus', 'adart', 'globus'))
+
+    def test_resolve_website_url_from_full_url(self):
+        self.assertEqual(
+            resolve_website_url('https://lcdpartner.com/cs/'),
+            'https://lcdpartner.com/cs/',
+        )
+        self.assertEqual(
+            resolve_website_url('Google nakupy https://merchants.google.com/'),
+            'https://merchants.google.com/',
+        )
+
+    def test_resolve_website_url_from_domain(self):
+        self.assertEqual(resolve_website_url('doogee-shop.cz'), 'https://doogee-shop.cz')
+        self.assertEqual(resolve_website_url('www.sammobile.com'), 'https://www.sammobile.com')
+        self.assertEqual(resolve_website_url('Hurtel.pl'), 'https://Hurtel.pl')
+
+    def test_resolve_website_url_from_alias(self):
+        self.assertEqual(resolve_website_url('ADART'), 'https://www.adart.cz/')
+        self.assertEqual(resolve_website_url('alza.cz'), 'https://www.alza.cz/')
+        self.assertEqual(resolve_website_url('Zásilkovna'), 'https://client.packeta.com/')
+        self.assertEqual(resolve_website_url(''), '')
+        self.assertEqual(resolve_website_url('Gmail Globus'), '')
 
 
 class ImportMastersheetPasswordsCommandTests(TestCase):
@@ -90,3 +113,20 @@ class ImportMastersheetPasswordsCommandTests(TestCase):
         )
         self.assertEqual(plan['updated'], [])
         self.assertEqual(len(plan['skipped_has_password']), 1)
+
+
+class FillWebsiteUrlTests(TestCase):
+    def test_fill_urls_updates_empty_website(self):
+        row = WEB_PRISTUPY_PRODEJNY.objects.create(
+            company_name='doogee-shop.cz',
+            website_url='',
+            username='info@mobilmajak.cz',
+            password=PLACEHOLDER_PASSWORD,
+            store='Globus',
+            added_by='mastersheet-import',
+        )
+        url = resolve_website_url(row.company_name)
+        self.assertEqual(url, 'https://doogee-shop.cz')
+        WEB_PRISTUPY_PRODEJNY.objects.filter(pk=row.id).update(website_url=url)
+        row.refresh_from_db()
+        self.assertEqual(row.website_url, 'https://doogee-shop.cz')

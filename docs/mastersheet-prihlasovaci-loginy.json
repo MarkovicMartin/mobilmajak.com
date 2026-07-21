@@ -166,11 +166,6 @@
   },
   {
     "store": "GLOBUS",
-    "service": "https://www.xs.cz/servis-431",
-    "username": "servis@mobilmajak.cz"
-  },
-  {
-    "store": "GLOBUS",
     "service": "Hurtel.pl",
     "username": "Mobilmajak-Globus"
   },
@@ -1236,31 +1231,6 @@
   },
   {
     "store": "LITOVELSKÁ",
-    "service": "unicorno",
-    "username": "valentam"
-  },
-  {
-    "store": "LITOVELSKÁ",
-    "service": "eshop.setos.cz",
-    "username": "mobilshopsenimo@gmail.com"
-  },
-  {
-    "store": "LITOVELSKÁ",
-    "service": "obchod.kvapil.cz",
-    "username": "92codarho"
-  },
-  {
-    "store": "LITOVELSKÁ",
-    "service": "asbis.cz",
-    "username": "3codarsu"
-  },
-  {
-    "store": "LITOVELSKÁ",
-    "service": "http://b2b.emos.cz/",
-    "username": "info@mobilmajak.cz"
-  },
-  {
-    "store": "LITOVELSKÁ",
     "service": "adart",
     "username": "senimo"
   },
@@ -1328,11 +1298,6 @@
     "store": "LITOVELSKÁ",
     "service": "Agem.cz",
     "username": "Codaruina"
-  },
-  {
-    "store": "LITOVELSKÁ",
-    "service": "Aukro",
-    "username": "codaruina"
   },
   {
     "store": "LITOVELSKÁ",
@@ -1662,11 +1627,6 @@
   {
     "store": "LITOVELSKÁ",
     "service": "mobilnidily.cz",
-    "username": "servis@mobilmajak.cz"
-  },
-  {
-    "store": "LITOVELSKÁ",
-    "service": "ATCmobile.cz",
     "username": "servis@mobilmajak.cz"
   },
   {

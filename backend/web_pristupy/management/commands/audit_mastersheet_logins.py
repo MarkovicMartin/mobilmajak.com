@@ -12,6 +12,7 @@ from web_pristupy.mastersheet_logins import (
     load_mastersheet_logins,
     normalize_key,
     normalize_store,
+    resolve_website_url,
 )
 from web_pristupy.models import WEB_PRISTUPY_PRODEJNY
 
@@ -27,6 +28,11 @@ class Command(BaseCommand):
             '--import-missing',
             action='store_true',
             help='Přidat chybějící záznamy s placeholder heslem (nutná ruční úprava)',
+        )
+        parser.add_argument(
+            '--fill-urls',
+            action='store_true',
+            help='Doplnit prázdné website_url u existujících záznamů (heuristika + aliasy)',
         )
         parser.add_argument('--dry-run', action='store_true')
 
@@ -85,8 +91,10 @@ class Command(BaseCommand):
         if missing:
             lines.extend(['', '## Ukázka chybějících (max 30)', ''])
             for item in missing[:30]:
+                url = resolve_website_url(item['service'])
+                url_note = f' → {url}' if url else ' (bez URL)'
                 lines.append(
-                    f'- **{normalize_store(item["store"])}** / {item["service"]} → `{item["username"]}`'
+                    f'- **{normalize_store(item["store"])}** / {item["service"]} → `{item["username"]}`{url_note}'
                 )
             if len(missing) > 30:
                 lines.append(f'- … a dalších {len(missing) - 30}')
@@ -94,6 +102,7 @@ class Command(BaseCommand):
         lines.extend([
             '',
             'Hesla nejsou v git. Chybějící doplnit ručně v modulu Přístupy nebo `--import-missing` (placeholder heslo).',
+            'Prázdné odkazy: `--fill-urls` (heuristika z názvu služby / domény).',
         ])
 
         report_path.parent.mkdir(parents=True, exist_ok=True)
@@ -101,12 +110,18 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(f'Report: {report_path}'))
         self.stdout.write(f'Shoda: {len(present)}, chybí: {len(missing)}')
 
+        if options['fill_urls']:
+            self._fill_empty_urls(dry_run=options['dry_run'])
+
         if options['import_missing'] and missing:
             created = 0
+            with_url = 0
             for item in missing:
                 store = normalize_store(item['store'])
+                website_url = resolve_website_url(item['service'])
                 if options['dry_run']:
-                    self.stdout.write(f'  [dry] {store} / {item["service"]}')
+                    url_note = website_url or '(bez URL)'
+                    self.stdout.write(f'  [dry] {store} / {item["service"]} → {url_note}')
                     continue
                 exists = WEB_PRISTUPY_PRODEJNY.objects.filter(
                     store__iexact=store,
@@ -117,7 +132,7 @@ class Command(BaseCommand):
                     continue
                 WEB_PRISTUPY_PRODEJNY.objects.create(
                     company_name=item['service'][:200],
-                    website_url='',
+                    website_url=website_url or '',
                     username=item['username'][:100],
                     password=PLACEHOLDER_PASSWORD,
                     store=store,
@@ -125,4 +140,36 @@ class Command(BaseCommand):
                     is_active=True,
                 )
                 created += 1
-            self.stdout.write(self.style.SUCCESS(f'Přidáno {created} záznamů (heslo DOPLNIT_RUCNE)'))
+                if website_url:
+                    with_url += 1
+            if options['dry_run']:
+                self.stdout.write(self.style.WARNING(
+                    f'Dry-run – přidalo by se {len(missing)} záznamů'
+                ))
+            else:
+                self.stdout.write(self.style.SUCCESS(
+                    f'Přidáno {created} záznamů (heslo DOPLNIT_RUCNE, s URL: {with_url})'
+                ))
+
+    def _fill_empty_urls(self, *, dry_run: bool):
+        from django.db.models import Q
+
+        qs = WEB_PRISTUPY_PRODEJNY.objects.filter(is_active=True).filter(
+            Q(website_url='') | Q(website_url__isnull=True)
+        )
+        updated = 0
+        skipped = 0
+        for row in qs.iterator():
+            url = resolve_website_url(row.company_name)
+            if not url:
+                skipped += 1
+                continue
+            if dry_run:
+                self.stdout.write(f'  [dry url] {row.store} / {row.company_name} → {url}')
+            else:
+                WEB_PRISTUPY_PRODEJNY.objects.filter(pk=row.id).update(website_url=url)
+            updated += 1
+        label = 'Dry-run – doplnilo by se' if dry_run else 'Doplněno'
+        self.stdout.write(self.style.SUCCESS(
+            f'{label} {updated} URL (bez odvoditelné URL: {skipped})'
+        ))

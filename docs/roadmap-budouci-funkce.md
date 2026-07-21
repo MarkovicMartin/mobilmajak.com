@@ -457,8 +457,8 @@ Doporučené pořadí: **V1 + V2** → **V3** (po §4 R8).
 
 ### Na doplnění
 
-- [ ] **Import Mastersheet logins – přidat odkaz na e-shop** (`website_url`): odvodit z názvu služby (např. `alza.cz` → `https://alza.cz`) nebo udržovat mapu dodavatel → URL; backfill existujících záznamů z `mastersheet-import`
-- [ ] Rozšířit `mastersheet_logins.py` / import o pole URL (Excel sloupec, pokud existuje, jinak heuristika z `service`)
+- [x] **Import Mastersheet logins – přidat odkaz na e-shop** (`website_url`): heuristika z URL v názvu / domény + mapa dodavatelů; backfill `--fill-urls`
+- [x] Rozšířit `mastersheet_logins.py` / import o pole URL (`resolve_website_url`)
 - [ ] Po doplnění znovu audit `--import-missing` vs ruční kontrola vzorku na prodejně
 
 ### Doporučený postup

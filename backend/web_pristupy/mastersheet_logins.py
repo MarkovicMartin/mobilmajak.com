@@ -12,6 +12,65 @@ LOGINS_JSON = Path(__file__).resolve().parents[2] / 'docs' / 'mastersheet-prihla
 
 PLACEHOLDER_PASSWORD = 'DOPLNIT_RUCNE'
 
+# URL vložené přímo do názvu služby (Mastersheet často dává celý odkaz do sloupce).
+_URL_IN_TEXT = re.compile(r'https?://[^\s<>"\']+', re.IGNORECASE)
+# Doména / e-shop v názvu: alza.cz, www.sammobile.com, Hurtel.pl
+_DOMAIN_LIKE = re.compile(
+    r'^(?:www\.)?'
+    r'[a-z0-9](?:[a-z0-9\-]*[a-z0-9])?'
+    r'(?:\.[a-z0-9](?:[a-z0-9\-]*[a-z0-9])?)+'
+    r'/?$',
+    re.IGNORECASE,
+)
+
+# Známí dodavatelé bez domény v názvu → e-shop / B2B portál
+SERVICE_URL_ALIASES = {
+    'adart': 'https://www.adart.cz/',
+    'alza': 'https://www.alza.cz/',
+    'alza.cz': 'https://www.alza.cz/',
+    'aukro': 'https://aukro.cz/',
+    'aukro.cz': 'https://aukro.cz/',
+    'bakr': 'https://www.bakr.cz/',
+    'cpa': 'https://www.cpa.cz/',
+    'c.p.a.': 'https://www.cpa.cz/',
+    'datart': 'https://www.datart.cz/',
+    'dpd': 'https://www.dpd.com/cz/',
+    'emos': 'https://b2b.emos.cz/',
+    'fixed': 'https://www.fixed.cz/',
+    'fixshop.cz': 'https://www.fixshop.cz/',
+    'heureka nová': 'https://sluzby.heureka.cz/',
+    'heureka stara': 'https://sluzby.heureka.cz/',
+    'homecredit': 'https://partner.homecredit.cz/',
+    'homecredit - testovací': 'https://partner.homecredit.cz/',
+    'homecredit samoobsluha': 'https://partner.homecredit.cz/',
+    'ird': 'https://www.irdcz-shop.cz/',
+    'kvapil': 'https://obchod.kvapil.cz/',
+    'lcd partner': 'https://lcdpartner.com/cs/',
+    'mall partner': 'https://partner.mall.cz/',
+    'mall partner new': 'https://partner.mall.cz/',
+    'mall.cz': 'https://www.mall.cz/',
+    'mobil pro vás': 'https://www.mobilprovas.cz/',
+    'mobilmax': 'https://www.mobilmax.cz/',
+    'naše díly': 'https://www.nasedily.cz/',
+    'našedíly': 'https://www.nasedily.cz/',
+    'našedily.cz': 'https://www.nasedily.cz/',
+    'nasedily.cz': 'https://www.nasedily.cz/',
+    'packeta / zásilkovna': 'https://client.packeta.com/',
+    'zásilkovna': 'https://client.packeta.com/',
+    'zásilkovna přední': 'https://client.packeta.com/',
+    'zásilkovna zadní': 'https://client.packeta.com/',
+    'setos': 'https://eshop.setos.cz/',
+    'setos eshop': 'https://eshop.setos.cz/',
+    'setos admin': 'https://eshop.setos.cz/',
+    'tfo': 'https://sklep.telforceone.pl/',
+    'telforceone (polsko)': 'https://sklep.telforceone.pl/',
+    'ts bohemia': 'https://www.tsbohemia.cz/',
+    'tsbohemia.cz': 'https://www.tsbohemia.cz/',
+    'tsbohemia.cz nové': 'https://www.tsbohemia.cz/',
+    'unicorno': 'https://www.unicorno.cz/',
+    'unicorno.cz': 'https://www.unicorno.cz/',
+}
+
 STORE_ALIASES = {
     'GLOBUS': 'Globus',
     'ZLÍN ČEPKOV': 'Čepkov',
@@ -45,6 +104,58 @@ def normalize_key(store, service, username):
 def needs_password_update(password: str | None) -> bool:
     value = (password or '').strip()
     return not value or value == PLACEHOLDER_PASSWORD
+
+
+def _clip_url(url: str, max_len: int = 500) -> str:
+    url = (url or '').strip()
+    if len(url) <= max_len:
+        return url
+    # Dlouhé tracking URL – zkusit bez query stringu
+    base = url.split('?', 1)[0]
+    if len(base) <= max_len:
+        return base
+    return base[:max_len]
+
+
+def resolve_website_url(service: str | None) -> str:
+    """
+    Odvodí website_url z názvu služby Mastersheet.
+    1) URL přímo v textu (https://…)
+    2) Mapa známých dodavatelů
+    3) Doména v názvu (alza.cz, www.foo.com)
+    """
+    raw = re.sub(r'\s+', ' ', (service or '').strip())
+    if not raw:
+        return ''
+
+    match = _URL_IN_TEXT.search(raw)
+    if match:
+        return _clip_url(match.group(0).rstrip('.,);]'))
+
+    key = raw.lower().rstrip(':').strip()
+    alias = SERVICE_URL_ALIASES.get(key)
+    if alias:
+        return alias
+
+    # „Mobiola www.eshop.mobiola.eu“ / „Můj účet - LCD-Displeje.cz“
+    for token in re.split(r'[\s,;|/]+', raw):
+        token = token.strip().rstrip('.,);]')
+        if not token:
+            continue
+        token_key = token.lower()
+        if token_key in SERVICE_URL_ALIASES:
+            return SERVICE_URL_ALIASES[token_key]
+        if _DOMAIN_LIKE.match(token):
+            host = token if '://' in token else f'https://{token.lstrip("/")}'
+            if not host.lower().startswith(('http://', 'https://')):
+                host = f'https://{host}'
+            return _clip_url(host)
+
+    if _DOMAIN_LIKE.match(raw):
+        host = raw if '://' in raw else f'https://{raw.lstrip("/")}'
+        return _clip_url(host)
+
+    return ''
 
 
 def load_mastersheet_logins_from_json(json_path: Path):
