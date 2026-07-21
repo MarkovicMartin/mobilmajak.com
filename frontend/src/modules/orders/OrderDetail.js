@@ -134,6 +134,24 @@ const OrderDetail = ({ order, onClose, onDelete, onStatusChange }) => {
                                     <span className="value">{order.servisni_cislo}</span>
                                 </div>
                             )}
+                            {(order.symplio_objednavka_id || order.symplio_url) && (
+                                <div className="detail-item">
+                                    <span className="label">Symplio:</span>
+                                    <span className="value">
+                                        {order.symplio_url ? (
+                                            <a
+                                                href={order.symplio_url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                            >
+                                                Objednávka {order.symplio_objednavka_id}
+                                            </a>
+                                        ) : (
+                                            order.symplio_objednavka_id
+                                        )}
+                                    </span>
+                                </div>
+                            )}
                             {order.dodavatel && (
                                 <div className="detail-item">
                                     <span className="label">Dodavatel:</span>

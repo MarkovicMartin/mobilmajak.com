@@ -23,6 +23,18 @@ _DOMAIN_LIKE = re.compile(
     re.IGNORECASE,
 )
 
+# Právní formy firem – nesmí se brát jako doména
+_FALSE_DOMAIN_TOKENS = frozenset({
+    'a.s', 'a.s.', 's.r.o', 's.r.o.', 'v.o.s', 'v.o.s.', 'k.s', 'k.s.',
+    'spol.s.r.o', 'spol.s.r.o.',
+})
+
+# Povolené TLD pro heuristiku z názvu (bez plné URL)
+_ALLOWED_TLDS = frozenset({
+    'cz', 'sk', 'pl', 'com', 'eu', 'net', 'org', 'shop', 'store', 'app', 'fr',
+    'de', 'at', 'io', 'co', 'info', 'biz',
+})
+
 # Známí dodavatelé bez domény v názvu → e-shop / B2B portál
 SERVICE_URL_ALIASES = {
     'adart': 'https://www.adart.cz/',
@@ -117,6 +129,21 @@ def _clip_url(url: str, max_len: int = 500) -> str:
     return base[:max_len]
 
 
+def _is_plausible_domain(token: str) -> bool:
+    raw = (token or '').strip().rstrip('.,);]')
+    if not raw:
+        return False
+    key = raw.lower().rstrip('.')
+    if key in _FALSE_DOMAIN_TOKENS:
+        return False
+    if not _DOMAIN_LIKE.match(raw):
+        return False
+    tld = key.rsplit('.', 1)[-1]
+    if tld not in _ALLOWED_TLDS:
+        return False
+    return True
+
+
 def resolve_website_url(service: str | None) -> str:
     """
     Odvodí website_url z názvu služby Mastersheet.
@@ -145,13 +172,13 @@ def resolve_website_url(service: str | None) -> str:
         token_key = token.lower()
         if token_key in SERVICE_URL_ALIASES:
             return SERVICE_URL_ALIASES[token_key]
-        if _DOMAIN_LIKE.match(token):
+        if _is_plausible_domain(token):
             host = token if '://' in token else f'https://{token.lstrip("/")}'
             if not host.lower().startswith(('http://', 'https://')):
                 host = f'https://{host}'
             return _clip_url(host)
 
-    if _DOMAIN_LIKE.match(raw):
+    if _is_plausible_domain(raw):
         host = raw if '://' in raw else f'https://{raw.lstrip("/")}'
         return _clip_url(host)
 

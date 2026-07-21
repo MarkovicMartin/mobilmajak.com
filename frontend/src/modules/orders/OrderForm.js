@@ -13,7 +13,8 @@ const OrderForm = ({ onClose, onSubmit }) => {
         poznamka: '',
         cena: '',
         dodavatel: '',
-        servisni_cislo: ''
+        servisni_cislo: '',
+        symplio_objednavka_id: ''
     });
     const [errors, setErrors] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -101,8 +102,8 @@ const OrderForm = ({ onClose, onSubmit }) => {
             // Připravíme data pro odeslání
             const submitData = {
                 ...formData,
-                // Převedeme cenu na number pokud je zadána
-                cena: formData.cena ? parseFloat(formData.cena) : null
+                cena: formData.cena ? parseFloat(formData.cena) : null,
+                symplio_objednavka_id: formData.symplio_objednavka_id?.trim() || null,
             };
 
             const result = await onSubmit(submitData);
@@ -298,6 +299,18 @@ const OrderForm = ({ onClose, onSubmit }) => {
                                     placeholder="S123456"
                                 />
                             </div>
+                        </div>
+
+                        <div className="form-group">
+                            <label htmlFor="symplio_objednavka_id">Symplio ID objednávky</label>
+                            <input
+                                type="text"
+                                id="symplio_objednavka_id"
+                                name="symplio_objednavka_id"
+                                value={formData.symplio_objednavka_id}
+                                onChange={handleInputChange}
+                                placeholder="12345"
+                            />
                         </div>
 
                         <div className="form-group">

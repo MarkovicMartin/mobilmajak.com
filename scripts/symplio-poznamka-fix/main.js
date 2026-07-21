@@ -7,10 +7,7 @@ const axios = require('axios');
 const XLSX = require('xlsx');
 const { google } = require('googleapis');
 const mysql = require('mysql2/promise');
-const { loadSymplioCredentials } = require('./symplio-credentials');
-
-// Pomocná funkce pro čekání
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+const { loginSymplio, handleWafChallenge, sleep } = require('./symplio-login');
 
 /** Symplio export používá „Poznámka zákaznika“ (bez ř), ne „zákazníka“. */
 function poznamkaZakaznikaColIndex(colMap) {
@@ -1122,22 +1119,6 @@ async function processDownloadedTable(filePath, techniciMap = {}, prodejciMap = 
     }
 }
 
-// Funkce pro zpracování WAF výzvy
-async function handleWafChallenge(driver) {
-    try {
-        // Kontrola, zda je na stránce WAF výzva
-        const wafElements = await driver.findElements(By.css('body'));
-        const pageText = await driver.getPageSource();
-        
-        if (pageText.includes('WAF') || pageText.includes('Cloudflare') || pageText.includes('DDoS')) {
-            console.log('Detekována WAF výzva, čekám...');
-            await sleep(5000);
-        }
-    } catch (error) {
-        console.log('Chyba při kontrole WAF:', error.message);
-    }
-}
-
 // Hlavní funkce
 async function main() {
     // Inicializace Apify
@@ -1231,36 +1212,9 @@ async function main() {
             });
         `);
         
-        // 1. Přihlášení
+        // 1. Přihlášení (sdílený Symplio login)
         console.log('1. Přihlašuji se do systému...');
-        await driver.get('https://www.mobilmajak.cz/admin');
-        
-        // Kontrola WAF výzvy
-        await handleWafChallenge(driver);
-        
-        // Počkat na zobrazení přihlašovacího formuláře
-        await driver.wait(until.elementLocated(By.name('_username')), 30000);
-
-        const symplio = loadSymplioCredentials();
-        await driver.findElement(By.name('_username')).sendKeys(symplio.user);
-        await driver.findElement(By.name('_password')).sendKeys(symplio.pass);
-        await driver.findElement(By.xpath("//button[@type='submit' and contains(., 'Přihlásit')]")).click();
-        
-        // Počkat a zkontrolovat WAF
-        await sleep(3000);
-        await handleWafChallenge(driver);
-        
-        // Počkat na přihlášení a zobrazení stránky
-        await driver.wait(until.elementLocated(By.xpath("//a[contains(@class, 'btn-primary') and contains(., 'Globus')]")), 30000);
-        
-        // Kliknutí na Globus
-        await driver.findElement(By.xpath("//a[contains(@class, 'btn-primary') and contains(., 'Globus')]")).click();
-        
-        // Počkat na načtení stránky po kliknutí na Globus
-        await sleep(3000);
-        
-        // Kontrola WAF výzvy
-        await handleWafChallenge(driver);
+        await loginSymplio(driver, { store: 'globus' });
         
         // 2. Přejít na stránku položek
         console.log('2. Přecházím na stránku položek...');

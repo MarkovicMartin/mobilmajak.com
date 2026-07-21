@@ -9,12 +9,10 @@ const path = require('path');
 const axios = require('axios');
 const XLSX = require('xlsx');
 const mysql = require('mysql2/promise');
-const { Builder, By, until } = require('selenium-webdriver');
+const { Builder } = require('selenium-webdriver');
 const chrome = require('selenium-webdriver/chrome');
 
-const { loadSymplioCredentials } = require('./symplio-credentials');
-
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const { loginSymplio, handleWafChallenge, sleep } = require('./symplio-login');
 
 function convertExcelDate(excelDate) {
   if (!excelDate) return null;
@@ -54,18 +52,6 @@ function toCzDate(iso) {
 
 function toExportUrlDate(czDateStr) {
   return czDateStr.split('.').reverse().join('-').replace(/\s+/g, '');
-}
-
-async function handleWafChallenge(driver) {
-  try {
-    const pageText = await driver.getPageSource();
-    if (pageText.includes('WAF') || pageText.includes('Cloudflare') || pageText.includes('DDoS')) {
-      console.log('Detekována WAF výzva, čekám...');
-      await sleep(5000);
-    }
-  } catch (e) {
-    console.log('WAF check:', e.message);
-  }
 }
 
 function dupKey(date, cas, kod, doklad) {
@@ -111,19 +97,7 @@ async function downloadXlsx(fromIso, toIso, outputPath) {
     const dateFromStr = toCzDate(fromIso);
     const dateToStr = toCzDate(toIso);
     console.log(`Stahuji Symplio export ${dateFromStr} – ${dateToStr}`);
-    await driver.get('https://www.mobilmajak.cz/admin');
-    await sleep(2000);
-    await handleWafChallenge(driver);
-    await driver.wait(until.elementLocated(By.name('_username')), 30000);
-    const symplio = loadSymplioCredentials();
-    await driver.findElement(By.name('_username')).sendKeys(symplio.user);
-    await driver.findElement(By.name('_password')).sendKeys(symplio.pass);
-    await driver.findElement(By.xpath("//button[@type='submit' and contains(., 'Přihlásit')]")).click();
-    await sleep(3000);
-    await handleWafChallenge(driver);
-    await driver.wait(until.elementLocated(By.xpath("//a[contains(@class, 'btn-primary') and contains(., 'Globus')]")), 30000);
-    await driver.findElement(By.xpath("//a[contains(@class, 'btn-primary') and contains(., 'Globus')]")).click();
-    await sleep(2000);
+    await loginSymplio(driver, { store: 'globus' });
     await driver.get('https://www.mobilmajak.cz/admin/doklady/polozky');
     await sleep(4000);
     await handleWafChallenge(driver);

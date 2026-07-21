@@ -8,14 +8,15 @@
 const fs = require('fs');
 const path = require('path');
 const XLSX = require('xlsx');
-const { Builder, By } = require('selenium-webdriver');
+const { Builder } = require('selenium-webdriver');
 const chrome = require('selenium-webdriver/chrome');
 
 function resolveSymplioDir() {
   const candidates = [
     process.env.SYMPLIO_SCRIPTS_DIR,
+    path.join(__dirname, '../symplio-shared'),
     path.join(__dirname, '../symplio-poznamka-fix'),
-    '/opt/actor/ACTOR_FINALL_WEB_PRODEJE_ALL',
+    '/opt/scripts/symplio-shared',
   ].filter(Boolean);
   for (const dir of candidates) {
     if (fs.existsSync(path.join(dir, 'symplio-login.js'))) return dir;
@@ -24,8 +25,7 @@ function resolveSymplioDir() {
 }
 
 const SYMPLIO_DIR = resolveSymplioDir();
-const { sleep } = require(path.join(SYMPLIO_DIR, 'symplio-login'));
-const { loadSymplioCredentials } = require(path.join(SYMPLIO_DIR, 'symplio-credentials'));
+const { loginSymplio, sleep } = require(path.join(SYMPLIO_DIR, 'symplio-login'));
 
 const BASE = 'https://www.mobilmajak.cz';
 const REPORTS_DIR = path.join(__dirname, 'reports');
@@ -56,29 +56,8 @@ function dateRange() {
   return { from: isoDate(from), to: isoDate(to) };
 }
 
-async function selectStore(driver, storeButton) {
-  if (!storeButton) return;
-  const xpath = `//a[contains(@class, 'btn-primary') and contains(., '${storeButton}')]`;
-  try {
-    await driver.findElement(By.xpath(xpath)).click();
-    await sleep(2000);
-  } catch (err) {
-    console.warn(`Store button "${storeButton}" nenalezen, pokračuji:`, err.message);
-  }
-}
-
 async function loginForPokladna(driver, storeButton) {
-  await driver.get(`${BASE}/admin`);
-  await sleep(2000);
-  const onLogin = await driver.findElements(By.name('_username'));
-  if (onLogin.length) {
-    const { user, pass } = loadSymplioCredentials();
-    await onLogin[0].sendKeys(user);
-    await driver.findElement(By.name('_password')).sendKeys(pass);
-    await driver.findElement(By.xpath("//button[@type='submit' and contains(., 'Přihlásit')]")).click();
-    await sleep(3000);
-  }
-  await selectStore(driver, storeButton);
+  await loginSymplio(driver, { store: storeButton || null });
 }
 
 function buildExportUrl(adminSlug, from, to) {

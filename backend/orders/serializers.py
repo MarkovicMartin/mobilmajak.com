@@ -1,6 +1,9 @@
 from rest_framework import serializers
+
 from .models import Order, OrderStatusHistory
 from users.models import WebUser
+from .slack_notify import notify_order_created, notify_order_dorazilo_ceka
+from .sla import sla_days_threshold
 
 
 class WebUserSimpleSerializer(serializers.ModelSerializer):
@@ -50,6 +53,10 @@ class OrderSerializer(serializers.ModelSerializer):
     historie_stavu = OrderStatusHistorySerializer(many=True, read_only=True)
     celkova_doba_procesu_text = serializers.SerializerMethodField()
     doba_od_vytvoreni = serializers.SerializerMethodField()
+    dni_ve_stavu = serializers.SerializerMethodField()
+    sla_overdue = serializers.SerializerMethodField()
+    sla_days_threshold = serializers.SerializerMethodField()
+    symplio_url = serializers.SerializerMethodField()
     
     class Meta:
         model = Order
@@ -58,7 +65,9 @@ class OrderSerializer(serializers.ModelSerializer):
             'typ_telefonu', 'dil', 'barva', 'status', 'status_display',
             'datum_vytvoreni', 'datum_aktualizace', 'zalozil', 'posledni_zmena_uzivatel',
             'poznamka', 'cena', 'dodavatel', 'servisni_cislo',
-            'historie_stavu', 'celkova_doba_procesu_text', 'doba_od_vytvoreni'
+            'symplio_objednavka_id', 'symplio_url',
+            'historie_stavu', 'celkova_doba_procesu_text', 'doba_od_vytvoreni',
+            'dni_ve_stavu', 'sla_overdue', 'sla_days_threshold',
         ]
         read_only_fields = ['datum_vytvoreni', 'datum_aktualizace']
     
@@ -93,6 +102,23 @@ class OrderSerializer(serializers.ModelSerializer):
             minuty = doba.seconds // 60
             return f"{minuty} minut"
 
+    def get_dni_ve_stavu(self, obj):
+        return obj.days_in_current_status()
+
+    def get_sla_days_threshold(self, obj):
+        return sla_days_threshold()
+
+    def get_sla_overdue(self, obj):
+        if obj.status in ('hotovo', 'storno'):
+            return False
+        return obj.days_in_current_status() >= sla_days_threshold()
+
+    def get_symplio_url(self, obj):
+        sid = (obj.symplio_objednavka_id or '').strip()
+        if not sid:
+            return None
+        return f"https://www.mobilmajak.cz/admin/objednavky/objednavka-{sid}"
+
 
 class OrderCreateSerializer(serializers.ModelSerializer):
     """Serializer pro vytváření nových objednávek"""
@@ -102,7 +128,7 @@ class OrderCreateSerializer(serializers.ModelSerializer):
         fields = [
             'jmeno_zakaznika', 'prijmeni_zakaznika', 'telefon_zakaznika',
             'typ_telefonu', 'dil', 'barva', 'poznamka', 'cena', 
-            'dodavatel', 'servisni_cislo'
+            'dodavatel', 'servisni_cislo', 'symplio_objednavka_id',
         ]
     
     def create(self, validated_data):
@@ -111,17 +137,17 @@ class OrderCreateSerializer(serializers.ModelSerializer):
         validated_data['zalozil'] = request.user
         validated_data['posledni_zmena_uzivatel'] = request.user
         
-        # Vytvoříme objednávku
         order = Order.objects.create(**validated_data)
         
-        # Vytvoříme první záznam v historii
         OrderStatusHistory.objects.create(
             objednavka=order,
-            puvodni_status='',  # Prázdný - první stav
+            puvodni_status='',
             novy_status='nove',
             uzivatel=request.user,
             poznamka='Objednávka byla vytvořena'
         )
+
+        notify_order_created(order)
         
         return order
 
@@ -139,12 +165,13 @@ class OrderUpdateStatusSerializer(serializers.Serializer):
         poznamka = validated_data.get('poznamka', '')
         
         if puvodni_status != novy_status:
-            # Aktualizujeme objednávku
             instance.status = novy_status
             instance.posledni_zmena_uzivatel = request.user
-            instance.save()
+            instance.sla_reminder_sent_at = None
+            instance.save(update_fields=[
+                'status', 'posledni_zmena_uzivatel', 'sla_reminder_sent_at', 'datum_aktualizace',
+            ])
             
-            # Vytvoříme záznam v historii
             OrderStatusHistory.objects.create(
                 objednavka=instance,
                 puvodni_status=puvodni_status,
@@ -152,5 +179,8 @@ class OrderUpdateStatusSerializer(serializers.Serializer):
                 uzivatel=request.user,
                 poznamka=poznamka
             )
+
+            if novy_status == 'dorazilo_ceka':
+                notify_order_dorazilo_ceka(instance)
         
-        return instance 
+        return instance

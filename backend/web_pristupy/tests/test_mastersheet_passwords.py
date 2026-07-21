@@ -56,12 +56,10 @@ class MastersheetPasswordLogicTests(SimpleTestCase):
         self.assertEqual(resolve_website_url('www.sammobile.com'), 'https://www.sammobile.com')
         self.assertEqual(resolve_website_url('Hurtel.pl'), 'https://Hurtel.pl')
 
-    def test_resolve_website_url_from_alias(self):
-        self.assertEqual(resolve_website_url('ADART'), 'https://www.adart.cz/')
-        self.assertEqual(resolve_website_url('alza.cz'), 'https://www.alza.cz/')
-        self.assertEqual(resolve_website_url('Zásilkovna'), 'https://client.packeta.com/')
-        self.assertEqual(resolve_website_url(''), '')
-        self.assertEqual(resolve_website_url('Gmail Globus'), '')
+    def test_resolve_website_url_rejects_legal_form(self):
+        self.assertEqual(resolve_website_url('AT Computers a.s.'), '')
+        self.assertEqual(resolve_website_url('GAMACZ s.r.o.'), '')
+        self.assertEqual(resolve_website_url('Bonvision s.r.o. - XIAOMI ofic.distributor pro ČR'), '')
 
 
 class ImportMastersheetPasswordsCommandTests(TestCase):

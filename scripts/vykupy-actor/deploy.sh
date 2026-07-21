@@ -14,17 +14,19 @@ scp -i "$KEY" \
   "$REPO_ROOT/scripts/vykupy-actor/symplio-login.js" \
   "root@194.182.87.138:${ACTOR}/"
 
-echo "==> .env pro výkupy actor (reuse z prodejního actoru)"
+echo "==> .env pro výkupy actor (reuse z prodejního actoru + shared scripts)"
 ssh -i "$KEY" root@194.182.87.138 bash <<EOF
 set -euo pipefail
 ACTOR="${ACTOR}"
 PRODEJE_ENV="${PRODEJE_ENV}"
 SYMPLIO_SECRETS_VPS="${SYMPLIO_SECRETS_VPS}"
+SHARED_DIR="/opt/scripts/symplio-shared"
 if [[ -f "\$PRODEJE_ENV" ]]; then
   cp "\$PRODEJE_ENV" "\$ACTOR/.env"
 else
   cat > "\$ACTOR/.env" <<ENV
 SYMPLIO_SECRETS_FILE=\$SYMPLIO_SECRETS_VPS
+SYMPLIO_SCRIPTS_DIR=\$SHARED_DIR
 DB_HOST=db.dw300.webglobe.com
 DB_USER=multi_724223
 DB_NAME=multi_724223
@@ -33,6 +35,11 @@ ENV
 fi
 chmod 600 "\$ACTOR/.env"
 grep -q '^SYMPLIO_SECRETS_FILE=' "\$ACTOR/.env" || echo "SYMPLIO_SECRETS_FILE=\$SYMPLIO_SECRETS_VPS" >> "\$ACTOR/.env"
+if grep -q '^SYMPLIO_SCRIPTS_DIR=' "\$ACTOR/.env"; then
+  sed -i "s|^SYMPLIO_SCRIPTS_DIR=.*|SYMPLIO_SCRIPTS_DIR=\$SHARED_DIR|" "\$ACTOR/.env"
+else
+  echo "SYMPLIO_SCRIPTS_DIR=\$SHARED_DIR" >> "\$ACTOR/.env"
+fi
 EOF
 
 echo "==> run-vykupy-actor.sh – načtení .env"

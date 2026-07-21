@@ -2,6 +2,7 @@
 # Načítá run-prodeje-actor-safe.sh přes: set -a && source .env && set +a
 
 SYMPLIO_SECRETS_FILE=/home/webmajak/secrets/mobilmajak-symplio.json
+SYMPLIO_SCRIPTS_DIR=/opt/scripts/symplio-shared
 
 DB_HOST=db.dw300.webglobe.com
 DB_USER=multi_724223

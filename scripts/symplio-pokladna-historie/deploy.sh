@@ -28,7 +28,10 @@ if [[ -f "\$PRODEJE_ENV" ]]; then
   grep '^DB_' "\$PRODEJE_ENV" >> "\$TARGET_DIR/.env" 2>/dev/null || true
   grep '^SYMPLIO_SECRETS_FILE=' "\$PRODEJE_ENV" >> "\$TARGET_DIR/.env" 2>/dev/null || true
 fi
-grep -q '^SYMPLIO_SCRIPTS_DIR=' "\$TARGET_DIR/.env" || echo 'SYMPLIO_SCRIPTS_DIR=/opt/actor/ACTOR_FINALL_WEB_PRODEJE_ALL' >> "\$TARGET_DIR/.env"
+grep -q '^SYMPLIO_SCRIPTS_DIR=' "\$TARGET_DIR/.env" || echo 'SYMPLIO_SCRIPTS_DIR=/opt/scripts/symplio-shared' >> "\$TARGET_DIR/.env"
+if grep -q '^SYMPLIO_SCRIPTS_DIR=' "\$TARGET_DIR/.env"; then
+  sed -i 's|^SYMPLIO_SCRIPTS_DIR=.*|SYMPLIO_SCRIPTS_DIR=/opt/scripts/symplio-shared|' "\$TARGET_DIR/.env"
+fi
 chmod 600 "\$TARGET_DIR/.env"
 cd "\$TARGET_DIR"
 if [[ ! -d node_modules ]]; then

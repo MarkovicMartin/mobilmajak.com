@@ -28,6 +28,11 @@ if [[ ! -f "\$ACTOR/.env" ]]; then
   chmod 600 "\$ACTOR/.env"
 fi
 grep -q '^SYMPLIO_SECRETS_FILE=' "\$ACTOR/.env" || echo "SYMPLIO_SECRETS_FILE=\$SYMPLIO_SECRETS_VPS" >> "\$ACTOR/.env"
+if grep -q '^SYMPLIO_SCRIPTS_DIR=' "\$ACTOR/.env"; then
+  sed -i 's|^SYMPLIO_SCRIPTS_DIR=.*|SYMPLIO_SCRIPTS_DIR=/opt/scripts/symplio-shared|' "\$ACTOR/.env"
+else
+  echo 'SYMPLIO_SCRIPTS_DIR=/opt/scripts/symplio-shared' >> "\$ACTOR/.env"
+fi
 grep -q '^DB_PASSWORD=' "\$ACTOR/.env" || echo "DB_PASSWORD=" >> "\$ACTOR/.env"
 echo "Uprav DB_PASSWORD v \$ACTOR/.env pokud chybí."
 EOF
@@ -72,5 +77,6 @@ fi
 EOF
 
 echo "Hotovo."
+echo "  Preferovaný deploy shared: ./scripts/symplio-shared/deploy.sh"
 echo "  Ověř credentials: ssh … 'cd ${ACTOR} && set -a && source .env && set +a && node -e \"require(\\\"./symplio-credentials\\\").loadSymplioCredentials()\"'"
 echo "  Nainstaluj cron (Packeta + Symplio poznámky): na VPS spusť scripts/install-packeta-cron.sh"

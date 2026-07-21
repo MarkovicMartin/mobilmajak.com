@@ -229,6 +229,9 @@ SLACK_SIGNING_SECRET = _slack_prod.signing_secret
 SLACK_TASKS_WEBHOOK_URL = _slack_prod.tasks_webhook_url
 MOBILMAJAK_APP_URL = _slack_prod.app_url or "https://mobilmajak.com"
 
+# Objednávky O3 – SLA práh (dny); cron jen Slack připomínka, nikdy auto status
+ORDERS_SLA_DAYS = int(os.getenv("ORDERS_SLA_DAYS", "7") or "7")
+
 # Logování pro produkci
 LOGGING = {
     'version': 1,

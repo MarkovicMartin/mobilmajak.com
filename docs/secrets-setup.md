@@ -149,8 +149,11 @@ Ručně v NVR: **Configuration → Network → Advanced → HTTP(S) alarm** (neb
 
 Výstup: `../mobilmajak-backups/`. Návod a obnova: [`docs/zaloha-disaster-recovery.md`](zaloha-disaster-recovery.md). Privátní git jen pro manifesty: `backup-init-offsite-git.sh` + `backup-sync-manifests-to-git.sh`.
 
-**Symplio prodejní actor (VPS):**
+**Symplio actory (VPS):**
 
-- Actor: `/opt/actor/ACTOR_FINALL_WEB_PRODEJE_ALL/main.js`
-- Cron: `/opt/run-prodeje-actor-safe.sh` (každé 2 min)
+- Sdílený login: `/opt/scripts/symplio-shared/` (`symplio-credentials.js`, `symplio-login.js`)
+- Deploy: `./scripts/symplio-shared/deploy.sh`
+- Env ve wrapperech: `SYMPLIO_SECRETS_FILE` + `SYMPLIO_SCRIPTS_DIR=/opt/scripts/symplio-shared`
+- Actory: prodeje `/opt/actor/ACTOR_FINALL_WEB_PRODEJE_ALL/`, výkupy `/opt/actor/ACTOR_VYKUPY/`, pokladna `/opt/scripts/symplio-pokladna-historie/`
 - Credentials: `secrets/mobilmajak-symplio.json` → na VPS `/home/webmajak/secrets/mobilmajak-symplio.json`
+- **Rotace hesla (S5):** změnit jen jeden JSON (`mobilmajak-symplio.json`) – všechny actory načítají stejný soubor přes `SYMPLIO_SECRETS_FILE`. Po změně hesla není potřeba upravovat jednotlivé actory.

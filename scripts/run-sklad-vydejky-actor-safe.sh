@@ -46,7 +46,7 @@ if [[ -f "$ACTOR_DIR/.env" ]]; then
   source "$ACTOR_DIR/.env"
   set +a
 fi
-export SYMPLIO_SCRIPTS_DIR="$ACTOR_DIR"
+export SYMPLIO_SCRIPTS_DIR="${SYMPLIO_SCRIPTS_DIR:-/opt/scripts/symplio-shared}"
 set +e
 HEADLESS=1 CHROME_BIN=/usr/bin/google-chrome /usr/bin/node import-sklad-vydejky.js --from "$FROM" --to "$TO" >> "$LOG_FILE" 2>&1
 EXIT_CODE=$?

@@ -16,19 +16,18 @@ const XLSX = require('xlsx');
 function resolveSymplioDir() {
   const candidates = [
     process.env.SYMPLIO_SCRIPTS_DIR,
+    path.join(__dirname, '../symplio-shared'),
     path.join(__dirname, '../symplio-poznamka-fix'),
-    path.join(__dirname, '..', 'vykupy-actor'),
-    '/opt/actor/ACTOR_FINALL_WEB_PRODEJE_ALL',
+    '/opt/scripts/symplio-shared',
   ].filter(Boolean);
   for (const dir of candidates) {
-    if (fs.existsSync(path.join(dir, 'symplio-credentials.js'))) return dir;
+    if (fs.existsSync(path.join(dir, 'symplio-login.js'))) return dir;
   }
-  throw new Error(`symplio-credentials.js nenalezen v: ${candidates.join(', ')}`);
+  throw new Error(`symplio-login.js nenalezen v: ${candidates.join(', ')}`);
 }
 
 const SYMPLIO_DIR = resolveSymplioDir();
-const { loadSymplioCredentials } = require(path.join(SYMPLIO_DIR, 'symplio-credentials'));
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const { loginSymplio, sleep } = require(path.join(SYMPLIO_DIR, 'symplio-login'));
 
 const ALLOWED_SUBTYPES = new Set([20, 25, 202, 252, 204, 254]);
 const PODTYP_TO_SUBTYPE = {
@@ -141,41 +140,8 @@ async function createDriver(downloadDir) {
   return new Builder().forBrowser('chrome').setChromeOptions(options).build();
 }
 
-async function selectHlavniSklad(driver) {
-  const selectors = [
-    "//a[contains(@class, 'btn-primary') and contains(., 'Hlavní sklad')]",
-    "//a[contains(@class, 'btn') and contains(., 'Hlavní sklad')]",
-    "//a[contains(., 'Hlavní sklad')]",
-  ];
-  for (const xpath of selectors) {
-    try {
-      const el = await driver.wait(until.elementLocated(By.xpath(xpath)), 8000);
-      await el.click();
-      await sleep(2000);
-      console.log('Vybrán Hlavní sklad.');
-      return;
-    } catch (_) {
-      // další selektor
-    }
-  }
-  const url = await driver.getCurrentUrl();
-  if (!url.includes('/admin/login')) {
-    console.log('Výběr Hlavní sklad přeskočen – pravděpodobně už přihlášeno:', url);
-    return;
-  }
-  throw new Error('Po přihlášení se nepodařilo vybrat Hlavní sklad');
-}
-
 async function symplioLogin(driver) {
-  const { user, pass } = loadSymplioCredentials();
-  await driver.get('https://www.mobilmajak.cz/admin');
-  await driver.wait(until.elementLocated(By.name('_username')), 30000);
-  await driver.findElement(By.name('_username')).sendKeys(user);
-  await driver.findElement(By.name('_password')).sendKeys(pass);
-  await driver.findElement(By.xpath("//button[@type='submit' and contains(., 'Přihlásit')]")).click();
-  await sleep(3000);
-  await selectHlavniSklad(driver);
-  await sleep(1000);
+  await loginSymplio(driver, { store: 'hlavni_sklad' });
 }
 
 function eachDayIso(from, to) {

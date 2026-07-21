@@ -293,3 +293,6 @@ SLACK_BOT_TOKEN = _slack.bot_token
 SLACK_SIGNING_SECRET = _slack.signing_secret
 SLACK_TASKS_WEBHOOK_URL = _slack.tasks_webhook_url
 MOBILMAJAK_APP_URL = _slack.app_url or "http://localhost:3000"
+
+# Objednávky O3 – dny ve stejném stavu před Slack připomínkou / FE highlight (bez auto změny statusu)
+ORDERS_SLA_DAYS = int(os.getenv("ORDERS_SLA_DAYS", "7") or "7")

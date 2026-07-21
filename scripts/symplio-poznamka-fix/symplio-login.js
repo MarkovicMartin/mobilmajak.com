@@ -1,20 +1,19 @@
-const { By } = require('selenium-webdriver');
-const { loadSymplioCredentials } = require('./symplio-credentials');
+/**
+ * Thin re-export – login ze SYMPLIO_SCRIPTS_DIR (default /opt/scripts/symplio-shared).
+ */
+const path = require('path');
+const fs = require('fs');
 
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
-async function loginSymplio(driver, { selectGlobus = true } = {}) {
-  const { user, pass } = loadSymplioCredentials();
-  await driver.get('https://www.mobilmajak.cz/admin');
-  await sleep(2000);
-  await driver.findElement(By.name('_username')).sendKeys(user);
-  await driver.findElement(By.name('_password')).sendKeys(pass);
-  await driver.findElement(By.xpath("//button[@type='submit' and contains(., 'Přihlásit')]")).click();
-  await sleep(3000);
-  if (selectGlobus) {
-    await driver.findElement(By.xpath("//a[contains(@class, 'btn-primary') and contains(., 'Globus')]")).click();
-    await sleep(2000);
+function resolveSymplioSharedDir() {
+  const candidates = [
+    process.env.SYMPLIO_SCRIPTS_DIR,
+    path.join(__dirname, '../symplio-shared'),
+    '/opt/scripts/symplio-shared',
+  ].filter(Boolean);
+  for (const dir of candidates) {
+    if (fs.existsSync(path.join(dir, 'symplio-login.js'))) return dir;
   }
+  throw new Error(`symplio-login.js nenalezen v: ${candidates.join(', ')}`);
 }
 
-module.exports = { loginSymplio, sleep };
+module.exports = require(path.join(resolveSymplioSharedDir(), 'symplio-login'));

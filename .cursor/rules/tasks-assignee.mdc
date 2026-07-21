@@ -1,0 +1,24 @@
+---
+description: Agent smí zakládat úkoly jen pro Martina Markoviče; nikdy náhodnému uživateli
+alwaysApply: true
+---
+
+# Úkoly – přiřazení při zakládání agentem
+
+## Zakázáno
+
+- Vytvářet úkol (`Ukol.objects.create`, API, Slack wizard, shell) pro „prvního ADMIN“, náhodného uživatele, nebo kohokoli odvozeného z `order_by('id').first()` / podobných heuristik
+- Přiřazovat úkol Smrčkové, Bulandrovi ani jinému účtu, pokud to uživatel **výslovně** neřekne
+
+## Povoleno
+
+- Zakládat úkol **jen** pro Martina Markoviče:
+  - `id_prodejce_ukol = 999`
+  - `id_prodejce_zadal = 999`
+  - username `markovic`
+- Jiného řešitele jen po explicitní žádosti v aktuálním chatu (jméno / username)
+
+## Preferovaný typ
+
+- Pokud agent zakládá úkol pro Markoviče jako připomínku sobě: `typ='osobni'`
+- `typ='prirazeny'` jen když uživatel chce úkol pro konkrétní jinou osobu a řekne koho

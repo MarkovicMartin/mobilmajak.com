@@ -46,6 +46,22 @@ class Order(models.Model):
     
     # Servisní číslo nebo číslo zákazníka
     servisni_cislo = models.CharField(max_length=50, blank=True, null=True, verbose_name="Servisní číslo")
+
+    # Vazba na Symplio objednávku (O2)
+    symplio_objednavka_id = models.CharField(
+        max_length=64,
+        blank=True,
+        null=True,
+        verbose_name="Symplio ID objednávky",
+        help_text="ID v Symplio adminu (odkaz /admin/objednavky/objednavka-{id})",
+    )
+
+    # O3: čas poslední Slack SLA připomínky (reset při změně stavu)
+    sla_reminder_sent_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        verbose_name="SLA připomínka odeslána",
+    )
     
     class Meta:
         db_table = 'WEB_OBJEDNAVKY'
@@ -64,6 +80,22 @@ class Order(models.Model):
             if posledni_zmena:
                 return posledni_zmena.datum_zmeny - self.datum_vytvoreni
         return None
+
+    @property
+    def status_since(self):
+        """Okamžik vstupu do aktuálního stavu (pro SLA)."""
+        hist = self.historie_stavu.filter(novy_status=self.status).order_by('-datum_zmeny').first()
+        if hist:
+            return hist.datum_zmeny
+        return self.datum_vytvoreni
+
+    def days_in_current_status(self, now=None):
+        from django.utils import timezone
+        now = now or timezone.now()
+        since = self.status_since
+        if not since:
+            return 0
+        return max(0, (now - since).days)
 
 
 class OrderStatusHistory(models.Model):

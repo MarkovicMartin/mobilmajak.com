@@ -35,12 +35,18 @@ const OrderCard = ({ order, isDragging = false, onOrderClick, onDeleteOrder }) =
         }
     };
 
-    // Priorita objednávky podle stáří
+    // Priorita / SLA podle dní ve stejném stavu (O3 – bez auto změny statusu)
     const getPriorityClass = () => {
+        if (order.sla_overdue) return 'sla-overdue';
+        const days = order.dni_ve_stavu;
+        if (typeof days === 'number') {
+            if (days >= 5) return 'priority-high';
+            if (days >= 3) return 'priority-medium';
+            return 'priority-normal';
+        }
         const created = new Date(order.datum_vytvoreni);
         const now = new Date();
         const diffHours = Math.abs(now - created) / (1000 * 60 * 60);
-        
         if (diffHours > 48) return 'priority-high';
         if (diffHours > 24) return 'priority-medium';
         return 'priority-normal';
@@ -122,7 +128,28 @@ const OrderCard = ({ order, isDragging = false, onOrderClick, onDeleteOrder }) =
                         <span className="metadata-value">{order.doba_od_vytvoreni}</span>
                     </div>
                 )}
+                {typeof order.dni_ve_stavu === 'number' && !['hotovo', 'storno'].includes(order.status) && (
+                    <div className="metadata-row">
+                        <span className="metadata-label">📌 Ve stavu:</span>
+                        <span className="metadata-value">
+                            {order.dni_ve_stavu} d
+                            {order.sla_overdue ? ' ⚠' : ''}
+                        </span>
+                    </div>
+                )}
             </div>
+
+            {order.symplio_url && (
+                <a
+                    className="card-symplio-link"
+                    href={order.symplio_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    Symplio #{order.symplio_objednavka_id}
+                </a>
+            )}
 
             {/* Cena pokud je zadána */}
             {order.cena && (
