@@ -16,6 +16,9 @@ STATUS_COLUMN_FOLD = {
     "predobjednano": "objednano",
 }
 
+# Stavy zrušené z UI (legacy data mohou zůstat v DB)
+RETIRED_STATUSES = frozenset({"neni_skladem", "storno"})
+
 STATUSES_REQUIRING_DODAVATEL = frozenset({"v_kosiku", "objednano"})
 
 

@@ -13,8 +13,6 @@ const ShellNavLinks = ({
     linkClass,
     activeClass,
     childClass,
-    groupClass,
-    groupLabelClass,
     mobile = false,
     collapsed = false,
     onNavigate,
@@ -26,29 +24,27 @@ const ShellNavLinks = ({
     const canTasks = auth.canManageTasks();
     const canCoaching = auth.canAccessCoaching();
 
-    const groups = useMemo(() => {
+    const items = useMemo(() => {
         const stableAuth = {
             isAdmin: () => isAdminUser,
             canManageTasks: () => canTasks,
             canAccessCoaching: () => canCoaching,
         };
-        return getVisibleNavGroups(stableAuth, { mobile: false });
+        return getVisibleNavGroups(stableAuth, { mobile: false }).flatMap((g) => g.items);
     }, [isAdminUser, canTasks, canCoaching]);
 
     const activeParentKeys = useMemo(() => {
         const keys = new Set();
-        groups.forEach((group) => {
-            group.items.forEach((item) => {
-                if (!item.children?.length) return;
-                const parentActive = isNavItemLinkActive(item, pathname, locationState);
-                const childActive = item.children.some((c) =>
-                    isNavItemLinkActive(c, pathname, locationState),
-                );
-                if (parentActive || childActive) keys.add(item.sectionKey);
-            });
+        items.forEach((item) => {
+            if (!item.children?.length) return;
+            const parentActive = isNavItemLinkActive(item, pathname, locationState);
+            const childActive = item.children.some((c) =>
+                isNavItemLinkActive(c, pathname, locationState),
+            );
+            if (parentActive || childActive) keys.add(item.sectionKey);
         });
         return keys;
-    }, [groups, pathname, locationState]);
+    }, [items, pathname, locationState]);
 
     const activeParentKeysKey = useMemo(
         () => [...activeParentKeys].sort().join('|'),
@@ -148,37 +144,32 @@ const ShellNavLinks = ({
     if (mobile) {
         return (
             <>
-                {groups.map((group) => (
-                    <div key={group.id} className={groupClass}>
-                        <span className={groupLabelClass}>{group.label}</span>
-                        {group.items.map((item) => {
-                            const hasChildren = item.children?.length > 0;
-                            if (!hasChildren) {
-                                return renderLink(item, false);
-                            }
-                            const isOpen = expandedInline.has(item.sectionKey);
-                            return (
-                                <div key={item.sectionKey} className="shell-nav__branch">
-                                    <button
-                                        type="button"
-                                        className={`${linkClass} shell-nav__branch-toggle ${isOpen ? 'shell-nav__branch-toggle--open' : ''}`}
-                                        onClick={() => toggleInline(item.sectionKey)}
-                                        aria-expanded={isOpen}
-                                    >
-                                        {renderIcon(item)}
-                                        <span className="shell-nav__label">{item.label}</span>
-                                        <i className={`fas fa-chevron-${isOpen ? 'up' : 'down'} shell-nav__chevron`} aria-hidden="true" />
-                                    </button>
-                                    {isOpen && (
-                                        <div className="shell-nav__children">
-                                            {item.children.map((child) => renderLink(child, true))}
-                                        </div>
-                                    )}
+                {items.map((item) => {
+                    const hasChildren = item.children?.length > 0;
+                    if (!hasChildren) {
+                        return renderLink(item, false);
+                    }
+                    const isOpen = expandedInline.has(item.sectionKey);
+                    return (
+                        <div key={item.sectionKey} className="shell-nav__branch">
+                            <button
+                                type="button"
+                                className={`${linkClass} shell-nav__branch-toggle ${isOpen ? 'shell-nav__branch-toggle--open' : ''}`}
+                                onClick={() => toggleInline(item.sectionKey)}
+                                aria-expanded={isOpen}
+                            >
+                                {renderIcon(item)}
+                                <span className="shell-nav__label">{item.label}</span>
+                                <i className={`fas fa-chevron-${isOpen ? 'up' : 'down'} shell-nav__chevron`} aria-hidden="true" />
+                            </button>
+                            {isOpen && (
+                                <div className="shell-nav__children">
+                                    {item.children.map((child) => renderLink(child, true))}
                                 </div>
-                            );
-                        })}
-                    </div>
-                ))}
+                            )}
+                        </div>
+                    );
+                })}
             </>
         );
     }
@@ -267,16 +258,7 @@ const ShellNavLinks = ({
         );
     };
 
-    return (
-        <>
-            {groups.map((group) => (
-                <div key={group.id} className={groupClass}>
-                    {!collapsed && <span className={groupLabelClass}>{group.label}</span>}
-                    {group.items.map((item) => renderDesktopBranch(item))}
-                </div>
-            ))}
-        </>
-    );
+    return <>{items.map((item) => renderDesktopBranch(item))}</>;
 };
 
 export const ShellProfileLinks = ({

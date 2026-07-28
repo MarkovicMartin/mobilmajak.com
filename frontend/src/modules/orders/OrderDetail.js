@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Modal from '../../components/Modal';
 import api from '../../services/api';
 import {
@@ -12,22 +12,41 @@ import {
 } from './orderHelpers';
 import './OrderDetail.css';
 
-const OrderDetail = ({ order, onClose, onDelete, onStatusChange }) => {
+const emptyFieldsFromOrder = (order) => ({
+    jmeno_zakaznika: order.jmeno_zakaznika || '',
+    prijmeni_zakaznika: order.prijmeni_zakaznika || '',
+    telefon_zakaznika: order.telefon_zakaznika || '',
+    typ_telefonu: order.typ_telefonu || '',
+    dil: order.dil || '',
+    barva: order.barva || '',
+    cena: order.cena != null && order.cena !== '' ? String(order.cena) : '',
+    dodavatel: order.dodavatel || '',
+    servisni_cislo: order.servisni_cislo || '',
+    poznamka: order.poznamka || '',
+});
+
+const OrderDetail = ({ order, onClose, onDelete, onStatusChange, onUpdate }) => {
     const [history, setHistory] = useState([]);
     const [loadingHistory, setLoadingHistory] = useState(true);
     const [currentStatus, setCurrentStatus] = useState(order.status);
     const [statusDisplay, setStatusDisplay] = useState(
         order.status_display || statusLabel(order.status)
     );
-    const [dodavatel, setDodavatel] = useState(order.dodavatel || '');
+    const [fields, setFields] = useState(() => emptyFieldsFromOrder(order));
+    const [baseline, setBaseline] = useState(() => emptyFieldsFromOrder(order));
     const [statusNote, setStatusNote] = useState('');
     const [changingStatus, setChangingStatus] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [saveError, setSaveError] = useState('');
 
     useEffect(() => {
         setCurrentStatus(order.status);
         setStatusDisplay(order.status_display || statusLabel(order.status));
-        setDodavatel(order.dodavatel || '');
-    }, [order.id, order.status, order.status_display, order.dodavatel]);
+        const next = emptyFieldsFromOrder(order);
+        setFields(next);
+        setBaseline(next);
+        setSaveError('');
+    }, [order]);
 
     useEffect(() => {
         const loadHistory = async () => {
@@ -47,13 +66,63 @@ const OrderDetail = ({ order, onClose, onDelete, onStatusChange }) => {
 
     const moveTargets = getMoveTargets(currentStatus);
     const currentStatusConfig = ALL_STATUS_OPTIONS.find((s) => s.value === currentStatus);
-    const repairLink = myrepairUrl(order.servisni_cislo);
+    const repairLink = myrepairUrl(fields.servisni_cislo);
+    const hasServiska = !!(fields.servisni_cislo || '').trim();
+    const detailTitle = [fields.typ_telefonu, fields.dil].filter(Boolean).join(' · ') || 'Objednávka';
+
+    const dirty = useMemo(() => {
+        return Object.keys(baseline).some((key) => String(fields[key] ?? '') !== String(baseline[key] ?? ''));
+    }, [fields, baseline]);
+
+    const setField = (name, value) => {
+        setFields((prev) => ({ ...prev, [name]: value }));
+        setSaveError('');
+    };
+
+    const handleSave = async () => {
+        if (!onUpdate || !dirty || saving) return;
+        setSaving(true);
+        setSaveError('');
+        try {
+            const patch = {};
+            Object.keys(baseline).forEach((key) => {
+                if (String(fields[key] ?? '') !== String(baseline[key] ?? '')) {
+                    if (key === 'cena') {
+                        const raw = String(fields[key] ?? '').trim();
+                        patch[key] = raw === '' ? null : raw;
+                    } else {
+                        patch[key] = fields[key];
+                    }
+                }
+            });
+            const result = await onUpdate(order.id, patch);
+            if (result.success === false) {
+                const err = result.error;
+                const msg = typeof err === 'object'
+                    ? (Object.values(err).flat?.()?.[0] || err.detail || JSON.stringify(err))
+                    : (err || 'Uložení selhalo');
+                setSaveError(typeof msg === 'string' ? msg : 'Uložení selhalo');
+                return;
+            }
+            if (result.data) {
+                const next = emptyFieldsFromOrder(result.data);
+                setFields(next);
+                setBaseline(next);
+            } else {
+                setBaseline({ ...fields });
+            }
+        } catch (err) {
+            setSaveError('Uložení selhalo');
+        } finally {
+            setSaving(false);
+        }
+    };
 
     const handleMoveTo = async (newStatus) => {
         if (newStatus === currentStatus || changingStatus) return;
 
         let nextDodavatel = null;
-        if (STATUSES_REQUIRING_DODAVATEL.has(newStatus) && !(dodavatel || '').trim()) {
+        if (STATUSES_REQUIRING_DODAVATEL.has(newStatus) && !(fields.dodavatel || '').trim()) {
             const entered = window.prompt('Zadejte dodavatele (povinné pro tento stav):');
             if (!entered || !entered.trim()) {
                 alert('Dodavatel je povinný při přesunu do v košíku / objednáno.');
@@ -62,27 +131,51 @@ const OrderDetail = ({ order, onClose, onDelete, onStatusChange }) => {
             nextDodavatel = entered.trim();
         }
 
+        const prevStatus = currentStatus;
+        const prevDisplay = statusDisplay;
+        const prevDodavatel = fields.dodavatel;
+
         setChangingStatus(true);
+        setCurrentStatus(newStatus);
+        setStatusDisplay(statusLabel(newStatus));
+        if (nextDodavatel) {
+            setFields((prev) => ({ ...prev, dodavatel: nextDodavatel }));
+            setBaseline((prev) => ({ ...prev, dodavatel: nextDodavatel }));
+        }
+        const noteForApi = statusNote;
+        setStatusNote('');
+
         try {
-            const result = await onStatusChange(order.id, newStatus, statusNote, nextDodavatel);
+            const result = await onStatusChange(order.id, newStatus, noteForApi, nextDodavatel);
             if (result.success) {
-                const response = await api.get(`/orders/orders/${order.id}/history/`);
-                setHistory(response.data);
-                setStatusNote('');
-                setCurrentStatus(newStatus);
-                setStatusDisplay(statusLabel(newStatus));
-                if (nextDodavatel) {
-                    setDodavatel(nextDodavatel);
-                }
+                api.get(`/orders/orders/${order.id}/history/`)
+                    .then((response) => setHistory(response.data))
+                    .catch(() => {});
             } else {
+                setCurrentStatus(prevStatus);
+                setStatusDisplay(prevDisplay);
+                setStatusNote(noteForApi);
+                if (nextDodavatel) {
+                    setFields((prev) => ({ ...prev, dodavatel: prevDodavatel }));
+                    setBaseline((prev) => ({ ...prev, dodavatel: prevDodavatel }));
+                }
                 const err = result.error;
                 const msg = typeof err === 'object'
                     ? (err.dodavatel?.[0] || err.error || JSON.stringify(err))
-                    : err;
-                alert(msg);
+                    : (typeof err === 'string' ? err : 'Nepodařilo se změnit stav');
+                alert(typeof msg === 'string' && !msg.trim().startsWith('<')
+                    ? msg
+                    : 'Nepodařilo se změnit stav');
             }
         } catch (err) {
             console.error('Chyba při změně stavu:', err);
+            setCurrentStatus(prevStatus);
+            setStatusDisplay(prevDisplay);
+            setStatusNote(noteForApi);
+            if (nextDodavatel) {
+                setFields((prev) => ({ ...prev, dodavatel: prevDodavatel }));
+                setBaseline((prev) => ({ ...prev, dodavatel: prevDodavatel }));
+            }
             alert('Nepodařilo se změnit stav');
         } finally {
             setChangingStatus(false);
@@ -94,113 +187,145 @@ const OrderDetail = ({ order, onClose, onDelete, onStatusChange }) => {
         return date.toLocaleString('cs-CZ');
     };
 
+    const field = (label, name, opts = {}) => (
+        <label className={`detail-item detail-item--field${opts.wide ? ' detail-item--nolabel' : ''}`}>
+            {label ? <span className="label">{label}</span> : null}
+            {opts.multiline ? (
+                <textarea
+                    className="detail-edit__input"
+                    rows={3}
+                    value={fields[name]}
+                    onChange={(e) => setField(name, e.target.value)}
+                    placeholder={opts.placeholder || ''}
+                />
+            ) : (
+                <input
+                    className="detail-edit__input"
+                    type={opts.type || 'text'}
+                    step={opts.type === 'number' ? '0.01' : undefined}
+                    value={fields[name]}
+                    onChange={(e) => setField(name, e.target.value)}
+                    placeholder={opts.placeholder || ''}
+                />
+            )}
+            {name === 'servisni_cislo' && repairLink && (
+                <a
+                    className="detail-field-link"
+                    href={repairLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                >
+                    MyRepair
+                </a>
+            )}
+        </label>
+    );
+
     return (
         <Modal
-            title={`Detail objednávky #${order.id}`}
+            title={detailTitle}
             onClose={onClose}
             size="md"
             bodyClassName="order-detail-content"
             footer={(
                 <>
-                    <button type="button" className="btn-delete" onClick={() => onDelete(order.id)}>
-                        Smazat objednávku
-                    </button>
                     <button type="button" className="btn-cancel" onClick={onClose}>
                         Zavřít
+                    </button>
+                    <button
+                        type="button"
+                        className="btn-submit"
+                        disabled={!dirty || saving}
+                        onClick={handleSave}
+                    >
+                        {saving ? 'Ukládám…' : 'Uložit'}
                     </button>
                 </>
             )}
         >
+            <div className="detail-section detail-section--move">
+                <h3>Přesunout do</h3>
+                <div className="status-move">
+                    <div className="status-move__buttons" role="group" aria-label="Hlavní stavy">
+                        {moveTargets.main.map((col) => (
+                            <button
+                                key={col.key}
+                                type="button"
+                                className="status-move__btn"
+                                style={{
+                                    backgroundColor: col.color,
+                                    color: col.textColor,
+                                }}
+                                disabled={changingStatus}
+                                onClick={() => handleMoveTo(col.key)}
+                            >
+                                {col.label}
+                            </button>
+                        ))}
+                    </div>
+
+                    <textarea
+                        value={statusNote}
+                        onChange={(e) => setStatusNote(e.target.value)}
+                        placeholder="Poznámka ke změně stavu (volitelné)"
+                        className="status-note"
+                        rows="2"
+                        disabled={changingStatus}
+                    />
+                    {changingStatus && (
+                        <p className="status-move__busy">Měním stav…</p>
+                    )}
+                </div>
+                <div className="detail-delete-row">
+                    <button
+                        type="button"
+                        className="btn-delete detail-delete-btn"
+                        onClick={() => onDelete(order.id)}
+                    >
+                        Smazat objednávku
+                    </button>
+                    <span className="detail-delete-hint">např. když zákazník zrušil</span>
+                </div>
+            </div>
+
             <div className="detail-section">
-                <h3>Základní informace</h3>
+                <h3>Údaje</h3>
+                {saveError && <p className="detail-save-error">{saveError}</p>}
                 <div className="detail-grid">
-                    <div className="detail-item">
-                        <span className="label">Zákazník:</span>
-                        <span className="value">
-                            {order.jmeno_zakaznika} {order.prijmeni_zakaznika}
-                        </span>
-                    </div>
-                    <div className="detail-item">
-                        <span className="label">Telefon:</span>
-                        <span className="value">{order.telefon_zakaznika}</span>
-                    </div>
-                    <div className="detail-item">
-                        <span className="label">Typ:</span>
-                        <span className="value">{order.typ_telefonu}</span>
-                    </div>
-                    <div className="detail-item">
-                        <span className="label">Díl:</span>
-                        <span className="value">
-                            {order.dil}
-                            {order.barva && ` (${order.barva})`}
-                        </span>
-                    </div>
-                    {order.cena != null && order.cena !== '' && (
-                        <div className="detail-item">
-                            <span className="label">Cena:</span>
-                            <span className="value">
-                                {parseFloat(order.cena).toLocaleString('cs-CZ')} Kč
-                            </span>
-                        </div>
-                    )}
-                    {order.servisni_cislo && (
-                        <div className="detail-item">
-                            <span className="label">Serviska:</span>
-                            <span className="value">
-                                {repairLink ? (
-                                    <a
-                                        href={repairLink}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                    >
-                                        {order.servisni_cislo}
-                                    </a>
-                                ) : (
-                                    order.servisni_cislo
-                                )}
-                            </span>
-                        </div>
-                    )}
-                    <div className="detail-item">
+                    {field('Model', 'typ_telefonu')}
+                    {field('Díl', 'dil')}
+                    {field('Barva', 'barva')}
+                    {field('Serviska', 'servisni_cislo')}
+                    {field('Cena', 'cena', { type: 'number' })}
+                    {field('Dodavatel', 'dodavatel')}
+                    <div className="detail-item detail-item--readonly">
                         <span className="label">Prodejna:</span>
                         <span className="value">{formatProdejna(order.prodejna)}</span>
                     </div>
-                    <div className="detail-item">
+                    <div className="detail-item detail-item--readonly">
                         <span className="label">Zadal:</span>
                         <span className="value">{formatZadal(order.zalozil)}</span>
                     </div>
-                    {(order.symplio_objednavka_id || order.symplio_url) && (
-                        <div className="detail-item">
-                            <span className="label">Symplio:</span>
-                            <span className="value">
-                                {order.symplio_url ? (
-                                    <a
-                                        href={order.symplio_url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                    >
-                                        Objednávka {order.symplio_objednavka_id}
-                                    </a>
-                                ) : (
-                                    order.symplio_objednavka_id
-                                )}
-                            </span>
-                        </div>
-                    )}
-                    {dodavatel && (
-                        <div className="detail-item">
-                            <span className="label">Dodavatel:</span>
-                            <span className="value">{dodavatel}</span>
-                        </div>
-                    )}
                 </div>
 
-                {order.poznamka && (
-                    <div className="detail-note">
-                        <strong>Poznámka:</strong>
-                        <p>{order.poznamka}</p>
+                {!hasServiska && (
+                    <div className="detail-grid detail-grid--customer">
+                        {field('Jméno', 'jmeno_zakaznika')}
+                        {field('Příjmení', 'prijmeni_zakaznika')}
+                        {field('Telefon', 'telefon_zakaznika')}
                     </div>
                 )}
+
+                <div className="detail-note detail-note--editable">
+                    <strong>Poznámka</strong>
+                    <textarea
+                        className="detail-edit__input"
+                        rows={3}
+                        value={fields.poznamka}
+                        onChange={(e) => setField('poznamka', e.target.value)}
+                        placeholder="Poznámka…"
+                    />
+                </div>
             </div>
 
             <div className="detail-section">
@@ -223,64 +348,6 @@ const OrderDetail = ({ order, onClose, onDelete, onStatusChange }) => {
                             <div>Celková doba: {order.celkova_doba_procesu_text}</div>
                         )}
                     </div>
-                </div>
-            </div>
-
-            <div className="detail-section">
-                <h3>Přesunout do</h3>
-                <div className="status-move">
-                    <div className="status-move__buttons" role="group" aria-label="Hlavní stavy">
-                        {moveTargets.main.map((col) => (
-                            <button
-                                key={col.key}
-                                type="button"
-                                className="status-move__btn"
-                                style={{
-                                    backgroundColor: col.color,
-                                    color: col.textColor,
-                                }}
-                                disabled={changingStatus}
-                                onClick={() => handleMoveTo(col.key)}
-                            >
-                                {col.label}
-                            </button>
-                        ))}
-                    </div>
-
-                    {moveTargets.secondary.length > 0 && (
-                        <div className="status-move__secondary">
-                            <span className="status-move__secondary-label">Další:</span>
-                            <div className="status-move__buttons" role="group" aria-label="Další stavy">
-                                {moveTargets.secondary.map((opt) => (
-                                    <button
-                                        key={opt.value}
-                                        type="button"
-                                        className="status-move__btn status-move__btn--secondary"
-                                        style={{
-                                            backgroundColor: opt.color,
-                                            color: opt.textColor,
-                                        }}
-                                        disabled={changingStatus}
-                                        onClick={() => handleMoveTo(opt.value)}
-                                    >
-                                        {opt.label}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    <textarea
-                        value={statusNote}
-                        onChange={(e) => setStatusNote(e.target.value)}
-                        placeholder="Poznámka ke změně stavu (volitelné)"
-                        className="status-note"
-                        rows="2"
-                        disabled={changingStatus}
-                    />
-                    {changingStatus && (
-                        <p className="status-move__busy">Měním stav…</p>
-                    )}
                 </div>
             </div>
 

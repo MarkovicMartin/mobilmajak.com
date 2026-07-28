@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { format } from 'date-fns';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { taskAPI, storeAPI } from '../../services/api';
 import { PageHeader, Select, DatePicker } from '../../components/ui';
@@ -10,6 +11,7 @@ import TaskUrgencyBadge from './TaskUrgencyBadge';
 import TaskStatusIcon from '../../components/TaskStatusIcon';
 import { buildAssigneeSelectOptions } from './TaskAssigneeOptions';
 import { taskDisplayTitle, ACTIVE_TASK_STAVY } from '../../utils/taskDisplay';
+import { parseTaskId, sameTaskId, TASKS_MANAGE_PATH } from '../../utils/taskNavigation';
 import './TasksModule.css';
 
 const STAV_OPTIONS = [
@@ -39,6 +41,11 @@ const emptyDodRow = () => ({ text: '', splneno: false });
 
 const TasksManageModule = ({ embedded = false }) => {
     const { user, isAdmin, canManageTasks } = useAuth();
+    const location = useLocation();
+    const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const taskIdFromNav = parseTaskId(searchParams, location.state);
+    const deepLinkTried = useRef(null);
     const [stores, setStores] = useState([]);
     const [assignees, setAssignees] = useState([]);
     const [filterStav, setFilterStav] = useState('vse');
@@ -158,6 +165,57 @@ const TasksManageModule = ({ embedded = false }) => {
         load(listParams);
     }, [load, listParams]);
 
+    const selectTask = useCallback((task) => {
+        setSelected(task);
+        setEditing(false);
+        if (task?.id) {
+            navigate(`${TASKS_MANAGE_PATH}?id=${task.id}`, {
+                replace: true,
+                state: { taskId: task.id },
+            });
+        }
+    }, [navigate]);
+
+    useEffect(() => {
+        if (!taskIdFromNav) {
+            deepLinkTried.current = null;
+            return undefined;
+        }
+        if (loading) return undefined;
+        if (selected && sameTaskId(selected.id, taskIdFromNav)) return undefined;
+
+        const match = tasks.find((t) => sameTaskId(t.id, taskIdFromNav));
+        if (match) {
+            setSelected(match);
+            setEditing(false);
+            return undefined;
+        }
+
+        if (deepLinkTried.current === taskIdFromNav) return undefined;
+        deepLinkTried.current = taskIdFromNav;
+
+        let cancelled = false;
+        (async () => {
+            try {
+                const task = await taskAPI.get(taskIdFromNav);
+                if (cancelled || !task?.id) return;
+                // Reset filtrů, ať je úkol vidět v seznamu
+                setFilterStav('vse');
+                setFilterSpecial('');
+                setFilterStore('');
+                setFilterAssignee('');
+                setTasks((list) => (
+                    list.some((t) => sameTaskId(t.id, task.id)) ? list : [task, ...list]
+                ));
+                setSelected(task);
+                setEditing(false);
+            } catch {
+                /* úkol neexistuje / bez oprávnění */
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [taskIdFromNav, tasks, loading, selected, setTasks]);
+
     const loadAssignees = useCallback(async (storeId, storeless = false) => {
         if (!storeless && !storeId) {
             setAssignees([]);
@@ -245,6 +303,10 @@ const TasksManageModule = ({ embedded = false }) => {
                 vyzaduje_schvaleni: false,
             }));
             setSelected(created);
+            navigate(`${TASKS_MANAGE_PATH}?id=${created.id}`, {
+                replace: true,
+                state: { taskId: created.id },
+            });
             await load(listParams);
         } catch (err) {
             setFormError(err?.response?.data?.error || 'Vytvoření se nezdařilo.');
@@ -256,6 +318,8 @@ const TasksManageModule = ({ embedded = false }) => {
         try {
             await taskAPI.delete(selected.id);
             setSelected(null);
+            deepLinkTried.current = null;
+            navigate(TASKS_MANAGE_PATH, { replace: true });
             await load(listParams);
         } catch (err) {
             window.alert(err?.response?.data?.error || 'Smazání se nezdařilo.');
@@ -487,8 +551,8 @@ const TasksManageModule = ({ embedded = false }) => {
                         <div
                             key={t.id}
                             className={`tasks-list-item ${selected?.id === t.id ? 'selected' : ''}`}
-                            onClick={() => { setSelected(t); setEditing(false); }}
-                            onKeyDown={(e) => e.key === 'Enter' && (setSelected(t), setEditing(false))}
+                            onClick={() => selectTask(t)}
+                            onKeyDown={(e) => e.key === 'Enter' && selectTask(t)}
                             role="button"
                             tabIndex={0}
                         >

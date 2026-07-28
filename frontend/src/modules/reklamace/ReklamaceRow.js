@@ -1,118 +1,93 @@
-import React, { useState } from 'react';
-import {
-    REKLAMACE_STATUS,
-    ZPUSOB_VYRIzeni_OPTIONS,
-    getRowStatusClass,
-    getStatusLabel,
-} from './constants';
+import React, { useRef } from 'react';
+import { useDraggable } from '@dnd-kit/core';
+import { formatReklamaceDate } from './reklamaceHelpers';
 import './ReklamaceRow.css';
 
-const formatDate = (d) => {
-    if (!d) return '—';
-    return new Date(d).toLocaleDateString('cs-CZ');
-};
+const CLICK_DRAG_THRESHOLD_PX = 8;
 
-const ReklamaceRow = ({
-    item,
-    onEdit,
-    onDelete,
-    onOdeslat,
-    onPotvrdit,
-    busy,
-}) => {
-    const [zpusob, setZpusob] = useState('vymena');
-    const [showResolve, setShowResolve] = useState(false);
+const ReklamaceRow = ({ item, isDragging = false, onItemClick, onDeleteItem }) => {
+    const pointerStart = useRef(null);
 
-    const statusClass = getRowStatusClass(item);
-    const statusLabel = getStatusLabel(item);
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        isDragging: isCurrentlyDragging,
+    } = useDraggable({
+        id: item.id,
+    });
 
-    const handlePotvrdit = () => {
-        if (!zpusob) return;
-        onPotvrdit(item.id, { zpusob_vyrizeni: zpusob });
-        setShowResolve(false);
+    const style = transform
+        ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` }
+        : undefined;
+
+    const dateSource = item.datum_odeslani || item.created_at || item.datum_vytvoreni;
+    const overdueClass = item.is_overdue ? 'reklamace-row--overdue' : '';
+
+    const handlePointerDownCapture = (e) => {
+        pointerStart.current = { x: e.clientX, y: e.clientY };
     };
 
-    return (
-        <article className={`reklamace-row ${statusClass}`}>
-            <div className="reklamace-row__head">
-                <span className="reklamace-row__znacka">{item.nase_znacka}</span>
-                <span className="reklamace-row__status">{statusLabel}</span>
-                <span className="reklamace-row__prodejna">{item.prodejna}</span>
-                <span className="reklamace-row__datum">{formatDate(item.datum_odeslani)}</span>
-                <div className="reklamace-row__actions">
-                    <button type="button" className="btn-icon" onClick={onEdit} title="Upravit">
-                        <i className="fas fa-pen" />
-                    </button>
-                    <button type="button" className="btn-icon btn-icon--danger" onClick={onDelete} title="Smazat">
-                        <i className="fas fa-trash" />
-                    </button>
-                </div>
-            </div>
-            <div className="reklamace-row__title">{item.nazev_zbozi}</div>
-            <div className="reklamace-row__meta">
-                <span title="Dodavatel"><i className="fas fa-truck" /> {item.dodavatel || '—'}</span>
-                <span title="Faktura"><i className="fas fa-file-invoice" /> {item.faktura || '—'}</span>
-                <span title="EAN"><i className="fas fa-barcode" /> {item.ean || '—'}</span>
-                <span title="P kód">P {item.p_kod || '—'}</span>
-                <span title="Zásilka"><i className="fas fa-box" /> {item.cislo_zasilky || '—'}</span>
-                {item.zpusob_vyrizeni_label && (
-                    <span title="Způsob vyřízení"><i className="fas fa-check" /> {item.zpusob_vyrizeni_label}</span>
-                )}
-            </div>
-            {item.poznamka && <div className="reklamace-row__note">{item.poznamka}</div>}
+    const handleRowClick = (e) => {
+        if (e.target.closest('a, button')) return;
+        if (isDragging || isCurrentlyDragging) return;
+        const start = pointerStart.current;
+        if (start) {
+            const dx = Math.abs(e.clientX - start.x);
+            const dy = Math.abs(e.clientY - start.y);
+            if (dx > CLICK_DRAG_THRESHOLD_PX || dy > CLICK_DRAG_THRESHOLD_PX) return;
+        }
+        onItemClick(item);
+    };
 
-            <div className="reklamace-row__workflow">
-                {item.status === REKLAMACE_STATUS.NEZPRACOVANE && (
-                    <button
-                        type="button"
-                        className="btn btn-sm btn-warning"
-                        disabled={busy}
-                        onClick={() => onOdeslat(item.id)}
-                    >
-                        <i className="fas fa-paper-plane" /> Odeslat dodavateli
-                    </button>
-                )}
-                {item.status === REKLAMACE_STATUS.ODESLANE && !showResolve && (
-                    <button
-                        type="button"
-                        className="btn btn-sm btn-success"
-                        disabled={busy}
-                        onClick={() => setShowResolve(true)}
-                    >
-                        <i className="fas fa-check" /> Potvrdit zpracování
-                    </button>
-                )}
-                {showResolve && (
-                    <div className="reklamace-row__resolve">
-                        <select
-                            className="form-control"
-                            value={zpusob}
-                            onChange={(e) => setZpusob(e.target.value)}
-                        >
-                            {ZPUSOB_VYRIzeni_OPTIONS.map((o) => (
-                                <option key={o.value} value={o.value}>{o.label}</option>
-                            ))}
-                        </select>
-                        <button
-                            type="button"
-                            className="btn btn-sm btn-success"
-                            disabled={busy}
-                            onClick={handlePotvrdit}
-                        >
-                            Potvrdit
-                        </button>
-                        <button
-                            type="button"
-                            className="btn btn-sm btn-outline"
-                            disabled={busy}
-                            onClick={() => setShowResolve(false)}
-                        >
-                            Zrušit
-                        </button>
-                    </div>
-                )}
+    const cell = (value, title) => (
+        <div className="reklamace-row__cell" title={title || value || ''}>
+            {value || <span className="reklamace-row__empty">—</span>}
+        </div>
+    );
+
+    return (
+        <div
+            ref={setNodeRef}
+            style={style}
+            className={[
+                'reklamace-row',
+                isCurrentlyDragging ? 'reklamace-row--placeholder' : '',
+                isDragging ? 'reklamace-row--overlay' : '',
+                overdueClass,
+            ].filter(Boolean).join(' ')}
+            onPointerDownCapture={handlePointerDownCapture}
+            onClick={handleRowClick}
+            {...listeners}
+            {...attributes}
+        >
+            <div className="reklamace-row__cell reklamace-row__datum" title={dateSource || ''}>
+                {formatReklamaceDate(dateSource) || <span className="reklamace-row__empty">—</span>}
             </div>
-        </article>
+            {cell(item.nase_znacka)}
+            {cell(item.nazev_zbozi)}
+            {cell(item.dodavatel)}
+            {cell(item.faktura)}
+            {cell(item.ean)}
+            {cell(item.p_kod)}
+            {cell(item.cislo_zasilky)}
+            {cell(item.prodejna)}
+            <div className="reklamace-row__actions">
+                <button
+                    type="button"
+                    className="reklamace-row__btn reklamace-row__btn--delete"
+                    title="Skrýt reklamaci"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onDeleteItem(item.id);
+                    }}
+                    onPointerDown={(e) => e.stopPropagation()}
+                >
+                    Smazat
+                </button>
+            </div>
+        </div>
     );
 };
 

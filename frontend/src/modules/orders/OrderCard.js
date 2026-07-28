@@ -139,18 +139,6 @@ const OrderCard = ({ order, isDragging = false, onOrderClick, onDeleteOrder }) =
                 )}
             </div>
 
-            {order.symplio_url && (
-                <a
-                    className="card-symplio-link"
-                    href={order.symplio_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                >
-                    Symplio #{order.symplio_objednavka_id}
-                </a>
-            )}
-
             {/* Cena pokud je zadána */}
             {order.cena && (
                 <div className="card-price">

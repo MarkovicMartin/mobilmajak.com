@@ -20,6 +20,17 @@ class HomeOfficePositionTest(TestCase):
         pozice = _normalize_pozice_smeny(self.prodejna, 'prace', 'home_office', user=admin)
         self.assertEqual(pozice, 'home_office')
 
+    def test_admin_smrckova_home_office_neni_force_backoffice(self):
+        """ADMIN + backoffice příjmení musí smět uložit home_office (ticket #114)."""
+        admin = WebUser(id=9912, jmeno='Michaela', prijmeni='Smrčková', role='ADMIN')
+        pozice = _normalize_pozice_smeny(self.prodejna, 'prace', 'home_office', user=admin)
+        self.assertEqual(pozice, 'home_office')
+        # Bez explicitního home_office zůstává forced backoffice
+        self.assertEqual(
+            _normalize_pozice_smeny(self.prodejna, 'prace', 'prodej', user=admin),
+            'backoffice',
+        )
+
     def test_home_office_bez_prodejny(self):
         admin = WebUser.objects.create(
             id=9911,

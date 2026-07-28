@@ -132,6 +132,10 @@ class Command(BaseCommand):
                 for b in errors
             )
             raise CommandError(f'Import selhal u poboček: {names}')
+        if result.get('zasilkovna_leaderboard_cache', {}).get('ok'):
+            self.stdout.write(self.style.SUCCESS(
+                'Zásilkovna leaderboard cache obnovena (dnes + měsíc).'
+            ))
 
     def _print_branches(self, branches):
         for branch in branches:
@@ -191,3 +195,15 @@ class Command(BaseCommand):
         )
         if imp.get('warning'):
             self.stdout.write(self.style.WARNING(f'⚠ {imp["warning"]}'))
+        if not dry_run:
+            try:
+                from analytics.zasilkovna_leaderboard_cache import refresh_after_packeta_import
+                cache_info = refresh_after_packeta_import(source='packeta_csv')
+                if cache_info.get('ok'):
+                    self.stdout.write(self.style.SUCCESS(
+                        'Zásilkovna leaderboard cache obnovena (dnes + měsíc).'
+                    ))
+            except Exception as exc:
+                self.stdout.write(self.style.WARNING(
+                    f'Cache Zásilkovna žebříčku se nepodařilo obnovit: {exc}'
+                ))

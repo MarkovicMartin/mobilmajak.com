@@ -8,8 +8,14 @@ LOCK_FILE="/tmp/sklad-vydejky-actor.lock"
 LOG_FILE="/var/log/sklad-vydejky-actor.log"
 PID_FILE="/tmp/sklad-vydejky-actor.pid"
 DAYS_BACK="${SKLAD_VYDEJKY_DAYS_BACK:-2}"
+SELENIUM_CLEANUP="${SELENIUM_CLEANUP:-/opt/scripts/selenium-chrome-cleanup.sh}"
 
-cleanup() { rm -f "$LOCK_FILE" "$PID_FILE"; }
+cleanup() {
+  if [ -x "$SELENIUM_CLEANUP" ]; then
+    "$SELENIUM_CLEANUP" --orphans-only >> "$LOG_FILE" 2>&1 || true
+  fi
+  rm -f "$LOCK_FILE" "$PID_FILE"
+}
 trap cleanup EXIT
 
 report_ticket() {

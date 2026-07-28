@@ -178,6 +178,9 @@ def shifts_due_for_recap(now: datetime | None = None) -> list[Smena]:
 
 def send_shift_recap(smena: Smena, *, now: datetime | None = None) -> bool:
     """Odešle recap uživateli směny. Vrací True pokud odesláno."""
+    if UkolShiftRecapNotifikace.objects.filter(smena_id=smena.id).exists():
+        return False
+
     user = smena.user
     slack_id = slack_user_id_for_web_user(user)
     if not slack_id:

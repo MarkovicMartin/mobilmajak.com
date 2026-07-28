@@ -250,6 +250,7 @@ class ProdejnaPohybUdalost(models.Model):
 class PrumerMzdyMesicOverride(models.Model):
     """Ruční hodiny (a volitelně fixní výplata) pro průměr dovolené – náhrada JSON override."""
 
+    id = models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')
     user = models.ForeignKey(
         WebUser, on_delete=models.CASCADE, related_name='prumer_mzdy_overrides',
     )
@@ -285,6 +286,7 @@ class PrumerMzdyMesicOverride(models.Model):
 class DovolenaKorekceLog(models.Model):
     """Audit změn admin korekce fondu / čerpání dovolené."""
 
+    id = models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')
     user = models.ForeignKey(
         WebUser, on_delete=models.CASCADE, related_name='dovolena_korekce_logy',
     )
@@ -320,6 +322,7 @@ class PrumerMzdyMesicOverrideLog(models.Model):
         ('delete', 'Smazání'),
     ]
 
+    id = models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')
     user = models.ForeignKey(
         WebUser, on_delete=models.CASCADE, related_name='prumer_mzdy_override_logy',
     )

@@ -5,7 +5,64 @@ import KanbanBoard from './KanbanBoard';
 import OrderForm from './OrderForm';
 import OrderDetail from './OrderDetail';
 import { FILTER_STATUS_OPTIONS, statusLabel } from './orderHelpers';
+import { normalizeApiError, apiErrorAlertText, withGatewayRetry } from '../../utils/apiErrorMessage';
 import './OrdersModule.css';
+
+function cloneKanban(data) {
+    const next = {};
+    Object.keys(data || {}).forEach((key) => {
+        const col = data[key] || {};
+        next[key] = {
+            ...col,
+            orders: [...(col.orders || [])],
+        };
+    });
+    return next;
+}
+
+function findOrderColumn(data, orderId) {
+    for (const [status, col] of Object.entries(data || {})) {
+        const orders = col?.orders || [];
+        const idx = orders.findIndex((o) => o.id === orderId);
+        if (idx >= 0) return { status, idx, order: orders[idx] };
+    }
+    return null;
+}
+
+function moveOrderInKanban(data, orderId, newStatus, patch = {}) {
+    const found = findOrderColumn(data, orderId);
+    if (!found) return data;
+    if (found.status === newStatus && Object.keys(patch).length === 0) {
+        return data;
+    }
+
+    const next = cloneKanban(data);
+    if (!next[newStatus]) {
+        next[newStatus] = { orders: [], count: 0, label: statusLabel(newStatus) };
+    }
+
+    next[found.status].orders = next[found.status].orders.filter((o) => o.id !== orderId);
+    next[found.status].count = next[found.status].orders.length;
+
+    const moved = {
+        ...found.order,
+        ...patch,
+        status: newStatus,
+        status_display: statusLabel(newStatus),
+    };
+    next[newStatus].orders = [moved, ...next[newStatus].orders.filter((o) => o.id !== orderId)];
+    next[newStatus].count = next[newStatus].orders.length;
+    return next;
+}
+
+function removeOrderFromKanban(data, orderId) {
+    const found = findOrderColumn(data, orderId);
+    if (!found) return data;
+    const next = cloneKanban(data);
+    next[found.status].orders = next[found.status].orders.filter((o) => o.id !== orderId);
+    next[found.status].count = next[found.status].orders.length;
+    return next;
+}
 
 const OrdersModule = () => {
     const [kanbanData, setKanbanData] = useState({});
@@ -39,9 +96,9 @@ const OrdersModule = () => {
         </div>
     ), [dashboardStats]);
 
-    const loadKanbanData = useCallback(async () => {
+    const loadKanbanData = useCallback(async ({ silent = false } = {}) => {
         try {
-            setLoading(true);
+            if (!silent) setLoading(true);
             const params = new URLSearchParams();
 
             Object.keys(filters).forEach((key) => {
@@ -55,10 +112,12 @@ const OrdersModule = () => {
             setError(null);
         } catch (err) {
             console.error('Chyba při načítání objednávek:', err);
-            setError('Nepodařilo se načíst objednávky');
-            setKanbanData({});
+            if (!silent) {
+                setError('Nepodařilo se načíst objednávky');
+                setKanbanData({});
+            }
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
         }
     }, [filters]);
 
@@ -78,13 +137,26 @@ const OrdersModule = () => {
 
     useEffect(() => {
         const interval = setInterval(() => {
-            loadKanbanData();
+            loadKanbanData({ silent: true });
             loadDashboardStats();
         }, 120000);
         return () => clearInterval(interval);
     }, [filters, loadKanbanData, loadDashboardStats]);
 
     const handleStatusChange = async (orderId, newStatus, poznamka = '', dodavatel = null) => {
+        const snapshot = kanbanData;
+        const patch = dodavatel != null ? { dodavatel } : {};
+        setKanbanData((prev) => moveOrderInKanban(prev, orderId, newStatus, patch));
+        setSelectedOrder((prev) => {
+            if (!prev || prev.id !== orderId) return prev;
+            return {
+                ...prev,
+                status: newStatus,
+                status_display: statusLabel(newStatus),
+                ...patch,
+            };
+        });
+
         try {
             const body = {
                 novy_status: newStatus,
@@ -93,34 +165,30 @@ const OrdersModule = () => {
             if (dodavatel != null) {
                 body.dodavatel = dodavatel;
             }
-            await api.patch(`/orders/orders/${orderId}/update_status/`, body);
-
-            await loadKanbanData();
-            await loadDashboardStats();
-
-            setSelectedOrder((prev) => {
-                if (!prev || prev.id !== orderId) return prev;
-                return {
-                    ...prev,
-                    status: newStatus,
-                    status_display: statusLabel(newStatus),
-                    ...(dodavatel != null ? { dodavatel } : {}),
-                };
-            });
-
+            await withGatewayRetry(() =>
+                api.patch(`/orders/orders/${orderId}/update_status/`, body)
+            );
+            loadKanbanData({ silent: true });
+            loadDashboardStats();
             return { success: true };
         } catch (err) {
             console.error('Chyba při změně stavu:', err);
+            setKanbanData(snapshot);
+            setSelectedOrder((prev) => {
+                if (!prev || prev.id !== orderId) return prev;
+                const restored = findOrderColumn(snapshot, orderId)?.order;
+                return restored ? { ...prev, ...restored } : prev;
+            });
             return {
                 success: false,
-                error: err.response?.data || 'Nepodařilo se změnit stav objednávky',
+                error: normalizeApiError(err, 'Nepodařilo se změnit stav objednávky'),
             };
         }
     };
 
     const handleCreateOrder = async (orderData) => {
         try {
-            await api.post('/orders/orders/', orderData);
+            await withGatewayRetry(() => api.post('/orders/orders/', orderData));
             setShowForm(false);
             await loadKanbanData();
             await loadDashboardStats();
@@ -129,7 +197,28 @@ const OrdersModule = () => {
             console.error('Chyba při vytváření objednávky:', err);
             return {
                 success: false,
-                error: err.response?.data || 'Nepodařilo se vytvořit objednávku',
+                error: normalizeApiError(err, 'Nepodařilo se vytvořit objednávku'),
+            };
+        }
+    };
+
+    const handleUpdateOrder = async (orderId, patch) => {
+        try {
+            const response = await withGatewayRetry(() =>
+                api.patch(`/orders/orders/${orderId}/`, patch)
+            );
+            const updated = response.data;
+            await loadKanbanData();
+            setSelectedOrder((prev) => {
+                if (!prev || prev.id !== orderId) return prev;
+                return { ...prev, ...updated };
+            });
+            return { success: true, data: updated };
+        } catch (err) {
+            console.error('Chyba při úpravě objednávky:', err);
+            return {
+                success: false,
+                error: normalizeApiError(err, 'Nepodařilo se uložit změny'),
             };
         }
     };
@@ -139,14 +228,23 @@ const OrdersModule = () => {
             return;
         }
 
+        const snapshot = kanbanData;
+        const hadSelected = selectedOrder?.id === orderId;
+        setKanbanData((prev) => removeOrderFromKanban(prev, orderId));
+        if (hadSelected) setSelectedOrder(null);
+
         try {
-            await api.delete(`/orders/orders/${orderId}/`);
-            await loadKanbanData();
-            await loadDashboardStats();
-            setSelectedOrder(null);
+            await withGatewayRetry(() => api.delete(`/orders/orders/${orderId}/`));
+            loadKanbanData({ silent: true });
+            loadDashboardStats();
         } catch (err) {
             console.error('Chyba při mazání objednávky:', err);
-            alert('Nepodařilo se smazat objednávku');
+            setKanbanData(snapshot);
+            if (hadSelected) {
+                const restored = findOrderColumn(snapshot, orderId)?.order;
+                if (restored) setSelectedOrder(restored);
+            }
+            alert(apiErrorAlertText(err, 'Nepodařilo se smazat objednávku'));
         }
     };
 
@@ -270,6 +368,7 @@ const OrdersModule = () => {
                     onClose={() => setSelectedOrder(null)}
                     onDelete={handleDeleteOrder}
                     onStatusChange={handleStatusChange}
+                    onUpdate={handleUpdateOrder}
                 />
             )}
         </div>

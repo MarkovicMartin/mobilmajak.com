@@ -217,9 +217,19 @@ const AccessModule = () => {
     };
 
     const handleFormSubmit = async (accessData) => {
+        const formatApiError = (data) => {
+            if (!data) return 'Chyba při ukládání přístupu';
+            if (typeof data === 'string') return data;
+            if (data.error) return data.error;
+            if (data.detail) return typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail);
+            return Object.entries(data)
+                .map(([key, val]) => `${key}: ${[].concat(val).join(', ')}`)
+                .join('; ');
+        };
+
         try {
             const url = editingAccess ? `/api/pristupy/${editingAccess.id}/` : '/api/pristupy/';
-            const method = editingAccess ? 'PUT' : 'POST';
+            const method = editingAccess ? 'PATCH' : 'POST';
 
             const response = await fetch(url, {
                 method,
@@ -236,12 +246,19 @@ const AccessModule = () => {
                 setEditingAccess(null);
                 await loadAccesses();
                 setError(null);
-            } else {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Chyba při ukládání přístupu');
+                return;
             }
+
+            let errorData = null;
+            try {
+                errorData = await response.json();
+            } catch {
+                errorData = null;
+            }
+            throw new Error(formatApiError(errorData));
         } catch (err) {
             setError('Chyba při ukládání: ' + err.message);
+            throw err;
         }
     };
 

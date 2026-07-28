@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { getApiEndpoints } from '../../config/apiConfig';
 import { leaderboardAPI } from '../../services/api';
+import { withGatewayRetry } from '../../utils/apiErrorMessage';
 import { PageHeader, SegmentControl } from '../../components/ui';
 import PointsLeaderboard from './PointsLeaderboard';
 import StoresLeaderboard from './StoresLeaderboard';
@@ -74,7 +75,10 @@ const LeaderboardModule = () => {
             const url = endpoints[config.urlKey];
             if (!url) throw new Error('Endpoint pro žebříček není k dispozici');
 
-            const data = await leaderboardAPI.fetch(url, config.params);
+            const data = await withGatewayRetry(
+                () => leaderboardAPI.fetch(url, config.params),
+                { retries: 1, delayMs: 800 },
+            );
             if (!data.success) throw new Error(data.error || 'Neznámá chyba');
 
             applyTabResult(tab, data.data || [], data.meta || null);

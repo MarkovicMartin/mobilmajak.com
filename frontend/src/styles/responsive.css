@@ -231,8 +231,7 @@ body.app-drawer-open .app-drawer-backdrop {
         --sidebar-width: 13.5rem;
     }
 
-    .shell-brand__wordmark,
-    .app-sidebar__group-label {
+    .shell-brand__wordmark {
         font-size: 0.6875rem;
     }
 

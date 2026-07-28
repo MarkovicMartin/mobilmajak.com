@@ -265,8 +265,12 @@ export const taskAPI = {
         const response = await api.get('/tasks/', { params: query });
         return response.data;
     },
-    getCalendar: async (mesic) => {
-        const response = await api.get('/tasks/calendar/', { params: { mesic } });
+    get: async (taskId) => {
+        const response = await api.get(`/tasks/${taskId}/`);
+        return response.data;
+    },
+    getCalendar: async (mesic, extra = {}) => {
+        const response = await api.get('/tasks/calendar/', { params: { mesic, ...extra } });
         return response.data;
     },
     getAssignees: async (prodejnaId, { storeless = false } = {}) => {

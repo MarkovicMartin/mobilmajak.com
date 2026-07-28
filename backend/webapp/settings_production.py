@@ -173,6 +173,7 @@ SESSION_COOKIE_SECURE = True  # HTTPS je nyní dostupné
 SESSION_COOKIE_HTTPONLY = False  # Pro JavaScript access
 SESSION_COOKIE_SAMESITE = 'Lax'
 SESSION_COOKIE_AGE = 86400  # 24 hodin
+SESSION_SAVE_EVERY_REQUEST = True  # sliding expiry při aktivitě
 
 # CSRF settings - PRODUKČNÍ
 CSRF_COOKIE_SECURE = True  # HTTPS je nyní dostupné

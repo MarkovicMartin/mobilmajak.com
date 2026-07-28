@@ -60,7 +60,7 @@ const OrderRow = ({ order, isDragging = false, onOrderClick, onDeleteOrder }) =>
         <div
             ref={setNodeRef}
             style={style}
-            className={`order-row ${isDragging || isCurrentlyDragging ? 'dragging' : ''} ${priorityClass}`}
+            className={`order-row ${isCurrentlyDragging ? 'order-row--placeholder' : ''} ${isDragging ? 'order-row--overlay' : ''} ${priorityClass}`}
             onPointerDownCapture={handlePointerDownCapture}
             onClick={handleRowClick}
             {...listeners}
@@ -124,27 +124,15 @@ const OrderRow = ({ order, isDragging = false, onOrderClick, onDeleteOrder }) =>
             <div className="order-row__actions">
                 <button
                     type="button"
-                    className="order-row__btn"
-                    title="Detail"
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        onOrderClick(order);
-                    }}
-                    onPointerDown={(e) => e.stopPropagation()}
-                >
-                    ℹ️
-                </button>
-                <button
-                    type="button"
-                    className="order-row__btn"
-                    title="Smazat"
+                    className="order-row__btn order-row__btn--delete"
+                    title="Smazat objednávku"
                     onClick={(e) => {
                         e.stopPropagation();
                         onDeleteOrder(order.id);
                     }}
                     onPointerDown={(e) => e.stopPropagation()}
                 >
-                    🗑️
+                    Smazat
                 </button>
             </div>
         </div>

@@ -64,10 +64,12 @@ def _normalize_pozice_smeny(prodejna, typ_smeny, raw_pozice, user=None):
     if typ_smeny != 'prace':
         return 'prodej'
     pozice = (raw_pozice or 'prodej').strip()
-    if user and is_backoffice_user(user):
-        return 'backoffice'
+    # Home office musí mít přednost před forced backoffice
+    # (Smrčková = ADMIN + backoffice příjmení — jinak UI „Home office“ tiše uloží backoffice).
     if pozice == 'home_office' and user and is_admin_user(user):
         return 'home_office'
+    if user and is_backoffice_user(user):
+        return 'backoffice'
     if pozice == 'backoffice':
         return 'backoffice'
     from shifts.shift_helpers import is_senimo_prodejna

@@ -14,6 +14,7 @@ const AccessForm = ({ access, stores, categories, onSubmit, onCancel }) => {
         notes: ''
     });
     const [errors, setErrors] = useState({});
+    const [formError, setFormError] = useState('');
     const [loading, setLoading] = useState(false);
 
     // Získání unikátních názvů prodejen ze statistik
@@ -25,12 +26,15 @@ const AccessForm = ({ access, stores, categories, onSubmit, onCancel }) => {
                 company_name: access.company_name || '',
                 website_url: access.website_url || '',
                 username: access.username || '',
-                password: access.password || '',
+                // Heslo API nevrací — prázdné = při uložení ponechat stávající
+                password: '',
                 category: access.category || '',
                 store: access.store || '',
                 description: access.description || '',
                 notes: access.notes || ''
             });
+            setFormError('');
+            setErrors({});
         }
     }, [access]);
 
@@ -40,6 +44,7 @@ const AccessForm = ({ access, stores, categories, onSubmit, onCancel }) => {
             ...prev,
             [name]: value
         }));
+        setFormError('');
         
         // Vymazání chyby pro dané pole
         if (errors[name]) {
@@ -65,7 +70,8 @@ const AccessForm = ({ access, stores, categories, onSubmit, onCancel }) => {
             newErrors.username = 'Uživatelské jméno je povinné';
         }
 
-        if (!formData.password.trim()) {
+        // Při úpravě prázdné heslo = ponechat stávající
+        if (!access && !formData.password.trim()) {
             newErrors.password = 'Heslo je povinné';
         }
 
@@ -86,6 +92,13 @@ const AccessForm = ({ access, stores, categories, onSubmit, onCancel }) => {
         }
     };
 
+    const normalizeWebsiteUrl = (value) => {
+        const trimmed = (value || '').trim();
+        if (!trimmed) return '';
+        if (/^https?:\/\//i.test(trimmed)) return trimmed;
+        return `https://${trimmed}`;
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         
@@ -94,10 +107,19 @@ const AccessForm = ({ access, stores, categories, onSubmit, onCancel }) => {
         }
 
         setLoading(true);
+        setFormError('');
         try {
-            await onSubmit(formData);
+            const payload = {
+                ...formData,
+                website_url: normalizeWebsiteUrl(formData.website_url),
+            };
+            if (access && !payload.password.trim()) {
+                delete payload.password;
+            }
+            await onSubmit(payload);
         } catch (error) {
             console.error('Error submitting form:', error);
+            setFormError(error?.message || 'Uložení selhalo');
         } finally {
             setLoading(false);
         }
@@ -134,6 +156,9 @@ const AccessForm = ({ access, stores, categories, onSubmit, onCancel }) => {
                 </>
             )}
         >
+                    {formError && (
+                        <p className="access-form__error" role="alert">{formError}</p>
+                    )}
                     <div className="form-grid">
                         <div className="form-group">
                             <label htmlFor="company_name">
@@ -181,13 +206,13 @@ const AccessForm = ({ access, stores, categories, onSubmit, onCancel }) => {
                                 URL adresa
                             </label>
                             <input
-                                type="url"
+                                type="text"
                                 id="website_url"
                                 name="website_url"
                                 value={formData.website_url}
                                 onChange={handleChange}
                                 className={errors.website_url ? 'error' : ''}
-                                placeholder="https://example.com"
+                                placeholder="např. example.com nebo https://example.com"
                             />
                             {errors.website_url && (
                                 <span className="error-text">{errors.website_url}</span>
@@ -238,7 +263,7 @@ const AccessForm = ({ access, stores, categories, onSubmit, onCancel }) => {
 
                         <div className="form-group">
                             <label htmlFor="password">
-                                Heslo *
+                                {access ? 'Heslo (volitelné)' : 'Heslo *'}
                             </label>
                             <div className="password-input-group">
                                 <input
@@ -248,7 +273,8 @@ const AccessForm = ({ access, stores, categories, onSubmit, onCancel }) => {
                                     value={formData.password}
                                     onChange={handleChange}
                                     className={errors.password ? 'error' : ''}
-                                    placeholder="heslo"
+                                    placeholder={access ? 'ponechat beze změny' : 'heslo'}
+                                    autoComplete="new-password"
                                 />
                                 <button
                                     type="button"
@@ -259,6 +285,9 @@ const AccessForm = ({ access, stores, categories, onSubmit, onCancel }) => {
                                     🎲
                                 </button>
                             </div>
+                            {access && !errors.password && (
+                                <span className="form-hint">Nevyplňujte, pokud heslo neměníte</span>
+                            )}
                             {errors.password && (
                                 <span className="error-text">{errors.password}</span>
                             )}

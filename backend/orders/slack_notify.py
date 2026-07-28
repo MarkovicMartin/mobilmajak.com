@@ -107,11 +107,9 @@ def send_order_slack_to_recipients(order: Order, event: str, *, days_in_status: 
 
 
 def notify_order_created(order: Order) -> int:
-    try:
-        return send_order_slack_to_recipients(order, "created")
-    except Exception:
-        logger.exception("notify_order_created selhalo pro #%s", order.id)
-        return 0
+    # Zatím vypnuto – notifikace o založení objednávky neposíláme.
+    logger.debug("notify_order_created přeskočeno (vypnuto) pro #%s", order.id)
+    return 0
 
 
 def notify_order_sla(order: Order, *, days_in_status: int | None = None) -> int:

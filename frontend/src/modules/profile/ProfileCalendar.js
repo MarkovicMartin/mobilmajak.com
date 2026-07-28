@@ -17,7 +17,7 @@ const formatShiftTime = (t) => (t || '').substring(0, 5);
 
 const ProfileCalendar = () => {
     const navigate = useNavigate();
-    const { user } = useAuth();
+    const { user, canManageTasks } = useAuth();
     const [month, setMonth] = useState(() => format(new Date(), 'yyyy-MM'));
     const [shiftData, setShiftData] = useState({});
     const [taskData, setTaskData] = useState({});
@@ -34,7 +34,7 @@ const ProfileCalendar = () => {
         try {
             const [shiftsRes, tasksRes] = await Promise.all([
                 api.get('/shifts/calendar/', { params: { mesic: month, scope: 'mine' } }),
-                taskAPI.getCalendar(month),
+                taskAPI.getCalendar(month, { scope: 'mine' }),
             ]);
             setShiftData(shiftsRes.data?.kalendar_data || {});
             setTaskData(tasksRes.kalendar_data || tasksRes?.data?.kalendar_data || {});
@@ -148,7 +148,7 @@ const ProfileCalendar = () => {
                         onMouseDown={(e) => e.stopPropagation()}
                         onClick={(e) => {
                             e.stopPropagation();
-                            openTask(navigate, t.id);
+                            openTask(navigate, t, { user, canManageTasks: canManageTasks() });
                         }}
                     >
                         {t.ukol?.slice(0, 12)}

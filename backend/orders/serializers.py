@@ -6,7 +6,7 @@ from stores.models import Prodejna
 from .slack_notify import notify_order_created
 from .sla import sla_days_threshold
 from .prodejna_resolve import resolve_order_prodejna
-from .status_config import STATUSES_REQUIRING_DODAVATEL
+from .status_config import STATUSES_REQUIRING_DODAVATEL, RETIRED_STATUSES
 
 
 class WebUserSimpleSerializer(serializers.ModelSerializer):
@@ -131,27 +131,32 @@ class OrderSerializer(serializers.ModelSerializer):
 
 
 class OrderCreateSerializer(serializers.ModelSerializer):
-    """Serializer pro vytváření nových objednávek"""
-    servisni_cislo = serializers.CharField(required=True, allow_blank=False, max_length=50)
-    
+    """Serializer pro vytváření / úpravu objednávek (stav přes update_status)."""
+    servisni_cislo = serializers.CharField(required=False, allow_blank=True, max_length=50)
+    jmeno_zakaznika = serializers.CharField(required=False, allow_blank=True, max_length=100)
+    prijmeni_zakaznika = serializers.CharField(required=False, allow_blank=True, max_length=100)
+    telefon_zakaznika = serializers.CharField(required=False, allow_blank=True, max_length=20)
+    barva = serializers.CharField(required=False, allow_blank=True, max_length=50)
+
     class Meta:
         model = Order
         fields = [
             'jmeno_zakaznika', 'prijmeni_zakaznika', 'telefon_zakaznika',
-            'typ_telefonu', 'dil', 'barva', 'poznamka', 'cena', 
+            'typ_telefonu', 'dil', 'barva', 'poznamka', 'cena',
             'dodavatel', 'servisni_cislo', 'symplio_objednavka_id',
         ]
-    
-    def validate_servisni_cislo(self, value):
-        value = (value or '').strip()
-        if not value:
-            raise serializers.ValidationError('Servisní číslo je povinné.')
-        return value
+
+    def _merged(self, attrs, field):
+        if field in attrs:
+            return (attrs.get(field) or '').strip()
+        if self.instance is not None:
+            return (getattr(self.instance, field) or '').strip()
+        return ''
 
     def validate_typ_telefonu(self, value):
         value = (value or '').strip()
         if not value:
-            raise serializers.ValidationError('Typ telefonu je povinný.')
+            raise serializers.ValidationError('Model je povinný.')
         return value
 
     def validate_dil(self, value):
@@ -159,16 +164,46 @@ class OrderCreateSerializer(serializers.ModelSerializer):
         if not value:
             raise serializers.ValidationError('Díl je povinný.')
         return value
-    
+
+    def validate_barva(self, value):
+        value = (value or '').strip()
+        if not value:
+            raise serializers.ValidationError('Barva je povinná.')
+        return value
+
+    def validate_servisni_cislo(self, value):
+        return (value or '').strip()
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        # Při partial update vyžaduj barvu jen když se mění nebo při create
+        if self.instance is None or 'barva' in attrs:
+            if not self._merged(attrs, 'barva'):
+                raise serializers.ValidationError({'barva': 'Barva je povinná.'})
+
+        serviska = self._merged(attrs, 'servisni_cislo')
+        jmeno = self._merged(attrs, 'jmeno_zakaznika')
+        telefon = self._merged(attrs, 'telefon_zakaznika')
+        has_customer = bool(jmeno and telefon)
+
+        if not serviska and not has_customer:
+            raise serializers.ValidationError(
+                'Vyplňte servisní číslo, nebo jméno a telefon zákazníka.'
+            )
+        return attrs
+
     def create(self, validated_data):
         """Vytvoří novou objednávku a nastaví aktuálního uživatele jako zakladatele"""
         request = self.context.get('request')
         validated_data['zalozil'] = request.user
         validated_data['posledni_zmena_uzivatel'] = request.user
         validated_data['prodejna'] = resolve_order_prodejna(request.user)
-        
+        validated_data.setdefault('jmeno_zakaznika', '')
+        validated_data.setdefault('prijmeni_zakaznika', '')
+        validated_data.setdefault('telefon_zakaznika', '')
+
         order = Order.objects.create(**validated_data)
-        
+
         OrderStatusHistory.objects.create(
             objednavka=order,
             puvodni_status='',
@@ -178,8 +213,17 @@ class OrderCreateSerializer(serializers.ModelSerializer):
         )
 
         notify_order_created(order)
-        
+
         return order
+
+    def update(self, instance, validated_data):
+        request = self.context.get('request')
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        if request and getattr(request, 'user', None):
+            instance.posledni_zmena_uzivatel = request.user
+        instance.save()
+        return instance
 
 
 class OrderUpdateStatusSerializer(serializers.Serializer):
@@ -191,6 +235,10 @@ class OrderUpdateStatusSerializer(serializers.Serializer):
     def validate(self, attrs):
         instance = self.instance
         novy_status = attrs['novy_status']
+        if novy_status in RETIRED_STATUSES:
+            raise serializers.ValidationError({
+                'novy_status': 'Stavy Není skladem a Storno už nejsou podporované.',
+            })
         incoming = attrs.get('dodavatel', None)
         if incoming is not None:
             resolved = (incoming or '').strip()

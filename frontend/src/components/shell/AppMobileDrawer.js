@@ -62,8 +62,6 @@ const AppMobileDrawer = ({
                         linkClass="app-drawer__link"
                         activeClass="app-drawer__link--active"
                         childClass="app-drawer__link--child"
-                        groupClass="app-drawer__group"
-                        groupLabelClass="app-drawer__group-label"
                     />
                 </div>
 

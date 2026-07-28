@@ -83,6 +83,50 @@ class WebPristupyPermissionsTest(TestCase):
                 self.access.refresh_from_db()
                 self.assertEqual(self.access.username, f'uprava-{user.role.lower()}')
 
+    def test_update_without_password_keeps_existing(self):
+        self.client.force_authenticate(user=self.admin)
+        res = self.client.patch(
+            f'/api/pristupy/{self.access.id}/',
+            {
+                'website_url': 'https://new.example.com',
+                'company_name': 'Import U',
+                'username': 'login@test.cz',
+                'store': 'Globus',
+            },
+            format='json',
+        )
+        self.assertEqual(res.status_code, 200, res.data)
+        self.access.refresh_from_db()
+        self.assertEqual(self.access.website_url, 'https://new.example.com')
+        self.assertEqual(self.access.password, 'heslo123')
+
+    def test_update_with_blank_password_keeps_existing(self):
+        self.client.force_authenticate(user=self.admin)
+        res = self.client.patch(
+            f'/api/pristupy/{self.access.id}/',
+            {
+                'website_url': 'https://blank-pw.example.com',
+                'password': '',
+            },
+            format='json',
+        )
+        self.assertEqual(res.status_code, 200, res.data)
+        self.access.refresh_from_db()
+        self.assertEqual(self.access.website_url, 'https://blank-pw.example.com')
+        self.assertEqual(self.access.password, 'heslo123')
+
+    def test_update_website_url_without_scheme(self):
+        self.client.force_authenticate(user=self.admin)
+        res = self.client.patch(
+            f'/api/pristupy/{self.access.id}/',
+            {'website_url': 'www.shop.cz'},
+            format='json',
+        )
+        self.assertEqual(res.status_code, 200, res.data)
+        self.access.refresh_from_db()
+        self.assertEqual(self.access.website_url, 'https://www.shop.cz')
+        self.assertEqual(self.access.password, 'heslo123')
+
     def test_non_admin_cannot_delete(self):
         self.client.force_authenticate(user=self.prodejce)
         delete_res = self.client.delete(f'/api/pristupy/{self.access.id}/')

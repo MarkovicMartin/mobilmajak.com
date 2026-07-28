@@ -189,7 +189,7 @@ class NakladPolozka(models.Model):
         indexes = [
             models.Index(fields=['stav', 'datum']),
             models.Index(fields=['rok', 'mesic']),
-            models.Index(fields=['dph_stav']),
+            models.Index(fields=['dph_stav'], name='finance_nak_dph_sta_idx'),
         ]
         verbose_name = 'Položka nákladu'
         verbose_name_plural = 'Položky nákladů'
@@ -215,7 +215,7 @@ class FinanceZustatek(models.Model):
         db_table = 'finance_zustatek'
         ordering = ['-datum', '-id']
         indexes = [
-            models.Index(fields=['typ', 'datum']),
+            models.Index(fields=['typ', 'datum'], name='finance_zus_typ_dat_idx'),
         ]
         verbose_name = 'Finance zůstatek'
         verbose_name_plural = 'Finance zůstatky'

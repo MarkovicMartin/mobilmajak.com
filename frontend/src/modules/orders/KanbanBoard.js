@@ -129,8 +129,10 @@ const KanbanBoard = ({
             const err = result.error;
             const msg = typeof err === 'object'
                 ? (err.dodavatel?.[0] || err.error || JSON.stringify(err))
-                : err;
-            alert(msg);
+                : (typeof err === 'string' ? err : 'Nepodařilo se změnit stav');
+            alert(typeof msg === 'string' && !msg.trim().startsWith('<')
+                ? msg
+                : 'Nepodařilo se změnit stav');
         }
     };
 

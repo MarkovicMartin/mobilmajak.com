@@ -14,12 +14,10 @@ const OrderForm = ({ onClose, onSubmit }) => {
         cena: '',
         dodavatel: '',
         servisni_cislo: '',
-        symplio_objednavka_id: ''
     });
     const [errors, setErrors] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Předvolené možnosti pro rychlejší zadávání
     const phoneTypes = [
         'iPhone 13', 'iPhone 14', 'iPhone 15', 'iPhone 12',
         'Samsung Galaxy S23', 'Samsung Galaxy S24', 'Samsung Galaxy A54',
@@ -37,34 +35,31 @@ const OrderForm = ({ onClose, onSubmit }) => {
         'růžová', 'fialová', 'žlutá', 'oranžová'
     ];
 
-    // Validace formuláře
     const validateForm = () => {
         const newErrors = {};
-
-        if (!formData.jmeno_zakaznika.trim()) {
-            newErrors.jmeno_zakaznika = 'Jméno zákazníka je povinné';
-        }
-
-        if (!formData.prijmeni_zakaznika.trim()) {
-            newErrors.prijmeni_zakaznika = 'Příjmení zákazníka je povinné';
-        }
-
-        if (!formData.telefon_zakaznika.trim()) {
-            newErrors.telefon_zakaznika = 'Telefon zákazníka je povinný';
-        } else if (!/^(\+420\s?)?[0-9\s]{9,}$/.test(formData.telefon_zakaznika)) {
-            newErrors.telefon_zakaznika = 'Nesprávný formát telefonu';
-        }
+        const hasServiska = !!formData.servisni_cislo.trim();
+        const hasCustomer = !!(formData.jmeno_zakaznika.trim() && formData.telefon_zakaznika.trim());
 
         if (!formData.typ_telefonu.trim()) {
-            newErrors.typ_telefonu = 'Typ telefonu je povinný';
+            newErrors.typ_telefonu = 'Model je povinný';
         }
 
         if (!formData.dil.trim()) {
             newErrors.dil = 'Díl je povinný';
         }
 
-        if (!formData.servisni_cislo.trim()) {
-            newErrors.servisni_cislo = 'Servisní číslo je povinné';
+        if (!formData.barva.trim()) {
+            newErrors.barva = 'Barva je povinná';
+        }
+
+        if (!hasServiska && !hasCustomer) {
+            newErrors.servisni_cislo = 'Vyplňte servisku, nebo jméno a telefon zákazníka';
+            newErrors.jmeno_zakaznika = 'Nebo vyplňte jméno a telefon';
+        }
+
+        if (formData.telefon_zakaznika.trim()
+            && !/^(\+420\s?)?[0-9\s]{9,}$/.test(formData.telefon_zakaznika)) {
+            newErrors.telefon_zakaznika = 'Nesprávný formát telefonu';
         }
 
         if (formData.cena && isNaN(parseFloat(formData.cena))) {
@@ -75,7 +70,6 @@ const OrderForm = ({ onClose, onSubmit }) => {
         return Object.keys(newErrors).length === 0;
     };
 
-    // Zpracování změny vstupů
     const handleInputChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({
@@ -83,7 +77,6 @@ const OrderForm = ({ onClose, onSubmit }) => {
             [name]: value
         }));
 
-        // Vymaž chybu pro toto pole
         if (errors[name]) {
             setErrors(prev => ({
                 ...prev,
@@ -92,10 +85,9 @@ const OrderForm = ({ onClose, onSubmit }) => {
         }
     };
 
-    // Odeslání formuláře
     const handleSubmit = async (e) => {
         e.preventDefault();
-        
+
         if (!validateForm()) {
             return;
         }
@@ -103,24 +95,25 @@ const OrderForm = ({ onClose, onSubmit }) => {
         setIsSubmitting(true);
 
         try {
-            // Připravíme data pro odeslání
             const submitData = {
                 ...formData,
                 cena: formData.cena ? parseFloat(formData.cena) : null,
-                symplio_objednavka_id: formData.symplio_objednavka_id?.trim() || null,
+                servisni_cislo: formData.servisni_cislo.trim() || '',
+                jmeno_zakaznika: formData.jmeno_zakaznika.trim() || '',
+                prijmeni_zakaznika: formData.prijmeni_zakaznika.trim() || '',
+                telefon_zakaznika: formData.telefon_zakaznika.trim() || '',
             };
 
             const result = await onSubmit(submitData);
-            
+
             if (result.success) {
                 onClose();
+            } else if (result.error && typeof result.error === 'object') {
+                setErrors(result.error);
             } else {
-                // Zobrazíme chyby z backendu
-                if (typeof result.error === 'object') {
-                    setErrors(result.error);
-                } else {
-                    alert(result.error);
-                }
+                alert(typeof result.error === 'string' && result.error.trim()
+                    ? result.error
+                    : 'Nepodařilo se vytvořit objednávku');
             }
         } catch (error) {
             console.error('Chyba při odesílání formuláře:', error);
@@ -132,7 +125,7 @@ const OrderForm = ({ onClose, onSubmit }) => {
 
     return (
         <Modal
-            title="➕ Nová objednávka"
+            title="Nová objednávka"
             onClose={onClose}
             size="md"
             onSubmit={handleSubmit}
@@ -143,210 +136,198 @@ const OrderForm = ({ onClose, onSubmit }) => {
                         Zrušit
                     </button>
                     <button type="submit" className="btn-submit" disabled={isSubmitting}>
-                        {isSubmitting ? 'Vytváření...' : '✅ Vytvořit objednávku'}
+                        {isSubmitting ? 'Vytváření...' : 'Vytvořit objednávku'}
                     </button>
                 </>
             )}
         >
-                    {/* Informace o zákazníkovi */}
-                    <div className="form-section">
-                        <h3>👤 Zákazník</h3>
-                        <div className="form-row">
-                            <div className="form-group">
-                                <label htmlFor="jmeno_zakaznika">Jméno *</label>
-                                <input
-                                    type="text"
-                                    id="jmeno_zakaznika"
-                                    name="jmeno_zakaznika"
-                                    value={formData.jmeno_zakaznika}
-                                    onChange={handleInputChange}
-                                    className={errors.jmeno_zakaznika ? 'error' : ''}
-                                    placeholder="Jan"
-                                />
-                                {errors.jmeno_zakaznika && (
-                                    <span className="error-message">{errors.jmeno_zakaznika}</span>
-                                )}
-                            </div>
-                            
-                            <div className="form-group">
-                                <label htmlFor="prijmeni_zakaznika">Příjmení *</label>
-                                <input
-                                    type="text"
-                                    id="prijmeni_zakaznika"
-                                    name="prijmeni_zakaznika"
-                                    value={formData.prijmeni_zakaznika}
-                                    onChange={handleInputChange}
-                                    className={errors.prijmeni_zakaznika ? 'error' : ''}
-                                    placeholder="Novák"
-                                />
-                                {errors.prijmeni_zakaznika && (
-                                    <span className="error-message">{errors.prijmeni_zakaznika}</span>
-                                )}
-                            </div>
-                        </div>
+            <div className="form-section">
+                <h3>Díl</h3>
+                <div className="form-group">
+                    <label htmlFor="typ_telefonu">Model *</label>
+                    <input
+                        type="text"
+                        id="typ_telefonu"
+                        name="typ_telefonu"
+                        value={formData.typ_telefonu}
+                        onChange={handleInputChange}
+                        className={errors.typ_telefonu ? 'error' : ''}
+                        placeholder="iPhone 14 Pro"
+                        list="phone-types"
+                    />
+                    <datalist id="phone-types">
+                        {phoneTypes.map(type => (
+                            <option key={type} value={type} />
+                        ))}
+                    </datalist>
+                    {errors.typ_telefonu && (
+                        <span className="error-message">{errors.typ_telefonu}</span>
+                    )}
+                </div>
 
-                        <div className="form-group">
-                            <label htmlFor="telefon_zakaznika">Telefon *</label>
-                            <input
-                                type="tel"
-                                id="telefon_zakaznika"
-                                name="telefon_zakaznika"
-                                value={formData.telefon_zakaznika}
-                                onChange={handleInputChange}
-                                className={errors.telefon_zakaznika ? 'error' : ''}
-                                placeholder="+420 123 456 789"
-                            />
-                            {errors.telefon_zakaznika && (
-                                <span className="error-message">{errors.telefon_zakaznika}</span>
-                            )}
-                        </div>
+                <div className="form-row">
+                    <div className="form-group">
+                        <label htmlFor="dil">Díl *</label>
+                        <input
+                            type="text"
+                            id="dil"
+                            name="dil"
+                            value={formData.dil}
+                            onChange={handleInputChange}
+                            className={errors.dil ? 'error' : ''}
+                            placeholder="baterie"
+                            list="part-types"
+                        />
+                        <datalist id="part-types">
+                            {partTypes.map(part => (
+                                <option key={part} value={part} />
+                            ))}
+                        </datalist>
+                        {errors.dil && (
+                            <span className="error-message">{errors.dil}</span>
+                        )}
                     </div>
 
-                    {/* Informace o dílu */}
-                    <div className="form-section">
-                        <h3>📱 Díl/Produkt</h3>
-                        <div className="form-group">
-                            <label htmlFor="typ_telefonu">Typ telefonu *</label>
-                            <input
-                                type="text"
-                                id="typ_telefonu"
-                                name="typ_telefonu"
-                                value={formData.typ_telefonu}
-                                onChange={handleInputChange}
-                                className={errors.typ_telefonu ? 'error' : ''}
-                                placeholder="iPhone 13"
-                                list="phone-types"
-                            />
-                            <datalist id="phone-types">
-                                {phoneTypes.map(type => (
-                                    <option key={type} value={type} />
-                                ))}
-                            </datalist>
-                            {errors.typ_telefonu && (
-                                <span className="error-message">{errors.typ_telefonu}</span>
-                            )}
-                        </div>
+                    <div className="form-group">
+                        <label htmlFor="barva">Barva *</label>
+                        <input
+                            type="text"
+                            id="barva"
+                            name="barva"
+                            value={formData.barva}
+                            onChange={handleInputChange}
+                            className={errors.barva ? 'error' : ''}
+                            placeholder="černá"
+                            list="colors"
+                        />
+                        <datalist id="colors">
+                            {colors.map(color => (
+                                <option key={color} value={color} />
+                            ))}
+                        </datalist>
+                        {errors.barva && (
+                            <span className="error-message">{errors.barva}</span>
+                        )}
+                    </div>
+                </div>
+            </div>
 
-                        <div className="form-row">
-                            <div className="form-group">
-                                <label htmlFor="dil">Díl *</label>
-                                <input
-                                    type="text"
-                                    id="dil"
-                                    name="dil"
-                                    value={formData.dil}
-                                    onChange={handleInputChange}
-                                    className={errors.dil ? 'error' : ''}
-                                    placeholder="baterie"
-                                    list="part-types"
-                                />
-                                <datalist id="part-types">
-                                    {partTypes.map(part => (
-                                        <option key={part} value={part} />
-                                    ))}
-                                </datalist>
-                                {errors.dil && (
-                                    <span className="error-message">{errors.dil}</span>
-                                )}
-                            </div>
+            <div className="form-section">
+                <h3>Vazba</h3>
+                <p className="form-hint">
+                    Stačí serviska (proklik MyRepair), nebo jméno + telefon zákazníka.
+                </p>
+                <div className="form-group">
+                    <label htmlFor="servisni_cislo">Serviska</label>
+                    <input
+                        type="text"
+                        id="servisni_cislo"
+                        name="servisni_cislo"
+                        value={formData.servisni_cislo}
+                        onChange={handleInputChange}
+                        className={errors.servisni_cislo ? 'error' : ''}
+                        placeholder="952501099"
+                    />
+                    {errors.servisni_cislo && (
+                        <span className="error-message">{errors.servisni_cislo}</span>
+                    )}
+                </div>
 
-                            <div className="form-group">
-                                <label htmlFor="barva">Barva</label>
-                                <input
-                                    type="text"
-                                    id="barva"
-                                    name="barva"
-                                    value={formData.barva}
-                                    onChange={handleInputChange}
-                                    placeholder="černá"
-                                    list="colors"
-                                />
-                                <datalist id="colors">
-                                    {colors.map(color => (
-                                        <option key={color} value={color} />
-                                    ))}
-                                </datalist>
-                            </div>
-                        </div>
+                <div className="form-row">
+                    <div className="form-group">
+                        <label htmlFor="jmeno_zakaznika">Jméno zákazníka</label>
+                        <input
+                            type="text"
+                            id="jmeno_zakaznika"
+                            name="jmeno_zakaznika"
+                            value={formData.jmeno_zakaznika}
+                            onChange={handleInputChange}
+                            className={errors.jmeno_zakaznika ? 'error' : ''}
+                            placeholder="Lukáš"
+                        />
+                        {errors.jmeno_zakaznika && (
+                            <span className="error-message">{errors.jmeno_zakaznika}</span>
+                        )}
                     </div>
 
-                    {/* Doplňující informace */}
-                    <div className="form-section">
-                        <h3>📝 Doplňující informace</h3>
-                        <div className="form-row">
-                            <div className="form-group">
-                                <label htmlFor="cena">Cena (Kč)</label>
-                                <input
-                                    type="number"
-                                    id="cena"
-                                    name="cena"
-                                    value={formData.cena}
-                                    onChange={handleInputChange}
-                                    className={errors.cena ? 'error' : ''}
-                                    placeholder="1500"
-                                    step="0.01"
-                                    min="0"
-                                />
-                                {errors.cena && (
-                                    <span className="error-message">{errors.cena}</span>
-                                )}
-                            </div>
-
-                            <div className="form-group">
-                                <label htmlFor="servisni_cislo">Servisní číslo *</label>
-                                <input
-                                    type="text"
-                                    id="servisni_cislo"
-                                    name="servisni_cislo"
-                                    value={formData.servisni_cislo}
-                                    onChange={handleInputChange}
-                                    className={errors.servisni_cislo ? 'error' : ''}
-                                    placeholder="952501099"
-                                />
-                                {errors.servisni_cislo && (
-                                    <span className="error-message">{errors.servisni_cislo}</span>
-                                )}
-                            </div>
-                        </div>
-
-                        <div className="form-group">
-                            <label htmlFor="symplio_objednavka_id">Symplio ID objednávky</label>
-                            <input
-                                type="text"
-                                id="symplio_objednavka_id"
-                                name="symplio_objednavka_id"
-                                value={formData.symplio_objednavka_id}
-                                onChange={handleInputChange}
-                                placeholder="12345"
-                            />
-                        </div>
-
-                        <div className="form-group">
-                            <label htmlFor="dodavatel">Dodavatel</label>
-                            <input
-                                type="text"
-                                id="dodavatel"
-                                name="dodavatel"
-                                value={formData.dodavatel}
-                                onChange={handleInputChange}
-                                placeholder="ASWO, Globus, atd."
-                            />
-                        </div>
-
-                        <div className="form-group">
-                            <label htmlFor="poznamka">Poznámka</label>
-                            <textarea
-                                id="poznamka"
-                                name="poznamka"
-                                value={formData.poznamka}
-                                onChange={handleInputChange}
-                                placeholder="Další poznámky k objednávce..."
-                                rows="3"
-                            />
-                        </div>
+                    <div className="form-group">
+                        <label htmlFor="prijmeni_zakaznika">Příjmení</label>
+                        <input
+                            type="text"
+                            id="prijmeni_zakaznika"
+                            name="prijmeni_zakaznika"
+                            value={formData.prijmeni_zakaznika}
+                            onChange={handleInputChange}
+                            placeholder="Duffek"
+                        />
                     </div>
+                </div>
+
+                <div className="form-group">
+                    <label htmlFor="telefon_zakaznika">Telefon zákazníka</label>
+                    <input
+                        type="tel"
+                        id="telefon_zakaznika"
+                        name="telefon_zakaznika"
+                        value={formData.telefon_zakaznika}
+                        onChange={handleInputChange}
+                        className={errors.telefon_zakaznika ? 'error' : ''}
+                        placeholder="602 568 825"
+                    />
+                    {errors.telefon_zakaznika && (
+                        <span className="error-message">{errors.telefon_zakaznika}</span>
+                    )}
+                </div>
+            </div>
+
+            <div className="form-section">
+                <h3>Doplňující</h3>
+                <div className="form-row">
+                    <div className="form-group">
+                        <label htmlFor="cena">Cena (Kč)</label>
+                        <input
+                            type="number"
+                            id="cena"
+                            name="cena"
+                            value={formData.cena}
+                            onChange={handleInputChange}
+                            className={errors.cena ? 'error' : ''}
+                            placeholder="2000"
+                            step="0.01"
+                            min="0"
+                        />
+                        {errors.cena && (
+                            <span className="error-message">{errors.cena}</span>
+                        )}
+                    </div>
+
+                    <div className="form-group">
+                        <label htmlFor="dodavatel">Dodavatel</label>
+                        <input
+                            type="text"
+                            id="dodavatel"
+                            name="dodavatel"
+                            value={formData.dodavatel}
+                            onChange={handleInputChange}
+                            placeholder="skladem / ASWO…"
+                        />
+                    </div>
+                </div>
+
+                <div className="form-group">
+                    <label htmlFor="poznamka">Poznámka</label>
+                    <textarea
+                        id="poznamka"
+                        name="poznamka"
+                        value={formData.poznamka}
+                        onChange={handleInputChange}
+                        placeholder="Další poznámky…"
+                        rows="2"
+                    />
+                </div>
+            </div>
         </Modal>
     );
 };
 
-export default OrderForm; 
+export default OrderForm;

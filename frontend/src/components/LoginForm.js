@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { peekReturnPath } from '../utils/authReturnPath';
 import './LoginForm.css';
 
 const LoginForm = () => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const { login, loading, error } = useAuth();
+    const returnPath = peekReturnPath();
+    const deepLinkHint = returnPath && returnPath.includes('id=');
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -23,7 +26,9 @@ const LoginForm = () => {
                 <header className="login-card__header">
                     <h1 className="login-card__title">Přihlášení</h1>
                     <p className="login-card__subtitle">
-                        Zadejte své přihlašovací údaje pro přístup k datům a statistikám.
+                        {deepLinkHint
+                            ? 'Po přihlášení vás přesměrujeme přímo na úkol z odkazu.'
+                            : 'Zadejte své přihlašovací údaje pro přístup k datům a statistikám.'}
                     </p>
                 </header>
 

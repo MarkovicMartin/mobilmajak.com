@@ -57,6 +57,12 @@ def packeta_import_csv(request):
         return _no_store_response({'error': str(exc)}, status.HTTP_400_BAD_REQUEST)
 
     imp = import_packeta_rows(rows, prodejna_id)
+    cache_info = None
+    try:
+        from analytics.zasilkovna_leaderboard_cache import refresh_after_packeta_import
+        cache_info = refresh_after_packeta_import(source='packeta_csv_api')
+    except Exception:
+        cache_info = {'ok': False}
     return _no_store_response({
         'prodejna_id': prodejna_id,
         'import_batch': imp['import_batch'],
@@ -64,6 +70,7 @@ def packeta_import_csv(request):
         'skipped': imp['skipped'],
         'stats': imp['stats'],
         'warning': imp.get('warning'),
+        'zasilkovna_leaderboard_cache': cache_info,
     })
 
 

@@ -69,3 +69,4 @@ echo "[5/5] Smoke test..."
 "$REPO_ROOT/scripts/post-deploy-smoke.sh" staging
 echo ""
 echo "Done. https://staging.mobilmajak.com/"
+echo "Staging workery: auto-stop za ${STAGING_IDLE_TTL:-2h}. Ručně: ./scripts/staging-app.sh stop|extend|status"

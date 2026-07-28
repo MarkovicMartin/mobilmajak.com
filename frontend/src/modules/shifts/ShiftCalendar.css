@@ -412,6 +412,23 @@
     background: var(--shift-store-bg, var(--brand-navy));
 }
 
+/* Pastelové barvy prodejen / Backoffice – tmavý text kvůli kontrastu */
+.shift-calendar .shift-item.shift-item--store-colored.mine,
+.shift-calendar .shift-item.shift-item--store-colored.other {
+    color: var(--brand-navy);
+    border: 1px solid color-mix(in srgb, var(--brand-navy) 12%, transparent);
+    box-shadow: none;
+}
+
+.shift-calendar .shift-item.shift-item--store-colored.mine .shift-time,
+.shift-calendar .shift-item.shift-item--store-colored.mine .shift-role-badge,
+.shift-calendar .shift-item.shift-item--store-colored.mine .shift-servis-badge,
+.shift-calendar .shift-item.shift-item--store-colored.other .shift-time,
+.shift-calendar .shift-item.shift-item--store-colored.other .shift-role-badge,
+.shift-calendar .shift-item.shift-item--store-colored.other .shift-servis-badge {
+    color: var(--brand-navy-muted);
+}
+
 .shift-store {
     font-size: 9px;
     font-weight: 700;
@@ -785,14 +802,14 @@
     overflow: hidden;
     margin-bottom: 2px;
     background: var(--shift-store-bg, var(--brand-navy));
-    color: #fff;
+    color: var(--brand-navy);
 }
 
 .shift-store-group__head {
     font-size: 9px;
     font-weight: 700;
     padding: 2px 5px;
-    background: rgba(0, 0, 0, 0.12);
+    background: rgba(27, 40, 72, 0.1);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -806,7 +823,7 @@
 }
 
 .shift-item.shift-item--in-store-group {
-    background: rgba(255, 255, 255, 0.12) !important;
+    background: rgba(255, 255, 255, 0.35) !important;
     border-left: none !important;
     margin: 0;
 }

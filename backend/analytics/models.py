@@ -1,6 +1,7 @@
 from django.db import models
 from django.utils import timezone
 from datetime import date
+from users.fields import SafeDateTimeField
 
 
 class BaseProdejniData(models.Model):
@@ -601,6 +602,38 @@ class LeaderboardMonthPointsCache(models.Model):
         return f'{self.month_ym} ({len(self.points_by_prodejce or {})} prodejců)'
 
 
+class ZasilkovnaLeaderboardCache(models.Model):
+    """
+    Cache metrik Zásilkovna pro žebříček (prodejci + prodejny).
+    Přepočet po Packeta importu (actor) – žebříček jen čte.
+    period_key: day:YYYY-MM-DD | month:YYYY-MM | range:…
+    """
+    period_key = models.CharField(max_length=48, unique=True, verbose_name='Klíč období')
+    date_from = models.DateField(verbose_name='Od')
+    date_to = models.DateField(verbose_name='Do')
+    by_prodejce = models.JSONField(
+        default=dict,
+        verbose_name='Metriky podle id_prodejce',
+        help_text='Mapa {"4": {...}, ...} – klíče jako řetězce kvůli JSON.',
+    )
+    by_prodejna = models.JSONField(
+        default=dict,
+        blank=True,
+        verbose_name='Metriky podle id_prodejny',
+    )
+    source = models.CharField(max_length=32, blank=True, default='', verbose_name='Zdroj přepočtu')
+    computed_at = models.DateTimeField(auto_now=True, verbose_name='Naposledy spočítáno')
+
+    class Meta:
+        verbose_name = 'Cache Zásilkovna žebříček'
+        verbose_name_plural = 'Cache Zásilkovna žebříček'
+        ordering = ['-period_key']
+        db_table = 'WEB_ZASILKOVNA_LEADERBOARD_CACHE'
+
+    def __str__(self):
+        return f'{self.period_key} ({len(self.by_prodejce or {})} prodejců)'
+
+
 class DobropisPairingCache(models.Model):
     """Kanonická cache párování dobropisu s původním prodejem (append-only podle sale_id)."""
 
@@ -649,7 +682,7 @@ class SkladVydejka(models.Model):
     vazba = models.CharField(max_length=255, null=True, blank=True, verbose_name='Vazba')
     castka_s_dph = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     castka_bez_dph = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    imported_at = models.DateTimeField(auto_now=True)
+    imported_at = SafeDateTimeField(auto_now=True)
 
     class Meta:
         db_table = 'WEB_SKLAD_VYDEJKY'
@@ -664,6 +697,8 @@ class SkladVydejka(models.Model):
 class SkladVydejkaPolozka(models.Model):
     """Položka skladové výdejky."""
 
+    # Explicitní AutoField – v MySQL je int(11), ne bigint (app default BigAutoField).
+    id = models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')
     doklad = models.ForeignKey(
         SkladVydejka,
         on_delete=models.CASCADE,

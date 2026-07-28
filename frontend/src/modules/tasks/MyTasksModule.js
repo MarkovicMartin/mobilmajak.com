@@ -1,13 +1,14 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { format } from 'date-fns';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { PageHeader } from '../../components/ui';
 import { useTasks } from '../../hooks/useTasks';
+import { taskAPI } from '../../services/api';
 import TaskDetailPanel from './TaskDetailPanel';
 import TaskUrgencyBadge from './TaskUrgencyBadge';
 import TaskStatusIcon from '../../components/TaskStatusIcon';
 import { urgencyForTask, URGENCY_OVERDUE } from '../../utils/taskUrgency';
-import { parseTaskId, TASKS_MINE_PATH } from '../../utils/taskNavigation';
+import { parseTaskId, sameTaskId, TASKS_MINE_PATH } from '../../utils/taskNavigation';
 import {
     taskDisplayTitle,
     isPrirazenySop,
@@ -27,6 +28,7 @@ const MyTasksModule = ({ embedded = false }) => {
     const [selected, setSelected] = useState(null);
     const [newUkol, setNewUkol] = useState('');
     const [mobileDetail, setMobileDetail] = useState(false);
+    const deepLinkTried = useRef(null);
 
     const listParams = useMemo(() => {
         const p = { scope: 'mine' };
@@ -49,17 +51,53 @@ const MyTasksModule = ({ embedded = false }) => {
     const clearSelection = useCallback(() => {
         setSelected(null);
         setMobileDetail(false);
+        deepLinkTried.current = null;
         navigate(TASKS_MINE_PATH, { replace: true });
     }, [navigate]);
 
     useEffect(() => {
-        if (!taskIdFromNav || loading) return;
-        const match = tasks.find((t) => t.id === taskIdFromNav);
+        if (!taskIdFromNav) {
+            deepLinkTried.current = null;
+            return undefined;
+        }
+        if (loading) return undefined;
+        if (selected && sameTaskId(selected.id, taskIdFromNav)) {
+            setMobileDetail(true);
+            return undefined;
+        }
+
+        const match = tasks.find((t) => sameTaskId(t.id, taskIdFromNav));
         if (match) {
             setSelected(match);
             setMobileDetail(true);
+            if (filter === 'aktivni' && ['hotovo', 'ceka_schvaleni'].includes(match.stav)) {
+                setFilter(match.stav === 'hotovo' ? 'hotove' : 'cekajici');
+            }
+            return undefined;
         }
-    }, [taskIdFromNav, tasks, loading]);
+
+        if (deepLinkTried.current === taskIdFromNav) return undefined;
+        deepLinkTried.current = taskIdFromNav;
+
+        let cancelled = false;
+        (async () => {
+            try {
+                const task = await taskAPI.get(taskIdFromNav);
+                if (cancelled || !task?.id) return;
+                setTasks((list) => (
+                    list.some((t) => sameTaskId(t.id, task.id)) ? list : [task, ...list]
+                ));
+                setSelected(task);
+                setMobileDetail(true);
+                if (task.stav === 'hotovo') setFilter('hotove');
+                else if (task.stav === 'ceka_schvaleni') setFilter('cekajici');
+                else setFilter('aktivni');
+            } catch {
+                /* úkol neexistuje / bez oprávnění – zůstane seznam */
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [taskIdFromNav, tasks, loading, selected, filter, setTasks]);
 
     const activePrirazeny = useMemo(
         () => tasks.filter((t) => isPrirazenySop(t) && isActiveTask(t)),

@@ -109,7 +109,7 @@ export default function TodayWorkBoard({ today = new Date() }) {
                 <div className="work-board-grid">
                     {stores.map((store) => (
                         <div
-                            key={store.prodejna_id}
+                            key={String(store.prodejna_id)}
                             className={`work-tile ${STATUS_CLASS[store.status] || ''}`}
                             style={{ borderLeftColor: store.prodejna_barva }}
                         >

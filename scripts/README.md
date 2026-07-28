@@ -6,8 +6,10 @@ Přehled – co je provozní, co plánované rozšíření. Nepřidávejte jedno
 
 | Skript | Účel |
 |--------|------|
-| `deploy-staging.sh` | Staging deploy + smoke (krok 1) |
+| `deploy-staging.sh` | Staging deploy + smoke (krok 1); po deployi staging běží default 2h |
 | `deploy-staging.ps1` | Totéž pro Windows |
+| `staging-app.sh` | Zapnout/vypnout/prodloužit staging workery na VPS (`start\|stop\|extend\|status`) |
+| `staging-app-control.sh` | Stejné ovládání přímo na VPS (`/opt/scripts/…`) |
 | `frontend-build-vps.sh` | `npm ci` + aktualizace browserslist + build (volá deploy) |
 | `post-deploy-smoke.sh` | Health + `manage.py check` + shifts import (volá deploy) |
 | `local-predeploy-check.sh` | Lokální `manage.py check` přes `backend/.venv` |
@@ -19,12 +21,16 @@ Přehled – co je provozní, co plánované rozšíření. Nepřidávejte jedno
 | `merge-to-production.sh` | Merge větev → produkce |
 | `grant-staging-tickets-admin.sh` | Oprávnění ticketů na staging |
 
-## Plány (cron na VPS)
+## Plány a Slack notifikace (cron na VPS)
 
 | Skript | Účel |
 |--------|------|
 | `install-staging-plans-cron.sh` | Deprecated – plány na staging; použij `install-production-plans-cron.sh` |
 | `install-production-plans-cron.sh` | Cron `ensure_monthly_plans` + `prepocet_plan_prodejci` na produkci (`webmajak`) |
+| `install-task-slack-notify-cron.sh` | Cron `notify_shift_task_recap` (*/5) + `notify_task_deadlines` (hourly); `STAGING=1` pro staging |
+| `install-daily-report-cron.sh` | Cron denního Slack reportu |
+| `install-orders-sla-cron.sh` | Cron SLA připomínek objednávek |
+| `install-reklamace-reminders-cron.sh` | Cron připomínek reklamací |
 
 Detaily a ruční řádky crontab: [`docs/secrets-setup.md`](../docs/secrets-setup.md).
 

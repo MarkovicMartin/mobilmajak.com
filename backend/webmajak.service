@@ -1,25 +1,25 @@
 [Unit]
-Description=WebMajak Django Application
+Description=Gunicorn instance to serve WebMajak Django app
 After=network.target
 
 [Service]
-Type=exec
+Type=simple
 User=webmajak
 Group=webmajak
 WorkingDirectory=/home/webmajak/webapp
 Environment="PATH=/home/webmajak/webapp/venv/bin"
 Environment="DJANGO_SETTINGS_MODULE=webapp.settings_production"
-ExecStart=/home/webmajak/webapp/venv/bin/gunicorn --config /home/webmajak/webapp/gunicorn.conf.py webapp.wsgi:application
+# 2 CPU / ~4 GB RAM: 5 sync workers; recycle against memory creep
+ExecStart=/home/webmajak/webapp/venv/bin/gunicorn \
+  --workers 5 \
+  --timeout 30 \
+  --max-requests 500 \
+  --max-requests-jitter 50 \
+  --bind 127.0.0.1:8000 \
+  webapp.wsgi:application
 ExecReload=/bin/kill -s HUP $MAINPID
-Restart=always
+Restart=on-failure
 RestartSec=3
 
-# Security settings
-NoNewPrivileges=true
-ProtectSystem=strict
-ReadWritePaths=/home/webmajak/webapp
-ProtectHome=true
-PrivateTmp=true
-
 [Install]
-WantedBy=multi-user.target 
+WantedBy=multi-user.target

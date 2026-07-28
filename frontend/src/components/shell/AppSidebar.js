@@ -49,8 +49,6 @@ const AppSidebar = ({
                     linkClass="app-sidebar__link"
                     activeClass="app-sidebar__link--active"
                     childClass="app-sidebar__link--child"
-                    groupClass="app-sidebar__group"
-                    groupLabelClass="app-sidebar__group-label"
                 />
             </nav>
 

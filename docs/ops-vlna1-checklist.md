@@ -4,6 +4,8 @@ Tyto kroky **neběží automaticky z agenta** – spusť na VPS / lokálně s po
 
 ## Symplio S1–S4 (deploy shared)
 
+**Stav 2026-07-28:** považováno za vyřešené (shared modul + deploy na VPS).
+
 ```bash
 ./scripts/symplio-shared/deploy.sh
 ```
@@ -24,7 +26,9 @@ Rotace hesla: jeden JSON – viz [secrets-setup.md](secrets-setup.md).
 
 ## F1 – Finance (produkce)
 
-1. Secrets (až bude token): `secrets/mobilmajak-finance.json` → VPS (viz secrets-setup).
+**Stav 2026-07-28:** hotovo na produkci — `FINANCE_MODULE_ENABLED=1`, `FINANCE_FIO_ENABLED=1`, secrets OK, cron `/etc/cron.d/mobilmajak-finance` (Fio 22:30), poslední úspěšný import 2026-07-27.
+
+1. Secrets: `secrets/mobilmajak-finance.json` → VPS (viz secrets-setup).
 2. V produkčním `backend/.env` / webapp env:
    - `FINANCE_MODULE_ENABLED=1`
    - `FINANCE_FIO_ENABLED=1` **až po** Fio tokenu v secrets (bez tokenu nechat `0`)
@@ -41,11 +45,13 @@ Rotace hesla: jeden JSON – viz [secrets-setup.md](secrets-setup.md).
 python manage.py import_fio_naklady --days 3
 ```
 
-Pak v UI: Finance → „K zařazení“. Bez Fio tokenu ověř jen modul s `FINANCE_FIO_ENABLED=0`.
+Pak v UI: Finance → „K zařazení“.
 
 ---
 
 ## Přístupy P1 + Mastersheet
+
+**Stav 2026-07-28:** hotovo (uživatel potvrdil — import/UI v provozu, úpravy URL bez hesla).
 
 Lokálně / na VPS (venv):
 
@@ -65,6 +71,8 @@ Ruční vzorek: 1–2 prodejny v UI Přístupy.
 ---
 
 ## R11 – Reklamace reminders (produkce, do 31. 8.)
+
+**Stav 2026-07-28:** produkční cron nainstalován (webapp, 07:15, bez `STAGING=1`). Dry-run OK.
 
 **Bez** `STAGING=1`:
 

@@ -28,7 +28,7 @@ const ProfileDayPanel = ({
     onClose,
     onRefresh,
 }) => {
-    const { user } = useAuth();
+    const { user, canManageTasks } = useAuth();
     const navigate = useNavigate();
     const [newUkol, setNewUkol] = useState('');
     const [saving, setSaving] = useState(false);
@@ -67,7 +67,7 @@ const ProfileDayPanel = ({
     };
 
     const openTaskInModule = (task) => {
-        openTask(navigate, task.id);
+        openTask(navigate, task, { user, canManageTasks: canManageTasks() });
         onClose();
     };
 

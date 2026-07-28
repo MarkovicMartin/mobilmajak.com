@@ -2,7 +2,7 @@
 
 Živý dokument pro plánování rozšíření. U každé oblasti: **stav dnes**, **varianty rozpracování**, **odhad náročnosti** (S/M/L/XL) a **vliv na kvalitu aplikace** (1–5, kde 5 = největší přínos pro provoz nebo řízení firmy).
 
-Poslední revize: 2026-07-09 (§17 implementační vlny)
+Poslední revize: 2026-07-28 (§19 Slack deep-link / session – k testování)
 
 ---
 
@@ -229,6 +229,7 @@ Doporučené pořadí po MVP: **R8** → **R9** → **R11** (až po R3 workflow 
 | **Audit komentářů pro ne-adminy** | Ověřit a otestovat, že komentovat mohou i běžní uživatelé (novinky + úkoly) | S | 4 | Viz §12 |
 | **Admin ruční hodiny a dovolená** | UI místo JSON override – hodiny za měsíc, korekce fondu, přečerpání při odchodu | M–L | 5 | Viz §17 |
 | **Role v čase + směna Backoffice** | Timeline rolí (brigádník → zaměstnanec) a virtuální pobočka Backoffice s poznámkou dne | M | 5 | Viz §17 |
+| **Slack → app session (k testování)** | Po kliku z DM občas login / `ERR_TOO_MANY_REDIRECTS` na `/api/users/current/` | S | 3 | Viz §19 – neblokuje, sledovat |
 
 ---
 
@@ -462,7 +463,7 @@ Doporučené pořadí: **V1 + V2** → **V3** (po §4 R8).
 
 - [x] **Import Mastersheet logins – přidat odkaz na e-shop** (`website_url`): heuristika z URL v názvu / domény + mapa dodavatelů; backfill `--fill-urls`
 - [x] Rozšířit `mastersheet_logins.py` / import o pole URL (`resolve_website_url`)
-- [ ] Po doplnění znovu audit `--import-missing` vs ruční kontrola vzorku na prodejně
+- [x] Po doplnění znovu audit `--import-missing` vs ruční kontrola vzorku na prodejně
 
 ### Doporučený postup
 
@@ -602,10 +603,33 @@ Jeden servisní účet, jeden secrets soubor, jeden sdílený modul – všechny
 
 ---
 
+## 19. Slack deep-link úkolů / session – k testování
+
+### Stav (2026-07-28)
+
+- Deep-link ze Slack DM funguje: `https://mobilmajak.com/tasks/manage?id=…` / `…/mine?id=…` otevře detail úkolu (FE + return path po loginu).
+- Session 24 h + `SESSION_SAVE_EVERY_REQUEST` (sliding).
+- **Test:** Radek Bulandra (Windows) — bez login screenu, OK.
+- **Test:** Martin Markovič (macOS / Chrome) — občas login screen; v konzoli `net::ERR_TOO_MANY_REDIRECTS` na `/api/users/current/`. Cookie `sessionid` přitom bývá platná (server vrací 200 se stejnou session). Zatím jen u něj, ne u Radka.
+
+### Postup
+
+| Položka | Popis | Stav |
+|---------|--------|------|
+| **T1 – Sledovat** | Při dalším výskytu: Network → redirect chain u `/api/users/current/` (status + `Location`) | k testování |
+| **T2 – Opravit jen když přetrvá** | Podezření: Django `SECURE_SSL_REDIRECT` vs nginx `X-Forwarded-Proto` (preventivně vypnout SSL redirect za nginxem). Neřešit, dokud to nebude reprodukovatelné / u více lidí | odloženo |
+
+### Priorita
+
+Nízká — neblokuje tým; řešit až při opakovaném výskytu.
+
+---
+
 ## 10. Historie změn dokumentu
 
 | Datum | Změna |
 |-------|-------|
+| 2026-07-28 | §19 Slack deep-link / session: `ERR_TOO_MANY_REDIRECTS` u Markoviče – k testování (Bulandra OK) |
 | 2026-07-09 | §16 + P2b: import Mastersheet logins – doplnit odkaz na e-shop (`website_url`) |
 | 2026-07-09 | §18 Symplio jeden zdroj přihlášení pro actory (termín červenec 2026) |
 | 2026-07-09 | Plány cron přesun na produkci (`install-production-plans-cron.sh`) |

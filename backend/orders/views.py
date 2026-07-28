@@ -16,6 +16,7 @@ from .status_config import (
     MAIN_STATUS_COLUMNS,
     MAIN_STATUS_KEYS,
     STATUS_COLUMN_FOLD,
+    RETIRED_STATUSES,
 )
 
 
@@ -80,6 +81,8 @@ class OrderViewSet(ModelViewSet):
         for status_key, status_label in Order.STATUS_CHOICES:
             if status_key in MAIN_STATUS_KEYS or status_key in STATUS_COLUMN_FOLD:
                 continue
+            if status_key in RETIRED_STATUSES:
+                continue
             status_orders = queryset.filter(status=status_key).order_by('-datum_vytvoreni')
             serialized_orders = OrderSerializer(status_orders, many=True).data
             kanban_data[status_key] = {
@@ -111,19 +114,25 @@ class OrderViewSet(ModelViewSet):
             return Response(full_serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-    def update(self, request, pk=None):
+    def update(self, request, *args, **kwargs):
         """Aktualizace objednávky (kromě stavu - k tomu je speciální endpoint)"""
-        try:
-            order = self.get_object()
-            serializer = OrderCreateSerializer(order, data=request.data, partial=True)
-            if serializer.is_valid():
-                serializer.save()
-                # Vrátíme plný objekt
-                full_serializer = OrderSerializer(order)
-                return Response(full_serializer.data)
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        except Order.DoesNotExist:
-            return Response({'error': 'Objednávka nenalezena'}, status=status.HTTP_404_NOT_FOUND)
+        partial = kwargs.pop('partial', False)
+        order = self.get_object()
+        serializer = OrderCreateSerializer(
+            order,
+            data=request.data,
+            partial=partial or True,
+            context={'request': request},
+        )
+        if serializer.is_valid():
+            serializer.save()
+            full_serializer = OrderSerializer(order)
+            return Response(full_serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def partial_update(self, request, *args, **kwargs):
+        kwargs['partial'] = True
+        return self.update(request, *args, **kwargs)
     
     def destroy(self, request, pk=None):
         """Smazání objednávky"""

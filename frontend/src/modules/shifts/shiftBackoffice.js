@@ -1,8 +1,8 @@
 /** Virtuální pobočka pro backoffice zaměstnance (např. bez domovské prodejny). */
 export const BACKOFFICE_LOCATION = 'backoffice';
 
-/** Barva virtuální pobočky Backoffice v kalendáři směn. */
-export const BACKOFFICE_CALENDAR_COLOR = '#5c4d8a';
+/** Barva virtuální pobočky Backoffice v kalendáři směn (indigo, mimo fialovou Šternberku). */
+export const BACKOFFICE_CALENDAR_COLOR = '#A8B4E8';
 
 export const isBackofficeCalendarFilter = (prodejna) => (
     String(prodejna || '').trim().toLowerCase() === BACKOFFICE_LOCATION

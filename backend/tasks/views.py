@@ -227,6 +227,8 @@ def tasks_calendar(request):
                 "stav": task.stav,
                 "priorita": task.priorita,
                 "typ": task.typ,
+                "id_prodejce_ukol": task.id_prodejce_ukol,
+                "id_prodejce_zadal": task.id_prodejce_zadal,
                 "urgency": urgency_for_task(task),
                 "deadline_cas": task.deadline_cas.strftime("%H:%M") if task.deadline_cas else None,
             }

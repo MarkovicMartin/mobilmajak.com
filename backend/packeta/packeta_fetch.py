@@ -683,7 +683,7 @@ def fetch_and_import_branch(
         except ValueError as exc:
             entry['error'] = str(exc)
 
-    return {
+    out = {
         'import_batch': batch,
         'date_from': start.isoformat(),
         'date_to': end.isoformat(),
@@ -691,6 +691,15 @@ def fetch_and_import_branch(
         'dry_run': dry_run,
         'typ_preset': typ_preset,
     }
+    if not dry_run and not entry.get('error'):
+        try:
+            from analytics.zasilkovna_leaderboard_cache import refresh_after_packeta_import
+            out['zasilkovna_leaderboard_cache'] = refresh_after_packeta_import(
+                source='packeta_import',
+            )
+        except Exception:
+            logger.exception('Obnova Zásilkovna leaderboard cache po importu pobočky selhala')
+    return out
 
 
 def _fetch_branch_rows_for_range(
@@ -1009,6 +1018,14 @@ def _import_branch_fetch_results(
         out['days'] = days
     if chunk_days is not None:
         out['chunk_days'] = chunk_days
+    if not dry_run:
+        try:
+            from analytics.zasilkovna_leaderboard_cache import refresh_after_packeta_import
+            out['zasilkovna_leaderboard_cache'] = refresh_after_packeta_import(
+                source='packeta_import',
+            )
+        except Exception:
+            logger.exception('Obnova Zásilkovna leaderboard cache po importu selhala')
     return out
 
 

@@ -3363,8 +3363,8 @@ def _attach_servisni_prace(result, user_id, typ_exact=None, typ_month_prefix=Non
 
 def _attach_zasilkovna_metrics(result, user_id, date_from, date_to):
     try:
-        from analytics.zasilkovna_konverze import zasilkovna_leaderboard_map
-        metrics = zasilkovna_leaderboard_map(date_from, date_to).get(int(user_id), {})
+        from analytics.zasilkovna_leaderboard_cache import get_zasilkovna_leaderboard_map
+        metrics = get_zasilkovna_leaderboard_map(date_from, date_to).get(int(user_id), {})
     except Exception:
         metrics = {}
     result['zasilkovna'] = {
@@ -6780,8 +6780,8 @@ def web_prodeje_leaderboard_points(request):
         month_end = today
         zasilkovna_map = {}
         try:
-            from analytics.zasilkovna_konverze import zasilkovna_leaderboard_map
-            zasilkovna_map = zasilkovna_leaderboard_map(month_start, month_end)
+            from analytics.zasilkovna_leaderboard_cache import get_zasilkovna_leaderboard_map
+            zasilkovna_map = get_zasilkovna_leaderboard_map(month_start, month_end)
         except Exception:
             pass
 
@@ -6896,8 +6896,8 @@ def web_prodeje_leaderboard_points_today(request):
 
         zasilkovna_map = {}
         try:
-            from analytics.zasilkovna_konverze import zasilkovna_leaderboard_map
-            zasilkovna_map = zasilkovna_leaderboard_map(today, today)
+            from analytics.zasilkovna_leaderboard_cache import get_zasilkovna_leaderboard_map
+            zasilkovna_map = get_zasilkovna_leaderboard_map(today, today)
         except Exception:
             pass
 
@@ -7104,8 +7104,8 @@ def web_prodeje_leaderboard_stores(request):
         month_end = today
         zasilkovna_store_map = {}
         try:
-            from analytics.zasilkovna_konverze import zasilkovna_store_leaderboard_map
-            zasilkovna_store_map = zasilkovna_store_leaderboard_map(month_start, month_end)
+            from analytics.zasilkovna_leaderboard_cache import get_zasilkovna_store_leaderboard_map
+            zasilkovna_store_map = get_zasilkovna_store_leaderboard_map(month_start, month_end)
         except Exception:
             pass
 

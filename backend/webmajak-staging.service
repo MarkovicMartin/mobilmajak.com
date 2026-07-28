@@ -1,0 +1,25 @@
+[Unit]
+Description=WebMajak Staging Django Application
+After=network.target
+# Not enabled on boot – start only via deploy / scripts/staging-app.sh
+
+[Service]
+Type=simple
+User=webmajak
+Group=webmajak
+WorkingDirectory=/home/webmajak/staging
+Environment="PATH=/home/webmajak/staging/venv/bin"
+Environment="DJANGO_SETTINGS_MODULE=webapp.settings_production"
+# Optional secrets – do not put keys in this unit file
+EnvironmentFile=-/home/webmajak/staging/.env
+EnvironmentFile=-/home/webmajak/staging/.env.systemd
+ExecStart=/home/webmajak/staging/venv/bin/gunicorn \
+  --bind 127.0.0.1:8001 \
+  --workers 2 \
+  --timeout 30 \
+  webapp.wsgi:application
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

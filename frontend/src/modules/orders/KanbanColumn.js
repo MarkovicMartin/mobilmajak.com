@@ -5,7 +5,7 @@ import './KanbanColumn.css';
 import './OrderRow.css';
 
 const ROW_HEADERS = [
-    'Datum', 'Typ', 'Věc', 'Barva', 'Serviska', 'Zákazník',
+    'Datum', 'Model', 'Věc', 'Barva', 'Serviska', 'Zákazník',
     'Telefon', 'Cena', 'Zadal', 'Prodejna', 'Dodavatel', '',
 ];
 
@@ -68,11 +68,7 @@ const KanbanColumn = ({
             </div>
 
             {(isOver || isDropTarget) && (
-                <div className="drop-zone-indicator">
-                    <div className="drop-zone-content">
-                        <p>Přetáhněte sem</p>
-                    </div>
-                </div>
+                <div className="drop-zone-indicator" aria-hidden="true" />
             )}
         </div>
     );

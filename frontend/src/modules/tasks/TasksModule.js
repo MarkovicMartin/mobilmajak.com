@@ -13,13 +13,14 @@ const TasksModule = () => {
     const location = useLocation();
     const { isAdmin, canManageTasks } = useAuth();
     const sectionId = tasksIdFromPath(location.pathname);
+    const search = location.search || '';
 
     const guardManage = (element) => (
-        canManageTasks() ? element : <Navigate to="/tasks/mine" replace />
+        canManageTasks() ? element : <Navigate to={`/tasks/mine${search}`} replace />
     );
 
     const guardWorkload = (element) => (
-        isAdmin() ? element : <Navigate to="/tasks/mine" replace />
+        isAdmin() ? element : <Navigate to={`/tasks/mine${search}`} replace />
     );
 
     return (
@@ -28,7 +29,7 @@ const TasksModule = () => {
             <TasksNav />
             <div className="tasks-module-content">
                 <Routes>
-                    <Route index element={<Navigate to={`/tasks/${DEFAULT_TASKS_SECTION}`} replace />} />
+                    <Route index element={<Navigate to={`/tasks/${DEFAULT_TASKS_SECTION}${search}`} replace />} />
                     <Route path="mine" element={<MyTasksModule embedded />} />
                     <Route path="manage" element={guardManage(<TasksManageModule embedded />)} />
                     <Route
@@ -41,7 +42,7 @@ const TasksModule = () => {
                     />
                     <Route
                         path="*"
-                        element={<Navigate to={`/tasks/${sectionId || DEFAULT_TASKS_SECTION}`} replace />}
+                        element={<Navigate to={`/tasks/${sectionId || DEFAULT_TASKS_SECTION}${search}`} replace />}
                     />
                 </Routes>
             </div>

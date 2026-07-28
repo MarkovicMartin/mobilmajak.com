@@ -55,4 +55,10 @@ sudo -u webmajak bash -lc 'set -e; source venv/bin/activate; export DJANGO_SETTI
 systemctl restart webmajak-staging
 sleep 2
 systemctl is-active webmajak-staging
-echo "post-deploy OK"
+# Staging není na bootu: po deployi běží jen do auto-stop (default 2h) / ručního stopu
+if [ -x /opt/scripts/staging-app-control.sh ]; then
+  STAGING_IDLE_TTL="${STAGING_IDLE_TTL:-2h}" /opt/scripts/staging-app-control.sh schedule-stop
+else
+  echo "WARN: chybí /opt/scripts/staging-app-control.sh – staging poběží bez auto-stop"
+fi
+echo "post-deploy OK (staging auto-stop TTL=${STAGING_IDLE_TTL:-2h})"

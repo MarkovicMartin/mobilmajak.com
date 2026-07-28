@@ -38,6 +38,7 @@ def _order_payload(**overrides):
         "telefon_zakaznika": "+420777123456",
         "typ_telefonu": "iPhone 13",
         "dil": "baterie",
+        "barva": "černá",
         "servisni_cislo": "952501099",
     }
     data.update(overrides)
@@ -89,12 +90,11 @@ class OrdersO1SlackTests(TestCase):
 
     @patch("orders.slack_notify.send_slack_dm", return_value=True)
     @patch("orders.slack_notify.slack_user_id_for_web_user", side_effect=lambda u: f"U{u.id}" if u else None)
-    def test_create_notifies_creator_and_vedouci(self, _lookup, mock_dm):
+    def test_create_does_not_notify(self, _lookup, mock_dm):
+        """Notifikace o založení je zatím vypnutá."""
         resp = self.client.post("/api/orders/orders/", _order_payload(), format="json")
         self.assertEqual(resp.status_code, 201, resp.content)
-        self.assertEqual(mock_dm.call_count, 2)
-        texts = [c.args[1] for c in mock_dm.call_args_list]
-        self.assertTrue(any("Nová objednávka" in t for t in texts))
+        mock_dm.assert_not_called()
 
     @patch("orders.slack_notify.send_slack_dm", return_value=True)
     @patch("orders.slack_notify.slack_user_id_for_web_user", side_effect=lambda u: f"U{u.id}" if u else None)
@@ -228,13 +228,30 @@ class OrdersRedesignTests(TestCase):
 
     def test_create_requires_servisni_cislo_and_autofills(self):
         with patch("orders.serializers.notify_order_created", return_value=0):
-            missing = self.client.post(
+            missing_both = self.client.post(
                 "/api/orders/orders/",
-                _order_payload(servisni_cislo=""),
+                _order_payload(
+                    servisni_cislo="",
+                    jmeno_zakaznika="",
+                    prijmeni_zakaznika="",
+                    telefon_zakaznika="",
+                ),
                 format="json",
             )
-        self.assertEqual(missing.status_code, 400)
-        self.assertIn("servisni_cislo", missing.data)
+        self.assertEqual(missing_both.status_code, 400)
+
+        with patch("orders.serializers.notify_order_created", return_value=0):
+            by_serviska = self.client.post(
+                "/api/orders/orders/",
+                _order_payload(
+                    jmeno_zakaznika="",
+                    prijmeni_zakaznika="",
+                    telefon_zakaznika="",
+                ),
+                format="json",
+            )
+        self.assertEqual(by_serviska.status_code, 201, by_serviska.content)
+        self.assertEqual(by_serviska.data["servisni_cislo"], "952501099")
 
         with patch("orders.serializers.notify_order_created", return_value=0):
             resp = self.client.post("/api/orders/orders/", _order_payload(), format="json")
@@ -242,10 +259,32 @@ class OrdersRedesignTests(TestCase):
         self.assertEqual(resp.data["zalozil"]["id"], self.user.id)
         self.assertEqual(resp.data["status"], "nove")
         self.assertEqual(resp.data["servisni_cislo"], "952501099")
+        self.assertEqual(resp.data["barva"], "černá")
         self.assertIsNotNone(resp.data["datum_vytvoreni"])
         # fallback na domovskou prodejnu bez směny
         self.assertEqual(resp.data["prodejna"]["id"], self.store.id)
         self.assertEqual(resp.data["status_display"], "Nové")
+
+    def test_create_by_customer_without_serviska(self):
+        with patch("orders.serializers.notify_order_created", return_value=0):
+            resp = self.client.post(
+                "/api/orders/orders/",
+                _order_payload(servisni_cislo=""),
+                format="json",
+            )
+        self.assertEqual(resp.status_code, 201, resp.content)
+        self.assertEqual(resp.data["jmeno_zakaznika"], "Jan")
+        self.assertEqual(resp.data["servisni_cislo"], "")
+
+    def test_create_requires_barva(self):
+        with patch("orders.serializers.notify_order_created", return_value=0):
+            resp = self.client.post(
+                "/api/orders/orders/",
+                _order_payload(barva=""),
+                format="json",
+            )
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("barva", resp.data)
 
     def test_create_prodejna_from_today_shift(self):
         today = timezone.localdate()
@@ -347,5 +386,37 @@ class OrdersRedesignTests(TestCase):
         self.assertEqual(kd["hotovo"]["label"], "vyřízeno")
         self.assertTrue(any(o["id"] == order_id for o in kd["hotovo"]["orders"]))
         self.assertTrue(any(o["status"] == "predobjednano" for o in kd["objednano"]["orders"]))
-        self.assertIn("storno", kd)
-        self.assertFalse(kd["storno"].get("main", True))
+        self.assertNotIn("storno", kd)
+        self.assertNotIn("neni_skladem", kd)
+
+    def test_patch_updates_fields(self):
+        with patch("orders.serializers.notify_order_created", return_value=0):
+            created = self.client.post("/api/orders/orders/", _order_payload(), format="json")
+        order_id = created.data["id"]
+
+        resp = self.client.patch(
+            f"/api/orders/orders/{order_id}/",
+            {"telefon_zakaznika": "777 111 222", "barva": "černá"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.assertEqual(resp.data["telefon_zakaznika"], "777 111 222")
+        self.assertEqual(resp.data["barva"], "černá")
+        self.assertEqual(resp.data["posledni_zmena_uzivatel"]["id"], self.user.id)
+
+        blank = self.client.patch(
+            f"/api/orders/orders/{order_id}/",
+            {"barva": ""},
+            format="json",
+        )
+        self.assertEqual(blank.status_code, 400)
+        self.assertIn("barva", blank.data)
+
+    def test_prodejce_can_delete_order(self):
+        with patch("orders.serializers.notify_order_created", return_value=0):
+            created = self.client.post("/api/orders/orders/", _order_payload(), format="json")
+        order_id = created.data["id"]
+        self.assertEqual(self.user.role, "PRODEJCE")
+        resp = self.client.delete(f"/api/orders/orders/{order_id}/")
+        self.assertIn(resp.status_code, (200, 204), resp.content)
+        self.assertFalse(Order.objects.filter(pk=order_id).exists())

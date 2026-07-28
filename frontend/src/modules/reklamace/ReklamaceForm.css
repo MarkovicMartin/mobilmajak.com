@@ -1,29 +1,15 @@
-.reklamace-form-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.45);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-    padding: 1rem;
+.reklamace-form-body {
+    padding: 16px 18px;
 }
 
 .reklamace-form {
-    background: var(--card-bg, #fff);
-    border-radius: 8px;
-    padding: 1.25rem;
-    width: 100%;
-    max-width: 560px;
-    max-height: 90vh;
-    overflow-y: auto;
+    margin: 0;
 }
 
 .reklamace-form__grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 0.65rem;
-    margin: 1rem 0;
+    gap: 10px;
 }
 
 .reklamace-form__full {
@@ -33,29 +19,42 @@
 .reklamace-form label {
     display: flex;
     flex-direction: column;
-    gap: 0.2rem;
-    font-size: 0.8rem;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #666;
 }
 
 .reklamace-form input,
-.reklamace-form textarea,
-.reklamace-form select {
-    padding: 0.4rem 0.55rem;
-    border: 1px solid var(--border-color, #ccc);
-    border-radius: 4px;
-    font-size: 0.9rem;
+.reklamace-form textarea {
+    padding: 8px 10px;
+    border: 1px solid var(--brand-navy, #3d5afe);
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: inherit;
+    font-weight: 600;
+    color: #222;
+    background: #fff;
 }
 
-.reklamace-form__checkbox {
-    flex-direction: row !important;
-    align-items: center;
-    gap: 0.4rem !important;
+.reklamace-form input:focus,
+.reklamace-form textarea:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(61, 90, 254, 0.2);
+}
+
+.reklamace-form__error {
+    margin: 0 0 10px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #c62828;
 }
 
 .reklamace-form__actions {
     display: flex;
     justify-content: flex-end;
-    gap: 0.5rem;
+    gap: 8px;
+    margin-top: 12px;
 }
 
 .reklamace-form-confirm {
@@ -65,16 +64,17 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 1001;
+    z-index: 1100;
     padding: 1rem;
 }
 
 .reklamace-form-confirm__box {
-    background: var(--card-bg, #fff);
-    border-radius: 8px;
+    background: var(--bg-card, #fff);
+    border-radius: 12px;
     padding: 1.25rem;
     max-width: 420px;
     width: 100%;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
 }
 
 .reklamace-form-confirm__box h4 {
@@ -83,7 +83,7 @@
 
 .reklamace-form-confirm__box p {
     margin: 0 0 1rem;
-    color: var(--text-muted, #555);
+    color: #555;
     font-size: 0.9rem;
 }
 

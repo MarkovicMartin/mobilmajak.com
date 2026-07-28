@@ -6,6 +6,7 @@ from .models import (
     GoogleSheetsConfig,
     WebProdejeAll,
     LeaderboardMonthPointsCache,
+    ZasilkovnaLeaderboardCache,
 )
 
 
@@ -228,4 +229,16 @@ class LeaderboardMonthPointsCacheAdmin(admin.ModelAdmin):
 
     def prodejcu_count(self, obj):
         return len(obj.points_by_prodejce or {})
+    prodejcu_count.short_description = 'Prodejců'
+
+
+@admin.register(ZasilkovnaLeaderboardCache)
+class ZasilkovnaLeaderboardCacheAdmin(admin.ModelAdmin):
+    list_display = ('period_key', 'date_from', 'date_to', 'prodejcu_count', 'source', 'computed_at')
+    readonly_fields = ('computed_at',)
+    ordering = ('-period_key',)
+    search_fields = ('period_key', 'source')
+
+    def prodejcu_count(self, obj):
+        return len(obj.by_prodejce or {})
     prodejcu_count.short_description = 'Prodejců'

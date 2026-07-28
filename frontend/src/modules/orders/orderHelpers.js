@@ -11,16 +11,8 @@ export const MAIN_STATUS_COLUMNS = [
 export const MAIN_STATUS_KEYS = MAIN_STATUS_COLUMNS.map((c) => c.key);
 
 export const FILTER_STATUS_OPTIONS = [
-    { value: '', label: 'Hlavní stavy' },
+    { value: '', label: 'Všechny stavy' },
     ...MAIN_STATUS_COLUMNS.map((c) => ({ value: c.key, label: c.label })),
-    { value: 'neni_skladem', label: 'Není skladem' },
-    { value: 'storno', label: 'Storno' },
-    { value: 'predobjednano', label: 'Předobjednáno (legacy)' },
-];
-
-export const SECONDARY_STATUS_OPTIONS = [
-    { value: 'neni_skladem', label: 'Není skladem', color: '#f44336', textColor: '#fff' },
-    { value: 'storno', label: 'Storno', color: '#757575', textColor: '#fff' },
 ];
 
 export const ALL_STATUS_OPTIONS = [
@@ -30,17 +22,16 @@ export const ALL_STATUS_OPTIONS = [
         color: c.color,
         textColor: c.textColor,
     })),
-    ...SECONDARY_STATUS_OPTIONS,
     { value: 'predobjednano', label: 'Předobjednáno', color: '#9c27b0', textColor: '#fff' },
 ];
 
 export const STATUSES_REQUIRING_DODAVATEL = new Set(['v_kosiku', 'objednano']);
 
-/** Targets for "Přesunout do" in order detail (same rules as drag + secondary). */
+/** Targets for "Přesunout do" in order detail (same as drag). */
 export function getMoveTargets(currentStatus) {
     return {
         main: MAIN_STATUS_COLUMNS.filter((c) => c.key !== currentStatus),
-        secondary: SECONDARY_STATUS_OPTIONS.filter((s) => s.value !== currentStatus),
+        secondary: [],
     };
 }
 

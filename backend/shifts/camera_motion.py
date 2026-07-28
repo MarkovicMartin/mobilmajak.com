@@ -255,6 +255,21 @@ def attach_motion_to_stores(store_rows, now=None):
     pilot_ids = set(motion_pilot_prodejna_ids())
     for row in store_rows:
         pid = row['prodejna_id']
+        # Virtuální dlaždice (backoffice / home office) nemají kameru
+        if not isinstance(pid, int):
+            row['motion'] = {
+                'status': 'unknown',
+                'label': None,
+                'in_pilot': False,
+                'last_motion_at': None,
+                'last_event_at': None,
+                'quiet_minutes': None,
+                'active_minutes': MOTION_ACTIVE_MINUTES,
+                'window_minutes': MOTION_WINDOW_MINUTES,
+            }
+            row['motion_detail'] = None
+            row.pop('recent_events', None)
+            continue
         row['motion'] = motion_status_for_prodejna(pid, now)
         if pid in pilot_ids:
             row['motion_detail'] = motion_detail_for_prodejna(pid, now)

@@ -1,3 +1,4 @@
+from django.core import checks
 from django.db import models
 from django.conf import settings
 from django.utils import timezone
@@ -9,20 +10,41 @@ class SafeDateTimeField(models.DateTimeField):
 
     U některých instalací je toto vraceno jako string a následná timezone konverze
     pak padá (např. `'str' object has no attribute 'utcoffset'`).
+
+    Důležité: get_internal_type() MUSÍ vracet 'SafeDateTimeField', ne 'DateTimeField'.
+    Jinak MySQL backend zaregistruje convert_datetimefield_value *před* from_db_value
+    a zero-datetime string znovu shodí request (kalendář směn apod.).
     """
 
     def _normalize_zero_datetime(self, value):
         if isinstance(value, str):
             v = value.strip()
-            if v.startswith('0000-00-00'):
+            if not v or v.startswith('0000-00-00'):
                 return None
         return value
 
     def get_internal_type(self):
+        # Nesmí být 'DateTimeField' – viz docstring / mysql_datetime_patch.
         return 'SafeDateTimeField'
 
     def db_type(self, connection):
         return models.DateTimeField().db_type(connection)
+
+    def check(self, **kwargs):
+        errors = super().check(**kwargs)
+        if self.get_internal_type() == 'DateTimeField':
+            errors.append(
+                checks.Error(
+                    "SafeDateTimeField.get_internal_type() must not return 'DateTimeField'.",
+                    hint=(
+                        "MySQL convert_datetimefield_value runs before from_db_value and "
+                        "crashes on legacy zero-datetime strings (utcoffset)."
+                    ),
+                    obj=self,
+                    id='users.E001',
+                )
+            )
+        return errors
 
     def from_db_value(self, value, expression, connection):
         # DateTimeField u některých MySQL driverů může vracet invalidní hodnoty

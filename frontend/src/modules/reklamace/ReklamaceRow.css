@@ -1,150 +1,123 @@
 .reklamace-row {
+    display: grid;
+    grid-template-columns:
+        44px
+        minmax(72px, 0.9fr)
+        minmax(100px, 1.6fr)
+        minmax(70px, 1fr)
+        minmax(56px, 0.8fr)
+        minmax(70px, 0.9fr)
+        48px
+        minmax(70px, 1fr)
+        minmax(56px, 0.8fr)
+        52px;
+    gap: 4px;
+    align-items: center;
+    padding: 3px 6px;
     background: var(--bg-card, #fff);
-    border: 1px solid var(--border-color, #e5e7eb);
-    border-radius: 6px;
-    padding: 0.3rem 0.5rem;
-    font-size: 0.78rem;
+    border-bottom: 1px solid #e8eaed;
+    font-size: 12px;
     line-height: 1.25;
+    cursor: grab;
+    min-height: 28px;
 }
 
-.reklamace-row--nezpracovane {
+.reklamace-row:hover {
+    background: #f5f7fa;
+}
+
+.reklamace-row:focus-visible {
+    outline: 2px solid var(--brand-navy, #1a237e);
+    outline-offset: -2px;
+}
+
+.reklamace-row--placeholder {
+    opacity: 0;
+    height: 0;
+    min-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    border: none;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.reklamace-row--overlay {
+    opacity: 1;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+    cursor: grabbing;
     background: #fff;
+    border: 1px solid #c5cad3;
+    border-radius: 4px;
 }
 
 .reklamace-row--overdue {
-    background: #fef2f2;
-    border-color: #fecaca;
+    background: #ffebee;
+    box-shadow: inset 3px 0 0 #c62828;
 }
 
-.reklamace-row--odeslane {
-    background: #fefce8;
-    border-color: #fde68a;
+.reklamace-row__cell {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #222;
 }
 
-.reklamace-row--vyrizene {
-    background: #f0fdf4;
-    border-color: #bbf7d0;
-}
-
-.reklamace-row__head {
-    display: flex;
-    align-items: center;
-    gap: 0.35rem;
-    flex-wrap: wrap;
-    margin-bottom: 0.1rem;
-}
-
-.reklamace-row__znacka {
-    font-weight: 700;
-    color: var(--brand-navy, #1a365d);
-    font-size: 0.82rem;
-}
-
-.reklamace-row__status {
-    font-size: 0.65rem;
-    padding: 0.05rem 0.3rem;
-    border-radius: 4px;
-    background: rgba(0, 0, 0, 0.06);
-    font-weight: 500;
-}
-
-.reklamace-row--overdue .reklamace-row__status {
-    background: #fee2e2;
-    color: #b91c1c;
-}
-
-.reklamace-row__prodejna {
-    font-size: 0.68rem;
-    padding: 0.05rem 0.3rem;
-    border-radius: 4px;
-    background: var(--bg-muted, #f3f4f6);
-}
-
-.reklamace-row__datum {
-    font-size: 0.68rem;
-    opacity: 0.75;
-    margin-left: auto;
+.reklamace-row__empty {
+    color: #bbb;
 }
 
 .reklamace-row__actions {
     display: flex;
-    gap: 0.15rem;
+    justify-content: flex-end;
 }
 
-.btn-icon {
-    background: none;
+.reklamace-row__btn {
+    appearance: none;
     border: none;
-    padding: 0.1rem 0.25rem;
+    background: transparent;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 4px;
     cursor: pointer;
-    opacity: 0.65;
+    color: #889;
     border-radius: 4px;
 }
 
-.btn-icon:hover {
-    opacity: 1;
-    background: var(--bg-muted, #f3f4f6);
+.reklamace-row__btn--delete:hover {
+    color: #c62828;
+    background: #ffebee;
 }
 
-.btn-icon--danger:hover {
-    color: #c53030;
+.reklamace-row-header {
+    display: grid;
+    grid-template-columns:
+        44px
+        minmax(72px, 0.9fr)
+        minmax(100px, 1.6fr)
+        minmax(70px, 1fr)
+        minmax(56px, 0.8fr)
+        minmax(70px, 0.9fr)
+        48px
+        minmax(70px, 1fr)
+        minmax(56px, 0.8fr)
+        52px;
+    gap: 4px;
+    padding: 4px 6px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    color: #889;
+    border-bottom: 1px solid #e8eaed;
+    background: #f8f9fb;
+    position: sticky;
+    top: 0;
+    z-index: 1;
 }
 
-.reklamace-row__title {
-    font-weight: 500;
-    margin-bottom: 0.1rem;
-    font-size: 0.8rem;
-}
-
-.reklamace-row__meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.25rem 0.65rem;
-    opacity: 0.85;
-    font-size: 0.72rem;
-}
-
-.reklamace-row__meta i {
-    margin-right: 0.2rem;
-    opacity: 0.6;
-}
-
-.reklamace-row__note {
-    margin-top: 0.15rem;
-    font-size: 0.7rem;
-    opacity: 0.75;
-    font-style: italic;
-}
-
-.reklamace-row__workflow {
-    margin-top: 0.25rem;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.25rem;
-    align-items: center;
-}
-
-.reklamace-row__resolve {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.35rem;
-    align-items: center;
-    width: 100%;
-}
-
-.reklamace-row__resolve select {
-    min-width: 140px;
-    font-size: 0.8rem;
-    padding: 0.2rem 0.4rem;
-}
-
-.btn-sm {
-    font-size: 0.7rem;
-    padding: 0.15rem 0.4rem;
-}
-
-@media (max-width: 600px) {
-    .reklamace-row__meta {
-        flex-direction: column;
-        gap: 0.15rem;
-    }
+.reklamace-row-header span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }

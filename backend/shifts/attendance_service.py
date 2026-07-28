@@ -11,9 +11,44 @@ from stores.models import Prodejna
 
 from .camera_motion import attach_motion_to_stores
 from .models import Smena, SmenaDochazka
+from .shift_helpers import BACKOFFICE_BARVA, is_backoffice_pozice, is_home_office_pozice
 
 AUTO_CLOSE_NOTE = 'Automatické ukončení po 20:30'
 AUTO_CLOSE_TIME = time(20, 30)
+HOME_OFFICE_BARVA = '#3d6b7a'
+BEZ_PRODEJNY_BARVA = '#666666'
+
+
+def _board_store_bucket(smena):
+    """
+    Skupina pro dashboard docházky.
+    Směny bez fyzické prodejny (backoffice / home office) → virtuální dlaždice.
+    """
+    if smena.prodejna_id and smena.prodejna is not None:
+        prodejna = smena.prodejna
+        return {
+            'prodejna_id': prodejna.id,
+            'prodejna_nazev': prodejna.nazev_kratkiy or prodejna.nazev,
+            'prodejna_barva': prodejna.barva or '#0066cc',
+        }
+    pozice = getattr(smena, 'pozice_smeny', None) or ''
+    if is_backoffice_pozice(pozice):
+        return {
+            'prodejna_id': 'backoffice',
+            'prodejna_nazev': 'Backoffice',
+            'prodejna_barva': BACKOFFICE_BARVA,
+        }
+    if is_home_office_pozice(pozice):
+        return {
+            'prodejna_id': 'home_office',
+            'prodejna_nazev': 'Home office',
+            'prodejna_barva': HOME_OFFICE_BARVA,
+        }
+    return {
+        'prodejna_id': 'bez_prodejny',
+        'prodejna_nazev': 'Bez prodejny',
+        'prodejna_barva': BEZ_PRODEJNY_BARVA,
+    }
 
 
 def local_now():
@@ -178,12 +213,11 @@ def build_absent_stores_report(now=None):
     for smena in smeny:
         if not shift_is_active_now(smena, now):
             continue
-        pid = smena.prodejna_id
+        bucket = _board_store_bucket(smena)
+        pid = bucket['prodejna_id']
         if pid not in stores:
             stores[pid] = {
-                'prodejna_id': pid,
-                'prodejna_nazev': smena.prodejna.nazev_kratkiy or smena.prodejna.nazev,
-                'prodejna_barva': smena.prodejna.barva or '#0066cc',
+                **bucket,
                 'active_shifts': [],
                 'missing_shifts': [],
                 'present_shifts': [],
@@ -294,15 +328,10 @@ def build_today_work_board(now=None):
         if status == 'left' and now > plan_end:
             continue
 
-        pid = smena.prodejna_id
+        bucket = _board_store_bucket(smena)
+        pid = bucket['prodejna_id']
         if pid not in stores:
-            prodejna = smena.prodejna
-            stores[pid] = {
-                'prodejna_id': pid,
-                'prodejna_nazev': prodejna.nazev_kratkiy or prodejna.nazev,
-                'prodejna_barva': prodejna.barva or '#0066cc',
-                'people': [],
-            }
+            stores[pid] = {**bucket, 'people': []}
 
         person = {
             'smena_id': smena.id,

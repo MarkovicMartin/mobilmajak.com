@@ -15,7 +15,7 @@ BACKOFFICE_SURNAME_KEYS = frozenset({
 })
 
 BACKOFFICE_CALENDAR_KEY = 'backoffice'
-BACKOFFICE_BARVA = '#5c4d8a'
+BACKOFFICE_BARVA = '#A8B4E8'
 
 
 def is_admin_user(user) -> bool:
