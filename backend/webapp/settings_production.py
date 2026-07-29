@@ -165,7 +165,9 @@ CORS_ALLOW_CREDENTIALS = True
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'
-SECURE_SSL_REDIRECT = True  # Automatický redirect na HTTPS
+# HTTPS řeší nginx. True + chybějící/špatný X-Forwarded-Proto → 301 smyčky;
+# Chrome si 301 kešuje i po Clear site data → ERR_TOO_MANY_REDIRECTS na apex.
+SECURE_SSL_REDIRECT = False
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')  # Nginx proxy - Django rozpozná HTTPS
 
 # Session settings - PRODUKČNÍ

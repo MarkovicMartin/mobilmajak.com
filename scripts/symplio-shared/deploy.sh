@@ -84,7 +84,7 @@ if [[ -f "\$WRAPPER_SKLAD" ]]; then
   fi
 fi
 
-# Node resolves selenium from shared file path — symlink to live actor node_modules
+# Fallback By resolve, pokud cwd actoru nemá selenium (login už nepoužívá until.*).
 mkdir -p "\$SHARED_DIR/node_modules"
 LIVE_SELENIUM="${PRODEJE_DIR}/node_modules/selenium-webdriver"
 if [[ -d "\$LIVE_SELENIUM" ]]; then

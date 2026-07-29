@@ -4,11 +4,27 @@
  *   loginSymplio(driver, { store: 'globus' | 'hlavni_sklad' | string | null })
  *
  * Legacy: { selectGlobus: true|false } → store 'globus' / null.
+ *
+ * Důležité: nepoužívat driver.wait(until.*) – Condition objekty z jiné kopie
+ * selenium-webdriver (shared symlink vs actor node_modules) padají s
+ * "Wait condition must be a promise-like object". By bereme z cwd actoru.
  */
-const { By, until } = require('selenium-webdriver');
+const path = require('path');
 const { loadSymplioCredentials } = require('./symplio-credentials');
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+function loadBy() {
+  const candidates = [process.cwd(), path.dirname(require.main?.filename || '')].filter(Boolean);
+  try {
+    const resolved = require.resolve('selenium-webdriver', { paths: candidates });
+    return require(resolved).By;
+  } catch (_) {
+    return require('selenium-webdriver').By;
+  }
+}
+
+const By = loadBy();
 
 const STORE_LABELS = {
   globus: 'Globus',
@@ -38,8 +54,29 @@ function resolveStoreLabel(store) {
 }
 
 /**
+ * Polling místo until.elementLocated – funguje napříč verzemi Selenium.
  * @param {import('selenium-webdriver').WebDriver} driver
- * @param {{ store?: string|null, selectGlobus?: boolean }} [opts]
+ * @param {import('selenium-webdriver').Locator} locator
+ */
+async function waitForElements(driver, locator, timeoutMs = 30000, pollMs = 250) {
+  const deadline = Date.now() + timeoutMs;
+  let lastErr = null;
+  while (Date.now() < deadline) {
+    try {
+      const els = await driver.findElements(locator);
+      if (els.length) return els;
+    } catch (err) {
+      lastErr = err;
+    }
+    await sleep(pollMs);
+  }
+  const detail = lastErr ? ` (${lastErr.message})` : '';
+  throw new Error(`Timeout ${timeoutMs}ms waiting for elements${detail}`);
+}
+
+/**
+ * @param {import('selenium-webdriver').WebDriver} driver
+ * @param {string} storeLabel
  */
 async function selectStore(driver, storeLabel) {
   if (!storeLabel) return;
@@ -52,8 +89,8 @@ async function selectStore(driver, storeLabel) {
   ];
   for (const xpath of selectors) {
     try {
-      const el = await driver.wait(until.elementLocated(By.xpath(xpath)), 8000);
-      await el.click();
+      const els = await waitForElements(driver, By.xpath(xpath), 8000);
+      await els[0].click();
       await sleep(2000);
       console.log(`Vybráno: ${storeLabel}`);
       return;
@@ -87,7 +124,6 @@ async function loginSymplio(driver, opts = {}) {
   const usernameFields = await driver.findElements(By.name('_username'));
   if (usernameFields.length) {
     const { user, pass } = loadSymplioCredentials();
-    await driver.wait(until.elementLocated(By.name('_username')), 30000);
     await usernameFields[0].sendKeys(user);
     await driver.findElement(By.name('_password')).sendKeys(pass);
     await driver.findElement(By.xpath("//button[@type='submit' and contains(., 'Přihlásit')]")).click();
@@ -104,4 +140,11 @@ async function loginSymplio(driver, opts = {}) {
   }
 }
 
-module.exports = { loginSymplio, handleWafChallenge, selectStore, sleep, resolveStoreLabel };
+module.exports = {
+  loginSymplio,
+  handleWafChallenge,
+  selectStore,
+  sleep,
+  resolveStoreLabel,
+  waitForElements,
+};
