@@ -48,7 +48,8 @@ class DailyReportTests(TestCase):
         self.assertEqual(report['day'], self.day)
         self.assertEqual(report['totals']['doklady'], 1)
         self.assertEqual(report['totals']['obrat_bez_dph'], 2000.0)
-        self.assertEqual(report['top_sellers'][0]['obrat'], 2000.0)
+        self.assertEqual(report['top_sellers'][0]['name'], 'Jan Novák')
+        self.assertGreater(report['top_sellers'][0]['points'], 0)
 
     def test_format_uses_bez_dph_labels(self):
         report = build_daily_report(self.day)
@@ -66,6 +67,43 @@ class DailyReportTests(TestCase):
         text = format_daily_report_slack(report)
         self.assertIn('Denní report MOBILMAJAK', text)
         self.assertIn('Testovna', text)
+        self.assertIn('denní body žebříčku', text)
+        self.assertIn('b', text)
+        self.assertNotIn('položky nad 100 Kč, bez servisních', text)
+
+    def test_top_sellers_ordered_by_points(self):
+        WebUser.objects.create(
+            id=9504,
+            uzivatelske_jmeno='seller2',
+            jmeno='Petr',
+            prijmeni='Svoboda',
+            heslo='x',
+            role='PRODEJCE',
+            aktivni=True,
+            moduly=[],
+            prodejna_id=self.store.id,
+        )
+        # Více položek >100 u druhého prodejce → víc bodů
+        for i in range(5):
+            WebProdejeAll.objects.create(
+                typ='2026-06-15',
+                doklad=f'R-2-{i}',
+                kod=f'P20{i}',
+                nazev='Telefon',
+                pocet_kusu=1,
+                cena_ks_bez_dph=Decimal('1000'),
+                cena_ks_vcl_dph=Decimal('1210'),
+                zisk=Decimal('400'),
+                id_prodejce=9504,
+                id_prodejny=self.store.id,
+                stredisko='Testovna',
+            )
+        report = build_daily_report(self.day)
+        self.assertEqual(report['top_sellers'][0]['id_prodejce'], 9504)
+        self.assertGreater(
+            report['top_sellers'][0]['points'],
+            report['top_sellers'][1]['points'],
+        )
 
     def test_recipients_respect_opt_in(self):
         WebUser.objects.create(

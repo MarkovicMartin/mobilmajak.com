@@ -2,14 +2,12 @@
 from __future__ import annotations
 
 from datetime import date, timedelta
-from decimal import Decimal
 
 from django.db import models
 from django.db.models import Count, F, Sum
 from django.utils import timezone
 
 from analytics.models import WebProdejeAll
-from analytics.polozky_aggregate import PolozkyParams, aggregate_polozky_by_salesperson
 
 
 def _fmt_czk(value) -> str:
@@ -34,6 +32,72 @@ def _day_bounds(day: date) -> tuple[str, str]:
 def _day_queryset(day: date):
     start, end = _day_bounds(day)
     return WebProdejeAll.objects.filter(typ__gte=start, typ__lt=end)
+
+
+def _top_sellers_by_leaderboard_points(day: date, limit: int = 3) -> list[dict]:
+    """Top N prodejců podle denních bodů – stejná logika jako žebříček v appce."""
+    from django.db.utils import OperationalError, ProgrammingError
+
+    from analytics.views import (
+        _leaderboard_day_queryset,
+        _leaderboard_dominant_stredisko_map,
+        _leaderboard_product_points,
+        _leaderboard_seller_aggregation,
+        _leaderboard_webuser_queryset,
+        _servis_points_map_for_day,
+    )
+    from analytics.vykupy_config import vykupy_counts_map
+    from users.exclusions import get_leaderboard_excluded_prodejce_ids
+
+    day_queryset = _leaderboard_day_queryset(day)
+    aggregation = list(_leaderboard_seller_aggregation(day_queryset))
+    try:
+        vykupy_map = vykupy_counts_map(typ_exact=day.strftime('%Y-%m-%d'))
+    except (OperationalError, ProgrammingError):
+        # Unmanaged WEB_VYKUPY chybí v test DB
+        vykupy_map = {}
+    servis_map = _servis_points_map_for_day(day) or {}
+    excluded = get_leaderboard_excluded_prodejce_ids()
+
+    points_map: dict[int, int] = {}
+    for item in aggregation:
+        pid = int(item['id_prodejce'])
+        if pid in excluded:
+            continue
+        product_points, _ = _leaderboard_product_points(item, vykupy_map, pid)
+        points_map[pid] = int(product_points) + int(servis_map.get(pid, 0) or 0)
+
+    for uid, pts in servis_map.items():
+        uid = int(uid)
+        if uid in excluded or int(pts or 0) <= 0:
+            continue
+        points_map.setdefault(uid, int(pts))
+
+    ranked = sorted(
+        ((pid, pts) for pid, pts in points_map.items() if pts > 0),
+        key=lambda x: -x[1],
+    )[:limit]
+    if not ranked:
+        return []
+
+    seller_ids = [pid for pid, _ in ranked]
+    users = {
+        u.id: u
+        for u in _leaderboard_webuser_queryset().filter(id__in=seller_ids)
+    }
+    workplace = _leaderboard_dominant_stredisko_map(day_queryset, seller_ids)
+
+    rows = []
+    for pid, pts in ranked:
+        user = users.get(pid)
+        name = f'{user.jmeno} {user.prijmeni}'.strip() if user else f'#{pid}'
+        rows.append({
+            'id_prodejce': pid,
+            'name': name,
+            'points': pts,
+            'prodejna': workplace.get(pid) or '',
+        })
+    return rows
 
 
 def build_daily_report(report_day: date | None = None) -> dict:
@@ -80,29 +144,7 @@ def build_daily_report(report_day: date | None = None) -> dict:
         .order_by('-obrat')[:6]
     )
 
-    params = PolozkyParams(
-        start_date=report_day.isoformat(),
-        end_date=report_day.isoformat(),
-        period_start=report_day,
-        period_end=report_day,
-        metrics={'polozky_nad_100'},
-        include_profit=False,
-    )
-    sellers = aggregate_polozky_by_salesperson(params, limit=5)
-    top_sellers = sellers[:3]
-    top_ids = [row['id_prodejce'] for row in top_sellers if row.get('id_prodejce') is not None]
-    obrat_by_seller = {
-        row['id_prodejce']: float(row['obrat'] or 0)
-        for row in qs.filter(id_prodejce__in=top_ids)
-        .values('id_prodejce')
-        .annotate(
-            obrat=Sum(
-                F('pocet_kusu') * F('cena_ks_bez_dph'),
-                output_field=models.DecimalField(max_digits=15, decimal_places=2),
-                default=0,
-            ),
-        )
-    }
+    top_sellers = _top_sellers_by_leaderboard_points(report_day, limit=3)
 
     return {
         'day': report_day,
@@ -122,14 +164,7 @@ def build_daily_report(report_day: date | None = None) -> dict:
             }
             for row in stores
         ],
-        'top_sellers': [
-            {
-                'name': row.get('prodejce') or f"#{row.get('id_prodejce')}",
-                'polozky_nad_100': int(row.get('polozky_nad_100') or 0),
-                'obrat': obrat_by_seller.get(row['id_prodejce'], 0.0),
-            }
-            for row in top_sellers
-        ],
+        'top_sellers': top_sellers,
     }
 
 
@@ -142,7 +177,7 @@ def format_daily_report_slack(report: dict) -> str:
     day_label = f"{_CZ_WEEKDAYS[day.weekday()]} {day.day}. {day.month}. {day.year}"
     lines = [
         f"📊 *Denní report MOBILMAJAK* – {day_label}",
-        '_Všechny částky bez DPH. Top prodejci podle počtu položek nad 100 Kč (ne bodový žebříček)._',
+        '_Všechny částky bez DPH. Top prodejci = denní bodový žebříček (produkty + servis + výkupy)._',
         '',
         '*Celkem*',
         f"• Obrat: {_fmt_czk(t['obrat_bez_dph'])}",
@@ -160,11 +195,12 @@ def format_daily_report_slack(report: dict) -> str:
 
     if report['top_sellers']:
         lines.append('')
-        lines.append('*Top prodejci* (položky nad 100 Kč, bez servisních bodů)')
+        lines.append('*Top prodejci* (denní body žebříčku)')
         for i, seller in enumerate(report['top_sellers'], 1):
+            store = seller.get('prodejna') or ''
+            store_bit = f" ({store})" if store else ''
             lines.append(
-                f"{i}. {seller['name']} – {seller['polozky_nad_100']} ks, "
-                f"obrat {_fmt_czk(seller['obrat'])}"
+                f"{i}. {seller['name']}{store_bit} – {int(seller.get('points') or 0)} b"
             )
 
     if t['doklady'] == 0:
