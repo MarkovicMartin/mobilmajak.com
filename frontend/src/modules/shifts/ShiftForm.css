@@ -72,6 +72,12 @@
     border: 1px solid color-mix(in srgb, var(--brand-navy, #2563eb) 18%, transparent);
 }
 
+.dark-mode .time-info {
+    color: var(--text-primary);
+    background: color-mix(in srgb, #93c5fd 12%, var(--bg-card));
+    border-color: color-mix(in srgb, #93c5fd 28%, transparent);
+}
+
 .attendance-panel {
     padding: 20px;
     text-align: center;
