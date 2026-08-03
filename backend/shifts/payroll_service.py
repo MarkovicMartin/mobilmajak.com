@@ -18,7 +18,7 @@ from users.mzda_utils import (
     sum_mzda_doplnky,
 )
 
-from .labor_hours import fondu_hodin_mesic, prescas_hodin
+from .labor_hours import fondu_hodin_mesic, prescas_hodin, svatky_v_mesici_set
 
 POL_DOK_HRANI = Decimal('2')
 POL_DOK_ODMENA_KC = Decimal('1000')
@@ -97,7 +97,6 @@ from .vacation_service import (
     is_dovolena_eligible,
     pocita_deficit_z_fondu,
 )
-from .czech_holidays import get_ceske_svatky
 
 
 def _shift_hours(smena):
@@ -597,12 +596,12 @@ def pol_dok_odmena_body(pol_dok, unikatni_doklady):
 
 
 def aggregate_hours_by_user(rok, mesic_cislo, prodejna_id=None):
-    """Agregace hodin ze směn – stejná logika jako export."""
-    ceske_svatky = get_ceske_svatky(rok)
-    svatky_v_mesici = set()
-    for rok_s, mesic_s, den_s in ceske_svatky:
-        if mesic_s == mesic_cislo:
-            svatky_v_mesici.add(date(rok_s, mesic_s, den_s))
+    """Agregace hodin ze směn – stejná logika jako export.
+
+    Pracovní směny ve státní svátek se do odpracovaných (i brigádnických)
+    hodin počítají 2×. Sloupec svatek_h drží reálné hodiny na svátku (1×).
+    """
+    svatky_v_mesici = svatky_v_mesici_set(rok, mesic_cislo)
 
     smeny_qs = Smena.objects.filter(
         datum__year=rok,
@@ -634,14 +633,16 @@ def aggregate_hours_by_user(rok, mesic_cislo, prodejna_id=None):
         elif smena.typ_smeny == 'nemoc':
             result[uid]['nemoc_h'] += hodiny
         elif smena.typ_smeny == 'prace':
-            result[uid]['odpracovano_h'] += hodiny
+            je_svatek = smena.datum in svatky_v_mesici
+            hodiny_ucetni = hodiny * 2 if je_svatek else hodiny
+            result[uid]['odpracovano_h'] += hodiny_ucetni
             if is_brigadnik(smena.user):
                 rezim = (smena.brigadnik_rezim or 'prodejce').strip()
                 if rezim == 'vypomoc':
-                    result[uid]['vypomoc_h'] += hodiny
+                    result[uid]['vypomoc_h'] += hodiny_ucetni
                 else:
-                    result[uid]['prodejce_h'] += hodiny
-            if smena.datum in svatky_v_mesici:
+                    result[uid]['prodejce_h'] += hodiny_ucetni
+            if je_svatek:
                 result[uid]['svatek_h'] += hodiny
     for uid in result:
         for key in result[uid]:

@@ -315,6 +315,7 @@ function ShiftForm({ user, onClose, onSuccess, initialDatum = '', editShift = nu
             titleId="shift-form-title"
             onClose={handleClose}
             size="sm"
+            contentClassName="shift-form-modal"
             onSubmit={handleSubmit}
             formRef={shiftFormRef}
             footer={(
@@ -323,7 +324,7 @@ function ShiftForm({ user, onClose, onSuccess, initialDatum = '', editShift = nu
                         Zrušit
                     </button>
                     <button type="submit" disabled={loading} className="btn-submit">
-                        {loading ? 'Ukládání...' : (isEditMode ? 'Uložit změny' : 'Uložit směnu')}
+                        {loading ? 'Ukládání...' : (isEditMode ? 'Uložit změny' : 'Uložit')}
                     </button>
                 </>
             )}

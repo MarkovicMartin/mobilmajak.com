@@ -107,3 +107,19 @@ class BrigadnikPayrollTests(TestCase):
         )
         self.assertLess(row_pen['pol_dok'], 2)
         self.assertEqual(row_pen['pol_dok_odmena_body'], 0.0)
+
+    def test_holiday_shift_hours_counted_double(self):
+        # 1. 5. 2026 = Svátek práce
+        self._shift(date(2026, 5, 1), rezim='prodejce', hours=8)
+        hours_map = aggregate_hours_by_user(2026, 5)
+        uid = self.brigadnik.id
+        self.assertEqual(hours_map[uid]['odpracovano_h'], 16)
+        self.assertEqual(hours_map[uid]['prodejce_h'], 16)
+        self.assertEqual(hours_map[uid]['svatek_h'], 8)
+
+        row = build_payroll_row(
+            self.brigadnik, 2026, 5, hours_map, date(2026, 5, 1), {}, 160,
+            {uid: {'polozky_nad_100': 0}}, {uid: (0, None)}, {},
+        )
+        self.assertEqual(row['zaklad_body'], 1600.0)  # 16 × 100
+        self.assertEqual(row['svatek_h'], 8)

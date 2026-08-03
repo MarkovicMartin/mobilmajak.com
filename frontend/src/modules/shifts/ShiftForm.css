@@ -88,6 +88,29 @@
     color-scheme: dark;
 }
 
+/* Dark mode: Zrušit = navy, CTA Uložit = bílé */
+.dark-mode .shift-form-modal .btn-cancel {
+    background: linear-gradient(135deg, var(--brand-navy, #1b2848) 0%, var(--brand-navy-hover, #243358) 100%);
+    color: #fff;
+    border: none;
+}
+
+.dark-mode .shift-form-modal .btn-cancel:hover {
+    opacity: 0.92;
+    background: linear-gradient(135deg, var(--brand-navy, #1b2848) 0%, var(--brand-navy-hover, #243358) 100%);
+}
+
+.dark-mode .shift-form-modal .btn-submit {
+    background: #fff;
+    color: var(--brand-navy, #1b2848);
+    border: 1px solid var(--border-input, #e2e8f0);
+}
+
+.dark-mode .shift-form-modal .btn-submit:hover:not(:disabled) {
+    opacity: 1;
+    background: #f1f5f9;
+}
+
 @media (max-width: 560px) {
     .shift-form-datetime-row {
         grid-template-columns: 1fr;
