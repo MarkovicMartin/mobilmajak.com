@@ -312,8 +312,8 @@ export const profileAPI = {
 };
 
 export const newsAPI = {
-    list: async () => {
-        const response = await api.get('/news/');
+    list: async (params = {}) => {
+        const response = await api.get('/news/', { params });
         return response.data;
     },
 };
@@ -321,6 +321,11 @@ export const newsAPI = {
 export const shiftsAPI = {
     listByMonth: async (mesic) => {
         const response = await api.get('/shifts/', { params: { mesic } });
+        return response.data;
+    },
+    /** Úzký výřez pro dashboard (např. jen dnešek / od data + limit). */
+    list: async (params = {}) => {
+        const response = await api.get('/shifts/', { params });
         return response.data;
     },
     getTodayWorkBoard: async () => {

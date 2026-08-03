@@ -175,7 +175,17 @@ SESSION_COOKIE_SECURE = True  # HTTPS je nyní dostupné
 SESSION_COOKIE_HTTPONLY = False  # Pro JavaScript access
 SESSION_COOKIE_SAMESITE = 'Lax'
 SESSION_COOKIE_AGE = 86400  # 24 hodin
-SESSION_SAVE_EVERY_REQUEST = True  # sliding expiry při aktivitě
+# False = méně zápisů do DB při pollingu notifikací (session platí 24 h od login/save)
+SESSION_SAVE_EVERY_REQUEST = False
+
+# Per-worker cache (gzip/dashboard TTL); bez Redis stačí LocMem
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'mobilmajak-prod',
+        'TIMEOUT': 60,
+    }
+}
 
 # CSRF settings - PRODUKČNÍ
 CSRF_COOKIE_SECURE = True  # HTTPS je nyní dostupné

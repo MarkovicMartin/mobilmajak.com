@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { formatNewsAge } from '../utils/formatNewsAge';
 import { format, getDaysInMonth } from 'date-fns';
 import { useAuth } from '../context/AuthContext';
-import api, { analyticsAPI, newsAPI, shiftsAPI, plansAPI } from '../services/api';
+import api, { newsAPI, shiftsAPI, plansAPI } from '../services/api';
 import { castkaBezDphZCelkem } from '../utils/dph';
 import { PageHeader } from './ui';
 import TodayWorkBoard from './TodayWorkBoard';
@@ -50,33 +50,26 @@ export default function AdminDashboard() {
     const [latestNews, setLatestNews] = useState([]);
     const [planDashboardBundle, setPlanDashboardBundle] = useState(null);
     const [planProdejciList, setPlanProdejciList] = useState([]);
+    const [showSecondary, setShowSecondary] = useState(false);
 
     const today = useMemo(() => new Date(), []);
-    const currentMonth = useMemo(() => format(today, 'yyyy-MM'), [today]);
     const todayStr = useMemo(() => format(today, 'yyyy-MM-dd'), [today]);
 
     useEffect(() => {
         if (!isAdmin()) return;
 
         const fetchStats = async () => {
-            // Dnešní
-            const t = await api.get(`/analytics/celkova-cisla/?period=daily`);
+            const [t, m] = await Promise.all([
+                api.get(`/analytics/celkova-cisla/?period=daily`),
+                api.get(`/analytics/celkova-cisla/?period=monthly`),
+            ]);
             setTodayStats(t.data.aggregations || t.data);
-
-            // Tento měsíc
-            const m = await api.get(`/analytics/celkova-cisla/?period=monthly`);
             setMonthStats(m.data.aggregations || m.data);
         };
 
-        const fetchShifts = async () => {
-            const data = await shiftsAPI.listByMonth(currentMonth);
-            const onlyToday = (data || []).filter((s) => s.datum?.startsWith(todayStr));
-            setTodayShifts(onlyToday);
-        };
-
-        const fetchNews = async () => {
-            const list = (await newsAPI.list() || []).slice(0, 3);
-            setLatestNews(list);
+        const fetchTodayShifts = async () => {
+            const data = await shiftsAPI.list({ datum: todayStr });
+            setTodayShifts(data || []);
         };
 
         const fetchPlanDashboard = async () => {
@@ -94,26 +87,48 @@ export default function AdminDashboard() {
             }
         };
 
-        const fetchPlanProdejci = async () => {
-            try {
-                const y = today.getFullYear();
-                const m = today.getMonth() + 1;
-                const res = await plansAPI.getPlneniProdejci(y, m);
-                setPlanProdejciList(Array.isArray(res?.prodejci) ? res.prodejci : []);
-            } catch (_e) {
-                setPlanProdejciList([]);
-            }
-        };
-
-        // Nastav CSRF cookie (pro pozdější POST)
         api.get('/csrf/').catch(() => {});
 
-        fetchStats();
-        fetchShifts();
-        fetchNews();
-        fetchPlanDashboard();
-        fetchPlanProdejci();
-    }, [isAdmin, currentMonth, todayStr, today]);
+        Promise.all([
+            fetchStats().catch(() => {}),
+            fetchTodayShifts().catch(() => {}),
+            fetchPlanDashboard(),
+        ]);
+    }, [isAdmin, todayStr, today]);
+
+    // Těžší panely až po first paint (news, plnění prodejců, work board)
+    useEffect(() => {
+        if (!isAdmin()) return;
+        let cancelled = false;
+
+        const loadHeavy = () => {
+            if (cancelled) return;
+            setShowSecondary(true);
+            newsAPI.list({ limit: 3 }).then((list) => {
+                if (!cancelled) setLatestNews((list || []).slice(0, 3));
+            }).catch(() => {});
+            const y = today.getFullYear();
+            const m = today.getMonth() + 1;
+            plansAPI.getPlneniProdejci(y, m).then((res) => {
+                if (!cancelled) {
+                    setPlanProdejciList(Array.isArray(res?.prodejci) ? res.prodejci : []);
+                }
+            }).catch(() => {
+                if (!cancelled) setPlanProdejciList([]);
+            });
+        };
+
+        const ric = typeof window !== 'undefined' && window.requestIdleCallback;
+        const id = ric
+            ? window.requestIdleCallback(loadHeavy, { timeout: 1200 })
+            : setTimeout(loadHeavy, 150);
+
+        return () => {
+            cancelled = true;
+            if (ric) window.cancelIdleCallback(id);
+            else clearTimeout(id);
+        };
+    }, [isAdmin, today]);
 
     const planMetrics = useMemo(() => {
         const plneni = planDashboardBundle?.plneni;
@@ -394,7 +409,13 @@ export default function AdminDashboard() {
 
                 <div className="content-stack">
                     <div ref={workBoardRef}>
-                        <TodayWorkBoard today={today} />
+                        {showSecondary ? (
+                            <TodayWorkBoard today={today} />
+                        ) : (
+                            <div className="muted" style={{ padding: '0.75rem 0' }}>
+                                Načítám docházku…
+                            </div>
+                        )}
                     </div>
 
                     <DashboardTasksSnapshot />
@@ -410,7 +431,11 @@ export default function AdminDashboard() {
                                     <div className="news-item-meta">{formatNewsAge(n.datum_vytvoreni)}</div>
                                 </Link>
                             ))}
-                            {latestNews.length === 0 && <div className="muted">Žádné novinky</div>}
+                            {latestNews.length === 0 && (
+                                <div className="muted">
+                                    {showSecondary ? 'Žádné novinky' : 'Načítám…'}
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

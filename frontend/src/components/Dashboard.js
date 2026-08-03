@@ -5,7 +5,6 @@ import { useTheme } from '../context/ThemeContext';
 import AppShell from './shell/AppShell';
 import AppToast from './AppToast';
 import UxFrictionMonitor from './UxFrictionMonitor';
-import ProfileModule from '../modules/profile/ProfileModule';
 import { FINANCE_MODULE_ENABLED, DAILY_DUTIES_MODULE_ENABLED } from '../config/featureFlags';
 import './Dashboard.css';
 
@@ -24,6 +23,7 @@ const PlansModule = lazy(() => import('../modules/plans/PlansModule'));
 const TicketsModule = lazy(() => import('../modules/tickets/TicketsModule'));
 const TasksModule = lazy(() => import('../modules/tasks/TasksModule'));
 const CoachingModule = lazy(() => import('../modules/coaching/CoachingModule'));
+const ProfileModule = lazy(() => import('../modules/profile/ProfileModule'));
 const FinanceModule = FINANCE_MODULE_ENABLED
     ? lazy(() => import('../modules/finance/FinanceModule'))
     : null;

@@ -151,6 +151,24 @@ class AttendanceApiTests(TestCase):
         user_ids = {row['user_id'] for row in res.data}
         self.assertEqual(user_ids, {self.prodejce_a.id, self.prodejce_b.id})
 
+    def test_smeny_list_datum_filter_returns_only_that_day(self):
+        client = APIClient()
+        client.force_authenticate(user=self.admin)
+        other = self.today + timedelta(days=1)
+        Smena.objects.create(
+            user=self.prodejce_a,
+            prodejna=self.prodejna,
+            datum=other,
+            cas_od=time(9, 0),
+            cas_do=time(17, 0),
+            typ_smeny='prace',
+            aktivni=True,
+        )
+        res = client.get(f'/api/shifts/?datum={self.today.isoformat()}')
+        self.assertEqual(res.status_code, 200)
+        self.assertTrue(len(res.data) >= 1)
+        self.assertTrue(all(str(row['datum']).startswith(self.today.isoformat()) for row in res.data))
+
     def test_calendar_with_absence_today_returns_200(self):
         Smena.objects.create(
             user=self.prodejce_a,

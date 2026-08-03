@@ -21,9 +21,19 @@ class NovinkaListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
-        return Novinka.objects.filter(aktivni=True).select_related('autor').prefetch_related(
+        qs = Novinka.objects.filter(aktivni=True).select_related('autor').prefetch_related(
             'soubory', 'reakce__uzivatel', 'komentare__autor', 'komentare__soubory', 'kategorie'
         )
+        # Dashboard tahá jen pár položek – bez limitu jde celý feed (~1–2 s)
+        if self.request.method == 'GET':
+            limit_raw = self.request.query_params.get('limit')
+            if limit_raw is not None:
+                try:
+                    lim = min(max(int(limit_raw), 1), 50)
+                    qs = qs[:lim]
+                except (TypeError, ValueError):
+                    pass
+        return qs
     
     def get_serializer_class(self):
         if self.request.method == 'POST':

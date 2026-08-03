@@ -143,8 +143,12 @@ def smeny_list(request):
         )
         # Parametry pro filtrování
         mesic = request.GET.get('mesic')  # YYYY-MM
+        datum = request.GET.get('datum')  # YYYY-MM-DD (jeden den – dashboard)
+        datum_od = request.GET.get('datum_od')  # YYYY-MM-DD
+        datum_do = request.GET.get('datum_do')  # YYYY-MM-DD
         prodejna = request.GET.get('prodejna')
         user_id = request.GET.get('user_id')
+        limit_raw = request.GET.get('limit')
         
         smeny = Smena.objects.filter(aktivni=True)
         
@@ -158,7 +162,22 @@ def smeny_list(request):
             smeny = smeny.filter(datum__gte=minuly_mesic)
         
         # Filtry podle parametrů
-        if mesic:
+        if datum:
+            try:
+                smeny = smeny.filter(datum=date.fromisoformat(datum))
+            except ValueError:
+                pass
+        if datum_od:
+            try:
+                smeny = smeny.filter(datum__gte=date.fromisoformat(datum_od))
+            except ValueError:
+                pass
+        if datum_do:
+            try:
+                smeny = smeny.filter(datum__lte=date.fromisoformat(datum_do))
+            except ValueError:
+                pass
+        if mesic and not datum and not datum_od and not datum_do:
             try:
                 rok, mesic_cislo = map(int, mesic.split('-'))
                 smeny = smeny.filter(datum__year=rok, datum__month=mesic_cislo)
@@ -180,6 +199,12 @@ def smeny_list(request):
         
         # Načtení související dat
         smeny = smeny.select_related('user', 'prodejna').prefetch_related('dochazka').order_by('datum', 'cas_od')
+        if limit_raw is not None:
+            try:
+                lim = min(max(int(limit_raw), 1), 500)
+                smeny = smeny[:lim]
+            except (TypeError, ValueError):
+                pass
         
         data = []
         for smena in smeny:

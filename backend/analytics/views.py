@@ -2046,6 +2046,24 @@ def celkova_cisla_view(request):
         kanal = request.GET.get('kanal', 'all')     # all, prodejna, eshop, allegro, servis
         prodejna_id = request.GET.get('prodejna_id')  # ID konkrétní prodejny
         kategorie = request.GET.get('kategorie')    # Filtr podle hlavní kategorie
+
+        # Krátká cache pro default home dashboard (daily/monthly bez filtrů)
+        cache_key = None
+        if (
+            period in ('daily', 'monthly')
+            and kanal == 'all'
+            and not start_date
+            and not end_date
+            and not selected_month
+            and not prodejna_id
+            and not kategorie
+        ):
+            from django.core.cache import cache
+            from django.utils import timezone as dj_tz
+            cache_key = f'celkova_cisla:v1:{period}:{dj_tz.localdate().isoformat()}'
+            cached = cache.get(cache_key)
+            if cached is not None:
+                return JsonResponse(cached)
         
         # Základní QuerySet - NOVĚ používáme WEB_PRODEJE_ALL
         queryset = WebProdejeAll.objects.all()
@@ -2310,6 +2328,10 @@ def celkova_cisla_view(request):
                 'generated_at': datetime.now().isoformat()
             }
         }
+
+        if cache_key:
+            from django.core.cache import cache
+            cache.set(cache_key, response_data, 45)
         
         return JsonResponse(response_data)
         

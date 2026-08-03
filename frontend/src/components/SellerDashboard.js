@@ -71,8 +71,33 @@ export default function SellerDashboard({ user }) {
   useEffect(() => {
     if (!user) return;
     loadMujPlan();
-    loadNews();
-    loadUpcoming();
+    // News + směny až po first paint
+    let cancelled = false;
+    const loadSecondary = () => {
+      if (cancelled) return;
+      newsAPI.list({ limit: 5 }).then((data) => {
+        if (!cancelled) setNews((data || []).slice(0, 5));
+      }).catch(() => {});
+      const today = new Date();
+      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+      shiftsAPI.list({ datum_od: todayStr, limit: 40 }).then((data) => {
+        if (cancelled) return;
+        const future = (data || [])
+          .filter((s) => s.datum >= todayStr)
+          .sort((a, b) => (a.datum < b.datum ? -1 : a.datum > b.datum ? 1 : (a.cas_od || '').localeCompare(b.cas_od || '')))
+          .slice(0, 3);
+        setUpcoming(future);
+      }).catch(() => {});
+    };
+    const ric = typeof window !== 'undefined' && window.requestIdleCallback;
+    const id = ric
+      ? window.requestIdleCallback(loadSecondary, { timeout: 1200 })
+      : setTimeout(loadSecondary, 150);
+    return () => {
+      cancelled = true;
+      if (ric) window.cancelIdleCallback(id);
+      else clearTimeout(id);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
@@ -91,31 +116,6 @@ export default function SellerDashboard({ user }) {
       setMujPlan(null);
     } finally {
       setMujPlanLoading(false);
-    }
-  };
-
-  const loadNews = async () => {
-    try {
-      const data = await newsAPI.list();
-      setNews((data || []).slice(0, 5));
-    } catch {
-      /* tiché */
-    }
-  };
-
-  const loadUpcoming = async () => {
-    const today = new Date();
-    const ym = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
-    try {
-      const data = await shiftsAPI.listByMonth(ym);
-      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-      const future = (data || [])
-        .filter((s) => s.datum >= todayStr)
-        .sort((a, b) => (a.datum < b.datum ? -1 : a.datum > b.datum ? 1 : (a.cas_od || '').localeCompare(b.cas_od || '')))
-        .slice(0, 3);
-      setUpcoming(future);
-    } catch {
-      /* tiché */
     }
   };
 
