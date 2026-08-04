@@ -104,10 +104,18 @@ def smena_pocita_do_planovych_hodin(smena) -> bool:
         return False
     return True
 
+# Dočasně: prodejci mohou opravit směny za červenec 2026 do 5. 8. 2026 (3.–4. 8.).
+JULY_2026_SHIFT_EDIT_UNTIL = date(2026, 8, 5)
+JULY_2026_START = date(2026, 7, 1)
+
+
 def earliest_editable_shift_date(today: date | None = None) -> date:
     """Nejdřívější datum směny, které smí upravovat prodejce (aktuální měsíc, ne minulost)."""
     today = today or date.today()
-    return today.replace(day=1)
+    current_month_start = today.replace(day=1)
+    if today < JULY_2026_SHIFT_EDIT_UNTIL and JULY_2026_START < current_month_start:
+        return JULY_2026_START
+    return current_month_start
 
 
 def seller_may_edit_shift_on_date(datum: date, today: date | None = None) -> bool:
@@ -171,6 +179,213 @@ def shifts_time_overlap(datum, cas_od_a, cas_do_a, cas_od_b, cas_do_b) -> bool:
     a_start, a_end = shift_interval_bounds(datum, cas_od_a, cas_do_a)
     b_start, b_end = shift_interval_bounds(datum, cas_od_b, cas_do_b)
     return a_start < b_end and b_start < a_end
+
+
+STORE_ROLE_SLOT_LABELS = {
+    'prodej': 'prodejce',
+    'servis': 'servisní technik',
+    'vypomoc': 'výpomoc',
+}
+
+
+def shift_store_role_slot(pozice_smeny, brigadnik_rezim=None) -> str | None:
+    """
+    Slot obsazenosti na prodejně: prodej / servis / vypomoc.
+    Školení, backoffice a home office slot neobsazují (školení na Senimu bez limitu).
+    """
+    pozice = (pozice_smeny or 'prodej').strip()
+    if pozice in ('skoleni', 'backoffice', 'home_office'):
+        return None
+    if pozice == 'servis':
+        return 'servis'
+    if (brigadnik_rezim or 'prodejce').strip() == 'vypomoc':
+        return 'vypomoc'
+    return 'prodej'
+
+
+def store_role_slot_label(slot: str | None) -> str:
+    return STORE_ROLE_SLOT_LABELS.get(slot or '', 'pracovník')
+
+
+def find_store_role_slot_conflict(
+    datum,
+    prodejna_obj,
+    typ_smeny: str,
+    cas_od,
+    cas_do,
+    pozice_smeny,
+    brigadnik_rezim=None,
+    *,
+    exclude_id=None,
+):
+    """
+    Na prodejně smí být v překrývajícím se čase jen jeden prodejce,
+    jeden servisní technik a jedna výpomoc.
+    Školení (Senimo) limituje nemá.
+    """
+    from .models import Smena
+
+    if is_absence_shift(typ_smeny) or not prodejna_obj:
+        return None
+    slot = shift_store_role_slot(pozice_smeny, brigadnik_rezim)
+    if slot is None:
+        return None
+
+    qs = Smena.objects.filter(
+        datum=datum,
+        prodejna=prodejna_obj,
+        aktivni=True,
+        typ_smeny='prace',
+    ).select_related('user')
+    if exclude_id is not None:
+        qs = qs.exclude(id=exclude_id)
+
+    for smena in qs:
+        other_slot = shift_store_role_slot(
+            getattr(smena, 'pozice_smeny', None),
+            getattr(smena, 'brigadnik_rezim', None),
+        )
+        if other_slot != slot:
+            continue
+        if shifts_time_overlap(datum, cas_od, cas_do, smena.cas_od, smena.cas_do):
+            return smena
+    return None
+
+
+def store_role_slot_conflict_message(conflict, prodejna_obj, slot: str) -> str:
+    role = store_role_slot_label(slot)
+    store = (
+        getattr(prodejna_obj, 'nazev_kratkiy', None)
+        or getattr(prodejna_obj, 'nazev', None)
+        or 'prodejně'
+    )
+    user = getattr(conflict, 'user', None)
+    who = ''
+    if user:
+        who = f' ({(getattr(user, "prijmeni", "") or "").strip()} {(getattr(user, "jmeno", "") or "").strip()})'.rstrip()
+        if who == ' ()':
+            who = ''
+    return (
+        f'Na prodejně {store} už je v čase '
+        f'{conflict.cas_od.strftime("%H:%M")}–{conflict.cas_do.strftime("%H:%M")} '
+        f'{role}{who}. Současně smí být jen jeden {role} '
+        f'(výjimka: školení na Senimu).'
+    )
+
+
+STORE_ROLE_SLOT_LABELS = {
+    'prodej': 'prodejce',
+    'servis': 'servisní technik',
+    'vypomoc': 'výpomoc',
+}
+
+STORE_ROLE_SLOT_PLURAL = {
+    'prodej': 'prodejci',
+    'servis': 'servisní technici',
+    'vypomoc': 'výpomoci',
+}
+
+
+def shift_store_role_slot(pozice_smeny, brigadnik_rezim=None) -> str | None:
+    """
+    Slot obsazenosti na prodejně: prodej / servis / vypomoc.
+    Školení, backoffice a home office slot neobsazují (školení na Senimu bez limitu).
+    """
+    pozice = (pozice_smeny or 'prodej').strip()
+    if pozice in ('skoleni', 'backoffice', 'home_office'):
+        return None
+    if pozice == 'servis':
+        return 'servis'
+    if (brigadnik_rezim or 'prodejce').strip() == 'vypomoc':
+        return 'vypomoc'
+    return 'prodej'
+
+
+def store_role_slot_label(slot: str | None) -> str:
+    return STORE_ROLE_SLOT_LABELS.get(slot or '', 'pracovník')
+
+
+def find_store_role_slot_conflict(
+    datum,
+    prodejna_obj,
+    typ_smeny: str,
+    cas_od,
+    cas_do,
+    pozice_smeny,
+    brigadnik_rezim=None,
+    *,
+    exclude_id=None,
+):
+    """
+    Na prodejně smí být v překrývajícím se čase jen jeden prodejce,
+    jeden servisní technik a jedna výpomoc.
+    Školení (Senimo) limitu nemá.
+    """
+    from .models import Smena
+
+    if is_absence_shift(typ_smeny) or not prodejna_obj:
+        return None
+    slot = shift_store_role_slot(pozice_smeny, brigadnik_rezim)
+    if slot is None:
+        return None
+
+    qs = Smena.objects.filter(
+        datum=datum,
+        prodejna=prodejna_obj,
+        aktivni=True,
+        typ_smeny='prace',
+    ).select_related('user')
+    if exclude_id is not None:
+        qs = qs.exclude(id=exclude_id)
+
+    for smena in qs:
+        other_slot = shift_store_role_slot(
+            getattr(smena, 'pozice_smeny', None),
+            getattr(smena, 'brigadnik_rezim', None),
+        )
+        if other_slot != slot:
+            continue
+        if shifts_time_overlap(datum, cas_od, cas_do, smena.cas_od, smena.cas_do):
+            return smena
+    return None
+
+
+def store_role_slot_conflict_message(conflict, prodejna_obj, slot: str) -> str:
+    role = store_role_slot_label(slot)
+    plural = STORE_ROLE_SLOT_PLURAL.get(slot, 'pracovníci')
+    store = (
+        getattr(prodejna_obj, 'nazev_kratkiy', None)
+        or getattr(prodejna_obj, 'nazev', None)
+        or 'prodejně'
+    )
+    user = getattr(conflict, 'user', None)
+    who = ''
+    if user:
+        prijmeni = (getattr(user, 'prijmeni', '') or '').strip()
+        jmeno = (getattr(user, 'jmeno', '') or '').strip()
+        name = f'{prijmeni} {jmeno}'.strip()
+        if name:
+            who = f' ({name})'
+    if slot == 'prodej':
+        how = (
+            'Nejdřív zrušte nebo upravte stávající směnu, '
+            'pak můžete vložit nového prodejce.'
+        )
+    elif slot == 'servis':
+        how = (
+            'Nejdřív zrušte nebo upravte stávající směnu, '
+            'pak můžete vložit nového servisního technika.'
+        )
+    else:
+        how = (
+            'Nejdřív zrušte nebo upravte stávající směnu, '
+            'pak můžete vložit novou výpomoc.'
+        )
+    return (
+        f'Dva {plural}! Na prodejně {store} už je v čase '
+        f'{conflict.cas_od.strftime("%H:%M")}–{conflict.cas_do.strftime("%H:%M")} '
+        f'{role}{who}. {how}'
+    )
 
 
 def find_overlapping_shift(

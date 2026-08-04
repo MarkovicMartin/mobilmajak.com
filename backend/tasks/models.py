@@ -36,6 +36,7 @@ class Ukol(models.Model):
         default="stredni",
         db_column="PRIORITA",
     )
+    termin_zadani = models.DateField(null=True, blank=True, db_column="TERMIN_ZADANI")
     deadline = models.DateField(null=True, blank=True, db_column="DEADLINE")
     deadline_cas = models.TimeField(null=True, blank=True, db_column="DEADLINE_CAS")
     stav = models.CharField(max_length=20, choices=STAVY, default="novy", db_column="STAV")

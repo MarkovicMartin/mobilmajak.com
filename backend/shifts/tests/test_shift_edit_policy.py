@@ -15,13 +15,30 @@ class _User:
 
 class ShiftEditPolicyTests(TestCase):
     def test_seller_current_and_future_months(self):
-        today = date(2026, 7, 15)
-        self.assertEqual(earliest_editable_shift_date(today), date(2026, 7, 1))
-        self.assertTrue(seller_may_edit_shift_on_date(date(2026, 7, 1), today))
-        self.assertTrue(seller_may_edit_shift_on_date(date(2026, 7, 31), today))
-        self.assertTrue(seller_may_edit_shift_on_date(date(2026, 8, 1), today))
+        today = date(2026, 9, 15)
+        self.assertEqual(earliest_editable_shift_date(today), date(2026, 9, 1))
+        self.assertTrue(seller_may_edit_shift_on_date(date(2026, 9, 1), today))
+        self.assertTrue(seller_may_edit_shift_on_date(date(2026, 9, 30), today))
+        self.assertTrue(seller_may_edit_shift_on_date(date(2026, 10, 1), today))
         self.assertTrue(seller_may_edit_shift_on_date(date(2026, 12, 31), today))
+        self.assertFalse(seller_may_edit_shift_on_date(date(2026, 8, 31), today))
+
+    def test_august_2026_allows_july_edits_until_aug_5(self):
+        today = date(2026, 8, 3)
+        self.assertEqual(earliest_editable_shift_date(today), date(2026, 7, 1))
+        self.assertTrue(seller_may_edit_shift_on_date(date(2026, 7, 15), today))
+        self.assertTrue(seller_may_edit_shift_on_date(date(2026, 8, 1), today))
         self.assertFalse(seller_may_edit_shift_on_date(date(2026, 6, 30), today))
+
+        tomorrow = date(2026, 8, 4)
+        self.assertEqual(earliest_editable_shift_date(tomorrow), date(2026, 7, 1))
+        self.assertTrue(seller_may_edit_shift_on_date(date(2026, 7, 31), tomorrow))
+
+    def test_august_5_2026_closes_july_window(self):
+        today = date(2026, 8, 5)
+        self.assertEqual(earliest_editable_shift_date(today), date(2026, 8, 1))
+        self.assertFalse(seller_may_edit_shift_on_date(date(2026, 7, 15), today))
+        self.assertTrue(seller_may_edit_shift_on_date(date(2026, 8, 1), today))
 
     def test_admin_any_month(self):
         today = date(2026, 7, 15)

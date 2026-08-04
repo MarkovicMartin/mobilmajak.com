@@ -134,6 +134,9 @@ const TaskDetailPanel = ({
         await saveUpdate({ stav: 'v_procesu', blokovano_duvod: '' });
     };
 
+    const terminZadaniStr = task.termin_zadani
+        ? format(new Date(task.termin_zadani), 'd. M. yyyy', { locale: cs })
+        : null;
     const deadlineStr = task.deadline
         ? format(new Date(task.deadline), 'd. M. yyyy', { locale: cs })
         : null;
@@ -308,9 +311,15 @@ const TaskDetailPanel = ({
 
                 <div className="task-detail-meta">
                     <span><strong>Priorita</strong> {task.priorita}</span>
+                    {terminZadaniStr && (
+                        <span>
+                            <strong>Termín zadání</strong>
+                            {terminZadaniStr}
+                        </span>
+                    )}
                     {deadlineStr && (
                         <span>
-                            <strong>Termín</strong>
+                            <strong>Termín dokončení</strong>
                             {deadlineStr}
                             {timeStr ? ` ${timeStr}` : ''}
                         </span>

@@ -284,6 +284,19 @@
     align-items: center;
 }
 
+.task-form-row--actions-simple {
+    grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.task-form-row--deadlines {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+}
+
+.task-form-row--deadlines .task-form-label {
+    min-width: 0;
+}
+
 .task-form-row--actions .task-checkbox-label {
     justify-self: start;
 }
@@ -1158,6 +1171,7 @@
     .task-form-row--meta,
     .task-form-row--assign,
     .task-form-row--actions,
+    .task-form-row--deadlines,
     .task-form-row--deadline {
         grid-template-columns: 1fr;
     }

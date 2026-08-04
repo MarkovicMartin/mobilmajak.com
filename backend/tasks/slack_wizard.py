@@ -157,7 +157,7 @@ def _summary_blocks(draft: SlackTaskDraft, user: WebUser) -> list[dict]:
         if dod:
             dod_lines = "\n".join(f"• {_escape_slack(d.get('text', ''))}" for d in dod)
             lines.append(f"*Definition of Done:*\n{dod_lines}")
-    lines.append(f"*Termín:* {_deadline_label(data.get('deadline') or '')}")
+    lines.append(f"*Termín dokončení:* {_deadline_label(data.get('deadline') or '')}")
     lines.append(f"*Priorita:* {PRIORITY_LABELS.get(data.get('priorita', 'stredni'), 'Střední')}")
     return [
         _section("*:clipboard: Shrnutí úkolu*\n" + "\n".join(lines)),
@@ -298,10 +298,10 @@ def _step_blocks(draft: SlackTaskDraft, user: WebUser) -> tuple[str, list[dict]]
         if typ == "osobni":
             elements.append(_btn("Bez termínu", "deadline", "none"))
         blocks = [
-            _section("*:calendar: Termín*"),
+            _section("*:calendar: Termín dokončení*"),
             {"type": "actions", "elements": elements},
         ]
-        return ("Vyber termín.", blocks)
+        return ("Vyber termín dokončení.", blocks)
 
     if step == STEP_CHOOSE_PRIORITY:
         return (
@@ -561,7 +561,7 @@ def handle_slack_interaction(payload: dict) -> bool:
         iso = mapping.get(value, "")
         data = _draft_data(draft)
         if data.get("typ") == "prirazeny" and not iso:
-            send_slack_dm(slack_user_id, "U přiřazeného úkolu je termín povinný.")
+            send_slack_dm(slack_user_id, "U přiřazeného úkolu je termín dokončení povinný.")
             _post_step(draft, web_user)
             return True
         if iso:

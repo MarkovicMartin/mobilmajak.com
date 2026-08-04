@@ -41,9 +41,12 @@ from .shift_helpers import (
     is_backoffice_calendar_key,
     BACKOFFICE_BARVA,
     find_overlapping_shift,
+    find_store_role_slot_conflict,
     is_absence_shift,
     parse_shift_time,
     resolve_prodejna,
+    shift_store_role_slot,
+    store_role_slot_conflict_message,
     user_may_edit_shift_on_date,
 )
 from plans.shift_hooks import naplanuj_prepocet_po_smene
@@ -94,6 +97,54 @@ def _resolve_work_shift_prodejna(data, typ_smeny, user, raw_pozice=None):
 def _validate_shift_poznamka(typ_smeny, pozice, poznamka):
     from shifts.shift_helpers import backoffice_poznamka_chyba
     return backoffice_poznamka_chyba(typ_smeny, pozice, poznamka)
+
+
+def _role_slot_conflict_response(
+    datum,
+    prodejna_obj,
+    typ_smeny,
+    cas_od,
+    cas_do,
+    pozice_smeny,
+    brigadnik_rezim,
+    *,
+    exclude_id=None,
+):
+    """409 při duplicitním prodejci/servisu/výpomoci na prodejně, jinak None."""
+    conflict = find_store_role_slot_conflict(
+        datum,
+        prodejna_obj,
+        typ_smeny,
+        cas_od,
+        cas_do,
+        pozice_smeny,
+        brigadnik_rezim,
+        exclude_id=exclude_id,
+    )
+    if not conflict:
+        return None
+    slot = shift_store_role_slot(pozice_smeny, brigadnik_rezim)
+    return Response(
+        {
+            'error': store_role_slot_conflict_message(conflict, prodejna_obj, slot),
+            'existing_shift_id': conflict.id,
+            'conflict_type': 'store_role_slot',
+            'role_slot': slot,
+            'existing_shift': {
+                'cas_od': conflict.cas_od.strftime('%H:%M'),
+                'cas_do': conflict.cas_do.strftime('%H:%M'),
+                'typ_smeny': conflict.typ_smeny,
+                'brigadnik_rezim': conflict.brigadnik_rezim,
+                'pozice_smeny': conflict.pozice_smeny,
+                'user_id': conflict.user_id,
+                'user_name': (
+                    f'{(conflict.user.prijmeni or "").strip()} '
+                    f'{(conflict.user.jmeno or "").strip()}'
+                ).strip() if conflict.user_id else '',
+            },
+        },
+        status=status.HTTP_409_CONFLICT,
+    )
 
 
 @api_view(['GET'])
@@ -299,6 +350,13 @@ def smeny_list(request):
                 Smena.objects.select_for_update().filter(
                     user=user, datum=shift_datum, aktivni=True,
                 )
+                if prodejna_obj is not None:
+                    Smena.objects.select_for_update().filter(
+                        datum=shift_datum,
+                        prodejna=prodejna_obj,
+                        aktivni=True,
+                        typ_smeny='prace',
+                    )
                 existing_smena = find_overlapping_shift(
                     user, shift_datum, prodejna_obj, typ_smeny, cas_od, cas_do,
                 )
@@ -330,6 +388,21 @@ def smeny_list(request):
                         }
                     }, status=status.HTTP_409_CONFLICT)
 
+                brigadnik_rezim = _normalize_brigadnik_rezim(
+                    user, typ_smeny, data.get('brigadnik_rezim'),
+                )
+                role_conflict = _role_slot_conflict_response(
+                    shift_datum,
+                    prodejna_obj,
+                    typ_smeny,
+                    cas_od,
+                    cas_do,
+                    pozice,
+                    brigadnik_rezim,
+                )
+                if role_conflict:
+                    return role_conflict
+
                 smena = Smena.objects.create(
                     user=user,
                     prodejna=prodejna_obj,
@@ -337,12 +410,8 @@ def smeny_list(request):
                     cas_od=cas_od,
                     cas_do=cas_do,
                     typ_smeny=typ_smeny,
-                    brigadnik_rezim=_normalize_brigadnik_rezim(
-                        user, typ_smeny, data.get('brigadnik_rezim'),
-                    ),
-                    pozice_smeny=_normalize_pozice_smeny(
-                        prodejna_obj, typ_smeny, data.get('pozice_smeny'), user=user,
-                    ),
+                    brigadnik_rezim=brigadnik_rezim,
+                    pozice_smeny=pozice,
                     poznamka=data.get('poznamka', '')
                 )
                 naplanuj_prepocet_po_smene(smena, zdroj='single')
@@ -427,6 +496,25 @@ def smeny_bulk_create(request):
                     chyby.append(f'{datum_str}: Směna se časově překrývá s existující')
                     continue
 
+                brigadnik_rezim = _normalize_brigadnik_rezim(
+                    user, typ_smeny, data.get('brigadnik_rezim'),
+                )
+                role_conflict = find_store_role_slot_conflict(
+                    datum,
+                    prodejna_obj,
+                    typ_smeny,
+                    bulk_cas_od,
+                    bulk_cas_do,
+                    pozice,
+                    brigadnik_rezim,
+                )
+                if role_conflict:
+                    slot = shift_store_role_slot(pozice, brigadnik_rezim)
+                    chyby.append(
+                        f'{datum_str}: {store_role_slot_conflict_message(role_conflict, prodejna_obj, slot)}'
+                    )
+                    continue
+
                 Smena.objects.create(
                     user=user,
                     prodejna=prodejna_obj,
@@ -434,12 +522,8 @@ def smeny_bulk_create(request):
                     cas_od=bulk_cas_od,
                     cas_do=bulk_cas_do,
                     typ_smeny=typ_smeny,
-                    brigadnik_rezim=_normalize_brigadnik_rezim(
-                        user, typ_smeny, data.get('brigadnik_rezim'),
-                    ),
-                    pozice_smeny=_normalize_pozice_smeny(
-                        prodejna_obj, typ_smeny, data.get('pozice_smeny'), user=user,
-                    ),
+                    brigadnik_rezim=brigadnik_rezim,
+                    pozice_smeny=pozice,
                     poznamka=poznamka
                 )
                 uspesne += 1
@@ -577,6 +661,19 @@ def smena_detail(request, smena_id):
                         f'–{conflict.cas_do.strftime("%H:%M")} na {store}).'
                     )
                 return Response({'error': err_msg}, status=status.HTTP_409_CONFLICT)
+
+            role_conflict = _role_slot_conflict_response(
+                smena.datum,
+                smena.prodejna,
+                smena.typ_smeny,
+                smena.cas_od,
+                smena.cas_do,
+                smena.pozice_smeny,
+                smena.brigadnik_rezim,
+                exclude_id=smena.id,
+            )
+            if role_conflict:
+                return role_conflict
 
             smena.save()
             naplanuj_prepocet_po_smene(smena, zdroj='single')

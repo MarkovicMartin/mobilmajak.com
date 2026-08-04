@@ -239,8 +239,11 @@ const MyTasksModule = ({ embedded = false }) => {
                                 <div className="task-title">{taskDisplayTitle(t)}</div>
                                 <div className="metric-sub">
                                     {t.typ === 'prirazeny' ? 'Od vedoucího' : 'Osobní'}
+                                    {t.termin_zadani
+                                        ? ` · zadání ${format(new Date(t.termin_zadani), 'd. M. yyyy')}`
+                                        : ''}
                                     {t.deadline
-                                        ? ` · ${format(new Date(t.deadline), 'd. M. yyyy')}`
+                                        ? ` · dokončení ${format(new Date(t.deadline), 'd. M. yyyy')}`
                                         : ''}
                                     {isPrirazenySop(t) && ACTIVE_TASK_STAVY.includes(t.stav)
                                         ? ` · ${t.stav}`

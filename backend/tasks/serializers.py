@@ -62,6 +62,7 @@ class UkolSerializer(serializers.ModelSerializer):
             "popis",
             "dod_polozky",
             "priorita",
+            "termin_zadani",
             "deadline",
             "deadline_cas",
             "stav",
@@ -213,7 +214,7 @@ class UkolSerializer(serializers.ModelSerializer):
 
         activity_fields = {
             "stav", "dod_polozky", "blokovano_duvod", "prvni_krok",
-            "popis", "vysledek", "ukol", "priorita", "deadline", "mid_kontrola_v",
+            "popis", "vysledek", "ukol", "priorita", "termin_zadani", "deadline", "mid_kontrola_v",
         }
         if activity_fields & set(validated_data.keys()):
             self._touch_activity(validated_data, instance)

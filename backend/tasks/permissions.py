@@ -116,7 +116,7 @@ def validate_task_create(user, data: dict) -> str | None:
         data["dod_polozky"] = dod
 
         if not data.get("deadline"):
-            return "U přiřazeného úkolu je povinný termín (deadline)."
+            return "U přiřazeného úkolu je povinný termín dokončení (deadline)."
 
         if not assignee_id:
             return "U přiřazeného úkolu je povinný přiřazený uživatel."
@@ -162,7 +162,7 @@ def validate_task_create(user, data: dict) -> str | None:
 
 def validate_task_update(user, task: Ukol, data: dict) -> str | None:
     typ = data.get("typ", task.typ)
-    detail_keys = {"vysledek", "deadline", "id_prodejce_ukol", "id_prodejny", "typ", "ukol"}
+    detail_keys = {"vysledek", "termin_zadani", "deadline", "id_prodejce_ukol", "id_prodejny", "typ", "ukol"}
     if typ == "prirazeny" and detail_keys & set(data.keys()):
         merged = {
             "typ": typ,

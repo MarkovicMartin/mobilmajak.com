@@ -330,29 +330,29 @@ def build_dm_message(
 
     if event_type == "assigned":
         headline = ":clipboard: Nový přiřazený úkol"
-        body = f"Máte nový úkol *{title}*.\nTermín: {deadline}"
+        body = f"Máte nový úkol *{title}*.\nTermín dokončení: {deadline}"
     elif event_type == "due_soon":
         headline = ":hourglass_flowing_sand: Blíží se termín úkolu"
-        body = f"*{title}*\nPřiřazeno: {assignee}\nTermín: {deadline}"
+        body = f"*{title}*\nPřiřazeno: {assignee}\nTermín dokončení: {deadline}"
     elif event_type == "overdue":
         headline = ":warning: Úkol po termínu"
-        body = f"*{title}*\nPřiřazeno: {assignee}\nTermín: {deadline}"
+        body = f"*{title}*\nPřiřazeno: {assignee}\nTermín dokončení: {deadline}"
     elif event_type == "awaiting_approval":
         headline = ":eyes: Úkol čeká na schválení"
-        body = f"*{title}*\nPřiřazeno: {assignee}\nTermín: {deadline}"
+        body = f"*{title}*\nPřiřazeno: {assignee}\nTermín dokončení: {deadline}"
     elif event_type == "completed":
         headline = ":white_check_mark: Úkol dokončen"
         body = f"*{title}*\nPřiřazeno: {assignee}"
     elif event_type == "created":
         if recipient_id == task.id_prodejce_zadal:
             headline = ":inbox_tray: Úkol založen"
-            body = f"Založili jste úkol *{title}* pro {assignee}.\nTermín: {deadline}"
+            body = f"Založili jste úkol *{title}* pro {assignee}.\nTermín dokončení: {deadline}"
         else:
             zadavatel = _escape_slack(
                 _user_display_name(_web_user(task.id_prodejce_zadal), task.id_prodejce_zadal)
             )
             headline = ":new: Nový úkol v systému"
-            body = f"*{title}*\nPřiřazeno: {assignee}\nZadal: {zadavatel}\nTermín: {deadline}"
+            body = f"*{title}*\nPřiřazeno: {assignee}\nZadal: {zadavatel}\nTermín dokončení: {deadline}"
     elif event_type == "comment" and comment:
         author = _escape_slack(comment.autor_jmeno or f"Uživatel #{comment.autor_id}")
         excerpt = _escape_slack((comment.text or "").strip())
@@ -517,7 +517,7 @@ def build_slack_payload(task: Ukol, notify_typ: str) -> dict:
         f"*{headline}*\n"
         f"*{_escape_slack(title)}*\n"
         f"Přiřazeno: {assignee}\n"
-        f"Termín: {deadline}\n"
+        f"Termín dokončení: {deadline}\n"
         f"<{link}|Otevřít v MOBILMAJAK>"
     )
 

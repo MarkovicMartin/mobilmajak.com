@@ -10,7 +10,13 @@ from pathlib import Path
 from django.db import transaction
 
 from shifts.models import Smena
-from shifts.shift_helpers import find_overlapping_shift, is_absence_shift, is_backoffice_user, resolve_prodejna
+from shifts.shift_helpers import (
+    find_overlapping_shift,
+    find_store_role_slot_conflict,
+    is_absence_shift,
+    is_backoffice_user,
+    resolve_prodejna,
+)
 from shifts.vacation_service import normalize_dovolena_casy
 from stores.models import Prodejna
 from stores.oteviraci_doba_utils import DNY_KLICE, resolve_den_hours
@@ -693,6 +699,18 @@ def apply_parsed_shifts(
 
         if not replace_period and find_overlapping_shift(
             user, shift.datum, prodejna_obj, shift.typ_smeny, cas_od, cas_do,
+        ):
+            stats.skipped_existing += 1
+            continue
+
+        if not replace_period and find_store_role_slot_conflict(
+            shift.datum,
+            prodejna_obj,
+            shift.typ_smeny,
+            cas_od,
+            cas_do,
+            pozice,
+            brigadnik_rezim,
         ):
             stats.skipped_existing += 1
             continue

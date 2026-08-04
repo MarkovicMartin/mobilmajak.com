@@ -61,6 +61,7 @@ const TasksManageModule = ({ embedded = false }) => {
         popis: '',
         dod_polozky: [emptyDodRow(), emptyDodRow()],
         priorita: 'stredni',
+        termin_zadani: '',
         deadline: '',
         deadline_cas: '',
         id_prodejny: '',
@@ -267,7 +268,7 @@ const TasksManageModule = ({ embedded = false }) => {
             .map((p) => ({ text: p.text.trim(), splneno: false }))
             .filter((p) => p.text);
         if (!form.vysledek.trim() || !form.id_prodejce_ukol || !form.deadline) {
-            setFormError('Vyplňte výsledek, zaměstnance a termín.');
+            setFormError('Vyplňte výsledek, zaměstnance a termín dokončení.');
             return;
         }
         if (!form.bezPobocky && !form.id_prodejny) {
@@ -285,6 +286,7 @@ const TasksManageModule = ({ embedded = false }) => {
                 popis: form.popis.trim(),
                 dod_polozky: dod,
                 priorita: form.priorita,
+                termin_zadani: form.termin_zadani || null,
                 deadline: form.deadline,
                 deadline_cas: form.deadline_cas || null,
                 typ: 'prirazeny',
@@ -298,6 +300,7 @@ const TasksManageModule = ({ embedded = false }) => {
                 vysledek: '',
                 popis: '',
                 dod_polozky: [emptyDodRow(), emptyDodRow()],
+                termin_zadani: '',
                 deadline: '',
                 deadline_cas: '',
                 vyzaduje_schvaleni: false,
@@ -508,21 +511,40 @@ const TasksManageModule = ({ embedded = false }) => {
                             aria-label="Priorita"
                         />
                     </div>
-                    <div className="task-form-row task-form-row--actions">
-                        <div className="task-date-field">
-                            <DatePicker
-                                value={form.deadline}
-                                onApply={(deadline) => setForm((f) => ({ ...f, deadline }))}
-                                showError={false}
-                                wrapperClassName="task-date-field"
-                            />
-                        </div>
-                        <input
-                            type="time"
-                            className="task-control task-control--time"
-                            value={form.deadline_cas}
-                            onChange={(e) => setForm({ ...form, deadline_cas: e.target.value })}
-                        />
+                    <div className="task-form-row task-form-row--deadlines">
+                        <label className="task-form-label">
+                            Termín zadání
+                            <div className="task-date-field">
+                                <DatePicker
+                                    value={form.termin_zadani}
+                                    onApply={(termin_zadani) => setForm((f) => ({ ...f, termin_zadani }))}
+                                    showError={false}
+                                    wrapperClassName="task-date-field"
+                                />
+                            </div>
+                        </label>
+                        <label className="task-form-label">
+                            Termín dokončení
+                            <div className="task-form-row task-form-row--deadline">
+                                <div className="task-date-field">
+                                    <DatePicker
+                                        value={form.deadline}
+                                        onApply={(deadline) => setForm((f) => ({ ...f, deadline }))}
+                                        showError={false}
+                                        wrapperClassName="task-date-field"
+                                    />
+                                </div>
+                                <input
+                                    type="time"
+                                    className="task-control task-control--time"
+                                    value={form.deadline_cas}
+                                    onChange={(e) => setForm({ ...form, deadline_cas: e.target.value })}
+                                    aria-label="Čas dokončení"
+                                />
+                            </div>
+                        </label>
+                    </div>
+                    <div className="task-form-row task-form-row--actions task-form-row--actions-simple">
                         <label className="task-checkbox-label">
                             <input
                                 type="checkbox"
@@ -562,8 +584,11 @@ const TasksManageModule = ({ embedded = false }) => {
                                 <div className="metric-sub">
                                     {t.assignee?.jmeno_plne || '—'}
                                     {t.prodejna?.nazev ? ` · ${t.prodejna.nazev}` : (t.typ === 'prirazeny' && !t.id_prodejny ? ' · Bez pobočky' : '')}
+                                    {t.termin_zadani
+                                        ? ` · zadání ${format(new Date(t.termin_zadani), 'd. M.')}`
+                                        : ''}
                                     {t.deadline
-                                        ? ` · ${format(new Date(t.deadline), 'd. M.')}`
+                                        ? ` · dokončení ${format(new Date(t.deadline), 'd. M.')}`
                                         : ''}
                                 </div>
                             </div>

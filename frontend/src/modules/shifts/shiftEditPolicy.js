@@ -1,6 +1,15 @@
-/** První den aktuálního měsíce – prodejce nesmí zpětně do minulých měsíců. */
+/** Dočasně: prodejci mohou opravit směny za červenec 2026 do 5. 8. 2026 (3.–4. 8.). */
+const JULY_2026_SHIFT_EDIT_UNTIL = new Date(2026, 7, 5); // měsíc 0-index
+const JULY_2026_START = new Date(2026, 6, 1);
+
+/** První den aktuálního měsíce – prodejce nesmí zpětně do minulých měsíců (s výjimkou okna výše). */
 export function earliestEditableShiftDate(refDate = new Date()) {
-    return new Date(refDate.getFullYear(), refDate.getMonth(), 1);
+    const currentMonthStart = new Date(refDate.getFullYear(), refDate.getMonth(), 1);
+    const todayLocal = new Date(refDate.getFullYear(), refDate.getMonth(), refDate.getDate());
+    if (todayLocal < JULY_2026_SHIFT_EDIT_UNTIL && JULY_2026_START < currentMonthStart) {
+        return new Date(JULY_2026_START.getTime());
+    }
+    return currentMonthStart;
 }
 
 export function sellerMayEditShiftMonth(monthStr, refDate = new Date()) {

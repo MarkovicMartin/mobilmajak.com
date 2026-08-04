@@ -44,6 +44,7 @@ const TaskEditForm = ({
         popis: task.popis || '',
         dod_polozky: task.dod_polozky || [],
         priorita: task.priorita || 'stredni',
+        termin_zadani: deadlineToInput(task.termin_zadani),
         deadline: deadlineToInput(task.deadline),
         deadline_cas: timeToInput(task.deadline_cas),
         id_prodejny: task.id_prodejny ? String(task.id_prodejny) : '',
@@ -80,6 +81,7 @@ const TaskEditForm = ({
             popis: task.popis || '',
             dod_polozky: task.dod_polozky || [],
             priorita: task.priorita || 'stredni',
+            termin_zadani: deadlineToInput(task.termin_zadani),
             deadline: deadlineToInput(task.deadline),
             deadline_cas: timeToInput(task.deadline_cas),
             id_prodejny: task.id_prodejny ? String(task.id_prodejny) : '',
@@ -144,7 +146,7 @@ const TaskEditForm = ({
             return;
         }
         if (task.typ === 'prirazeny' && !form.deadline) {
-            setError('U přiřazeného úkolu je povinný termín.');
+            setError('U přiřazeného úkolu je povinný termín dokončení.');
             return;
         }
         const dod = form.dod_polozky
@@ -164,6 +166,7 @@ const TaskEditForm = ({
                 dod_polozky: task.typ === 'prirazeny' ? dod : undefined,
                 priorita: form.priorita,
                 stav: form.stav,
+                termin_zadani: form.termin_zadani || null,
                 deadline: form.deadline || null,
                 deadline_cas: form.deadline_cas || null,
                 vyzaduje_schvaleni: form.vyzaduje_schvaleni,
@@ -308,21 +311,38 @@ const TaskEditForm = ({
                     Vyžaduje schválení
                 </label>
             )}
-            <div className="task-form-row task-form-row--deadline">
-                <div className="task-date-field">
-                    <AnalyticsDateInput
-                        value={form.deadline}
-                        onApply={(deadline) => setForm((f) => ({ ...f, deadline }))}
-                        showError={false}
-                        inputClassName="task-control task-control--date"
-                    />
-                </div>
-                <input
-                    type="time"
-                    className="task-control task-control--time"
-                    value={form.deadline_cas}
-                    onChange={(e) => setForm({ ...form, deadline_cas: e.target.value })}
-                />
+            <div className="task-form-row task-form-row--deadlines">
+                <label className="task-form-label">
+                    Termín zadání
+                    <div className="task-date-field">
+                        <AnalyticsDateInput
+                            value={form.termin_zadani}
+                            onApply={(termin_zadani) => setForm((f) => ({ ...f, termin_zadani }))}
+                            showError={false}
+                            inputClassName="task-control task-control--date"
+                        />
+                    </div>
+                </label>
+                <label className="task-form-label">
+                    Termín dokončení
+                    <div className="task-form-row task-form-row--deadline">
+                        <div className="task-date-field">
+                            <AnalyticsDateInput
+                                value={form.deadline}
+                                onApply={(deadline) => setForm((f) => ({ ...f, deadline }))}
+                                showError={false}
+                                inputClassName="task-control task-control--date"
+                            />
+                        </div>
+                        <input
+                            type="time"
+                            className="task-control task-control--time"
+                            value={form.deadline_cas}
+                            onChange={(e) => setForm({ ...form, deadline_cas: e.target.value })}
+                            aria-label="Čas dokončení"
+                        />
+                    </div>
+                </label>
             </div>
             {error && <p className="task-edit-error">{error}</p>}
             <div className="task-edit-actions">
