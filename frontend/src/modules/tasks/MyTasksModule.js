@@ -1,19 +1,17 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import { format } from 'date-fns';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { PageHeader } from '../../components/ui';
 import { useTasks } from '../../hooks/useTasks';
 import { taskAPI } from '../../services/api';
 import TaskDetailPanel from './TaskDetailPanel';
+import TaskKanbanBoard from './TaskKanbanBoard';
 import TaskUrgencyBadge from './TaskUrgencyBadge';
-import TaskStatusIcon from '../../components/TaskStatusIcon';
 import { urgencyForTask, URGENCY_OVERDUE } from '../../utils/taskUrgency';
 import { parseTaskId, sameTaskId, TASKS_MINE_PATH } from '../../utils/taskNavigation';
 import {
     taskDisplayTitle,
     isPrirazenySop,
     isActiveTask,
-    ACTIVE_TASK_STAVY,
 } from '../../utils/taskDisplay';
 import './TasksModule.css';
 
@@ -27,7 +25,6 @@ const MyTasksModule = ({ embedded = false }) => {
     const [filter, setFilter] = useState('aktivni');
     const [selected, setSelected] = useState(null);
     const [newUkol, setNewUkol] = useState('');
-    const [mobileDetail, setMobileDetail] = useState(false);
     const deepLinkTried = useRef(null);
 
     const listParams = useMemo(() => {
@@ -42,18 +39,20 @@ const MyTasksModule = ({ embedded = false }) => {
 
     const selectTask = useCallback((task) => {
         setSelected(task);
-        setMobileDetail(true);
         if (task?.id) {
             navigate(`${TASKS_MINE_PATH}?id=${task.id}`, { replace: true, state: { taskId: task.id } });
         }
     }, [navigate]);
 
-    const clearSelection = useCallback(() => {
-        setSelected(null);
-        setMobileDetail(false);
-        deepLinkTried.current = null;
-        navigate(TASKS_MINE_PATH, { replace: true });
-    }, [navigate]);
+    const toggleTask = useCallback((task) => {
+        if (selected && sameTaskId(selected.id, task.id)) {
+            setSelected(null);
+            deepLinkTried.current = null;
+            navigate(TASKS_MINE_PATH, { replace: true });
+            return;
+        }
+        selectTask(task);
+    }, [navigate, selectTask, selected]);
 
     useEffect(() => {
         if (!taskIdFromNav) {
@@ -62,14 +61,12 @@ const MyTasksModule = ({ embedded = false }) => {
         }
         if (loading) return undefined;
         if (selected && sameTaskId(selected.id, taskIdFromNav)) {
-            setMobileDetail(true);
             return undefined;
         }
 
         const match = tasks.find((t) => sameTaskId(t.id, taskIdFromNav));
         if (match) {
             setSelected(match);
-            setMobileDetail(true);
             if (filter === 'aktivni' && ['hotovo', 'ceka_schvaleni'].includes(match.stav)) {
                 setFilter(match.stav === 'hotovo' ? 'hotove' : 'cekajici');
             }
@@ -88,7 +85,6 @@ const MyTasksModule = ({ embedded = false }) => {
                     list.some((t) => sameTaskId(t.id, task.id)) ? list : [task, ...list]
                 ));
                 setSelected(task);
-                setMobileDetail(true);
                 if (task.stav === 'hotovo') setFilter('hotove');
                 else if (task.stav === 'ceka_schvaleni') setFilter('cekajici');
                 else setFilter('aktivni');
@@ -110,12 +106,13 @@ const MyTasksModule = ({ embedded = false }) => {
         e.preventDefault();
         if (!newUkol.trim()) return;
         try {
-            await create({
+            const created = await create({
                 ukol: newUkol.trim(),
                 typ: 'osobni',
                 priorita: 'stredni',
             });
             setNewUkol('');
+            if (created?.id) selectTask(created);
         } catch {
             /* tiché */
         }
@@ -140,13 +137,35 @@ const MyTasksModule = ({ embedded = false }) => {
         window.dispatchEvent(new Event('tasks-notifications-refresh'));
     };
 
-    const showListOnMobile = !mobileDetail || !selected;
+    const handleStatusChange = useCallback(async (taskId, newStav, extra = {}) => {
+        try {
+            const updated = await taskAPI.update(taskId, { stav: newStav, ...extra });
+            setTasks((list) => list.map((t) => (t.id === updated.id ? updated : t)));
+            if (selected && sameTaskId(selected.id, updated.id)) {
+                setSelected(updated);
+            }
+            window.dispatchEvent(new Event('tasks-notifications-refresh'));
+            return { success: true, task: updated };
+        } catch (err) {
+            return {
+                success: false,
+                error: err?.response?.data?.error || err?.response?.data || err?.message,
+            };
+        }
+    }, [selected, setTasks]);
+
+    const mineColumnKeys = useMemo(() => {
+        if (filter === 'hotove') return ['hotovo'];
+        if (filter === 'cekajici') return ['ceka_schvaleni'];
+        if (filter === 'aktivni') return ['novy', 'v_procesu', 'blokovany'];
+        return null;
+    }, [filter]);
 
     return (
         <div className={`tasks-module my-tasks-module${embedded ? ' my-tasks-module--embedded' : ''}`}>
             {!embedded && <PageHeader title="Moje úkoly" />}
 
-            {activePrirazeny.length > 0 && showListOnMobile && (
+            {activePrirazeny.length > 0 && (
                 <div className="profile-tasks-wip">
                     <strong>Moje aktivní přiřazené úkoly ({wipCount}/{WIP_LIMIT})</strong>
                     <div className="profile-tasks-wip-list">
@@ -170,110 +189,73 @@ const MyTasksModule = ({ embedded = false }) => {
                 </div>
             )}
 
-            {showListOnMobile && (
-                <>
-                    <form className="profile-tasks-personal-form" onSubmit={addPersonalTask}>
-                        <input
-                            className="task-control"
-                            placeholder="Vlastní úkol…"
-                            value={newUkol}
-                            onChange={(e) => setNewUkol(e.target.value)}
+            <form className="profile-tasks-personal-form" onSubmit={addPersonalTask}>
+                <input
+                    className="task-control"
+                    placeholder="Vlastní úkol…"
+                    value={newUkol}
+                    onChange={(e) => setNewUkol(e.target.value)}
+                />
+                <button type="submit" className="btn btn--primary task-submit-btn">
+                    Přidat osobní úkol
+                </button>
+            </form>
+            <div className="profile-tasks-filters tasks-filter-pills">
+                <button
+                    type="button"
+                    className={`tasks-filter-pill${filter === 'aktivni' ? ' is-active' : ''}`}
+                    onClick={() => setFilter('aktivni')}
+                >
+                    Aktivní
+                </button>
+                <button
+                    type="button"
+                    className={`tasks-filter-pill${filter === 'hotove' ? ' is-active' : ''}`}
+                    onClick={() => setFilter('hotove')}
+                >
+                    Hotové
+                </button>
+                <button
+                    type="button"
+                    className={`tasks-filter-pill${filter === 'po_terminu' ? ' is-active' : ''}`}
+                    onClick={() => setFilter('po_terminu')}
+                >
+                    Po termínu
+                </button>
+                <button
+                    type="button"
+                    className={`tasks-filter-pill${filter === 'at_risk' ? ' is-active' : ''}`}
+                    onClick={() => setFilter('at_risk')}
+                >
+                    At risk
+                </button>
+                <button type="button" className="btn-link" onClick={() => load(listParams)}>
+                    Obnovit
+                </button>
+            </div>
+
+            <div className="tasks-list-section">
+                <p className="tasks-list-hint muted">
+                    Přetahujte mezi stavy · kliknutím rozbalíte detail
+                </p>
+                <TaskKanbanBoard
+                    tasks={displayed}
+                    loading={loading}
+                    variant="mine"
+                    columnKeys={mineColumnKeys}
+                    expandedId={selected?.id ?? null}
+                    onToggle={toggleTask}
+                    onStatusChange={handleStatusChange}
+                    emptyMessage="Žádné úkoly v tomto filtru"
+                    renderDetail={(task) => (
+                        <TaskDetailPanel
+                            task={task}
+                            layout="expand"
+                            hideHeaderTitle
+                            onUpdate={handleTaskUpdate}
                         />
-                        <button type="submit" className="btn btn--primary task-submit-btn">
-                            Přidat osobní úkol
-                        </button>
-                    </form>
-                    <div className="profile-tasks-filters tasks-filter-pills">
-                        <button
-                            type="button"
-                            className={`tasks-filter-pill${filter === 'aktivni' ? ' is-active' : ''}`}
-                            onClick={() => setFilter('aktivni')}
-                        >
-                            Aktivní
-                        </button>
-                        <button
-                            type="button"
-                            className={`tasks-filter-pill${filter === 'hotove' ? ' is-active' : ''}`}
-                            onClick={() => setFilter('hotove')}
-                        >
-                            Hotové
-                        </button>
-                        <button
-                            type="button"
-                            className={`tasks-filter-pill${filter === 'po_terminu' ? ' is-active' : ''}`}
-                            onClick={() => setFilter('po_terminu')}
-                        >
-                            Po termínu
-                        </button>
-                        <button
-                            type="button"
-                            className={`tasks-filter-pill${filter === 'at_risk' ? ' is-active' : ''}`}
-                            onClick={() => setFilter('at_risk')}
-                        >
-                            At risk
-                        </button>
-                        <button type="button" className="btn-link" onClick={() => load(listParams)}>
-                            Obnovit
-                        </button>
-                    </div>
-                </>
-            )}
-
-            <div className={`tasks-layout${mobileDetail && selected ? ' tasks-layout--detail-open' : ''}`}>
-                <div className={`tasks-list-panel${showListOnMobile ? '' : ' tasks-list-panel--hidden-mobile'}`}>
-                    {loading && <p className="muted">Načítám…</p>}
-                    {!loading && displayed.length === 0 && (
-                        <p className="muted">Žádné úkoly v tomto filtru</p>
                     )}
-                    {displayed.map((t) => (
-                        <div
-                            key={t.id}
-                            className={`tasks-list-item ${selected?.id === t.id ? 'selected' : ''}`}
-                            onClick={() => selectTask(t)}
-                            role="button"
-                            tabIndex={0}
-                            onKeyDown={(e) => e.key === 'Enter' && selectTask(t)}
-                        >
-                            <TaskStatusIcon task={t} size="sm" />
-                            <div className="tasks-list-item-body">
-                                <div className="task-title">{taskDisplayTitle(t)}</div>
-                                <div className="metric-sub">
-                                    {t.typ === 'prirazeny' ? 'Od vedoucího' : 'Osobní'}
-                                    {t.termin_zadani
-                                        ? ` · zadání ${format(new Date(t.termin_zadani), 'd. M. yyyy')}`
-                                        : ''}
-                                    {t.deadline
-                                        ? ` · dokončení ${format(new Date(t.deadline), 'd. M. yyyy')}`
-                                        : ''}
-                                    {isPrirazenySop(t) && ACTIVE_TASK_STAVY.includes(t.stav)
-                                        ? ` · ${t.stav}`
-                                        : ''}
-                                </div>
-                            </div>
-                            <div className="tasks-list-item-badges">
-                                <TaskUrgencyBadge task={t} />
-                            </div>
-                        </div>
-                    ))}
-                </div>
-
-                <div className={`tasks-detail-column${mobileDetail && selected ? ' tasks-detail-column--mobile-open' : ''}`}>
-                    {mobileDetail && selected && (
-                        <button
-                            type="button"
-                            className="tasks-mobile-back btn-link"
-                            onClick={clearSelection}
-                        >
-                            ← Zpět na seznam
-                        </button>
-                    )}
-                    <TaskDetailPanel
-                        task={selected}
-                        layout="page"
-                        onClose={mobileDetail && selected ? clearSelection : undefined}
-                        onUpdate={handleTaskUpdate}
-                    />
-                </div>
+                />
             </div>
         </div>
     );

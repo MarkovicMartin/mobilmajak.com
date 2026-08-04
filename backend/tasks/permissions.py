@@ -197,11 +197,6 @@ def _validate_prirazeny_state_change(user, task: Ukol, data: dict, new_stav: str
         if not duvod:
             return "U blokovaného úkolu je povinný důvod."
 
-    if new_stav == "v_procesu" and task.stav == "novy":
-        prvni_krok = (data.get("prvni_krok") or task.prvni_krok or "").strip()
-        if task.id_prodejce_ukol == user.id and not prvni_krok:
-            return "Při zahájení úkolu je povinný první krok."
-
     if new_stav in ("hotovo", "ceka_schvaleni"):
         dod = data.get("dod_polozky", task.dod_polozky)
         if not _dod_complete(dod):

@@ -8,13 +8,13 @@
 }
 
 .tasks-module {
-    max-width: 1240px;
+    max-width: 1400px;
     margin: 0 auto;
     padding: 1.25rem 1rem 2rem;
 }
 
 .tasks-module-shell {
-    max-width: 1240px;
+    max-width: 1400px;
     margin: 0 auto;
     padding: 1.25rem 1rem 2rem;
 }
@@ -94,6 +94,15 @@
     grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
     gap: 1.25rem;
     align-items: start;
+}
+
+.tasks-list-section {
+    margin-top: 1rem;
+}
+
+.tasks-list-hint {
+    margin: 0 0 0.5rem;
+    font-size: 0.82rem;
 }
 
 @media (max-width: 900px) {

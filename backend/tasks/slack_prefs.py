@@ -14,6 +14,7 @@ PREF_DUE_SOON_ALL = "due_soon_all"
 PREF_OVERDUE_MINE = "overdue_mine"
 PREF_OVERDUE_ALL = "overdue_all"
 PREF_AWAITING_APPROVAL = "awaiting_approval"
+PREF_STARTED_MINE = "started_mine"
 PREF_COMPLETED_MINE = "completed_mine"
 PREF_COMMENT_MINE = "comment_mine"
 PREF_COMMENT_ALL = "comment_all"
@@ -27,6 +28,7 @@ SLACK_UKOLY_PREF_KEYS = (
     PREF_OVERDUE_MINE,
     PREF_OVERDUE_ALL,
     PREF_AWAITING_APPROVAL,
+    PREF_STARTED_MINE,
     PREF_COMPLETED_MINE,
     PREF_COMMENT_MINE,
     PREF_COMMENT_ALL,
@@ -41,6 +43,7 @@ DEFAULT_SLACK_UKOLY_PREFS: dict[str, bool] = {
     PREF_OVERDUE_MINE: True,
     PREF_OVERDUE_ALL: False,
     PREF_AWAITING_APPROVAL: True,
+    PREF_STARTED_MINE: True,
     PREF_COMPLETED_MINE: True,
     PREF_COMMENT_MINE: False,
     PREF_COMMENT_ALL: False,
@@ -156,6 +159,8 @@ def user_wants_slack_notification(
         return prefs[PREF_OVERDUE_ALL]
     if event_type == "awaiting_approval":
         return (zadavatel or is_vedouci) and prefs[PREF_AWAITING_APPROVAL]
+    if event_type == "started":
+        return zadavatel and prefs[PREF_STARTED_MINE]
     if event_type == "completed":
         return zadavatel and prefs[PREF_COMPLETED_MINE]
     return False

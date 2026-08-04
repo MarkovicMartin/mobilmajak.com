@@ -20,10 +20,9 @@ const TaskDetailPanel = ({
     showMarkRead = true,
     isManager = false,
     layout = 'inline',
+    hideHeaderTitle = false,
 }) => {
     const { user, isAdmin, canManageTasks } = useAuth();
-    const [startOpen, setStartOpen] = useState(false);
-    const [prvniKrok, setPrvniKrok] = useState('');
     const [blockOpen, setBlockOpen] = useState(false);
     const [blockReason, setBlockReason] = useState('');
     const [dodLocal, setDodLocal] = useState([]);
@@ -41,10 +40,9 @@ const TaskDetailPanel = ({
 
     useEffect(() => {
         setDodLocal(task?.dod_polozky || []);
-        setPrvniKrok(task?.prvni_krok || '');
         setBlockReason(task?.blokovano_duvod || '');
         setError('');
-    }, [task?.id, task?.dod_polozky, task?.prvni_krok, task?.blokovano_duvod]);
+    }, [task?.id, task?.dod_polozky, task?.blokovano_duvod]);
 
     if (!task) {
         return (
@@ -76,19 +74,6 @@ const TaskDetailPanel = ({
         } finally {
             setSaving(false);
         }
-    };
-
-    const handleStart = async (e) => {
-        e.preventDefault();
-        if (!prvniKrok.trim()) {
-            setError('První krok je povinný.');
-            return;
-        }
-        const updated = await saveUpdate({
-            stav: 'v_procesu',
-            prvni_krok: prvniKrok.trim(),
-        });
-        if (updated) setStartOpen(false);
     };
 
     const handleBlock = async (e) => {
@@ -148,6 +133,7 @@ const TaskDetailPanel = ({
     const panelClass = [
         'task-detail-panel',
         layout === 'page' ? 'task-detail-panel--page' : '',
+        layout === 'expand' ? 'task-detail-panel--expand' : '',
     ].filter(Boolean).join(' ');
 
     const actionButtons = canActOnTask && task.stav !== 'hotovo' ? (
@@ -157,7 +143,7 @@ const TaskDetailPanel = ({
                     type="button"
                     className="btn btn--primary"
                     disabled={saving}
-                    onClick={() => setStartOpen(true)}
+                    onClick={() => saveUpdate({ stav: 'v_procesu' })}
                 >
                     Začít řešit
                 </button>
@@ -252,15 +238,22 @@ const TaskDetailPanel = ({
     return (
         <div className={panelClass}>
             <div className="task-detail-panel__scroll">
-                <div className="task-detail-header">
-                    <TaskStatusIcon task={task} size="lg" className="task-detail-icon" />
-                    <h3>{title}</h3>
-                    {onClose && (
-                        <button type="button" className="btn-icon" onClick={onClose} aria-label="Zavřít detail">
-                            <i className="fas fa-times" />
-                        </button>
-                    )}
-                </div>
+                {layout !== 'expand' && (
+                    <div className="task-detail-header">
+                        <TaskStatusIcon task={task} size="lg" className="task-detail-icon" />
+                        <h3>{title}</h3>
+                        {onClose && (
+                            <button type="button" className="btn-icon" onClick={onClose} aria-label="Zavřít detail">
+                                <i className="fas fa-times" />
+                            </button>
+                        )}
+                    </div>
+                )}
+                {layout === 'expand' && !hideHeaderTitle && (
+                    <div className="task-detail-header task-detail-header--compact">
+                        <h3>{title}</h3>
+                    </div>
+                )}
 
                 {sop && task.vysledek && task.vysledek !== title && (
                     <div className="task-detail-section">
@@ -386,38 +379,6 @@ const TaskDetailPanel = ({
                     <div className="task-detail-actions">
                         {actionButtons}
                     </div>
-                </div>
-            )}
-
-            {startOpen && (
-                <div className="task-modal-overlay" role="dialog" aria-modal="true">
-                    <form className="task-modal" onSubmit={handleStart}>
-                        <div className="task-modal__header">
-                            <h4>Start checkpoint</h4>
-                            <p>Rozumíš výsledku úkolu?</p>
-                        </div>
-                        <div className="task-modal__body">
-                            <p className="task-modal-outcome">{task.vysledek || title}</p>
-                            <label className="task-modal-label">
-                                První krok *
-                                <input
-                                    className="task-control task-control--text"
-                                    value={prvniKrok}
-                                    onChange={(e) => setPrvniKrok(e.target.value)}
-                                    placeholder="Co uděláš jako první?"
-                                    autoFocus
-                                />
-                            </label>
-                            <div className="task-modal-actions">
-                                <button type="submit" className="btn btn--primary" disabled={saving}>
-                                    Zahájit úkol
-                                </button>
-                                <button type="button" className="btn btn--ghost" onClick={() => setStartOpen(false)}>
-                                    Zrušit
-                                </button>
-                            </div>
-                        </div>
-                    </form>
                 </div>
             )}
 

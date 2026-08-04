@@ -190,6 +190,7 @@ def task_detail(request, task_id: int):
             updated,
             old_stav=old_stav,
             old_assignee=old_assignee,
+            actor_id=getattr(request.user, "id", None),
         )
         return Response(UkolSerializer(updated, context={"request": request}).data)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

@@ -335,7 +335,7 @@ class TasksApiTests(TestCase):
         self.assertIsNotNone(task.dokonceno_v)
         self.assertLessEqual(task.dokonceno_v, timezone.now())
 
-    def test_prirazeny_requires_prvni_krok_to_start(self):
+    def test_prirazeny_can_start_without_prvni_krok(self):
         task = self._create_prirazeny()
         self._auth(self.prodejce)
         res = self.client.put(
@@ -343,14 +343,7 @@ class TasksApiTests(TestCase):
             {"stav": "v_procesu"},
             format="json",
         )
-        self.assertEqual(res.status_code, 400)
-
-        res_ok = self.client.put(
-            f"/api/tasks/{task.id}/",
-            {"stav": "v_procesu", "prvni_krok": "Zkontroluju sklad"},
-            format="json",
-        )
-        self.assertEqual(res_ok.status_code, 200)
+        self.assertEqual(res.status_code, 200)
         task.refresh_from_db()
         self.assertEqual(task.stav, "v_procesu")
         self.assertIsNotNone(task.start_potvrzeno_v)

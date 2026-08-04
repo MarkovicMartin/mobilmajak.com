@@ -33,6 +33,7 @@ DM_EVENT_TYPES = (
     "due_soon",
     "overdue",
     "awaiting_approval",
+    "started",
     "completed",
     "created",
     "comment",
@@ -247,6 +248,7 @@ def _dm_typ_for_event(event_type: str) -> str:
         "due_soon": "dm_due_soon",
         "overdue": "dm_overdue",
         "awaiting_approval": "dm_awaiting_approval",
+        "started": "dm_started",
         "completed": "dm_completed",
         "created": "dm_created",
         "comment": "dm_comment",
@@ -286,6 +288,9 @@ def _recipient_user_ids(task: Ukol, event_type: str) -> list[int]:
             candidates.add(zadavatel_id)
         if vedouci_id:
             candidates.add(vedouci_id)
+    elif event_type == "started":
+        if zadavatel_id and zadavatel_id != assignee_id:
+            candidates.add(zadavatel_id)
     elif event_type == "completed":
         if zadavatel_id:
             candidates.add(zadavatel_id)
@@ -339,6 +344,9 @@ def build_dm_message(
         body = f"*{title}*\nPřiřazeno: {assignee}\nTermín dokončení: {deadline}"
     elif event_type == "awaiting_approval":
         headline = ":eyes: Úkol čeká na schválení"
+        body = f"*{title}*\nPřiřazeno: {assignee}\nTermín dokončení: {deadline}"
+    elif event_type == "started":
+        headline = ":hammer_and_wrench: Řešitel začal pracovat"
         body = f"*{title}*\nPřiřazeno: {assignee}\nTermín dokončení: {deadline}"
     elif event_type == "completed":
         headline = ":white_check_mark: Úkol dokončen"
@@ -482,6 +490,7 @@ def notify_task_lifecycle_change(
     is_new: bool = False,
     old_stav: str | None = None,
     old_assignee: int | None = None,
+    actor_id: int | None = None,
 ) -> None:
     """Hook po vytvoření / změně úkolu – odešle relevantní Slack DM."""
     if is_new and task.typ == "prirazeny":
@@ -494,6 +503,14 @@ def notify_task_lifecycle_change(
         notify_task_event(task, "assigned")
 
     if old_stav is not None and task.stav != old_stav:
+        if (
+            task.typ == "prirazeny"
+            and old_stav == "novy"
+            and task.stav == "v_procesu"
+            and actor_id is not None
+            and actor_id == task.id_prodejce_ukol
+        ):
+            notify_task_event(task, "started")
         if task.stav == "ceka_schvaleni":
             notify_task_event(task, "awaiting_approval")
         elif task.stav == "hotovo":

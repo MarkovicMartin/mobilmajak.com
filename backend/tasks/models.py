@@ -106,6 +106,7 @@ class UkolSlackNotifikace(models.Model):
         ("dm_overdue", "DM – po termínu"),
         ("dm_completed", "DM – hotovo"),
         ("dm_awaiting_approval", "DM – čeká schválení"),
+        ("dm_started", "DM – začal pracovat"),
         ("dm_created", "DM – potvrzení zadavateli"),
         ("dm_comment", "DM – nový komentář"),
     ]

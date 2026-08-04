@@ -9,6 +9,7 @@ const SLACK_MINE_GROUPS = [
             { key: 'due_soon_mine', label: 'Blížící se termín (jsem řešitel nebo zadavatel)' },
             { key: 'overdue_mine', label: 'Po termínu (jsem řešitel nebo zadavatel)' },
             { key: 'awaiting_approval', label: 'Čeká na mé schválení' },
+            { key: 'started_mine', label: 'Řešitel začal pracovat na úkolu, který jsem zadal' },
             { key: 'completed_mine', label: 'Dokončení úkolu, který jsem zadal' },
         ],
     },

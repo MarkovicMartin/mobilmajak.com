@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { format } from 'date-fns';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { taskAPI, storeAPI } from '../../services/api';
@@ -7,10 +6,9 @@ import { PageHeader, Select, DatePicker } from '../../components/ui';
 import { useTasks } from '../../hooks/useTasks';
 import TaskDetailPanel from './TaskDetailPanel';
 import TaskEditForm from './TaskEditForm';
-import TaskUrgencyBadge from './TaskUrgencyBadge';
-import TaskStatusIcon from '../../components/TaskStatusIcon';
+import TaskKanbanBoard from './TaskKanbanBoard';
 import { buildAssigneeSelectOptions } from './TaskAssigneeOptions';
-import { taskDisplayTitle, ACTIVE_TASK_STAVY } from '../../utils/taskDisplay';
+import { ACTIVE_TASK_STAVY } from '../../utils/taskDisplay';
 import { parseTaskId, sameTaskId, TASKS_MANAGE_PATH } from '../../utils/taskNavigation';
 import './TasksModule.css';
 
@@ -177,6 +175,17 @@ const TasksManageModule = ({ embedded = false }) => {
         }
     }, [navigate]);
 
+    const toggleTask = useCallback((task) => {
+        if (selected && sameTaskId(selected.id, task.id)) {
+            setSelected(null);
+            setEditing(false);
+            deepLinkTried.current = null;
+            navigate(TASKS_MANAGE_PATH, { replace: true });
+            return;
+        }
+        selectTask(task);
+    }, [navigate, selectTask, selected]);
+
     useEffect(() => {
         if (!taskIdFromNav) {
             deepLinkTried.current = null;
@@ -328,6 +337,23 @@ const TasksManageModule = ({ embedded = false }) => {
             window.alert(err?.response?.data?.error || 'Smazání se nezdařilo.');
         }
     };
+
+    const handleStatusChange = useCallback(async (taskId, newStav, extra = {}) => {
+        try {
+            const updated = await taskAPI.update(taskId, { stav: newStav, ...extra });
+            setTasks((list) => list.map((t) => (t.id === updated.id ? updated : t)));
+            if (selected && sameTaskId(selected.id, updated.id)) {
+                setSelected(updated);
+                setEditing(false);
+            }
+            return { success: true, task: updated };
+        } catch (err) {
+            return {
+                success: false,
+                error: err?.response?.data?.error || err?.response?.data || err?.message,
+            };
+        }
+    }, [selected, setTasks]);
 
     const storeLocked = user?.role === 'VEDOUCI' && vedouciStores.length <= 1;
     const showFilterStore = isAdmin() || vedouciStores.length > 1;
@@ -565,90 +591,77 @@ const TasksManageModule = ({ embedded = false }) => {
                 </form>
             </div>
 
-            <div className="tasks-layout">
-                <div className="tasks-list-panel">
-                    {loading && <p className="muted">Načítám…</p>}
-                    {!loading && tasks.length === 0 && <p className="muted">Žádné úkoly</p>}
-                    {tasks.map((t) => (
-                        <div
-                            key={t.id}
-                            className={`tasks-list-item ${selected?.id === t.id ? 'selected' : ''}`}
-                            onClick={() => selectTask(t)}
-                            onKeyDown={(e) => e.key === 'Enter' && selectTask(t)}
-                            role="button"
-                            tabIndex={0}
-                        >
-                            <TaskStatusIcon task={t} size="sm" />
-                            <div className="tasks-list-item-body">
-                                <div className="task-title">{taskDisplayTitle(t)}</div>
-                                <div className="metric-sub">
-                                    {t.assignee?.jmeno_plne || '—'}
-                                    {t.prodejna?.nazev ? ` · ${t.prodejna.nazev}` : (t.typ === 'prirazeny' && !t.id_prodejny ? ' · Bez pobočky' : '')}
-                                    {t.termin_zadani
-                                        ? ` · zadání ${format(new Date(t.termin_zadani), 'd. M.')}`
-                                        : ''}
-                                    {t.deadline
-                                        ? ` · dokončení ${format(new Date(t.deadline), 'd. M.')}`
-                                        : ''}
+            <div className="tasks-list-section">
+                <p className="tasks-list-hint muted">
+                    Přetahujte mezi stavy · kliknutím rozbalíte detail
+                </p>
+                <TaskKanbanBoard
+                    tasks={tasks}
+                    loading={loading}
+                    variant="manage"
+                    statusFilter={filterStav}
+                    expandedId={selected?.id ?? null}
+                    onToggle={toggleTask}
+                    onStatusChange={handleStatusChange}
+                    emptyMessage="Žádné úkoly"
+                    renderDetail={(task) => (
+                        editing && sameTaskId(selected?.id, task.id) && canManageTasks() ? (
+                            <TaskEditForm
+                                task={task}
+                                storeOptions={isAdmin() ? stores : vedouciStores}
+                                storeLocked={storeLocked}
+                                isAdmin={isAdmin()}
+                                onSaved={(u) => {
+                                    setSelected(u);
+                                    setEditing(false);
+                                    update(u.id, u, { merge: true });
+                                    load(listParams);
+                                }}
+                                onCancel={() => setEditing(false)}
+                            />
+                        ) : (
+                            <>
+                                <TaskDetailPanel
+                                    task={task}
+                                    layout="expand"
+                                    hideHeaderTitle
+                                    canEdit
+                                    isManager
+                                    showMarkRead={false}
+                                    onUpdate={(u) => {
+                                        setSelected(u);
+                                        setTasks((list) => list.map((t) => (t.id === u.id ? u : t)));
+                                    }}
+                                />
+                                <div className="task-row-detail-actions">
+                                    {canManageTasks() && (
+                                        <button
+                                            type="button"
+                                            className="btn btn--secondary"
+                                            onClick={() => setEditing(true)}
+                                        >
+                                            Upravit úkol
+                                        </button>
+                                    )}
+                                    {canManageTasks() && (
+                                        <button
+                                            type="button"
+                                            className="btn btn--secondary"
+                                            onClick={handleDelete}
+                                        >
+                                            Smazat úkol
+                                        </button>
+                                    )}
                                 </div>
-                            </div>
-                            <div className="tasks-list-item-badges">
-                                <TaskUrgencyBadge task={t} />
-                            </div>
-                        </div>
-                    ))}
-                </div>
-                <div className="tasks-detail-column">
-                    {selected && editing && canManageTasks() ? (
-                        <TaskEditForm
-                            task={selected}
-                            storeOptions={isAdmin() ? stores : vedouciStores}
-                            storeLocked={storeLocked}
-                            isAdmin={isAdmin()}
-                            onSaved={(u) => {
-                                setSelected(u);
-                                setEditing(false);
-                                update(u.id, u, { merge: true });
-                                load(listParams);
-                            }}
-                            onCancel={() => setEditing(false)}
-                        />
-                    ) : (
-                        <TaskDetailPanel
-                            task={selected}
-                            canEdit
-                            isManager
-                            showMarkRead={false}
-                            onUpdate={(u) => {
-                                setSelected(u);
-                                setTasks((list) => list.map((t) => (t.id === u.id ? u : t)));
-                            }}
-                        />
+                                {selectedAssigneeWip > 0 && (
+                                    <p className="task-row-detail-hint">
+                                        WIP: {selectedAssigneeWip}/{WIP_LIMIT} aktivních u {task.assignee?.jmeno_plne}
+                                    </p>
+                                )}
+                            </>
+                        )
                     )}
-                    {selected && canManageTasks() && !editing && (
-                        <button
-                            type="button"
-                            className="btn btn--secondary tasks-action-btn"
-                            onClick={() => setEditing(true)}
-                        >
-                            Upravit úkol
-                        </button>
-                    )}
-                    {selected && selectedAssigneeWip > 0 && !editing && (
-                        <p className="task-wip-indicator">
-                            WIP: {selectedAssigneeWip}/{WIP_LIMIT} aktivních u {selected.assignee?.jmeno_plne}
-                        </p>
-                    )}
-                    {selected && !editing && (
-                        <button
-                            type="button"
-                            className="btn btn--secondary tasks-action-btn"
-                            onClick={handleDelete}
-                        >
-                            Smazat úkol
-                        </button>
-                    )}
-                </div>
+                />
             </div>
         </div>
     );
