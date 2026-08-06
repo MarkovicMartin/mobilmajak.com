@@ -7,7 +7,7 @@ function shiftDateIso(datum) {
     return String(datum).slice(0, 10);
 }
 
-function AttendancePanel({ user }) {
+function AttendancePanel({ user, compact = false }) {
     const [todayShift, setTodayShift] = useState(null);
     const [attendanceHistory, setAttendanceHistory] = useState([]);
     const [currentStatus, setCurrentStatus] = useState('offline'); // offline, working, on_break
@@ -206,18 +206,20 @@ function AttendancePanel({ user }) {
 
     if (loading) {
         return (
-            <div className="attendance-panel">
+            <div className={`attendance-panel${compact ? ' attendance-panel--compact' : ''}`}>
                 <div className="loading">Načítání docházky...</div>
             </div>
         );
     }
 
     const statusDisplay = getStatusDisplay();
+    const timeOd = todayShift?.cas_od ? todayShift.cas_od.substring(0, 5) : '';
+    const timeDo = todayShift?.cas_do ? todayShift.cas_do.substring(0, 5) : '';
 
     return (
-        <div className="attendance-panel">
+        <div className={`attendance-panel${compact ? ' attendance-panel--compact' : ''}`}>
             <div className="attendance-header">
-                <h3>⏰ Docházka - {new Date().toLocaleDateString('cs-CZ')}</h3>
+                <h3>{compact ? '⏰ Docházka' : `⏰ Docházka - ${new Date().toLocaleDateString('cs-CZ')}`}</h3>
                 <div className={`status-indicator ${statusDisplay.class}`}>
                     {statusDisplay.icon} {statusDisplay.text}
                 </div>
@@ -225,11 +227,13 @@ function AttendancePanel({ user }) {
 
             {todayShift ? (
                 <div className="shift-info-card">
-                    <h4>📋 Dnešní směna</h4>
+                    {!compact && <h4>📋 Dnešní směna</h4>}
                     <div className="shift-details">
-                        <div><strong>Prodejna:</strong> {todayShift.prodejna}</div>
-                        <div><strong>Plánovaný čas:</strong> {todayShift.cas_od.substring(0, 5)} - {todayShift.cas_do.substring(0, 5)}</div>
-                        <div><strong>Odpracováno:</strong> {calculateWorkTime()}</div>
+                        <div><strong>Prodejna:</strong> {todayShift.prodejna_nazev || todayShift.prodejna}</div>
+                        <div><strong>{compact ? 'Čas:' : 'Plánovaný čas:'}</strong> {timeOd} - {timeDo}</div>
+                        {!compact && (
+                            <div><strong>Odpracováno:</strong> {calculateWorkTime()}</div>
+                        )}
                     </div>
                 </div>
             ) : (
@@ -254,7 +258,7 @@ function AttendancePanel({ user }) {
                 if (now > end) {
                     return (
                         <div className="attendance-warning-banner" role="alert">
-                            <p>⚠️ Směna už skončila ({todayShift.cas_do.substring(0, 5)}) – nezapomeňte odkliknout odchod.</p>
+                            <p>⚠️ Směna už skončila ({timeDo}) – nezapomeňte odkliknout odchod.</p>
                         </div>
                     );
                 }
@@ -262,13 +266,6 @@ function AttendancePanel({ user }) {
             })()}
 
             {error && <div className="error-message">{error}</div>}
-
-            {todayShift && (
-                <p className="attendance-auto-hint">
-                    Po 20:30 se stav „v práci“ automaticky ukončí (i bez odkliknutí odchodu).
-                    Další den je nutné znovu zakliknout příchod.
-                </p>
-            )}
 
             {todayShift && (
                 <div className="attendance-controls">
@@ -308,7 +305,7 @@ function AttendancePanel({ user }) {
                 </div>
             )}
 
-            {attendanceHistory.length > 0 && (
+            {!compact && attendanceHistory.length > 0 && (
                 <div className="attendance-history">
                     <h4>📜 Historie akcí dnes</h4>
                     <div className="history-list">

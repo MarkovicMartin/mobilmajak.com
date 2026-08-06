@@ -625,12 +625,6 @@
     color: var(--text-inverse) !important;
 }
 
-.dark-mode .attendance-auto-hint {
-    background: var(--bg-inset) !important;
-    color: var(--text-secondary) !important;
-    border-color: var(--border-subtle) !important;
-}
-
 .dark-mode .history-item {
     background: var(--bg-inset) !important;
 }

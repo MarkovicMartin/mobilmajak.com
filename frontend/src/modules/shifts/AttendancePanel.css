@@ -11,17 +11,6 @@
     margin: 0.25rem 0;
 }
 
-.attendance-auto-hint {
-    font-size: 0.82rem;
-    color: var(--text-secondary);
-    background: var(--bg-inset);
-    border: 1px solid var(--border-subtle);
-    border-radius: 8px;
-    padding: 10px 12px;
-    margin-bottom: 12px;
-    line-height: 1.4;
-}
-
 .attendance-panel {
     padding: 20px;
     max-width: 800px;
@@ -345,4 +334,72 @@
     .action-icon {
         align-self: center;
     }
+}
+
+/* Kompaktní režim (Home) */
+.attendance-panel--compact .attendance-header {
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom-width: 1px;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.attendance-panel--compact .attendance-header h3 {
+    font-size: 1rem;
+}
+
+.attendance-panel--compact .status-indicator {
+    padding: 4px 10px;
+    font-size: 0.78rem;
+    border-radius: 999px;
+    box-shadow: none;
+    border-width: 1px;
+}
+
+.attendance-panel--compact .shift-info-card {
+    padding: 8px 10px;
+    margin-bottom: 10px;
+    border-radius: 8px;
+}
+
+.attendance-panel--compact .shift-details {
+    gap: 2px;
+}
+
+.attendance-panel--compact .shift-details div {
+    font-size: 0.82rem;
+    line-height: 1.35;
+}
+
+.attendance-panel--compact .no-shift-info {
+    padding: 10px;
+    margin-bottom: 10px;
+    font-size: 0.85rem;
+    border-radius: 8px;
+}
+
+.attendance-panel--compact .attendance-warning-banner {
+    padding: 8px 10px;
+    margin-bottom: 10px;
+    font-size: 0.82rem;
+}
+
+.attendance-panel--compact .attendance-controls {
+    padding: 10px;
+    margin-bottom: 0;
+    border-radius: 8px;
+    box-shadow: none;
+    border: 1px solid var(--border-subtle);
+}
+
+.attendance-panel--compact .control-buttons {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.attendance-panel--compact .attendance-btn {
+    padding: 10px 8px;
+    font-size: 0.85rem;
+    border-radius: 8px;
 } 

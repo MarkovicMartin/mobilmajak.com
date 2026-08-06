@@ -333,6 +333,8 @@ export default function SellerDashboard({ user }) {
             )}
           </div>
 
+          <MyTasksPreview />
+
           <div className="below-cards">
             <div className="card">
               <h3>Novinky</h3>
@@ -353,10 +355,8 @@ export default function SellerDashboard({ user }) {
           </div>
         </div>
         <div className="right-col">
-          <MyTasksPreview />
-          <div className="card" style={{marginBottom: 16}}>
-            <h3>Dnešní směna</h3>
-            <AttendancePanel user={user} />
+          <div className="card card--attendance-compact" style={{marginBottom: 16}}>
+            <AttendancePanel user={user} compact />
           </div>
           <div className="card" style={{marginBottom: 16}}>
             <h3>Nejbližší směny</h3>

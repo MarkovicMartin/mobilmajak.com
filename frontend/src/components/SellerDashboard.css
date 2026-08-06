@@ -464,6 +464,10 @@
     border-bottom-color: var(--border-subtle);
 }
 
+.seller-dashboard .card--attendance-compact {
+    padding: 12px 14px;
+}
+
 .seller-dashboard .card .shift-info-card {
     background: var(--bg-inset);
     border: 1px solid var(--border-subtle);
