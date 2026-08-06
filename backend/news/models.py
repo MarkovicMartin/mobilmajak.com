@@ -143,6 +143,23 @@ class Komentar(models.Model):
     def __str__(self):
         return f"Komentář {self.id} od {self.autor.jmeno} na novinku {self.novinka.id}"
 
+
+class NewsUserVisitState(models.Model):
+    """Poslední návštěva modulu Novinky – pro badge nepřečtených příspěvků."""
+
+    id = models.AutoField(primary_key=True)
+    user_id = models.IntegerField(unique=True, db_column='USER_ID')
+    last_seen_at = models.DateTimeField(db_column='LAST_SEEN_AT')
+
+    class Meta:
+        db_table = 'WEB_NOVINKY_USER_VISIT'
+        verbose_name = 'Návštěva novinek'
+        verbose_name_plural = 'Návštěvy novinek'
+
+    def __str__(self):
+        return f"News visit user={self.user_id} at={self.last_seen_at}"
+
+
 class KomentarSoubor(models.Model):
     """Model pro soubory připojené k komentářům"""
     TYP_CHOICES = [

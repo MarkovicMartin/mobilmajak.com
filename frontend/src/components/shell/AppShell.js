@@ -4,7 +4,7 @@ import AppSidebar from './AppSidebar';
 import AppMobileDrawer from './AppMobileDrawer';
 import AppTopBar from './AppTopBar';
 import { showAppToast } from '../AppToast';
-import { reklamaceAPI, taskAPI } from '../../services/api';
+import { reklamaceAPI, taskAPI, newsAPI } from '../../services/api';
 import { useUnreadPoll } from '../../hooks/useUnreadPoll';
 import './AppShell.css';
 
@@ -85,6 +85,24 @@ const AppShell = ({
         refreshEventName: 'reklamace-notifications-refresh',
     });
 
+    const fetchNewsUnread = useCallback(async () => {
+        if (!user) return 0;
+        const res = await newsAPI.getUnreadSummary();
+        return res?.unread_count || 0;
+    }, [user]);
+
+    const notifyNews = useCallback((delta) => {
+        const word = delta === 1 ? 'nová novinka' : `${delta} nové novinky`;
+        showAppToast(`📰 ${word} – otevřete modul Novinky`);
+    }, []);
+
+    const { count: newsUnreadBadge } = useUnreadPoll({
+        enabled: !!user,
+        fetchCount: fetchNewsUnread,
+        onNotify: notifyNews,
+        refreshEventName: 'news-unread-refresh',
+    });
+
     useEffect(() => {
         setDrawerOpen(false);
     }, [location.pathname]);
@@ -124,6 +142,7 @@ const AppShell = ({
         toggleTheme,
         profileTaskBadge,
         reklamaceNotifBadge,
+        newsUnreadBadge,
     };
 
     return (

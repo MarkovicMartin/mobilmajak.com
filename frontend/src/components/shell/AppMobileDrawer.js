@@ -16,6 +16,7 @@ const AppMobileDrawer = ({
     toggleTheme,
     profileTaskBadge,
     reklamaceNotifBadge,
+    newsUnreadBadge,
 }) => {
     const navigate = useNavigate();
     const location = useLocation();
@@ -58,6 +59,7 @@ const AppMobileDrawer = ({
                         mobile
                         profileTaskBadge={profileTaskBadge}
                         reklamaceNotifBadge={reklamaceNotifBadge}
+                        newsUnreadBadge={newsUnreadBadge}
                         onNavigate={onClose}
                         linkClass="app-drawer__link"
                         activeClass="app-drawer__link--active"

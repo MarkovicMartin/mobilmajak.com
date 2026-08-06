@@ -2,6 +2,10 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
+    # Unread badge (před <int:pk>/)
+    path('unread-summary/', views.news_unread_summary, name='news-unread-summary'),
+    path('mark-all-read/', views.news_mark_all_read, name='news-mark-all-read'),
+
     # Novinky
     path('', views.NovinkaListCreateView.as_view(), name='novinky-list-create'),
     path('<int:pk>/', views.NovinkaDetailView.as_view(), name='novinka-detail'),

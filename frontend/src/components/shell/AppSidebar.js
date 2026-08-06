@@ -13,6 +13,7 @@ const AppSidebar = ({
     toggleTheme,
     profileTaskBadge,
     reklamaceNotifBadge,
+    newsUnreadBadge,
     collapsed,
     onToggleCollapse,
 }) => {
@@ -46,6 +47,7 @@ const AppSidebar = ({
                     collapsed={collapsed}
                     profileTaskBadge={profileTaskBadge}
                     reklamaceNotifBadge={reklamaceNotifBadge}
+                    newsUnreadBadge={newsUnreadBadge}
                     linkClass="app-sidebar__link"
                     activeClass="app-sidebar__link--active"
                     childClass="app-sidebar__link--child"

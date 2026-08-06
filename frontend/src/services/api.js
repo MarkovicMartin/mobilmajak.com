@@ -327,6 +327,14 @@ export const newsAPI = {
         const response = await api.get('/news/', { params });
         return response.data;
     },
+    getUnreadSummary: async () => {
+        const response = await api.get('/news/unread-summary/');
+        return response.data;
+    },
+    markAllRead: async () => {
+        const response = await api.post('/news/mark-all-read/');
+        return response.data;
+    },
 };
 
 export const shiftsAPI = {

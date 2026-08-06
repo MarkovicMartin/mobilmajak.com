@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import api from '../../services/api';
+import api, { newsAPI } from '../../services/api';
 import { PageHeader } from '../../components/ui';
 import PostForm from './PostForm';
 import PostList from './PostList';
@@ -43,6 +43,12 @@ const NewsModule = () => {
     useEffect(() => {
         fetchPosts();
         fetchCategories();
+        newsAPI.markAllRead()
+            .then(() => {
+                window.dispatchEvent(new Event('news-unread-refresh'));
+                window.dispatchEvent(new Event('notifications-refresh'));
+            })
+            .catch(() => {});
     }, []);
 
     useEffect(() => {

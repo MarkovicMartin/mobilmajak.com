@@ -5,17 +5,9 @@ import { useTasks } from '../../hooks/useTasks';
 import { taskAPI } from '../../services/api';
 import TaskDetailPanel from './TaskDetailPanel';
 import TaskKanbanBoard from './TaskKanbanBoard';
-import TaskUrgencyBadge from './TaskUrgencyBadge';
 import { urgencyForTask, URGENCY_OVERDUE } from '../../utils/taskUrgency';
 import { parseTaskId, sameTaskId, TASKS_MINE_PATH } from '../../utils/taskNavigation';
-import {
-    taskDisplayTitle,
-    isPrirazenySop,
-    isActiveTask,
-} from '../../utils/taskDisplay';
 import './TasksModule.css';
-
-const WIP_LIMIT = 3;
 
 const MyTasksModule = ({ embedded = false }) => {
     const location = useLocation();
@@ -95,13 +87,6 @@ const MyTasksModule = ({ embedded = false }) => {
         return () => { cancelled = true; };
     }, [taskIdFromNav, tasks, loading, selected, filter, setTasks]);
 
-    const activePrirazeny = useMemo(
-        () => tasks.filter((t) => isPrirazenySop(t) && isActiveTask(t)),
-        [tasks],
-    );
-
-    const wipCount = activePrirazeny.length;
-
     const addPersonalTask = async (e) => {
         e.preventDefault();
         if (!newUkol.trim()) return;
@@ -164,30 +149,6 @@ const MyTasksModule = ({ embedded = false }) => {
     return (
         <div className={`tasks-module my-tasks-module${embedded ? ' my-tasks-module--embedded' : ''}`}>
             {!embedded && <PageHeader title="Moje úkoly" />}
-
-            {activePrirazeny.length > 0 && (
-                <div className="profile-tasks-wip">
-                    <strong>Moje aktivní přiřazené úkoly ({wipCount}/{WIP_LIMIT})</strong>
-                    <div className="profile-tasks-wip-list">
-                        {activePrirazeny.slice(0, WIP_LIMIT).map((t) => (
-                            <button
-                                key={t.id}
-                                type="button"
-                                className={`profile-tasks-wip-item${selected?.id === t.id ? ' selected' : ''}`}
-                                onClick={() => selectTask(t)}
-                            >
-                                <span>{taskDisplayTitle(t)}</span>
-                                <TaskUrgencyBadge task={t} />
-                            </button>
-                        ))}
-                    </div>
-                    {wipCount > WIP_LIMIT && (
-                        <p className="task-wip-warning">
-                            Máte {wipCount} aktivních úkolů – doporučený limit je {WIP_LIMIT}.
-                        </p>
-                    )}
-                </div>
-            )}
 
             <form className="profile-tasks-personal-form" onSubmit={addPersonalTask}>
                 <input

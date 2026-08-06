@@ -1,7 +1,8 @@
-import { reklamaceAPI, taskAPI } from './api';
+import { reklamaceAPI, taskAPI, newsAPI } from './api';
 import { TASKS_MINE_PATH } from '../utils/taskNavigation';
 
 const REKLAMACE_PATH = '/reklamace';
+const NEWS_PATH = '/news';
 
 function normalizeReklamace(row) {
     const read = Boolean(row.read_at);
@@ -69,6 +70,22 @@ function normalizeTaskRead(task) {
     };
 }
 
+function normalizeNewsUnread(row) {
+    return {
+        id: `news-unread:${row.id}`,
+        source: 'news',
+        sourceLabel: 'Novinky',
+        title: row.autor_jmeno || 'Novinka',
+        message: row.obsah || 'Nová novinka',
+        createdAt: row.datum_vytvoreni,
+        read: false,
+        link: `${NEWS_PATH}#post-${row.id}`,
+        markRead: async () => {
+            await newsAPI.markAllRead();
+        },
+    };
+}
+
 function sortByDateDesc(items) {
     return [...items].sort((a, b) => {
         const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
@@ -78,10 +95,11 @@ function sortByDateDesc(items) {
 }
 
 export async function fetchUnreadNotifications() {
-    const [reklamaceRows, tasks, summary] = await Promise.all([
+    const [reklamaceRows, tasks, summary, newsSummary] = await Promise.all([
         reklamaceAPI.listUnreadNotifications(),
         taskAPI.list({ scope: 'mine', stav: 'vse', limit: 200 }),
         taskAPI.getNotificationsSummary(),
+        newsAPI.getUnreadSummary(),
     ]);
 
     const items = [];
@@ -105,6 +123,10 @@ export async function fetchUnreadNotifications() {
                 }
             });
         }
+    }
+
+    if (Array.isArray(newsSummary?.items)) {
+        newsSummary.items.forEach((row) => items.push(normalizeNewsUnread(row)));
     }
 
     return sortByDateDesc(items);
@@ -134,20 +156,23 @@ export async function fetchReadNotifications() {
 }
 
 export async function fetchUnreadCount() {
-    const [reklamaceRows, summary] = await Promise.all([
+    const [reklamaceRows, summary, newsSummary] = await Promise.all([
         reklamaceAPI.listUnreadNotifications(),
         taskAPI.getNotificationsSummary(),
+        newsAPI.getUnreadSummary(),
     ]);
     const reklamaceCount = Array.isArray(reklamaceRows) ? reklamaceRows.length : 0;
     let taskCount = 0;
     if (summary?.success) {
         taskCount = (summary.tasks_unread || 0) + (summary.overdue_count || 0);
     }
-    return reklamaceCount + taskCount;
+    const newsCount = newsSummary?.unread_count || 0;
+    return reklamaceCount + taskCount + newsCount;
 }
 
 export function dispatchNotificationsRefresh() {
     window.dispatchEvent(new Event('notifications-refresh'));
     window.dispatchEvent(new Event('tasks-notifications-refresh'));
     window.dispatchEvent(new Event('reklamace-notifications-refresh'));
+    window.dispatchEvent(new Event('news-unread-refresh'));
 }

@@ -5,7 +5,11 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from django.db import transaction
-from .models import Novinka, NovinkaSoubor, Reakce, Komentar, KomentarSoubor, Kategorie
+from django.utils import timezone
+from .models import (
+    Novinka, NovinkaSoubor, Reakce, Komentar, KomentarSoubor, Kategorie,
+    NewsUserVisitState,
+)
 from .serializers import (
     NovinkaSerializer, NovinkaCreateSerializer,
     KomentarSerializer, KomentarCreateSerializer,
@@ -347,3 +351,74 @@ class KategorieDetailView(generics.RetrieveUpdateDestroyAPIView):
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied("Pouze administrátor může mazat kategorie")
         instance.delete()
+
+
+def _news_unread_queryset(user_id, last_seen_at):
+    return (
+        Novinka.objects.filter(aktivni=True, datum_vytvoreni__gt=last_seen_at)
+        .exclude(autor_id=user_id)
+        .select_related('autor')
+        .order_by('-datum_vytvoreni')
+    )
+
+
+def _news_unread_count(user_id, last_seen_at):
+    return _news_unread_queryset(user_id, last_seen_at).count()
+
+
+def _news_item_payload(novinka):
+    autor = novinka.autor
+    jmeno = ''
+    if autor:
+        jmeno = f'{getattr(autor, "jmeno", "")} {getattr(autor, "prijmeni", "")}'.strip()
+    text = (novinka.obsah or '').strip().replace('\n', ' ')
+    if len(text) > 140:
+        text = f'{text[:137]}…'
+    return {
+        'id': novinka.id,
+        'obsah': text,
+        'autor_jmeno': jmeno or 'Neznámý',
+        'datum_vytvoreni': novinka.datum_vytvoreni.isoformat() if novinka.datum_vytvoreni else None,
+    }
+
+
+def _get_or_init_news_visit(user_id):
+    """První poll: last_seen=now → historické novinky nepočítáme jako nepřečtené."""
+    state, _created = NewsUserVisitState.objects.get_or_create(
+        user_id=user_id,
+        defaults={'last_seen_at': timezone.now()},
+    )
+    return state
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def news_unread_summary(request):
+    uid = request.user.id
+    state = _get_or_init_news_visit(uid)
+    qs = _news_unread_queryset(uid, state.last_seen_at)
+    items = [_news_item_payload(n) for n in qs[:30]]
+    return Response({
+        'success': True,
+        'unread_count': qs.count(),
+        'items': items,
+        'last_seen_at': state.last_seen_at.isoformat(),
+    })
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def news_mark_all_read(request):
+    """Po otevření modulu Novinky – vynuluje badge."""
+    uid = request.user.id
+    now = timezone.now()
+    NewsUserVisitState.objects.update_or_create(
+        user_id=uid,
+        defaults={'last_seen_at': now},
+    )
+    return Response({
+        'success': True,
+        'unread_count': 0,
+        'items': [],
+        'last_seen_at': now.isoformat(),
+    })
