@@ -2,30 +2,35 @@ from rest_framework import status, permissions
 from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
-from django.db.models import Q, Count, Avg
+from django.db.models import Q, Count, Avg, OuterRef, Subquery, DateTimeField
 from django.utils import timezone
 from datetime import timedelta
 from django.db import transaction
 
 from .models import Order, OrderStatusHistory
 from .serializers import (
-    OrderSerializer, OrderCreateSerializer, OrderUpdateStatusSerializer,
-    OrderStatusHistorySerializer
+    OrderSerializer, OrderKanbanSerializer, OrderCreateSerializer,
+    OrderUpdateStatusSerializer, OrderStatusHistorySerializer,
 )
 from .status_config import (
     MAIN_STATUS_COLUMNS,
     MAIN_STATUS_KEYS,
-    STATUS_COLUMN_FOLD,
     RETIRED_STATUSES,
+    column_key_for_status,
 )
 
 
 class OrderViewSet(ModelViewSet):
     """ViewSet pro správu objednávek"""
-    queryset = Order.objects.all().select_related(
-        'zalozil', 'posledni_zmena_uzivatel', 'prodejna'
-    ).prefetch_related('historie_stavu__uzivatel')
     permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        qs = Order.objects.all().select_related(
+            'zalozil', 'posledni_zmena_uzivatel', 'prodejna',
+        )
+        if self.action == 'list':
+            return qs
+        return qs.prefetch_related('historie_stavu__uzivatel')
     
     def get_serializer_class(self):
         if self.action == 'create':
@@ -35,10 +40,9 @@ class OrderViewSet(ModelViewSet):
         return OrderSerializer
     
     def list(self, request):
-        """Seznam všech objednávek organizovaný pro kanban board"""
+        """Kanban board – jeden queryset + lehký serializer (bez historie)."""
         queryset = self.get_queryset()
         
-        # Filtrování podle parametrů
         search = request.query_params.get('search', '')
         status_filter = request.query_params.get('status', '')
         date_from = request.query_params.get('date_from', '')
@@ -61,41 +65,68 @@ class OrderViewSet(ModelViewSet):
         
         if date_to:
             queryset = queryset.filter(datum_vytvoreni__date__lte=date_to)
-        
-        # 5 hlavních sloupců; predobjednano → objednano; filtr-only stavy zvlášť
+
+        status_since_sq = OrderStatusHistory.objects.filter(
+            objednavka_id=OuterRef('pk'),
+            novy_status=OuterRef('status'),
+        ).order_by('-datum_zmeny').values('datum_zmeny')[:1]
+
+        queryset = queryset.annotate(
+            status_since_at=Subquery(status_since_sq, output_field=DateTimeField()),
+        )
+
+        # Vyřízeno: řádky jen při hledání / filtru hotovo
+        include_done_orders = bool((search or '').strip()) or status_filter == 'hotovo'
+        hotovo_count = 0
+        if not include_done_orders:
+            hotovo_count = queryset.filter(status='hotovo').count()
+            queryset = queryset.exclude(status='hotovo')
+
+        orders = list(queryset.order_by('-datum_vytvoreni'))
+        total_count = len(orders) + (0 if include_done_orders else hotovo_count)
+
+        buckets = {key: [] for key, _ in MAIN_STATUS_COLUMNS}
+        extras = {}
+        for order in orders:
+            col = column_key_for_status(order.status)
+            if col in buckets:
+                buckets[col].append(order)
+            elif order.status not in RETIRED_STATUSES:
+                extras.setdefault(order.status, []).append(order)
+
         kanban_data = {}
         for status_key, status_label in MAIN_STATUS_COLUMNS:
-            folded = [
-                src for src, dest in STATUS_COLUMN_FOLD.items() if dest == status_key
-            ]
-            status_keys = [status_key, *folded]
-            status_orders = queryset.filter(status__in=status_keys).order_by('-datum_vytvoreni')
-            serialized_orders = OrderSerializer(status_orders, many=True).data
+            if status_key == 'hotovo' and not include_done_orders:
+                kanban_data[status_key] = {
+                    'label': status_label,
+                    'orders': [],
+                    'count': hotovo_count,
+                    'main': True,
+                    'lazy': True,
+                }
+                continue
+            serialized = OrderKanbanSerializer(buckets[status_key], many=True).data
             kanban_data[status_key] = {
                 'label': status_label,
-                'orders': serialized_orders,
-                'count': len(serialized_orders),
+                'orders': serialized,
+                'count': len(serialized),
                 'main': True,
+                'lazy': False,
             }
 
-        for status_key, status_label in Order.STATUS_CHOICES:
-            if status_key in MAIN_STATUS_KEYS or status_key in STATUS_COLUMN_FOLD:
-                continue
-            if status_key in RETIRED_STATUSES:
-                continue
-            status_orders = queryset.filter(status=status_key).order_by('-datum_vytvoreni')
-            serialized_orders = OrderSerializer(status_orders, many=True).data
+        status_labels = dict(Order.STATUS_CHOICES)
+        for status_key, status_orders in extras.items():
             kanban_data[status_key] = {
-                'label': status_label,
-                'orders': serialized_orders,
-                'count': len(serialized_orders),
+                'label': status_labels.get(status_key, status_key),
+                'orders': OrderKanbanSerializer(status_orders, many=True).data,
+                'count': len(status_orders),
                 'main': False,
             }
         
         return Response({
             'kanban_data': kanban_data,
             'main_columns': MAIN_STATUS_KEYS,
-            'total_count': queryset.count(),
+            'total_count': total_count,
             'filters': {
                 'search': search,
                 'status': status_filter,

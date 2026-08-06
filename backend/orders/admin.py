@@ -77,14 +77,14 @@ class OrderAdmin(admin.ModelAdmin):
     def status_display(self, obj):
         """Barevné zobrazení stavu"""
         colors = {
-            'nove': '#ffeb3b',  # žlutá
-            'objednano': '#2196f3',  # modrá
-            'v_kosiku': '#ff9800',  # oranžová
-            'predobjednano': '#9c27b0',  # fialová
+            'nove': '#ff9800',  # oranžová
+            'objednano': '#ffeb3b',  # žlutá
+            'v_kosiku': '#2196f3',  # modrá
+            'predobjednano': '#ffeb3b',  # žlutá (legacy → objednáno)
             'neni_skladem': '#f44336',  # červená
             'storno': '#757575',  # šedá
             'dorazilo_ceka': '#4caf50',  # zelená
-            'hotovo': '#8bc34a',  # světle zelená
+            'hotovo': '#9e9e9e',  # šedá
         }
         color = colors.get(obj.status, '#e0e0e0')
         return format_html(
@@ -167,14 +167,14 @@ class OrderStatusHistoryAdmin(admin.ModelAdmin):
     def novy_status_display(self, obj):
         """Barevné zobrazení nového stavu"""
         colors = {
-            'nove': '#ffeb3b',
-            'objednano': '#2196f3',
-            'v_kosiku': '#ff9800',
-            'predobjednano': '#9c27b0',
+            'nove': '#ff9800',
+            'objednano': '#ffeb3b',
+            'v_kosiku': '#2196f3',
+            'predobjednano': '#ffeb3b',
             'neni_skladem': '#f44336',
             'storno': '#757575',
             'dorazilo_ceka': '#4caf50',
-            'hotovo': '#8bc34a',
+            'hotovo': '#9e9e9e',
         }
         color = colors.get(obj.novy_status, '#e0e0e0')
         return format_html(

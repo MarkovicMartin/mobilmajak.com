@@ -384,7 +384,17 @@ class OrdersRedesignTests(TestCase):
         self.assertEqual(kd["objednano"]["label"], "objednáno")
         self.assertEqual(kd["dorazilo_ceka"]["label"], "připraveno")
         self.assertEqual(kd["hotovo"]["label"], "vyřízeno")
-        self.assertTrue(any(o["id"] == order_id for o in kd["hotovo"]["orders"]))
+        self.assertEqual(kd["hotovo"]["orders"], [])
+        self.assertTrue(kd["hotovo"].get("lazy"))
+        self.assertGreaterEqual(kd["hotovo"]["count"], 1)
+        for col in kd.values():
+            for order in col.get("orders") or []:
+                self.assertNotIn("historie_stavu", order)
+
+        searched = self.client.get("/api/orders/orders/", {"search": "Jan"})
+        self.assertEqual(searched.status_code, 200)
+        hotovo_orders = searched.data["kanban_data"]["hotovo"]["orders"]
+        self.assertTrue(any(o["id"] == order_id for o in hotovo_orders))
         self.assertTrue(any(o["status"] == "predobjednano" for o in kd["objednano"]["orders"]))
         self.assertNotIn("storno", kd)
         self.assertNotIn("neni_skladem", kd)

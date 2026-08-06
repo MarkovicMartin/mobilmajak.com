@@ -7,6 +7,7 @@ from django.core.validators import URLValidator
 from rest_framework import serializers
 
 from .models import WEB_PRISTUPY_PRODEJNY
+from .permissions import is_admin_category, is_admin_user
 
 
 def normalize_website_url(value):
@@ -50,7 +51,7 @@ class WebPristupyProdejnySerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at'
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at', 'last_used', 'masked_password']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'last_used', 'masked_password', 'added_by']
 
     def validate_website_url(self, value):
         return normalize_website_url(value)
@@ -76,6 +77,18 @@ class WebPristupyProdejnySerializer(serializers.ModelSerializer):
         elif password is not None and not str(password).strip():
             # Prázdné heslo při úpravě = ponechat stávající
             attrs.pop('password', None)
+
+        request = self.context.get('request')
+        user = getattr(request, 'user', None) if request else None
+        new_category = attrs.get('category', getattr(self.instance, 'category', None))
+        if is_admin_category(new_category) and not is_admin_user(user):
+            raise serializers.ValidationError({
+                'category': 'Kategorii Admin mohou spravovat jen administrátoři'
+            })
+        if self.instance and is_admin_category(self.instance.category) and not is_admin_user(user):
+            raise serializers.ValidationError({
+                'category': 'Kategorii Admin mohou spravovat jen administrátoři'
+            })
         return attrs
 
     def update(self, instance, validated_data):

@@ -7,7 +7,7 @@ const WreckPartForm = ({ initial, defaultStore = '', onSave, onCancel }) => {
         model_name: '',
         part_type: 'LCD',
         quantity: 1,
-        store: defaultStore,
+        store: defaultStore || 'Globus',
         notes: '',
     });
     const [saving, setSaving] = useState(false);
@@ -18,7 +18,7 @@ const WreckPartForm = ({ initial, defaultStore = '', onSave, onCancel }) => {
                 model_name: initial.model_name || '',
                 part_type: initial.part_type || 'LCD',
                 quantity: initial.quantity || 1,
-                store: initial.store || '',
+                store: initial.store || 'Globus',
                 notes: initial.notes || '',
             });
         } else {
@@ -26,7 +26,7 @@ const WreckPartForm = ({ initial, defaultStore = '', onSave, onCancel }) => {
                 model_name: '',
                 part_type: 'LCD',
                 quantity: 1,
-                store: defaultStore,
+                store: defaultStore || 'Globus',
                 notes: '',
             });
         }
@@ -116,7 +116,7 @@ const WreckPartForm = ({ initial, defaultStore = '', onSave, onCancel }) => {
                     onChange={handleChange}
                     required
                     autoComplete="off"
-                    placeholder="Servis"
+                    placeholder="Globus"
                 />
             </div>
 

@@ -70,6 +70,7 @@ const OrdersModule = () => {
     const [error, setError] = useState(null);
     const [showForm, setShowForm] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState(null);
+    const [searchInput, setSearchInput] = useState('');
     const [filters, setFilters] = useState({
         search: '',
         status: '',
@@ -77,6 +78,18 @@ const OrdersModule = () => {
         date_to: ''
     });
     const [dashboardStats, setDashboardStats] = useState({});
+
+    // Debounce: API search až ~300 ms po posledním stisku klávesy
+    useEffect(() => {
+        const timer = window.setTimeout(() => {
+            setFilters((prev) => {
+                const next = searchInput.trim();
+                if (prev.search === next) return prev;
+                return { ...prev, search: next };
+            });
+        }, 300);
+        return () => window.clearTimeout(timer);
+    }, [searchInput]);
 
     const applyOrderDateRange = useCallback(({ start_date, end_date }) => {
         setFilters((prev) => ({ ...prev, date_from: start_date, date_to: end_date }));
@@ -143,6 +156,16 @@ const OrdersModule = () => {
         return () => clearInterval(interval);
     }, [filters, loadKanbanData, loadDashboardStats]);
 
+    // Po návratu na kartu / okno – tiché obnovení (bez čekání na 2min poll)
+    useEffect(() => {
+        const onVisible = () => {
+            if (document.visibilityState !== 'visible') return;
+            loadKanbanData({ silent: true });
+            loadDashboardStats();
+        };
+        document.addEventListener('visibilitychange', onVisible);
+        return () => document.removeEventListener('visibilitychange', onVisible);
+    }, [loadKanbanData, loadDashboardStats]);
     const handleStatusChange = async (orderId, newStatus, poznamka = '', dodavatel = null) => {
         const snapshot = kanbanData;
         const patch = dodavatel != null ? { dodavatel } : {};
@@ -256,6 +279,7 @@ const OrdersModule = () => {
     };
 
     const clearFilters = () => {
+        setSearchInput('');
         setFilters({
             search: '',
             status: '',
@@ -310,8 +334,8 @@ const OrdersModule = () => {
                     <input
                         type="text"
                         placeholder="Hledat podle jména, telefonu, modelu…"
-                        value={filters.search}
-                        onChange={(e) => handleFilterChange('search', e.target.value)}
+                        value={searchInput}
+                        onChange={(e) => setSearchInput(e.target.value)}
                         className="filter-input input"
                     />
 
@@ -353,6 +377,7 @@ const OrdersModule = () => {
                 onDeleteOrder={handleDeleteOrder}
                 loading={loading}
                 statusFilter={filters.status}
+                searchActive={Boolean((filters.search || '').trim())}
             />
 
             {showForm && (

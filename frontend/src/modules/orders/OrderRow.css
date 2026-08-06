@@ -71,6 +71,27 @@
     box-shadow: inset 3px 0 0 #c62828;
 }
 
+/* >5 dní od založení, ještě ne připraveno */
+.order-row.age-pending {
+    background: #ffcdd2;
+    color: #1a1a1a;
+    box-shadow: inset 3px 0 0 #c62828;
+}
+
+/* připraveno bez pohybu ≥3 dny */
+.order-row.age-ready-warn {
+    background: #ffebee;
+    color: #1a1a1a;
+    box-shadow: inset 3px 0 0 #e57373;
+}
+
+/* připraveno bez pohybu ≥7 dní */
+.order-row.age-ready-severe {
+    background: #ef9a9a;
+    color: #1a1a1a;
+    box-shadow: inset 3px 0 0 #b71c1c;
+}
+
 .order-row__cell {
     overflow: hidden;
     text-overflow: ellipsis;
@@ -199,16 +220,22 @@
     white-space: nowrap;
 }
 
-/* Pastelové priority = světlé pozadí → vždy tmavý text */
+/* Pastelové / červené zvýraznění = světlé pozadí → vždy tmavý text */
 .dark-mode .order-row.priority-high,
 .dark-mode .order-row.priority-medium,
-.dark-mode .order-row.sla-overdue {
+.dark-mode .order-row.sla-overdue,
+.dark-mode .order-row.age-pending,
+.dark-mode .order-row.age-ready-warn,
+.dark-mode .order-row.age-ready-severe {
     color: #1a1a1a;
 }
 
 .dark-mode .order-row.priority-high .order-row__empty,
 .dark-mode .order-row.priority-medium .order-row__empty,
-.dark-mode .order-row.sla-overdue .order-row__empty {
+.dark-mode .order-row.sla-overdue .order-row__empty,
+.dark-mode .order-row.age-pending .order-row__empty,
+.dark-mode .order-row.age-ready-warn .order-row__empty,
+.dark-mode .order-row.age-ready-severe .order-row__empty {
     color: #666;
 }
 

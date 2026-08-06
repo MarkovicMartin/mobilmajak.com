@@ -3,9 +3,10 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 from django.db.models import Count, Q
+from collections import OrderedDict
 
 from .models import WreckPart
-from .serializers import WreckPartSerializer
+from .serializers import WreckPartSerializer, normalize_store
 
 
 class WreckPartViewSet(ModelViewSet):
@@ -23,7 +24,14 @@ class WreckPartViewSet(ModelViewSet):
         part_type = self.request.query_params.get('part_type', '').strip()
 
         if store:
-            qs = qs.filter(store__iexact=store)
+            if normalize_store(store) == 'Globus':
+                qs = qs.filter(
+                    Q(store__iexact='Globus')
+                    | Q(store__iexact='Neuvedeno')
+                    | Q(store='')
+                )
+            else:
+                qs = qs.filter(store__iexact=store)
         if part_type:
             qs = qs.filter(part_type__icontains=part_type)
         if search:
@@ -43,10 +51,20 @@ class WreckPartViewSet(ModelViewSet):
 @api_view(['GET'])
 @permission_classes([permissions.IsAuthenticated])
 def store_summary(request):
+    """Počty dílů podle prodejny (Neuvedeno / prázdné → Globus)."""
     rows = (
         WreckPart.objects.filter(is_active=True)
         .values('store')
         .annotate(count=Count('id'))
         .order_by('store')
     )
-    return Response({'stores': list(rows), 'total': WreckPart.objects.filter(is_active=True).count()})
+    merged = OrderedDict()
+    for row in rows:
+        key = normalize_store(row['store'])
+        merged[key] = merged.get(key, 0) + row['count']
+    stores = [{'store': store, 'count': count} for store, count in merged.items()]
+    stores.sort(key=lambda s: s['store'])
+    return Response({
+        'stores': stores,
+        'total': WreckPart.objects.filter(is_active=True).count(),
+    })

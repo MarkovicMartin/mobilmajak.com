@@ -6,6 +6,7 @@ import {
     formatZadal,
     formatProdejna,
     myrepairUrl,
+    orderAgeClass,
 } from './orderHelpers';
 import './OrderRow.css';
 
@@ -29,15 +30,7 @@ const OrderRow = ({ order, isDragging = false, onOrderClick, onDeleteOrder }) =>
         ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` }
         : undefined;
 
-    const priorityClass = (() => {
-        if (order.sla_overdue) return 'sla-overdue';
-        const days = order.dni_ve_stavu;
-        if (typeof days === 'number') {
-            if (days >= 5) return 'priority-high';
-            if (days >= 3) return 'priority-medium';
-        }
-        return '';
-    })();
+    const priorityClass = orderAgeClass(order);
 
     const repairLink = myrepairUrl(order.servisni_cislo);
     const customer = `${order.jmeno_zakaznika || ''} ${order.prijmeni_zakaznika || ''}`.trim();

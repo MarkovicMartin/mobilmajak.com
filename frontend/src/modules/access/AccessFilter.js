@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { Select } from '../../components/ui';
 import './AccessFilter.css';
 
-const AccessFilter = ({ filters, onFiltersChange, stores, categories }) => {
+const AccessFilter = ({ filters, onFiltersChange, stores, categories, showCategoryFilter = false }) => {
     const handleFilterChange = (key, value) => {
         onFiltersChange(prev => ({
             ...prev,
@@ -18,7 +18,7 @@ const AccessFilter = ({ filters, onFiltersChange, stores, categories }) => {
         });
     };
 
-    const hasActiveFilters = filters.store || filters.category || filters.search;
+    const hasActiveFilters = filters.store || (showCategoryFilter && filters.category) || filters.search;
 
     const storeOptions = useMemo(() => [
         { value: '', label: 'Všechny prodejny' },
@@ -81,19 +81,21 @@ const AccessFilter = ({ filters, onFiltersChange, stores, categories }) => {
                     />
                 </div>
 
-                <div className="filter-group">
-                    <label htmlFor="category-filter">
-                        Kategorie
-                    </label>
-                    <Select
-                        id="category-filter"
-                        value={filters.category}
-                        onChange={(value) => handleFilterChange('category', value)}
-                        options={categoryOptions}
-                        placeholder="Všechny kategorie"
-                        aria-label="Filtrovat podle kategorie"
-                    />
-                </div>
+                {showCategoryFilter && (
+                    <div className="filter-group">
+                        <label htmlFor="category-filter">
+                            Kategorie
+                        </label>
+                        <Select
+                            id="category-filter"
+                            value={filters.category}
+                            onChange={(value) => handleFilterChange('category', value)}
+                            options={categoryOptions}
+                            placeholder="Všechny kategorie"
+                            aria-label="Filtrovat podle kategorie"
+                        />
+                    </div>
+                )}
             </div>
 
             {hasActiveFilters && (
@@ -122,7 +124,7 @@ const AccessFilter = ({ filters, onFiltersChange, stores, categories }) => {
                                 </button>
                             </div>
                         )}
-                        {filters.category && (
+                        {showCategoryFilter && filters.category && (
                             <div className="filter-tag">
                                 Kategorie: {filters.category}
                                 <button 

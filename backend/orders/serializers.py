@@ -55,7 +55,7 @@ class OrderStatusHistorySerializer(serializers.ModelSerializer):
 
 
 class OrderSerializer(serializers.ModelSerializer):
-    """Hlavní serializer pro objednávky"""
+    """Hlavní serializer pro objednávky (detail / create response)."""
     zalozil = WebUserSimpleSerializer(read_only=True)
     posledni_zmena_uzivatel = WebUserSimpleSerializer(read_only=True)
     prodejna = ProdejnaSimpleSerializer(read_only=True)
@@ -128,6 +128,39 @@ class OrderSerializer(serializers.ModelSerializer):
         if not sid:
             return None
         return f"https://www.mobilmajak.cz/admin/objednavky/objednavka-{sid}"
+
+
+class OrderKanbanSerializer(serializers.ModelSerializer):
+    """Lehký serializer pro kanban – bez historie a těžkých textových polí."""
+    zalozil = WebUserSimpleSerializer(read_only=True)
+    prodejna = ProdejnaSimpleSerializer(read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    dni_ve_stavu = serializers.SerializerMethodField()
+    sla_overdue = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Order
+        fields = [
+            'id', 'jmeno_zakaznika', 'prijmeni_zakaznika', 'telefon_zakaznika',
+            'typ_telefonu', 'dil', 'barva', 'status', 'status_display',
+            'datum_vytvoreni', 'zalozil', 'prodejna', 'poznamka', 'cena',
+            'dodavatel', 'servisni_cislo', 'dni_ve_stavu', 'sla_overdue',
+        ]
+
+    def _days_in_status(self, obj):
+        from django.utils import timezone
+        since = getattr(obj, 'status_since_at', None) or obj.datum_vytvoreni
+        if not since:
+            return 0
+        return max(0, (timezone.now() - since).days)
+
+    def get_dni_ve_stavu(self, obj):
+        return self._days_in_status(obj)
+
+    def get_sla_overdue(self, obj):
+        if obj.status in ('hotovo', 'storno'):
+            return False
+        return self._days_in_status(obj) >= sla_days_threshold()
 
 
 class OrderCreateSerializer(serializers.ModelSerializer):

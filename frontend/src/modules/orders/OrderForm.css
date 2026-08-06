@@ -1,6 +1,5 @@
-/* Kompaktní obsah – padding řeší .modal-body */
+/* Kompaktní obsah – boční padding bere .modal-body */
 .order-form {
-    padding: 0;
     display: flex;
     flex-direction: column;
     gap: 0;

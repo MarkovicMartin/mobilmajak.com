@@ -30,12 +30,32 @@
 .header-content {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-start;
     gap: 8px;
+}
+
+.column-header--toggle {
+    cursor: pointer;
+    user-select: none;
+}
+
+.column-header--toggle:hover {
+    filter: brightness(0.96);
+}
+
+.column-chevron {
+    font-size: 12px;
+    line-height: 1;
+    opacity: 0.9;
+}
+
+.kanban-column--collapsed .column-header {
+    border-radius: 8px;
 }
 
 .column-title {
     text-align: left;
+    flex: 1;
 }
 
 .column-count {
@@ -44,6 +64,7 @@
     border-radius: 10px;
     font-size: 12px;
     font-weight: 600;
+    margin-left: auto;
 }
 
 .column-content {

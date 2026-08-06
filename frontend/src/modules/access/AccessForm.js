@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import Modal from '../../components/Modal';
 import './AccessForm.css';
 
-const AccessForm = ({ access, stores, categories, onSubmit, onCancel }) => {
+const BUILTIN_CATEGORIES = ['Dodavatel', 'E-shop', 'Admin', 'Marketing', 'Ostatní'];
+
+const AccessForm = ({ access, stores, categories, onSubmit, onCancel, canUseAdminCategory = false }) => {
     const [formData, setFormData] = useState({
         company_name: '',
         website_url: '',
@@ -19,6 +21,15 @@ const AccessForm = ({ access, stores, categories, onSubmit, onCancel }) => {
 
     // Získání unikátních názvů prodejen ze statistik
     const storeNames = stores.map(store => store.store);
+
+    const categoryOptions = [
+        ...new Set([
+            ...categories,
+            ...BUILTIN_CATEGORIES.filter(
+                (c) => c !== 'Admin' || canUseAdminCategory
+            ),
+        ]),
+    ].filter((c) => c !== 'Admin' || canUseAdminCategory);
 
     useEffect(() => {
         if (access) {
@@ -230,16 +241,11 @@ const AccessForm = ({ access, stores, categories, onSubmit, onCancel }) => {
                                 onChange={handleChange}
                             >
                                 <option value="">Vyberte kategorii</option>
-                                {categories.map(category => (
+                                {categoryOptions.map((category) => (
                                     <option key={category} value={category}>
                                         {category}
                                     </option>
                                 ))}
-                                <option value="Dodavatel">Dodavatel</option>
-                                <option value="E-shop">E-shop</option>
-                                <option value="Admin">Admin</option>
-                                <option value="Marketing">Marketing</option>
-                                <option value="Ostatní">Ostatní</option>
                             </select>
                         </div>
 

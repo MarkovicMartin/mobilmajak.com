@@ -132,3 +132,75 @@ class WebPristupyPermissionsTest(TestCase):
         delete_res = self.client.delete(f'/api/pristupy/{self.access.id}/')
         self.assertEqual(delete_res.status_code, 403)
         self.assertEqual(delete_res.data['error'], 'Pouze administrátor může mazat přístupy')
+
+    def test_admin_category_hidden_from_non_admin(self):
+        admin_access = WEB_PRISTUPY_PRODEJNY.objects.create(
+            company_name='Admin Mail',
+            website_url='https://mail.example.com',
+            username='admin@example.com',
+            password='secret',
+            store='Litovelská',
+            category='Admin',
+            added_by='admin',
+        )
+        self.client.force_authenticate(user=self.prodejce)
+        list_res = self.client.get('/api/pristupy/')
+        self.assertEqual(list_res.status_code, 200)
+        ids = [row['id'] for row in list_res.data]
+        self.assertNotIn(admin_access.id, ids)
+
+        reveal = self.client.get(f'/api/pristupy/{admin_access.id}/reveal_password/')
+        self.assertEqual(reveal.status_code, 404)
+
+        create_res = self.client.post(
+            '/api/pristupy/',
+            {
+                'company_name': 'Secret Admin',
+                'website_url': 'https://mail.example.com',
+                'username': 'x@example.com',
+                'password': 'heslo',
+                'store': 'Litovelská',
+                'category': 'Admin',
+            },
+            format='json',
+        )
+        self.assertEqual(create_res.status_code, 403)
+
+        cats = self.client.get('/api/pristupy/categories/')
+        self.assertEqual(cats.status_code, 200)
+        self.assertNotIn('Admin', cats.data)
+
+    def test_admin_can_see_and_manage_admin_category(self):
+        admin_access = WEB_PRISTUPY_PRODEJNY.objects.create(
+            company_name='Admin Mail',
+            website_url='https://mail.example.com',
+            username='admin@example.com',
+            password='secret',
+            store='Litovelská',
+            category='Admin',
+            added_by='admin',
+        )
+        self.client.force_authenticate(user=self.admin)
+        list_res = self.client.get('/api/pristupy/')
+        self.assertEqual(list_res.status_code, 200)
+        ids = [row['id'] for row in list_res.data]
+        self.assertIn(admin_access.id, ids)
+
+        reveal = self.client.get(f'/api/pristupy/{admin_access.id}/reveal_password/')
+        self.assertEqual(reveal.status_code, 200)
+        self.assertEqual(reveal.data['password'], 'secret')
+
+        create_res = self.client.post(
+            '/api/pristupy/',
+            {
+                'company_name': 'E-mail fakturace',
+                'website_url': 'https://mail.google.com/',
+                'username': 'fakturace@example.com',
+                'password': 'heslo',
+                'store': 'Litovelská',
+                'category': 'Admin',
+            },
+            format='json',
+        )
+        self.assertEqual(create_res.status_code, 201, create_res.data)
+        self.assertEqual(create_res.data['category'], 'Admin')

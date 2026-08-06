@@ -103,7 +103,7 @@
     min-height: 0;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-    padding: 12px 16px;
+    padding: 14px 20px;
 }
 
 .modal-loading,

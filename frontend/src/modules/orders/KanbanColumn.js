@@ -19,53 +19,80 @@ const KanbanColumn = ({
     isDropTarget,
     onOrderClick,
     onDeleteOrder,
+    collapsed = false,
+    onToggleCollapse,
+    lazyEmptyHint = '',
 }) => {
     const { setNodeRef, isOver } = useDroppable({
         id: `column-${id}`,
     });
 
+    const showBody = !collapsed;
+    const isLazyEmpty = showBody && orders.length === 0 && lazyEmptyHint;
+
     return (
         <div
             ref={setNodeRef}
-            className={`kanban-column kanban-column--dense ${isOver || isDropTarget ? 'drag-over' : ''}`}
+            className={`kanban-column kanban-column--dense ${isOver || isDropTarget ? 'drag-over' : ''} ${collapsed ? 'kanban-column--collapsed' : ''}`}
         >
             <div
-                className="column-header"
+                className={`column-header${onToggleCollapse ? ' column-header--toggle' : ''}`}
                 style={{
                     backgroundColor: color,
                     color: textColor,
                 }}
+                onClick={onToggleCollapse || undefined}
+                onKeyDown={onToggleCollapse ? (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        onToggleCollapse();
+                    }
+                } : undefined}
+                role={onToggleCollapse ? 'button' : undefined}
+                tabIndex={onToggleCollapse ? 0 : undefined}
+                aria-expanded={onToggleCollapse ? !collapsed : undefined}
             >
                 <div className="header-content">
+                    {onToggleCollapse && (
+                        <span className="column-chevron" aria-hidden="true">
+                            {collapsed ? '▸' : '▾'}
+                        </span>
+                    )}
                     <span className="column-title">{title}</span>
                     <span className="column-count">({count})</span>
                 </div>
             </div>
 
-            <div className="column-content column-content--dense">
-                <div className="order-row-header" aria-hidden="true">
-                    {ROW_HEADERS.map((label, i) => (
-                        <span key={`${label}-${i}`}>{label}</span>
-                    ))}
-                </div>
-
-                {orders.length === 0 ? (
-                    <div className="empty-column empty-column--dense">
-                        <p>Žádné objednávky</p>
-                    </div>
-                ) : (
-                    <div className="orders-list orders-list--dense">
-                        {orders.map((order) => (
-                            <OrderRow
-                                key={order.id}
-                                order={order}
-                                onOrderClick={onOrderClick}
-                                onDeleteOrder={onDeleteOrder}
-                            />
+            {showBody && (
+                <div className="column-content column-content--dense">
+                    <div className="order-row-header" aria-hidden="true">
+                        {ROW_HEADERS.map((label, i) => (
+                            <span key={`${label}-${i}`}>{label}</span>
                         ))}
                     </div>
-                )}
-            </div>
+
+                    {isLazyEmpty ? (
+                        <div className="empty-column empty-column--dense">
+                            <p>{lazyEmptyHint}</p>
+                        </div>
+                    ) : orders.length === 0 ? (
+                        <div className="empty-column empty-column--dense">
+                            <p>Žádné objednávky</p>
+                        </div>
+                    ) : (
+                        <div className="orders-list orders-list--dense">
+                            {orders.map((order) => (
+                                <OrderRow
+                                    key={order.id}
+                                    order={order}
+                                    onOrderClick={onOrderClick}
+                                    onDeleteOrder={onDeleteOrder}
+                                />
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
 
             {(isOver || isDropTarget) && (
                 <div className="drop-zone-indicator" aria-hidden="true" />

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import AccessList from './AccessList';
 import AccessForm from './AccessForm';
@@ -8,7 +8,8 @@ import { copyToClipboard, showCopySuccess, showCopyError } from '../../utils/cli
 import './AccessModule.css';
 
 const AccessModule = () => {
-    const { user } = useAuth();
+    const { user, isAdmin } = useAuth();
+    const canManageAdminAccess = isAdmin();
     const [accesses, setAccesses] = useState([]);
     const [filteredAccesses, setFilteredAccesses] = useState([]);
     const [stores, setStores] = useState([]);
@@ -22,6 +23,7 @@ const AccessModule = () => {
         category: '',
         search: ''
     });
+    const homeStoreFilterInitialized = useRef(false);
 
     // Aliasy prodejen - mapování alternativních názvů
     const STORE_ALIASES = {
@@ -66,19 +68,23 @@ const AccessModule = () => {
         applyFilters();
     }, [accesses, filters]);
 
-    // Automatické nastavení filtru podle domovské prodejny uživatele
+    // Jednou při načtení předvybrat domovskou prodejnu (ne při ručním vymazání filtru)
     useEffect(() => {
-        if (user && user.prodejna && accesses.length > 0 && !filters.store) {
-            // Získání správného názvu prodejny včetně aliasů
-            const homeStore = getStoreNameWithAlias(user.prodejna);
-            
-            // Automaticky nastavit filtr na domovskou prodejnu (nebo její alias)
-            setFilters(prev => ({
-                ...prev,
-                store: homeStore
-            }));
+        if (homeStoreFilterInitialized.current) return;
+        if (!user?.prodejna || accesses.length === 0) return;
+        homeStoreFilterInitialized.current = true;
+        const homeStore = getStoreNameWithAlias(user.prodejna);
+        if (homeStore) {
+            setFilters((prev) => ({ ...prev, store: homeStore }));
         }
-    }, [user, accesses, filters.store]);
+    }, [user, accesses]);
+
+    // Kategorie filtr jen pro ADMIN — u ostatních vynulovat
+    useEffect(() => {
+        if (!canManageAdminAccess && filters.category) {
+            setFilters((prev) => ({ ...prev, category: '' }));
+        }
+    }, [canManageAdminAccess, filters.category]);
 
     const loadData = async () => {
         setLoading(true);
@@ -316,7 +322,6 @@ const AccessModule = () => {
         <div className="access-module">
             <PageHeader
                 title="Přístupy"
-                subtitle="Správa přístupů k webovým službám pro všechny prodejny"
                 actions={canEdit ? (
                     <button
                         type="button"
@@ -340,51 +345,10 @@ const AccessModule = () => {
                     access={editingAccess}
                     stores={stores}
                     categories={categories}
+                    canUseAdminCategory={canManageAdminAccess}
                     onSubmit={handleFormSubmit}
                     onCancel={handleFormCancel}
                 />
-            )}
-
-            {/* Informace o domovské prodejně */}
-            {user && user.prodejna && (
-                <div className="home-store-info">
-                    <div className="info-content">
-                        <span className="info-icon">🏪</span>
-                        <span className="info-text">
-                            Vaše domovská prodejna: <strong>{user.prodejna}</strong>
-                            {(() => {
-                                const actualStore = getStoreNameWithAlias(user.prodejna);
-                                return actualStore !== user.prodejna ? (
-                                    <span className="alias-info"> (zobrazuje se jako <strong>{actualStore}</strong>)</span>
-                                ) : null;
-                            })()}
-                        </span>
-                        {(() => {
-                            const homeStore = getStoreNameWithAlias(user.prodejna);
-                            return filters.store === homeStore && (
-                                <button 
-                                    className="btn-show-all"
-                                    onClick={() => setFilters(prev => ({ ...prev, store: '' }))}
-                                    title="Zobrazit přístupy ze všech prodejen"
-                                >
-                                    📋 Zobrazit všechny prodejny
-                                </button>
-                            );
-                        })()}
-                        {(() => {
-                            const homeStore = getStoreNameWithAlias(user.prodejna);
-                            return filters.store !== homeStore && filters.store !== '' && (
-                                <button 
-                                    className="btn-show-home"
-                                    onClick={() => setFilters(prev => ({ ...prev, store: homeStore }))}
-                                    title="Zobrazit pouze přístupy z domovské prodejny"
-                                >
-                                    🏠 Zobrazit domovskou prodejnu
-                                </button>
-                            );
-                        })()}
-                    </div>
-                </div>
             )}
 
             <AccessFilter
@@ -392,6 +356,7 @@ const AccessModule = () => {
                 onFiltersChange={setFilters}
                 stores={stores}
                 categories={categories}
+                showCategoryFilter={canManageAdminAccess}
             />
 
             <AccessList

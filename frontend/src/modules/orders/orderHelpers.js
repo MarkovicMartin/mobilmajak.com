@@ -1,12 +1,15 @@
 /** Shared Orders status / MyRepair helpers */
 
 export const MAIN_STATUS_COLUMNS = [
-    { key: 'nove', label: 'Nové', color: '#ffeb3b', textColor: '#000' },
-    { key: 'v_kosiku', label: 'v košíku', color: '#ff9800', textColor: '#000' },
-    { key: 'objednano', label: 'objednáno', color: '#2196f3', textColor: '#fff' },
+    { key: 'nove', label: 'Nové', color: '#ff9800', textColor: '#000' },
+    { key: 'v_kosiku', label: 'v košíku', color: '#2196f3', textColor: '#fff' },
+    { key: 'objednano', label: 'objednáno', color: '#ffeb3b', textColor: '#000' },
     { key: 'dorazilo_ceka', label: 'připraveno', color: '#4caf50', textColor: '#fff' },
-    { key: 'hotovo', label: 'vyřízeno', color: '#8bc34a', textColor: '#000' },
+    { key: 'hotovo', label: 'vyřízeno', color: '#9e9e9e', textColor: '#fff' },
 ];
+
+export const ACTIVE_STATUS_COLUMNS = MAIN_STATUS_COLUMNS.filter((c) => c.key !== 'hotovo');
+export const DONE_STATUS_COLUMN = MAIN_STATUS_COLUMNS.find((c) => c.key === 'hotovo');
 
 export const MAIN_STATUS_KEYS = MAIN_STATUS_COLUMNS.map((c) => c.key);
 
@@ -22,10 +25,14 @@ export const ALL_STATUS_OPTIONS = [
         color: c.color,
         textColor: c.textColor,
     })),
-    { value: 'predobjednano', label: 'Předobjednáno', color: '#9c27b0', textColor: '#fff' },
+    { value: 'predobjednano', label: 'Předobjednáno', color: '#ffeb3b', textColor: '#000' },
 ];
 
 export const STATUSES_REQUIRING_DODAVATEL = new Set(['v_kosiku', 'objednano']);
+
+const NOT_YET_READY = new Set([
+    'nove', 'v_kosiku', 'objednano', 'predobjednano', 'neni_skladem',
+]);
 
 /** Targets for "Přesunout do" in order detail (same as drag). */
 export function getMoveTargets(currentStatus) {
@@ -37,6 +44,35 @@ export function getMoveTargets(currentStatus) {
 
 export function statusLabel(status) {
     return ALL_STATUS_OPTIONS.find((s) => s.value === status)?.label || status;
+}
+
+/**
+ * Zvýraznění řádku:
+ * - >5 dní od založení a stále ne připraveno/vyřízeno → červené
+ * - v připraveno bez pohybu ≥3 dny → lehce červené
+ * - v připraveno bez pohybu ≥7 dní → sytě červené
+ */
+export function orderAgeClass(order) {
+    if (!order) return '';
+    const status = order.status;
+    const daysInStatus = typeof order.dni_ve_stavu === 'number' ? order.dni_ve_stavu : null;
+
+    if (status === 'dorazilo_ceka') {
+        if (daysInStatus != null && daysInStatus >= 7) return 'age-ready-severe';
+        if (daysInStatus != null && daysInStatus >= 3) return 'age-ready-warn';
+        return '';
+    }
+
+    if (status === 'hotovo' || status === 'storno') return '';
+
+    if (NOT_YET_READY.has(status)) {
+        const created = order.datum_vytvoreni ? new Date(order.datum_vytvoreni) : null;
+        if (created && !Number.isNaN(created.getTime())) {
+            const daysSinceCreate = Math.floor((Date.now() - created.getTime()) / 86400000);
+            if (daysSinceCreate > 5) return 'age-pending';
+        }
+    }
+    return '';
 }
 
 const MYREPAIR_SEARCH_BASE =

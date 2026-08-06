@@ -52,7 +52,7 @@ const WreckPartsModule = () => {
     const grouped = useMemo(() => {
         const map = {};
         parts.forEach((p) => {
-            const key = p.store || 'Neuvedeno';
+            const key = p.store || 'Globus';
             if (!map[key]) map[key] = [];
             map[key].push(p);
         });
@@ -181,7 +181,7 @@ const WreckPartsModule = () => {
             {showForm && (
                 <WreckPartForm
                     initial={editing}
-                    defaultStore={user?.prodejna || filters.store || ''}
+                    defaultStore={user?.prodejna || filters.store || 'Globus'}
                     onSave={handleSave}
                     onCancel={() => { setShowForm(false); setEditing(null); }}
                 />
