@@ -191,22 +191,7 @@ const OrderDetail = ({ order, onClose, onDelete, onStatusChange, onUpdate }) => 
 
     const field = (label, name, opts = {}) => (
         <label className={`detail-item detail-item--field${opts.wide ? ' detail-item--nolabel' : ''}`}>
-            {label ? (
-                name === 'servisni_cislo' && repairLink ? (
-                    <a
-                        className="label label--link"
-                        href={repairLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        title="Otevřít v MyRepair"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        {label}
-                    </a>
-                ) : (
-                    <span className="label">{label}</span>
-                )
-            ) : null}
+            {label ? <span className="label">{label}</span> : null}
             {opts.multiline ? (
                 <textarea
                     className="detail-edit__input"
@@ -225,6 +210,18 @@ const OrderDetail = ({ order, onClose, onDelete, onStatusChange, onUpdate }) => 
                     placeholder={opts.placeholder || ''}
                 />
             )}
+            {name === 'servisni_cislo' && repairLink ? (
+                <a
+                    className="detail-myrepair-btn"
+                    href={repairLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title="Otevřít v MyRepair"
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    MyRepair ↗
+                </a>
+            ) : null}
             {name === 'telefon_zakaznika' && phoneValue && (
                 <button
                     type="button"

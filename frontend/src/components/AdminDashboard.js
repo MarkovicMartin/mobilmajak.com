@@ -8,7 +8,7 @@ import { castkaBezDphZCelkem } from '../utils/dph';
 import { PageHeader } from './ui';
 import TodayWorkBoard from './TodayWorkBoard';
 import DashboardTasksSnapshot from './DashboardTasksSnapshot';
-import DashboardModuleHub from './DashboardModuleHub';
+import MyTasksPreview from './MyTasksPreview';
 import './AdminDashboard.css';
 
 const currency = (num) =>
@@ -238,7 +238,6 @@ export default function AdminDashboard() {
         <div className="admin-dashboard">
             <div className="container">
                 <PageHeader title="Přehled" />
-                <DashboardModuleHub />
                 {planMetrics && (
                     <div className="plan-tiles-row">
                         <div
@@ -417,6 +416,8 @@ export default function AdminDashboard() {
                             </div>
                         )}
                     </div>
+
+                    <MyTasksPreview />
 
                     <DashboardTasksSnapshot />
 

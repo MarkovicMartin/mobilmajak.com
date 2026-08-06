@@ -98,11 +98,17 @@ const ProfileCalendar = () => {
                 )}
                 {workShifts.length > 0 && (
                     <div className="shifts-container">
-                        {workShifts.slice(0, 2).map((s) => (
+                        {workShifts.slice(0, 2).map((s) => {
+                            const noteText = (s.poznamka || '').trim();
+                            const titleParts = [
+                                s.prodejna_nazev ? `${s.prodejna_nazev}: ${s.cas_od}–${s.cas_do}` : `${s.cas_od}–${s.cas_do}`,
+                                noteText ? `Poznámka: ${noteText}` : null,
+                            ].filter(Boolean);
+                            return (
                             <div
                                 key={`s-${s.id}`}
                                 className="shift-item mine profile-calendar-chip"
-                                title={`${s.prodejna_nazev}: ${s.cas_od}–${s.cas_do}`}
+                                title={titleParts.join(' · ')}
                                 onMouseDown={(e) => e.stopPropagation()}
                                 onClick={(e) => {
                                     e.stopPropagation();
@@ -112,13 +118,19 @@ const ProfileCalendar = () => {
                                 <div className="shift-content">
                                     <div className="shift-time">
                                         {formatShiftTime(s.cas_od)}–{formatShiftTime(s.cas_do)}
+                                        {noteText ? (
+                                            <span className="shift-note-icon" aria-label="Má poznámku" title={noteText}>
+                                                💬
+                                            </span>
+                                        ) : null}
                                     </div>
                                     {s.prodejna_nazev && (
                                         <div className="shift-store">{s.prodejna_nazev}</div>
                                     )}
                                 </div>
                             </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 )}
                 {absenceShifts.length > 0 && (

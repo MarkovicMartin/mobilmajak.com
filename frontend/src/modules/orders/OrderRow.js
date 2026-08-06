@@ -11,10 +11,13 @@ import {
 import './OrderRow.css';
 
 const CLICK_DRAG_THRESHOLD_PX = 8;
+const NOTE_BUBBLE_MAX_W = 320;
+const NOTE_BUBBLE_GAP = 8;
 
 const OrderRow = ({ order, isDragging = false, onOrderClick, onDeleteOrder }) => {
     const pointerStart = useRef(null);
     const [phoneCopied, setPhoneCopied] = useState(false);
+    const [noteBubble, setNoteBubble] = useState(null);
 
     const {
         attributes,
@@ -34,13 +37,14 @@ const OrderRow = ({ order, isDragging = false, onOrderClick, onDeleteOrder }) =>
 
     const repairLink = myrepairUrl(order.servisni_cislo);
     const customer = `${order.jmeno_zakaznika || ''} ${order.prijmeni_zakaznika || ''}`.trim();
+    const noteText = (order.poznamka || '').trim();
 
     const handlePointerDownCapture = (e) => {
         pointerStart.current = { x: e.clientX, y: e.clientY };
     };
 
     const handleRowClick = (e) => {
-        if (e.target.closest('a, button')) return;
+        if (e.target.closest('a, button, .order-row__note')) return;
         if (isDragging || isCurrentlyDragging) return;
         const start = pointerStart.current;
         if (start) {
@@ -49,6 +53,22 @@ const OrderRow = ({ order, isDragging = false, onOrderClick, onDeleteOrder }) =>
             if (dx > CLICK_DRAG_THRESHOLD_PX || dy > CLICK_DRAG_THRESHOLD_PX) return;
         }
         onOrderClick(order);
+    };
+
+    const showNoteBubble = (e) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const width = Math.min(NOTE_BUBBLE_MAX_W, window.innerWidth - 16);
+        let left = rect.right - width;
+        if (left < 8) left = 8;
+        const placeBelow = rect.top < 120;
+        setNoteBubble({
+            left,
+            width,
+            ...(placeBelow
+                ? { top: rect.bottom + NOTE_BUBBLE_GAP }
+                : { bottom: window.innerHeight - rect.top + NOTE_BUBBLE_GAP }),
+            placeBelow,
+        });
     };
 
     return (
@@ -132,6 +152,36 @@ const OrderRow = ({ order, isDragging = false, onOrderClick, onDeleteOrder }) =>
                 {order.dodavatel || ''}
             </div>
             <div className="order-row__actions">
+                {noteText ? (
+                    <span
+                        className="order-row__note"
+                        aria-label="Poznámka k objednávce"
+                        onClick={(e) => e.stopPropagation()}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onMouseEnter={showNoteBubble}
+                        onMouseLeave={() => setNoteBubble(null)}
+                        onFocus={showNoteBubble}
+                        onBlur={() => setNoteBubble(null)}
+                        tabIndex={0}
+                    >
+                        <span className="order-row__note-icon" aria-hidden="true">📝</span>
+                        {noteBubble ? (
+                            <span
+                                className={`order-row__note-bubble${noteBubble.placeBelow ? ' order-row__note-bubble--below' : ''}`}
+                                role="tooltip"
+                                style={{
+                                    left: noteBubble.left,
+                                    width: noteBubble.width,
+                                    ...(noteBubble.placeBelow
+                                        ? { top: noteBubble.top }
+                                        : { bottom: noteBubble.bottom }),
+                                }}
+                            >
+                                {noteText}
+                            </span>
+                        ) : null}
+                    </span>
+                ) : null}
                 <button
                     type="button"
                     className="order-row__btn order-row__btn--delete"

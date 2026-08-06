@@ -182,7 +182,7 @@ def tickets_list_create(request):
         autor_jmeno=jmeno or str(request.user.id),
     )
 
-    images = request.FILES.getlist('images')
+    images = list(request.FILES.getlist('images')) or list(request.FILES.getlist('obrazky'))
     for img in images:
         TicketImage.objects.create(ticket=ticket, obrazek=img)
 

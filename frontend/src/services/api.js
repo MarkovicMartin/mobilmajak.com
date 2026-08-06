@@ -18,17 +18,24 @@ api.interceptors.request.use((config) => {
     if (config.url === '/users/login/') {
         return config;
     }
-    
+
+    // FormData: nechat browser doplnit multipart boundary
+    if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+        if (config.headers) {
+            delete config.headers['Content-Type'];
+        }
+    }
+
     // Získání CSRF tokenu z cookies
     const csrfToken = document.cookie
         .split('; ')
         .find(row => row.startsWith('csrftoken='))
         ?.split('=')[1];
-    
+
     if (csrfToken) {
         config.headers['X-CSRFToken'] = csrfToken;
     }
-    
+
     return config;
 });
 
@@ -194,9 +201,7 @@ export const ticketAPI = {
     },
 
     create: async (formData) => {
-        const response = await api.post('/tickets/', formData, {
-            headers: { 'Content-Type': 'multipart/form-data' },
-        });
+        const response = await api.post('/tickets/', formData);
         return response.data;
     },
 

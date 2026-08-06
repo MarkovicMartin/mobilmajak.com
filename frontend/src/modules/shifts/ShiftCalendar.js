@@ -312,12 +312,14 @@ function ShiftCalendar({
             !useStoreColors && !shift.je_domaci_prodejna && isOwnShift ? 'foreign-store' : '',
         ].filter(Boolean).join(' ');
         const roleLabel = shiftRoleLabel(shift, { short: true });
+        const noteText = (shift.poznamka || '').trim();
         const titleParts = [
             !hideStoreName && useStoreColors && shift.prodejna_nazev ? shift.prodejna_nazev : null,
             shift.user_jmeno,
             roleLabel,
             `${formatTime(shift.cas_od)}-${formatTime(shift.cas_do)}`,
             !useStoreColors && !shift.je_domaci_prodejna && isOwnShift ? 'výpomoc na jiné prodejně' : null,
+            noteText ? `Poznámka: ${noteText}` : null,
         ].filter(Boolean);
         return (
             <div
@@ -333,7 +335,12 @@ function ShiftCalendar({
                         <div className="shift-store">{shift.prodejna_nazev}</div>
                     )}
                     <div className="shift-name">
-                        {shift.user_jmeno}
+                        <span className="shift-name__text">{shift.user_jmeno}</span>
+                        {noteText ? (
+                            <span className="shift-note-icon" aria-label="Má poznámku" title={noteText}>
+                                💬
+                            </span>
+                        ) : null}
                     </div>
                     <div className="shift-time">
                         {formatTime(shift.cas_od)}-{formatTime(shift.cas_do)}
@@ -586,6 +593,11 @@ function ShiftCalendar({
                                 <p><strong>Prodejna:</strong> {selectedShift.prodejna_nazev || selectedShift.prodejna || prodejna}</p>
                             </>
                         )}
+                        {(selectedShift.poznamka || '').trim() ? (
+                            <p className="confirm-details__note">
+                                <strong>Poznámka:</strong> {selectedShift.poznamka.trim()}
+                            </p>
+                        ) : null}
                     </div>
                 </Modal>
             )}
@@ -607,6 +619,11 @@ function ShiftCalendar({
                                 <p><strong>Prodejna:</strong> {selectedShift.prodejna_nazev || selectedShift.prodejna || prodejna}</p>
                             </>
                         )}
+                        {(selectedShift.poznamka || '').trim() ? (
+                            <p className="confirm-details__note">
+                                <strong>Poznámka:</strong> {selectedShift.poznamka.trim()}
+                            </p>
+                        ) : null}
                     </div>
                     <p className="confirm-question">Opravdu chcete tuto směnu smazat?</p>
                 </ConfirmModal>

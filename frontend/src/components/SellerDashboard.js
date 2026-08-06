@@ -4,7 +4,7 @@ import { formatNewsAge } from '../utils/formatNewsAge';
 import { plansAPI, newsAPI, shiftsAPI } from '../services/api';
 import { useSalespersonMetrics } from '../hooks/useSalespersonMetrics';
 import { PageHeader, Select, SegmentControl } from './ui';
-import DashboardModuleHub from './DashboardModuleHub';
+import MyTasksPreview from './MyTasksPreview';
 import './SellerDashboard.css';
 import AttendancePanel from '../modules/shifts/AttendancePanel';
 
@@ -168,8 +168,6 @@ export default function SellerDashboard({ user }) {
           </>
         )}
       />
-
-      <DashboardModuleHub />
 
       <div className="seller-metrics">
         <MetricCard title="Dnešní skóre" value={`${pointsTodayVal} b.`} delta={deltaTodayPoints} sub={todayPoints?.source && `zdroj: ${todayPoints.source}`} />
@@ -355,6 +353,7 @@ export default function SellerDashboard({ user }) {
           </div>
         </div>
         <div className="right-col">
+          <MyTasksPreview />
           <div className="card" style={{marginBottom: 16}}>
             <h3>Dnešní směna</h3>
             <AttendancePanel user={user} />

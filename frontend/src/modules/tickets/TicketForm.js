@@ -37,17 +37,22 @@ const TicketForm = ({ onSuccess, onCancel }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (submitting) return;
         setError('');
         setSubmitting(true);
         try {
             const fd = new FormData();
             fd.append('nazev', nazev.trim());
             fd.append('popis', popis.trim());
-            files.forEach((f) => fd.append('obrazky', f));
+            if (typeof window !== 'undefined' && window.location?.href) {
+                fd.append('url', window.location.href.slice(0, 500));
+            }
+            files.forEach((f) => fd.append('images', f));
             await ticketAPI.create(fd);
             onSuccess?.();
-        } catch (e) {
-            setError('Chyba při odesílání ticketu.');
+        } catch (err) {
+            const detail = err?.response?.data?.error;
+            setError(detail || 'Chyba při odesílání ticketu.');
         } finally {
             setSubmitting(false);
         }
