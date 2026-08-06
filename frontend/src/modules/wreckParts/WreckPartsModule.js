@@ -5,6 +5,8 @@ import { useAuth } from '../../context/AuthContext';
 import WreckPartForm from './WreckPartForm';
 import './WreckPartsModule.css';
 
+const ROW_HEADERS = ['Model', 'Typ dílu', 'Počet', 'Poznámka', ''];
+
 const WreckPartsModule = () => {
     const { user } = useAuth();
     const [parts, setParts] = useState([]);
@@ -84,7 +86,11 @@ const WreckPartsModule = () => {
             <PageHeader
                 title="Díly z vraků"
                 actions={(
-                    <button type="button" className="btn btn-primary" onClick={() => { setEditing(null); setShowForm(true); }}>
+                    <button
+                        type="button"
+                        className="btn btn-primary"
+                        onClick={() => { setEditing(null); setShowForm(true); }}
+                    >
                         <i className="fas fa-plus" /> Přidat
                     </button>
                 )}
@@ -113,45 +119,69 @@ const WreckPartsModule = () => {
                 <p className="wreck-parts-empty">Žádné záznamy.</p>
             )}
 
-            {grouped.map(([store, items]) => (
-                <section key={store} className="wreck-parts-store">
-                    <h2 className="wreck-parts-store__title">
-                        {store}
-                        <span className="wreck-parts-store__count">{items.length}</span>
-                    </h2>
-                    <div className="wreck-parts-table-wrap">
-                        <table className="wreck-parts-table">
-                            <thead>
-                                <tr>
-                                    <th>Model</th>
-                                    <th>Typ dílu</th>
-                                    <th>Počet</th>
-                                    <th>Poznámka</th>
-                                    <th />
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {items.map((p) => (
-                                    <tr key={p.id}>
-                                        <td>{p.model_name}</td>
-                                        <td>{p.part_type}</td>
-                                        <td>{p.quantity}</td>
-                                        <td className="wreck-parts-notes">{p.notes || '—'}</td>
-                                        <td className="wreck-parts-actions">
-                                            <button type="button" className="btn btn-sm btn-outline" onClick={() => { setEditing(p); setShowForm(true); }}>Upravit</button>
-                                            <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => handleDelete(p.id)}>Smazat</button>
-                                        </td>
-                                    </tr>
+            <div className="wreck-parts-board">
+                {grouped.map(([store, items]) => (
+                    <section key={store} className="wreck-parts-column">
+                        <div className="wreck-parts-column__header">
+                            <span className="wreck-parts-column__title">{store}</span>
+                            <span className="wreck-parts-column__count">({items.length})</span>
+                        </div>
+                        <div className="wreck-parts-column__content">
+                            <div className="wreck-part-row-header" aria-hidden="true">
+                                {ROW_HEADERS.map((label, i) => (
+                                    <span key={`${label}-${i}`}>{label}</span>
                                 ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
-            ))}
+                            </div>
+                            <div className="wreck-parts-list">
+                                {items.map((p) => (
+                                    <div key={p.id} className="wreck-part-row">
+                                        <div className="wreck-part-row__cell" title={p.model_name}>
+                                            {p.model_name}
+                                        </div>
+                                        <div className="wreck-part-row__cell" title={p.part_type}>
+                                            {p.part_type}
+                                        </div>
+                                        <div className="wreck-part-row__cell wreck-part-row__qty">
+                                            {p.quantity}
+                                        </div>
+                                        <div
+                                            className="wreck-part-row__cell wreck-part-row__notes"
+                                            title={p.notes || ''}
+                                        >
+                                            {p.notes || (
+                                                <span className="wreck-part-row__empty">—</span>
+                                            )}
+                                        </div>
+                                        <div className="wreck-part-row__actions">
+                                            <button
+                                                type="button"
+                                                className="wreck-part-row__btn"
+                                                title="Upravit"
+                                                onClick={() => { setEditing(p); setShowForm(true); }}
+                                            >
+                                                Upravit
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="wreck-part-row__btn wreck-part-row__btn--delete"
+                                                title="Smazat"
+                                                onClick={() => handleDelete(p.id)}
+                                            >
+                                                Smazat
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </section>
+                ))}
+            </div>
 
             {showForm && (
                 <WreckPartForm
                     initial={editing}
+                    defaultStore={user?.prodejna || filters.store || ''}
                     onSave={handleSave}
                     onCancel={() => { setShowForm(false); setEditing(null); }}
                 />

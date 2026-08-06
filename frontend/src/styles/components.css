@@ -74,6 +74,8 @@
     color: var(--text-primary);
 }
 
+/* Modály jsou na body (mimo .App) – dark CTA řeší Modals.css */
+
 /* Formuláře v modálech (portál na body) */
 .dark-mode .modal-body .form-group label {
     color: var(--text-label) !important;

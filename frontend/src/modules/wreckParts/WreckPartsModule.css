@@ -1,71 +1,184 @@
 .wreck-parts-module {
-    padding: 0 0 2rem;
+    padding: 0 0 1.25rem;
 }
 
 .wreck-parts-filters {
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.65rem;
     align-items: flex-end;
 }
 
-.wreck-parts-filters input[type="search"] {
+.wreck-parts-filters input[type='search'] {
     flex: 1;
     min-width: 200px;
 }
 
-.wreck-parts-store {
-    margin-bottom: 0.85rem;
+.wreck-parts-board {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
-.wreck-parts-store__title {
-    font-size: 0.95rem;
-    margin: 0 0 0.3rem;
+.wreck-parts-column {
+    background: var(--bg-card, #fff);
+    border: 1px solid var(--border-subtle, #e8eaed);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.wreck-parts-column__header {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 8px;
+    padding: 6px 10px;
+    background: linear-gradient(135deg, var(--brand-navy, #1b2848) 0%, var(--brand-navy-hover, #243358) 100%);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
 }
 
-.wreck-parts-store__count {
-    font-size: 0.78rem;
-    opacity: 0.7;
-    font-weight: normal;
+.wreck-parts-column__count {
+    font-weight: 600;
+    opacity: 0.85;
+    font-size: 12px;
 }
 
-.wreck-parts-table-wrap {
+.wreck-parts-column__content {
     overflow-x: auto;
 }
 
-.wreck-parts-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.78rem;
+.wreck-part-row-header,
+.wreck-part-row {
+    display: grid;
+    grid-template-columns:
+        minmax(120px, 1.4fr)
+        minmax(140px, 2fr)
+        48px
+        minmax(100px, 1.6fr)
+        108px;
+    gap: 4px;
+    align-items: center;
+    padding: 3px 8px;
+    font-size: 12px;
+    line-height: 1.25;
+    min-height: 28px;
 }
 
-.wreck-parts-table th,
-.wreck-parts-table td {
-    padding: 0.25rem 0.45rem;
-    border-bottom: 1px solid var(--border-color, #e0e0e0);
-    text-align: left;
-    vertical-align: top;
+.wreck-part-row-header {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    color: var(--text-secondary, #666);
+    background: var(--bg-inset, #f0f2f5);
+    border-bottom: 1px solid var(--border-subtle, #d0d4d9);
+    position: sticky;
+    top: 0;
+    z-index: 1;
 }
 
-.wreck-parts-notes {
-    max-width: 240px;
-    font-size: 0.75rem;
-    opacity: 0.9;
-}
-
-.wreck-parts-actions {
+.wreck-part-row-header span {
+    overflow: hidden;
+    text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.wreck-parts-actions .btn {
-    margin-left: 0.25rem;
+.wreck-parts-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.wreck-part-row {
+    background: var(--bg-card, #fff);
+    border-bottom: 1px solid var(--border-subtle, #e8eaed);
+    color: var(--text-primary, #222);
+}
+
+.wreck-part-row:last-child {
+    border-bottom: none;
+}
+
+.wreck-part-row:hover {
+    background: var(--bg-inset, #f5f7fa);
+}
+
+.wreck-part-row__cell {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: inherit;
+}
+
+.wreck-part-row__qty {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+}
+
+.wreck-part-row__notes {
+    color: var(--text-secondary, #555);
+}
+
+.wreck-part-row__empty {
+    color: var(--text-muted, #bbb);
+}
+
+.wreck-part-row__actions {
+    display: flex;
+    gap: 2px;
+    justify-content: flex-end;
+}
+
+.wreck-part-row__btn {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    padding: 2px 5px;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1.2;
+    border-radius: 4px;
+    color: var(--text-secondary, #555);
+}
+
+.wreck-part-row__btn:hover {
+    background: var(--bg-inset, #eef1f5);
+    color: var(--text-primary, #222);
+}
+
+.wreck-part-row__btn--delete {
+    color: #c62828;
+    background: #ffebee;
+}
+
+.wreck-part-row__btn--delete:hover {
+    background: #ffcdd2;
+    color: #b71c1c;
+}
+
+.dark-mode .wreck-part-row__btn--delete {
+    color: #b71c1c;
+    background: #ffcdd2;
 }
 
 .wreck-parts-loading,
 .wreck-parts-empty {
-    opacity: 0.8;
+    margin: 0.75rem 0;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+@media (max-width: 720px) {
+    .wreck-part-row-header,
+    .wreck-part-row {
+        grid-template-columns:
+            minmax(90px, 1.2fr)
+            minmax(100px, 1.6fr)
+            40px
+            minmax(80px, 1.2fr)
+            96px;
+        font-size: 11px;
+    }
 }

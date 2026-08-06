@@ -131,7 +131,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    color: #222;
+    color: var(--text-primary, #222);
     min-width: 0;
 }
 

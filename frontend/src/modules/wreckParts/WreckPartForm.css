@@ -1,42 +1,52 @@
-.wreck-part-form-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.45);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-    padding: 1rem;
-}
-
+/* Kompaktní obsah – padding řeší .modal-body */
 .wreck-part-form {
-    background: var(--card-bg, #fff);
-    border-radius: 8px;
-    padding: 1.25rem;
+    padding: 0;
+}
+
+.wreck-part-form .form-row {
+    display: flex;
+    gap: 10px;
+}
+
+.wreck-part-form .form-group {
+    flex: 1;
+    margin-bottom: 10px;
+    min-width: 0;
+}
+
+.wreck-part-form .form-group:last-child {
+    margin-bottom: 0;
+}
+
+.wreck-part-form .form-row .form-group {
+    margin-bottom: 10px;
+}
+
+.wreck-part-form .form-group label {
+    display: block;
+    margin-bottom: 4px;
+    font-weight: 600;
+    font-size: 0.82rem;
+}
+
+.wreck-part-form .form-group input,
+.wreck-part-form .form-group textarea {
     width: 100%;
-    max-width: 420px;
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-}
-
-.wreck-part-form label {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
+    padding: 8px 10px;
+    border-radius: 8px;
     font-size: 0.9rem;
+    box-sizing: border-box;
 }
 
-.wreck-part-form input,
-.wreck-part-form textarea {
-    padding: 0.45rem 0.6rem;
-    border: 1px solid var(--border-color, #ccc);
-    border-radius: 4px;
+.wreck-part-form .form-group textarea {
+    resize: vertical;
+    min-height: 52px;
+    font-family: inherit;
 }
 
-.wreck-part-form__actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.5rem;
-    margin-top: 0.5rem;
+@media (max-width: 560px) {
+    .wreck-part-form .form-row {
+        flex-direction: column;
+        gap: 0;
+    }
 }

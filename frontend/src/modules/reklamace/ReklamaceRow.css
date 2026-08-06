@@ -15,7 +15,8 @@
     align-items: center;
     padding: 3px 6px;
     background: var(--bg-card, #fff);
-    border-bottom: 1px solid #e8eaed;
+    border-bottom: 1px solid var(--border-subtle, #e8eaed);
+    color: var(--text-primary, #222);
     font-size: 12px;
     line-height: 1.25;
     cursor: grab;
@@ -23,7 +24,7 @@
 }
 
 .reklamace-row:hover {
-    background: #f5f7fa;
+    background: var(--bg-inset, #f5f7fa);
 }
 
 .reklamace-row:focus-visible {
@@ -44,15 +45,17 @@
 
 .reklamace-row--overlay {
     opacity: 1;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+    box-shadow: var(--shadow-card-hover, 0 6px 18px rgba(0, 0, 0, 0.2));
     cursor: grabbing;
-    background: #fff;
-    border: 1px solid #c5cad3;
+    background: var(--bg-card, #fff);
+    border: 1px solid var(--border-primary, #c5cad3);
     border-radius: 4px;
+    color: var(--text-primary, #222);
 }
 
 .reklamace-row--overdue {
     background: #ffebee;
+    color: #1a1a1a;
     box-shadow: inset 3px 0 0 #c62828;
 }
 
@@ -60,11 +63,11 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    color: #222;
+    color: inherit;
 }
 
 .reklamace-row__empty {
-    color: #bbb;
+    color: var(--text-muted, #bbb);
 }
 
 .reklamace-row__actions {
@@ -80,7 +83,7 @@
     font-weight: 600;
     padding: 2px 4px;
     cursor: pointer;
-    color: #889;
+    color: var(--text-muted, #889);
     border-radius: 4px;
 }
 
@@ -108,9 +111,9 @@
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.02em;
-    color: #889;
-    border-bottom: 1px solid #e8eaed;
-    background: #f8f9fb;
+    color: var(--text-secondary, #889);
+    border-bottom: 1px solid var(--border-subtle, #e8eaed);
+    background: var(--bg-inset, #f8f9fb);
     position: sticky;
     top: 0;
     z-index: 1;
@@ -120,4 +123,17 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.dark-mode .reklamace-row--overdue {
+    color: #1a1a1a;
+}
+
+.dark-mode .reklamace-row--overdue .reklamace-row__empty {
+    color: #666;
+}
+
+.dark-mode .reklamace-row__btn--delete:hover {
+    color: #b71c1c;
+    background: #ffcdd2;
 }

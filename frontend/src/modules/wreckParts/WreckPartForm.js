@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import Modal from '../../components/Modal';
 import './WreckPartForm.css';
 
-const WreckPartForm = ({ initial, onSave, onCancel }) => {
+const WreckPartForm = ({ initial, defaultStore = '', onSave, onCancel }) => {
     const [form, setForm] = useState({
         model_name: '',
         part_type: 'LCD',
         quantity: 1,
-        store: '',
+        store: defaultStore,
         notes: '',
     });
     const [saving, setSaving] = useState(false);
@@ -20,8 +21,16 @@ const WreckPartForm = ({ initial, onSave, onCancel }) => {
                 store: initial.store || '',
                 notes: initial.notes || '',
             });
+        } else {
+            setForm({
+                model_name: '',
+                part_type: 'LCD',
+                quantity: 1,
+                store: defaultStore,
+                notes: '',
+            });
         }
-    }, [initial]);
+    }, [initial, defaultStore]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -42,37 +51,87 @@ const WreckPartForm = ({ initial, onSave, onCancel }) => {
     };
 
     return (
-        <div className="wreck-part-form-overlay">
-            <form className="wreck-part-form" onSubmit={handleSubmit}>
-                <h3>{initial ? 'Upravit díl' : 'Nový díl z vraku'}</h3>
-                <label>
-                    Model
-                    <input name="model_name" value={form.model_name} onChange={handleChange} required />
-                </label>
-                <label>
-                    Typ dílu
-                    <input name="part_type" value={form.part_type} onChange={handleChange} required />
-                </label>
-                <label>
-                    Počet
-                    <input name="quantity" type="number" min="1" value={form.quantity} onChange={handleChange} />
-                </label>
-                <label>
-                    Prodejna
-                    <input name="store" value={form.store} onChange={handleChange} required />
-                </label>
-                <label>
-                    Poznámka
-                    <textarea name="notes" value={form.notes} onChange={handleChange} rows={3} />
-                </label>
-                <div className="wreck-part-form__actions">
-                    <button type="button" className="btn btn-outline" onClick={onCancel}>Zrušit</button>
-                    <button type="submit" className="btn btn-primary" disabled={saving}>
+        <Modal
+            title={initial ? 'Upravit díl' : 'Nový díl z vraku'}
+            onClose={onCancel}
+            size="sm"
+            onSubmit={handleSubmit}
+            bodyClassName="wreck-part-form"
+            footer={(
+                <>
+                    <button type="button" className="btn-cancel" onClick={onCancel}>
+                        Zrušit
+                    </button>
+                    <button type="submit" className="btn-submit" disabled={saving}>
                         {saving ? 'Ukládám…' : 'Uložit'}
                     </button>
+                </>
+            )}
+        >
+            <div className="form-group">
+                <label htmlFor="wp_model_name">Model *</label>
+                <input
+                    id="wp_model_name"
+                    name="model_name"
+                    value={form.model_name}
+                    onChange={handleChange}
+                    required
+                    autoComplete="off"
+                    placeholder="iPhone 8"
+                />
+            </div>
+
+            <div className="form-row">
+                <div className="form-group">
+                    <label htmlFor="wp_part_type">Typ dílu *</label>
+                    <input
+                        id="wp_part_type"
+                        name="part_type"
+                        value={form.part_type}
+                        onChange={handleChange}
+                        required
+                        autoComplete="off"
+                        placeholder="LCD"
+                    />
                 </div>
-            </form>
-        </div>
+                <div className="form-group">
+                    <label htmlFor="wp_quantity">Počet</label>
+                    <input
+                        id="wp_quantity"
+                        name="quantity"
+                        type="number"
+                        min="1"
+                        value={form.quantity}
+                        onChange={handleChange}
+                    />
+                </div>
+            </div>
+
+            <div className="form-group">
+                <label htmlFor="wp_store">Prodejna *</label>
+                <input
+                    id="wp_store"
+                    name="store"
+                    value={form.store}
+                    onChange={handleChange}
+                    required
+                    autoComplete="off"
+                    placeholder="Servis"
+                />
+            </div>
+
+            <div className="form-group">
+                <label htmlFor="wp_notes">Poznámka</label>
+                <textarea
+                    id="wp_notes"
+                    name="notes"
+                    value={form.notes}
+                    onChange={handleChange}
+                    rows={2}
+                    placeholder="Volitelně…"
+                />
+            </div>
+        </Modal>
     );
 };
 
