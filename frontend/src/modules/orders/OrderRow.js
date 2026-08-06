@@ -1,5 +1,6 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { useDraggable } from '@dnd-kit/core';
+import { copyToClipboard } from '../../utils/clipboard';
 import {
     formatOrderDate,
     formatZadal,
@@ -12,6 +13,7 @@ const CLICK_DRAG_THRESHOLD_PX = 8;
 
 const OrderRow = ({ order, isDragging = false, onOrderClick, onDeleteOrder }) => {
     const pointerStart = useRef(null);
+    const [phoneCopied, setPhoneCopied] = useState(false);
 
     const {
         attributes,
@@ -102,7 +104,22 @@ const OrderRow = ({ order, isDragging = false, onOrderClick, onDeleteOrder }) =>
             </div>
             <div className="order-row__cell order-row__telefon">
                 {order.telefon_zakaznika ? (
-                    <span className="order-chip">{order.telefon_zakaznika}</span>
+                    <button
+                        type="button"
+                        className={`order-chip order-chip--copy${phoneCopied ? ' order-chip--copied' : ''}`}
+                        title={phoneCopied ? 'Zkopírováno' : 'Klikněte pro zkopírování'}
+                        onClick={async (e) => {
+                            e.stopPropagation();
+                            const result = await copyToClipboard(order.telefon_zakaznika);
+                            if (result.success) {
+                                setPhoneCopied(true);
+                                window.setTimeout(() => setPhoneCopied(false), 1200);
+                            }
+                        }}
+                        onPointerDown={(e) => e.stopPropagation()}
+                    >
+                        {order.telefon_zakaznika}
+                    </button>
                 ) : (
                     <span className="order-row__empty">—</span>
                 )}

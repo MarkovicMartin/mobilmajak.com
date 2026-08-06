@@ -68,6 +68,7 @@ MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'users.middleware.SlidingSessionTouchMiddleware',
     'django.middleware.common.CommonMiddleware',
     'users.middleware.ApiCsrfMiddleware',  # Vlastní CSRF middleware pro API
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -175,8 +176,10 @@ SESSION_COOKIE_SECURE = True  # HTTPS je nyní dostupné
 SESSION_COOKIE_HTTPONLY = False  # Pro JavaScript access
 SESSION_COOKIE_SAMESITE = 'Lax'
 SESSION_COOKIE_AGE = 86400  # 24 hodin
-# False = méně zápisů do DB při pollingu notifikací (session platí 24 h od login/save)
+# False = méně zápisů do DB při pollingu; sliding řeší SlidingSessionTouchMiddleware
 SESSION_SAVE_EVERY_REQUEST = False
+# Max 1 session UPDATE / user / interval (při otevřeném tabu)
+SESSION_TOUCH_INTERVAL = 900
 
 # Per-worker cache (gzip/dashboard TTL); bez Redis stačí LocMem
 CACHES = {

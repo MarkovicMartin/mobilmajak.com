@@ -102,6 +102,23 @@
     text-decoration: underline;
 }
 
+.order-chip--copy {
+    border: none;
+    cursor: pointer;
+    font: inherit;
+    font-weight: 700;
+    font-size: 11px;
+    line-height: inherit;
+}
+
+.order-chip--copy:hover {
+    background: #333;
+}
+
+.order-chip--copied {
+    background: #1b7a3d;
+}
+
 .order-row__cena {
     text-align: right;
     font-variant-numeric: tabular-nums;

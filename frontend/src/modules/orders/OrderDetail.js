@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Modal from '../../components/Modal';
 import api from '../../services/api';
+import { copyToClipboard } from '../../utils/clipboard';
 import {
     ALL_STATUS_OPTIONS,
     STATUSES_REQUIRING_DODAVATEL,
@@ -38,6 +39,7 @@ const OrderDetail = ({ order, onClose, onDelete, onStatusChange, onUpdate }) => 
     const [changingStatus, setChangingStatus] = useState(false);
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState('');
+    const [phoneCopied, setPhoneCopied] = useState(false);
 
     useEffect(() => {
         setCurrentStatus(order.status);
@@ -67,7 +69,7 @@ const OrderDetail = ({ order, onClose, onDelete, onStatusChange, onUpdate }) => 
     const moveTargets = getMoveTargets(currentStatus);
     const currentStatusConfig = ALL_STATUS_OPTIONS.find((s) => s.value === currentStatus);
     const repairLink = myrepairUrl(fields.servisni_cislo);
-    const hasServiska = !!(fields.servisni_cislo || '').trim();
+    const phoneValue = (fields.telefon_zakaznika || '').trim();
     const detailTitle = [fields.typ_telefonu, fields.dil].filter(Boolean).join(' · ') || 'Objednávka';
 
     const dirty = useMemo(() => {
@@ -189,7 +191,22 @@ const OrderDetail = ({ order, onClose, onDelete, onStatusChange, onUpdate }) => 
 
     const field = (label, name, opts = {}) => (
         <label className={`detail-item detail-item--field${opts.wide ? ' detail-item--nolabel' : ''}`}>
-            {label ? <span className="label">{label}</span> : null}
+            {label ? (
+                name === 'servisni_cislo' && repairLink ? (
+                    <a
+                        className="label label--link"
+                        href={repairLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="Otevřít v MyRepair"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {label}
+                    </a>
+                ) : (
+                    <span className="label">{label}</span>
+                )
+            ) : null}
             {opts.multiline ? (
                 <textarea
                     className="detail-edit__input"
@@ -208,15 +225,21 @@ const OrderDetail = ({ order, onClose, onDelete, onStatusChange, onUpdate }) => 
                     placeholder={opts.placeholder || ''}
                 />
             )}
-            {name === 'servisni_cislo' && repairLink && (
-                <a
-                    className="detail-field-link"
-                    href={repairLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
+            {name === 'telefon_zakaznika' && phoneValue && (
+                <button
+                    type="button"
+                    className="detail-field-link detail-field-link--btn"
+                    title={phoneCopied ? 'Zkopírováno' : 'Zkopírovat telefon'}
+                    onClick={async () => {
+                        const result = await copyToClipboard(phoneValue);
+                        if (result.success) {
+                            setPhoneCopied(true);
+                            window.setTimeout(() => setPhoneCopied(false), 1200);
+                        }
+                    }}
                 >
-                    MyRepair
-                </a>
+                    {phoneCopied ? 'Zkopírováno' : 'Kopírovat'}
+                </button>
             )}
         </label>
     );
@@ -308,13 +331,11 @@ const OrderDetail = ({ order, onClose, onDelete, onStatusChange, onUpdate }) => 
                     </div>
                 </div>
 
-                {!hasServiska && (
-                    <div className="detail-grid detail-grid--customer">
-                        {field('Jméno', 'jmeno_zakaznika')}
-                        {field('Příjmení', 'prijmeni_zakaznika')}
-                        {field('Telefon', 'telefon_zakaznika')}
-                    </div>
-                )}
+                <div className="detail-grid detail-grid--customer">
+                    {field('Jméno', 'jmeno_zakaznika')}
+                    {field('Příjmení', 'prijmeni_zakaznika')}
+                    {field('Telefon', 'telefon_zakaznika')}
+                </div>
 
                 <div className="detail-note detail-note--editable">
                     <strong>Poznámka</strong>

@@ -1,4 +1,7 @@
-from django.test import SimpleTestCase
+from unittest.mock import patch
+
+from django.http import HttpResponse
+from django.test import RequestFactory, SimpleTestCase, override_settings
 
 from users.exclusions import (
     is_excluded_from_leaderboard,
@@ -6,8 +9,8 @@ from users.exclusions import (
     is_leaderboard_included_user,
 )
 from users.fields import SafeDateTimeField
+from users.middleware import SESSION_TOUCH_KEY, SlidingSessionTouchMiddleware
 from users.mysql_datetime_patch import _normalize_db_datetime, patch_mysql_datetime_conversion
-
 
 class LeaderboardExclusionsTests(SimpleTestCase):
     def test_radek_bulandra_included_in_leaderboard_despite_admin(self):
@@ -48,3 +51,50 @@ class SafeDateTimeFieldTests(SimpleTestCase):
         from django.db.backends.mysql.operations import DatabaseOperations
 
         self.assertTrue(getattr(DatabaseOperations, '_mobilmajak_safe_datetime_patched', False))
+
+
+class _FakeSession(dict):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.modified = False
+
+
+@override_settings(SESSION_TOUCH_INTERVAL=900)
+class SlidingSessionTouchMiddlewareTests(SimpleTestCase):
+    def _run(self, session, now):
+        request = RequestFactory().get('/api/users/current/')
+        request.session = session
+        mw = SlidingSessionTouchMiddleware(lambda _req: HttpResponse('ok'))
+        with patch('users.middleware.time.time', return_value=now):
+            mw(request)
+        return request
+
+    def test_first_authenticated_request_marks_modified(self):
+        session = _FakeSession({'_auth_user_id': '29'})
+        self._run(session, now=1_000_000)
+        self.assertTrue(session.modified)
+        self.assertEqual(session[SESSION_TOUCH_KEY], 1_000_000)
+
+    def test_within_interval_does_not_mark_modified(self):
+        session = _FakeSession({
+            '_auth_user_id': '29',
+            SESSION_TOUCH_KEY: 1_000_000,
+        })
+        self._run(session, now=1_000_000 + 100)
+        self.assertFalse(session.modified)
+        self.assertEqual(session[SESSION_TOUCH_KEY], 1_000_000)
+
+    def test_after_interval_marks_modified_again(self):
+        session = _FakeSession({
+            '_auth_user_id': '29',
+            SESSION_TOUCH_KEY: 1_000_000,
+        })
+        self._run(session, now=1_000_000 + 900)
+        self.assertTrue(session.modified)
+        self.assertEqual(session[SESSION_TOUCH_KEY], 1_000_900)
+
+    def test_anonymous_session_untouched(self):
+        session = _FakeSession()
+        self._run(session, now=1_000_000)
+        self.assertFalse(session.modified)
+        self.assertNotIn(SESSION_TOUCH_KEY, session)

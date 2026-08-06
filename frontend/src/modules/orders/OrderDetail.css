@@ -74,6 +74,15 @@
     font-size: 12px;
 }
 
+.detail-item .label--link {
+    color: var(--brand-navy, #3d5afe);
+    text-decoration: none;
+}
+
+.detail-item .label--link:hover {
+    text-decoration: underline;
+}
+
 .detail-item .value {
     font-weight: 700;
     color: #333;
@@ -185,6 +194,21 @@ span.value--editable:hover {
     font-weight: 600;
     margin-left: 6px;
     white-space: nowrap;
+}
+
+.detail-field-link--btn {
+    border: none;
+    background: none;
+    padding: 0;
+    color: var(--brand-navy, #3d5afe);
+    cursor: pointer;
+    font: inherit;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.detail-field-link--btn:hover {
+    text-decoration: underline;
 }
 
 .detail-save-error {

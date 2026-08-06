@@ -9,6 +9,7 @@ import { format, parse, startOfMonth, endOfMonth, eachDayOfInterval } from 'date
 import { userMayEditShiftMonth, userMayEditShiftOnDate } from './shiftEditPolicy';
 import { isStoreExpectingShift, getClosureNotice } from '../../constants/prodejnaZavreni';
 import { isBackofficeCalendarFilter, BACKOFFICE_CALENDAR_COLOR } from './shiftBackoffice';
+import { handleFetchAuthFailure } from '../../utils/sessionExpired';
 
 const isWorkShift = (shift) => shift.typ_smeny === 'prace';
 
@@ -122,6 +123,9 @@ function ShiftCalendar({
                     shiftsSeeAllEmployees: Boolean(data.shifts_see_all_employees),
                 });
             } else {
+                if (await handleFetchAuthFailure(response)) {
+                    return;
+                }
                 const errorData = await response.json().catch(() => ({}));
                 console.error('Chyba kalendáře:', errorData);
                 setError(`Chyba při načítání kalendářních dat: ${errorData.error || response.statusText}`);

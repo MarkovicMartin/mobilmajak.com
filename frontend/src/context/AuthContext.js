@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { userAPI } from '../services/api';
+import { onSessionExpired } from '../utils/sessionExpired';
 
 const AuthContext = createContext();
 
@@ -19,6 +20,14 @@ export const AuthProvider = ({ children }) => {
     // Kontrola, zda je uživatel přihlášen při načtení aplikace
     useEffect(() => {
         checkAuthStatus();
+    }, []);
+
+    useEffect(() => {
+        return onSessionExpired(() => {
+            setUser(null);
+            setError(null);
+            setLoading(false);
+        });
     }, []);
 
     const checkAuthStatus = async () => {

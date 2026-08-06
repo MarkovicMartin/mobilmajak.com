@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { isAuthFailureResponse, notifySessionExpired } from '../utils/sessionExpired';
 
 // Základní konfigurace axios - použijeme relativní cestu pro stejnou doménu
 const API_BASE_URL = '/api';
@@ -34,6 +35,11 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
     (response) => response,
     (error) => {
+        const url = error.config?.url || '';
+        const isLogin = url.includes('/users/login/');
+        if (!isLogin && isAuthFailureResponse(error.response?.status, error.response?.data)) {
+            notifySessionExpired();
+        }
         import('../utils/uxFrictionMonitor').then(({ reportApiUxError }) => {
             reportApiUxError(error);
         });

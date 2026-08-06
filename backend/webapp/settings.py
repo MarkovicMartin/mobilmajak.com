@@ -82,6 +82,7 @@ MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'users.middleware.SlidingSessionTouchMiddleware',
     'django.middleware.common.CommonMiddleware',
     'users.middleware.ApiCsrfMiddleware',  # Vlastní CSRF middleware pro API
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -241,7 +242,9 @@ SESSION_COOKIE_SECURE = False  # Pro development
 SESSION_COOKIE_HTTPONLY = False  # Pro JavaScript access
 SESSION_COOKIE_SAMESITE = 'Lax'  # Pro CORS
 SESSION_COOKIE_AGE = 86400  # 24 hodin
-SESSION_SAVE_EVERY_REQUEST = True
+# Sliding přes SlidingSessionTouchMiddleware (ne při každém requestu)
+SESSION_SAVE_EVERY_REQUEST = False
+SESSION_TOUCH_INTERVAL = 900
 
 # CSRF settings
 CSRF_COOKIE_SECURE = False  # Pro development
