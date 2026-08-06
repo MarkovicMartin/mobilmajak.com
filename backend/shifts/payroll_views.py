@@ -13,6 +13,7 @@ from users.models import WebUser
 from .models import MzdovaOdmenaMesic, MzdovaPenalizaceMesic, Smena, SmenaDochazka
 from .payroll_service import build_payroll_preview
 from .attendance_service import (
+    _board_store_bucket,
     attendance_state_from_history,
     ensure_auto_close_open_shifts,
     build_absent_stores_report,
@@ -480,7 +481,7 @@ def attendance_log(request):
             'user_id': smena.user_id,
             'jmeno': f'{smena.user.jmeno} {smena.user.prijmeni}'.strip(),
             'datum': smena.datum.isoformat(),
-            'prodejna': smena.prodejna.nazev,
+            'prodejna': _board_store_bucket(smena)['prodejna_nazev'],
             'plan_od': smena.cas_od.strftime('%H:%M'),
             'plan_do': smena.cas_do.strftime('%H:%M'),
             'cas_rozsah_od': konec_od,
@@ -529,7 +530,7 @@ def attendance_open(request):
             'user_id': smena.user_id,
             'jmeno': f'{smena.user.jmeno} {smena.user.prijmeni}'.strip(),
             'datum': smena.datum.isoformat(),
-            'prodejna': smena.prodejna.nazev,
+            'prodejna': _board_store_bucket(smena)['prodejna_nazev'],
             'prichod': format_local_hm(prichod.cas) if prichod else None,
             'plan_do': smena.cas_do.strftime('%H:%M'),
         })

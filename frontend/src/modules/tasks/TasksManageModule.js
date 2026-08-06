@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { taskAPI, storeAPI } from '../../services/api';
 import { PageHeader, Select, DatePicker } from '../../components/ui';
+import Modal from '../../components/Modal';
 import { useTasks } from '../../hooks/useTasks';
 import TaskDetailPanel from './TaskDetailPanel';
 import TaskEditForm from './TaskEditForm';
@@ -45,13 +46,15 @@ const TasksManageModule = ({ embedded = false }) => {
     const taskIdFromNav = parseTaskId(searchParams, location.state);
     const deepLinkTried = useRef(null);
     const [stores, setStores] = useState([]);
-    const [assignees, setAssignees] = useState([]);
+    const [formAssignees, setFormAssignees] = useState([]);
+    const [filterAssignees, setFilterAssignees] = useState([]);
     const [filterStav, setFilterStav] = useState('vse');
     const [filterSpecial, setFilterSpecial] = useState('');
     const [filterStore, setFilterStore] = useState('');
     const [filterAssignee, setFilterAssignee] = useState('');
     const [selected, setSelected] = useState(null);
     const [editing, setEditing] = useState(false);
+    const [createOpen, setCreateOpen] = useState(false);
     const [formError, setFormError] = useState('');
     const [wipWarning, setWipWarning] = useState('');
     const [form, setForm] = useState({
@@ -129,14 +132,45 @@ const TasksManageModule = ({ embedded = false }) => {
     );
 
     const assigneeFilterOptions = useMemo(
-        () => buildAssigneeSelectOptions(assignees, 'Všichni zaměstnanci'),
-        [assignees],
+        () => buildAssigneeSelectOptions(filterAssignees, 'Všichni zaměstnanci'),
+        [filterAssignees],
     );
 
     const assigneeFormOptions = useMemo(
-        () => buildAssigneeSelectOptions(assignees, 'Přiřadit…'),
-        [assignees],
+        () => buildAssigneeSelectOptions(formAssignees, 'Přiřadit…'),
+        [formAssignees],
     );
+
+    const fetchAssigneesForStore = useCallback(async (storeId) => {
+        if (!storeId) return [];
+        try {
+            const res = await taskAPI.getAssignees(storeId);
+            return res.assignees || [];
+        } catch {
+            return [];
+        }
+    }, []);
+
+    const fetchAssigneesStoreless = useCallback(async () => {
+        try {
+            const res = await taskAPI.getAssignees(null, { storeless: true });
+            return res.assignees || [];
+        } catch {
+            return [];
+        }
+    }, []);
+
+    const mergeAssigneesById = useCallback((lists) => {
+        const seen = new Map();
+        for (const list of lists) {
+            for (const a of list) {
+                if (a?.id != null && !seen.has(a.id)) seen.set(a.id, a);
+            }
+        }
+        return [...seen.values()].sort((a, b) =>
+            (a.jmeno_plne || '').localeCompare(b.jmeno_plne || '', 'cs'),
+        );
+    }, []);
 
     useEffect(() => {
         const fetchStores = async () => {
@@ -156,13 +190,72 @@ const TasksManageModule = ({ embedded = false }) => {
     useEffect(() => {
         if (vedouciStores.length === 1 && !form.id_prodejny) {
             setForm((f) => ({ ...f, id_prodejny: String(vedouciStores[0].id) }));
+        }
+        if (vedouciStores.length === 1 && !filterStore) {
             setFilterStore(String(vedouciStores[0].id));
         }
-    }, [vedouciStores, form.id_prodejny]);
+    }, [vedouciStores, form.id_prodejny, filterStore]);
 
     useEffect(() => {
         load(listParams);
     }, [load, listParams]);
+
+    // Assignees for create form
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            if (form.bezPobocky && user?.role === 'ADMIN') {
+                const list = await fetchAssigneesStoreless();
+                if (!cancelled) setFormAssignees(list);
+                return;
+            }
+            if (!form.id_prodejny) {
+                if (!cancelled) setFormAssignees([]);
+                return;
+            }
+            const list = await fetchAssigneesForStore(form.id_prodejny);
+            if (!cancelled) setFormAssignees(list);
+        })();
+        return () => { cancelled = true; };
+    }, [form.id_prodejny, form.bezPobocky, user?.role, fetchAssigneesForStore, fetchAssigneesStoreless]);
+
+    // Assignees for filter bar (independent of create form)
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            if (filterStore) {
+                const list = await fetchAssigneesForStore(filterStore);
+                if (!cancelled) setFilterAssignees(list);
+                return;
+            }
+            if (user?.role === 'ADMIN') {
+                const list = await fetchAssigneesStoreless();
+                if (!cancelled) setFilterAssignees(list);
+                return;
+            }
+            // Vedoucí – „všechny moje pobočky“: sloučit zaměstnance ze všech poboček
+            const lists = await Promise.all(
+                vedouciStores.map((s) => fetchAssigneesForStore(s.id)),
+            );
+            if (!cancelled) setFilterAssignees(mergeAssigneesById(lists));
+        })();
+        return () => { cancelled = true; };
+    }, [
+        filterStore,
+        user?.role,
+        vedouciStores,
+        fetchAssigneesForStore,
+        fetchAssigneesStoreless,
+        mergeAssigneesById,
+    ]);
+
+    // Drop invalid assignee when store filter changes
+    useEffect(() => {
+        if (!filterAssignee) return;
+        if (!filterAssignees.some((a) => String(a.id) === String(filterAssignee))) {
+            setFilterAssignee('');
+        }
+    }, [filterAssignees, filterAssignee]);
 
     const selectTask = useCallback((task) => {
         setSelected(task);
@@ -226,30 +319,6 @@ const TasksManageModule = ({ embedded = false }) => {
         return () => { cancelled = true; };
     }, [taskIdFromNav, tasks, loading, selected, setTasks]);
 
-    const loadAssignees = useCallback(async (storeId, storeless = false) => {
-        if (!storeless && !storeId) {
-            setAssignees([]);
-            return;
-        }
-        try {
-            const res = storeless
-                ? await taskAPI.getAssignees(null, { storeless: true })
-                : await taskAPI.getAssignees(storeId);
-            setAssignees(res.assignees || []);
-        } catch {
-            setAssignees([]);
-        }
-    }, []);
-
-    useEffect(() => {
-        const adminUser = user?.role === 'ADMIN';
-        if (form.bezPobocky && adminUser) {
-            loadAssignees(null, true);
-        } else {
-            loadAssignees(form.id_prodejny);
-        }
-    }, [form.id_prodejny, form.bezPobocky, user?.role, loadAssignees]);
-
     const updateDod = (index, text) => {
         setForm((f) => {
             const dod = [...f.dod_polozky];
@@ -303,7 +372,9 @@ const TasksManageModule = ({ embedded = false }) => {
                 id_prodejce_ukol: Number(form.id_prodejce_ukol),
                 vyzaduje_schvaleni: form.vyzaduje_schvaleni,
             });
-            if (created?.wip_warning) setWipWarning(created.wip_warning);
+            if (created?.wip_warning) {
+                window.alert(created.wip_warning);
+            }
             setForm((f) => ({
                 ...f,
                 vysledek: '',
@@ -314,6 +385,9 @@ const TasksManageModule = ({ embedded = false }) => {
                 deadline_cas: '',
                 vyzaduje_schvaleni: false,
             }));
+            setFormError('');
+            setWipWarning('');
+            setCreateOpen(false);
             setSelected(created);
             navigate(`${TASKS_MANAGE_PATH}?id=${created.id}`, {
                 replace: true,
@@ -358,12 +432,45 @@ const TasksManageModule = ({ embedded = false }) => {
     const storeLocked = user?.role === 'VEDOUCI' && vedouciStores.length <= 1;
     const showFilterStore = isAdmin() || vedouciStores.length > 1;
 
+    const wipChips = useMemo(() => {
+        const byId = new Map();
+        for (const a of filterAssignees) {
+            byId.set(a.id, a.jmeno_plne || `${a.jmeno || ''} ${a.prijmeni || ''}`.trim());
+        }
+        for (const t of tasks) {
+            const id = t.id_prodejce_ukol;
+            if (!id || byId.has(id)) continue;
+            byId.set(id, t.assignee?.jmeno_plne || `#${id}`);
+        }
+        return Object.entries(wipByAssignee)
+            .map(([id, count]) => ({
+                id: Number(id),
+                count,
+                name: byId.get(Number(id)) || `#${id}`,
+            }))
+            .filter((row) => row.count > 0)
+            .sort((a, b) => a.name.localeCompare(b.name, 'cs'));
+    }, [filterAssignees, tasks, wipByAssignee]);
+
     const selectedAssigneeWip = selected?.id_prodejce_ukol
         ? wipByAssignee[selected.id_prodejce_ukol] || 0
         : 0;
 
     const filterBar = (
         <div className="tasks-filters">
+            {canManageTasks() && (
+                <button
+                    type="button"
+                    className="btn btn--primary"
+                    onClick={() => {
+                        setFormError('');
+                        setWipWarning('');
+                        setCreateOpen(true);
+                    }}
+                >
+                    Nový úkol
+                </button>
+            )}
             <Select
                 options={FILTER_OPTIONS}
                 value={filterSpecial}
@@ -376,14 +483,22 @@ const TasksManageModule = ({ embedded = false }) => {
             <Select
                 options={STAV_OPTIONS}
                 value={filterStav}
-                onChange={setFilterStav}
+                onChange={(v) => {
+                    setFilterStav(v);
+                    if (v !== 'vse' && filterSpecial === 'cekajici_schvaleni') {
+                        setFilterSpecial('');
+                    }
+                }}
                 aria-label="Filtr stavu"
             />
             {showFilterStore && (
                 <Select
                     options={filterStoreOptions}
                     value={filterStore}
-                    onChange={setFilterStore}
+                    onChange={(v) => {
+                        setFilterStore(v);
+                        setFilterAssignee('');
+                    }}
                     aria-label="Filtr pobočky"
                 />
             )}
@@ -391,10 +506,17 @@ const TasksManageModule = ({ embedded = false }) => {
                 options={assigneeFilterOptions}
                 value={filterAssignee}
                 onChange={setFilterAssignee}
+                searchable
                 aria-label="Filtr zaměstnance"
             />
         </div>
     );
+
+    const closeCreateModal = () => {
+        setCreateOpen(false);
+        setFormError('');
+        setWipWarning('');
+    };
 
     return (
         <div className={`tasks-module${embedded ? ' tasks-module--embedded' : ''}`}>
@@ -403,12 +525,10 @@ const TasksManageModule = ({ embedded = false }) => {
             ) : (
                 filterBar
             )}
-            {assignees.length > 0 && (
+            {wipChips.length > 0 && (
                 <div className="tasks-wip-bar">
-                    {assignees.map((a) => {
-                        const count = wipByAssignee[a.id] || 0;
-                        if (!count) return null;
-                        const over = count >= WIP_LIMIT;
+                    {wipChips.map((a) => {
+                        const over = a.count >= WIP_LIMIT;
                         return (
                             <button
                                 key={a.id}
@@ -416,161 +536,174 @@ const TasksManageModule = ({ embedded = false }) => {
                                 className={`tasks-wip-chip${over ? ' is-over' : ''}`}
                                 onClick={() => setFilterAssignee(String(a.id))}
                             >
-                                {a.jmeno_plne}: {count}/{WIP_LIMIT}
+                                {a.name}: {a.count}/{WIP_LIMIT}
                             </button>
                         );
                     })}
                 </div>
             )}
 
-            <div className="task-form-card">
-                <div className="task-form-card__header">
-                    <h3>Nový úkol</h3>
-                    <span className="task-form-card__badge">SOP</span>
-                </div>
-                <form className="task-form-grid" onSubmit={handleCreate}>
-                    <div className="task-form-section">
-                        <span className="task-form-section__label">Výsledek</span>
+            {createOpen && (
+                <Modal
+                    title="Nový úkol"
+                    size="lg"
+                    onClose={closeCreateModal}
+                    onSubmit={handleCreate}
+                    contentClassName="task-create-modal"
+                    bodyClassName="task-create-modal__body"
+                    footer={(
+                        <>
+                            <button type="button" className="btn btn--ghost" onClick={closeCreateModal}>
+                                Zrušit
+                            </button>
+                            <button type="submit" className="btn btn--primary">
+                                Vytvořit úkol
+                            </button>
+                        </>
+                    )}
+                >
+                    <div className="task-form-grid">
+                        <div className="task-form-section">
+                            <span className="task-form-section__label">Výsledek</span>
+                            <label className="task-form-label">
+                                Outcome *
+                                <textarea
+                                    className="task-control task-control--text"
+                                    rows={2}
+                                    placeholder="Co má být na konci hotovo?"
+                                    value={form.vysledek}
+                                    onChange={(e) => setForm({ ...form, vysledek: e.target.value })}
+                                />
+                            </label>
+                        </div>
                         <label className="task-form-label">
-                            Outcome *
+                            Popis / kontext
                             <textarea
                                 className="task-control task-control--text"
                                 rows={2}
-                                placeholder="Co má být na konci hotovo?"
-                                value={form.vysledek}
-                                onChange={(e) => setForm({ ...form, vysledek: e.target.value })}
+                                placeholder="Volitelný kontext…"
+                                value={form.popis}
+                                onChange={(e) => setForm({ ...form, popis: e.target.value })}
                             />
                         </label>
-                    </div>
-                    <label className="task-form-label">
-                        Popis / kontext
-                        <textarea
-                            className="task-control task-control--text"
-                            rows={2}
-                            placeholder="Volitelný kontext…"
-                            value={form.popis}
-                            onChange={(e) => setForm({ ...form, popis: e.target.value })}
-                        />
-                    </label>
-                    <div className="task-dod-editor">
-                        <p className="task-dod-editor__title">Definition of Done *</p>
-                        <p className="task-dod-editor__hint">Alespoň jedna měřitelná položka</p>
-                        {form.dod_polozky.map((row, i) => (
-                            <div key={i} className="task-dod-editor-row">
-                                <span className="task-dod-editor-row__num">{i + 1}</span>
-                                <input
-                                    className="task-control task-control--text"
-                                    placeholder={`Položka ${i + 1}`}
-                                    value={row.text}
-                                    onChange={(e) => updateDod(i, e.target.value)}
-                                />
-                                {form.dod_polozky.length > 1 && (
-                                    <button
-                                        type="button"
-                                        className="btn btn--ghost task-dod-remove"
-                                        onClick={() => removeDodRow(i)}
-                                        aria-label="Odebrat položku"
-                                    >
-                                        ×
-                                    </button>
-                                )}
-                            </div>
-                        ))}
-                        <button type="button" className="btn btn--ghost task-dod-add-btn" onClick={addDodRow}>
-                            + Přidat položku
-                        </button>
-                    </div>
-                    {isAdmin() && (
-                        <div className="task-toggle-row">
-                            <label className="task-toggle" htmlFor="bez-pobocky">
-                                <input
-                                    id="bez-pobocky"
-                                    type="checkbox"
-                                    checked={form.bezPobocky}
-                                    onChange={(e) => setForm({
-                                        ...form,
-                                        bezPobocky: e.target.checked,
-                                        id_prodejny: e.target.checked ? '' : form.id_prodejny,
-                                        id_prodejce_ukol: '',
-                                    })}
-                                />
-                                <span className="task-toggle__track" />
-                                <span className="task-toggle__thumb" />
-                            </label>
-                            <div>
-                                <label className="task-toggle-label" htmlFor="bez-pobocky">
-                                    Bez pobočky
-                                </label>
-                                <p className="task-toggle-hint">Pro admin / backoffice účty</p>
-                            </div>
+                        <div className="task-dod-editor">
+                            <p className="task-dod-editor__title">Definition of Done *</p>
+                            <p className="task-dod-editor__hint">Alespoň jedna měřitelná položka</p>
+                            {form.dod_polozky.map((row, i) => (
+                                <div key={i} className="task-dod-editor-row">
+                                    <span className="task-dod-editor-row__num">{i + 1}</span>
+                                    <input
+                                        className="task-control task-control--text"
+                                        placeholder={`Položka ${i + 1}`}
+                                        value={row.text}
+                                        onChange={(e) => updateDod(i, e.target.value)}
+                                    />
+                                    {form.dod_polozky.length > 1 && (
+                                        <button
+                                            type="button"
+                                            className="btn btn--ghost task-dod-remove"
+                                            onClick={() => removeDodRow(i)}
+                                            aria-label="Odebrat položku"
+                                        >
+                                            ×
+                                        </button>
+                                    )}
+                                </div>
+                            ))}
+                            <button type="button" className="btn btn--ghost task-dod-add-btn" onClick={addDodRow}>
+                                + Přidat položku
+                            </button>
                         </div>
-                    )}
-                    <div className={`task-form-row task-form-row--meta${form.bezPobocky ? ' task-form-row--bez-pobocky' : ''}`}>
-                        {form.bezPobocky ? (
-                            <Select
-                                options={[{ value: '', label: 'Bez pobočky' }]}
-                                value=""
-                                disabled
-                                aria-label="Pobočka"
-                            />
-                        ) : (
-                            <Select
-                                options={formStoreOptions}
-                                value={form.id_prodejny}
-                                disabled={storeLocked}
-                                onChange={(v) => setForm({ ...form, id_prodejny: v, id_prodejce_ukol: '' })}
-                                aria-label="Pobočka"
-                            />
-                        )}
-                        <Select
-                            options={assigneeFormOptions}
-                            value={form.id_prodejce_ukol}
-                            onChange={(v) => setForm({ ...form, id_prodejce_ukol: v })}
-                            disabled={!form.bezPobocky && !form.id_prodejny}
-                            aria-label="Přiřadit zaměstnance"
-                        />
-                        <Select
-                            className="task-select--prio"
-                            options={PRIORITA_OPTIONS}
-                            value={form.priorita}
-                            onChange={(v) => setForm({ ...form, priorita: v })}
-                            aria-label="Priorita"
-                        />
-                    </div>
-                    <div className="task-form-row task-form-row--deadlines">
-                        <label className="task-form-label">
-                            Termín zadání
-                            <div className="task-date-field">
-                                <DatePicker
-                                    value={form.termin_zadani}
-                                    onApply={(termin_zadani) => setForm((f) => ({ ...f, termin_zadani }))}
-                                    showError={false}
-                                    wrapperClassName="task-date-field"
-                                />
+                        {isAdmin() && (
+                            <div className="task-toggle-row">
+                                <label className="task-toggle" htmlFor="bez-pobocky">
+                                    <input
+                                        id="bez-pobocky"
+                                        type="checkbox"
+                                        checked={form.bezPobocky}
+                                        onChange={(e) => setForm({
+                                            ...form,
+                                            bezPobocky: e.target.checked,
+                                            id_prodejny: e.target.checked ? '' : form.id_prodejny,
+                                            id_prodejce_ukol: '',
+                                        })}
+                                    />
+                                    <span className="task-toggle__track" />
+                                    <span className="task-toggle__thumb" />
+                                </label>
+                                <div>
+                                    <label className="task-toggle-label" htmlFor="bez-pobocky">
+                                        Bez pobočky
+                                    </label>
+                                    <p className="task-toggle-hint">Pro admin / backoffice účty</p>
+                                </div>
                             </div>
-                        </label>
-                        <label className="task-form-label">
-                            Termín dokončení
-                            <div className="task-form-row task-form-row--deadline">
+                        )}
+                        <div className={`task-form-row task-form-row--meta${form.bezPobocky ? ' task-form-row--bez-pobocky' : ''}`}>
+                            {form.bezPobocky ? (
+                                <Select
+                                    options={[{ value: '', label: 'Bez pobočky' }]}
+                                    value=""
+                                    disabled
+                                    aria-label="Pobočka"
+                                />
+                            ) : (
+                                <Select
+                                    options={formStoreOptions}
+                                    value={form.id_prodejny}
+                                    disabled={storeLocked}
+                                    onChange={(v) => setForm({ ...form, id_prodejny: v, id_prodejce_ukol: '' })}
+                                    aria-label="Pobočka"
+                                />
+                            )}
+                            <Select
+                                options={assigneeFormOptions}
+                                value={form.id_prodejce_ukol}
+                                onChange={(v) => setForm({ ...form, id_prodejce_ukol: v })}
+                                disabled={!form.bezPobocky && !form.id_prodejny}
+                                aria-label="Přiřadit zaměstnance"
+                            />
+                            <Select
+                                className="task-select--prio"
+                                options={PRIORITA_OPTIONS}
+                                value={form.priorita}
+                                onChange={(v) => setForm({ ...form, priorita: v })}
+                                aria-label="Priorita"
+                            />
+                        </div>
+                        <div className="task-form-row task-form-row--deadlines">
+                            <label className="task-form-label">
+                                Termín zadání
                                 <div className="task-date-field">
                                     <DatePicker
-                                        value={form.deadline}
-                                        onApply={(deadline) => setForm((f) => ({ ...f, deadline }))}
+                                        value={form.termin_zadani}
+                                        onApply={(termin_zadani) => setForm((f) => ({ ...f, termin_zadani }))}
                                         showError={false}
                                         wrapperClassName="task-date-field"
                                     />
                                 </div>
-                                <input
-                                    type="time"
-                                    className="task-control task-control--time"
-                                    value={form.deadline_cas}
-                                    onChange={(e) => setForm({ ...form, deadline_cas: e.target.value })}
-                                    aria-label="Čas dokončení"
-                                />
-                            </div>
-                        </label>
-                    </div>
-                    <div className="task-form-row task-form-row--actions task-form-row--actions-simple">
+                            </label>
+                            <label className="task-form-label">
+                                Termín dokončení
+                                <div className="task-form-row task-form-row--deadline">
+                                    <div className="task-date-field">
+                                        <DatePicker
+                                            value={form.deadline}
+                                            onApply={(deadline) => setForm((f) => ({ ...f, deadline }))}
+                                            showError={false}
+                                            wrapperClassName="task-date-field"
+                                        />
+                                    </div>
+                                    <input
+                                        type="time"
+                                        className="task-control task-control--time"
+                                        value={form.deadline_cas}
+                                        onChange={(e) => setForm({ ...form, deadline_cas: e.target.value })}
+                                        aria-label="Čas dokončení"
+                                    />
+                                </div>
+                            </label>
+                        </div>
                         <label className="task-checkbox-label">
                             <input
                                 type="checkbox"
@@ -582,14 +715,11 @@ const TasksManageModule = ({ embedded = false }) => {
                             />
                             Vyžaduje schválení
                         </label>
-                        <button type="submit" className="btn btn--primary task-submit-btn">
-                            Vytvořit úkol
-                        </button>
+                        {formError && <p className="task-edit-error">{formError}</p>}
+                        {wipWarning && <p className="task-wip-warning">{wipWarning}</p>}
                     </div>
-                    {formError && <p className="task-edit-error">{formError}</p>}
-                    {wipWarning && <p className="task-wip-warning">{wipWarning}</p>}
-                </form>
-            </div>
+                </Modal>
+            )}
 
             <div className="tasks-list-section">
                 <p className="tasks-list-hint muted">

@@ -142,6 +142,31 @@ class AttendanceApiTests(TestCase):
         self.assertIn('Anna Babusic', jmena)
         self.assertIn('Bára Nová', jmena)
 
+    def test_attendance_log_with_backoffice_shift_without_store(self):
+        """Backoffice směna bez prodejny nesmí shodit attendance log (500)."""
+        Smena.objects.create(
+            user=self.admin,
+            prodejna=None,
+            datum=self.today,
+            cas_od=time(7, 30),
+            cas_do=time(15, 30),
+            typ_smeny='prace',
+            pozice_smeny='backoffice',
+            aktivni=True,
+            poznamka='admin práce',
+        )
+        client = APIClient()
+        client.force_authenticate(user=self.admin)
+        mesic = f'{self.today.year}-{self.today.month:02d}'
+        res = client.get(f'/api/shifts/attendance/log/?mesic={mesic}')
+        self.assertEqual(res.status_code, 200)
+        bo = next(
+            (e for e in res.data['entries'] if e['user_id'] == self.admin.id),
+            None,
+        )
+        self.assertIsNotNone(bo)
+        self.assertEqual(bo['prodejna'], 'Backoffice')
+
     def test_smeny_list_admin_returns_both_users_shifts(self):
         client = APIClient()
         client.force_authenticate(user=self.admin)

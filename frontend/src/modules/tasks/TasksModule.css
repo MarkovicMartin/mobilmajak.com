@@ -105,6 +105,18 @@
     font-size: 0.82rem;
 }
 
+.task-create-modal.modal-content--lg {
+    max-width: min(720px, 96vw);
+}
+
+.task-create-modal__body {
+    max-height: min(70vh, 640px);
+}
+
+.task-create-modal__body .task-form-grid {
+    gap: 0.85rem;
+}
+
 @media (max-width: 900px) {
     .tasks-layout {
         grid-template-columns: 1fr;
