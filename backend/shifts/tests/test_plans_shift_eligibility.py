@@ -58,3 +58,8 @@ class PlansShiftEligibilityTests(TestCase):
 
     def test_prodejce_směna_pocita(self):
         self.assertTrue(smena_pocita_do_planovych_hodin(self._smena(self.prodejce)))
+
+    def test_prodejce_vypomoc_pozice_ne(self):
+        self.assertFalse(smena_pocita_do_planovych_hodin(
+            self._smena(self.prodejce, pozice='vypomoc'),
+        ))

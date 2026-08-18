@@ -38,7 +38,7 @@ class Prodejna(models.Model):
     
     # Nastavení
     povolena_pozice_servis = models.BooleanField(
-        default=False,
+        default=True,
         verbose_name='Povolena pozice servisní technik',
     )
     aktivni = models.BooleanField(default=True, verbose_name="Aktivní")

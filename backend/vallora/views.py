@@ -1,6 +1,9 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
+from threading import Lock
+from time import monotonic
 
 from django.http import JsonResponse
+from django.utils import timezone
 from django.views.decorators.http import require_GET
 
 from .currency import (
@@ -8,7 +11,7 @@ from .currency import (
     format_display_amount,
     normalize_display_currency,
 )
-from .lodgify_client import LodgifyClient, LodgifyError
+from .lodgify_client import LodgifyClient, LodgifyError, expand_availability_periods
 
 PROPERTIES = {
     "718797": {
@@ -36,6 +39,13 @@ PROPERTIES = {
         "roomTypeId": "573592",
     },
 }
+
+AVAILABILITY_DAYS = 180
+AVAILABILITY_TTL_SECONDS = 10 * 60
+UNAVAILABLE_MESSAGE = "Vybraný termín není dostupný."
+
+_availability_cache = {"at": 0.0, "payload": None}
+_availability_lock = Lock()
 
 TOTAL_KEYS = (
     "total",
@@ -220,6 +230,45 @@ def _quote_payload(
     }
 
 
+def _unavailable_payload(property_id, meta, arrival, departure, guests, display_currency="CZK"):
+    currency = normalize_display_currency(display_currency)
+    return {
+        "propertyId": property_id,
+        "slug": meta["slug"],
+        "name": meta["name"],
+        "available": False,
+        "arrival": arrival,
+        "departure": departure,
+        "guests": guests,
+        "price": {"total": None, "currency": currency, "formatted": None},
+        "checkoutUrl": None,
+        "quote": None,
+        "error": UNAVAILABLE_MESSAGE,
+    }
+
+
+def _fetch_live_availability():
+    client = LodgifyClient()
+    start = date.today().isoformat()
+    end = (date.today() + timedelta(days=AVAILABILITY_DAYS)).isoformat()
+    apartments = {}
+
+    for property_id, meta in PROPERTIES.items():
+        payload = client.get_availability(property_id, start, end)
+        parsed = expand_availability_periods(payload)
+        apartments[meta["slug"]] = {
+            "propertyId": property_id,
+            "roomTypeId": meta.get("roomTypeId"),
+            "blockedDates": parsed["blockedDates"],
+            "minStayByDate": parsed["minStayByDate"],
+        }
+
+    return {
+        "updatedAt": timezone.now().isoformat(),
+        "apartments": apartments,
+    }
+
+
 @require_GET
 def quote_view(request):
     property_id = request.GET.get("propertyId")
@@ -264,6 +313,17 @@ def quote_view(request):
             )
         )
     except LodgifyError as exc:
+        if exc.is_unavailable:
+            return JsonResponse(
+                _unavailable_payload(
+                    property_id,
+                    meta,
+                    arrival,
+                    departure,
+                    guests,
+                    display_currency,
+                )
+            )
         return JsonResponse({"error": str(exc)}, status=502)
 
 
@@ -316,3 +376,29 @@ def search_view(request):
         )
     except LodgifyError as exc:
         return JsonResponse({"error": str(exc)}, status=502)
+
+
+@require_GET
+def availability_view(_request):
+    cached = None
+    now = monotonic()
+
+    with _availability_lock:
+        cached = _availability_cache["payload"]
+        cached_at = _availability_cache["at"]
+
+        if cached and now - cached_at < AVAILABILITY_TTL_SECONDS:
+            return JsonResponse(cached)
+
+    try:
+        payload = _fetch_live_availability()
+    except LodgifyError as exc:
+        if cached:
+            return JsonResponse(cached)
+        return JsonResponse({"error": str(exc)}, status=502)
+
+    with _availability_lock:
+        _availability_cache["at"] = monotonic()
+        _availability_cache["payload"] = payload
+
+    return JsonResponse(payload)

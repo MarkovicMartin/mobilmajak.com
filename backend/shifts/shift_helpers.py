@@ -91,8 +91,8 @@ def user_muze_dostat_plan(user) -> bool:
 def smena_pocita_do_planovych_hodin(smena) -> bool:
     """
     Započítat směnu do hodin pro rozdělení plánu.
-    Brigádník jen v režimu „jako prodejce“, ne výpomoc.
-  """
+    Brigádník jen v režimu „jako prodejce“. Výpomoc (režim i pozice) se nezapočítá.
+    """
     user = smena.user
     if not user_muze_dostat_plan(user):
         return False
@@ -100,7 +100,7 @@ def smena_pocita_do_planovych_hodin(smena) -> bool:
         if (getattr(smena, 'brigadnik_rezim', None) or 'prodejce') != 'prodejce':
             return False
     pozice = getattr(smena, 'pozice_smeny', None) or 'prodej'
-    if pozice in ('backoffice', 'home_office'):
+    if pozice in ('backoffice', 'home_office', 'vypomoc'):
         return False
     return True
 
@@ -198,7 +198,7 @@ def shift_store_role_slot(pozice_smeny, brigadnik_rezim=None) -> str | None:
         return None
     if pozice == 'servis':
         return 'servis'
-    if (brigadnik_rezim or 'prodejce').strip() == 'vypomoc':
+    if pozice == 'vypomoc' or (brigadnik_rezim or 'prodejce').strip() == 'vypomoc':
         return 'vypomoc'
     return 'prodej'
 
@@ -296,7 +296,7 @@ def shift_store_role_slot(pozice_smeny, brigadnik_rezim=None) -> str | None:
         return None
     if pozice == 'servis':
         return 'servis'
-    if (brigadnik_rezim or 'prodejce').strip() == 'vypomoc':
+    if pozice == 'vypomoc' or (brigadnik_rezim or 'prodejce').strip() == 'vypomoc':
         return 'vypomoc'
     return 'prodej'
 

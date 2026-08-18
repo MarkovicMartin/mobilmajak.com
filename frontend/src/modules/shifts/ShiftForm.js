@@ -519,10 +519,16 @@ function ShiftForm({ user, onClose, onSuccess, initialDatum = '', editShift = nu
                                 <option value="prodej">Prodej</option>
                                 {isSenimo && <option value="skoleni">Školení</option>}
                                 {servisPoziceEnabled && <option value="servis">Servisní technik</option>}
+                                {!isBrigadnikShift && <option value="vypomoc">Výpomoc</option>}
                             </select>
                             {selectedUserObj?.servis_uroven === 'zauceni' && formData.pozice_smeny === 'servis' && (
                                 <div className="time-info">
                                     Uživatel je v zaškolení – plnění v EDA může chybět.
+                                </div>
+                            )}
+                            {!isBrigadnikShift && formData.pozice_smeny === 'vypomoc' && (
+                                <div className="time-info">
+                                    Výpomoc nemění odměnu – jen slot na prodejně a případně cíle.
                                 </div>
                             )}
                         </div>

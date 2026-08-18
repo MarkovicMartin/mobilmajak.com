@@ -18,6 +18,7 @@ class StoreRoleSlotHelperTests(TestCase):
     def test_slot_mapping(self):
         self.assertEqual(shift_store_role_slot('prodej'), 'prodej')
         self.assertEqual(shift_store_role_slot('prodej', 'vypomoc'), 'vypomoc')
+        self.assertEqual(shift_store_role_slot('vypomoc'), 'vypomoc')
         self.assertEqual(shift_store_role_slot('servis'), 'servis')
         self.assertIsNone(shift_store_role_slot('skoleni'))
         self.assertIsNone(shift_store_role_slot('backoffice'))
@@ -120,6 +121,22 @@ class StoreRoleSlotConflictTests(TestCase):
             d, self.store, 'prace', time(9, 0), time(17, 0), 'prodej', 'vypomoc',
         )
         self.assertIsNone(conflict)
+
+    def test_prodejce_and_employee_vypomoc_pozice_same_time_ok(self):
+        d = date(2026, 9, 21)
+        self._prace(self.a, self.store, d, time(9, 0), time(17, 0))
+        conflict = find_store_role_slot_conflict(
+            d, self.store, 'prace', time(9, 0), time(17, 0), 'vypomoc',
+        )
+        self.assertIsNone(conflict)
+
+    def test_two_employee_vypomoc_overlapping_blocked(self):
+        d = date(2026, 9, 22)
+        self._prace(self.a, self.store, d, time(9, 0), time(17, 0), pozice='vypomoc')
+        conflict = find_store_role_slot_conflict(
+            d, self.store, 'prace', time(10, 0), time(18, 0), 'vypomoc',
+        )
+        self.assertIsNotNone(conflict)
 
     def test_prodejce_and_servis_same_time_ok(self):
         d = date(2026, 9, 12)

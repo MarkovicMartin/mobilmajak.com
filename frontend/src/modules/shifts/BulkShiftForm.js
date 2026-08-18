@@ -461,7 +461,13 @@ function BulkShiftForm({ user, onClose, onSuccess, initialDates = [], initialMon
                                             <option value="prodej">Prodej</option>
                                             {isSenimo && <option value="skoleni">Školení</option>}
                                             {servisPoziceEnabled && <option value="servis">Servisní technik</option>}
+                                            {!isBrigadnikShift && <option value="vypomoc">Výpomoc</option>}
                                         </select>
+                                        {!isBrigadnikShift && formData.pozice_smeny === 'vypomoc' && (
+                                            <div className="time-info">
+                                                Výpomoc nemění odměnu – jen slot na prodejně a případně cíle.
+                                            </div>
+                                        )}
                                     </div>
                                 )}
 

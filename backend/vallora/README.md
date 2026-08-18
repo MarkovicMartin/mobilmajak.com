@@ -7,7 +7,10 @@ Izolovaná Django app pro `api.vallora.cz` — proxy nad Lodgify Quote API.
 ```
 GET /search?arrival=YYYY-MM-DD&departure=YYYY-MM-DD&guests=2
 GET /quote?propertyId=718797&arrival=YYYY-MM-DD&departure=YYYY-MM-DD&guests=2
+GET /availability
 ```
+
+Obsazený termín u `/quote` vrací `"available": false` (Lodgify code 666), ne 502.
 
 Odpověď obsahuje `price.formatted` a `checkoutUrl` pro Lodgify checkout.
 

@@ -78,6 +78,10 @@ def _normalize_pozice_smeny(prodejna, typ_smeny, raw_pozice, user=None):
     from shifts.shift_helpers import is_senimo_prodejna
     if pozice == 'skoleni':
         return 'skoleni' if is_senimo_prodejna(prodejna) else 'prodej'
+    if pozice == 'vypomoc':
+        if user and getattr(user, 'role', None) == 'BRIGADNIK':
+            return 'prodej'
+        return 'vypomoc'
     if not prodejna or not getattr(prodejna, 'povolena_pozice_servis', False):
         return 'prodej'
     return pozice if pozice in ('prodej', 'servis') else 'prodej'

@@ -2,7 +2,7 @@
 
 Živý dokument pro plánování rozšíření. U každé oblasti: **stav dnes**, **varianty rozpracování**, **odhad náročnosti** (S/M/L/XL) a **vliv na kvalitu aplikace** (1–5, kde 5 = největší přínos pro provoz nebo řízení firmy).
 
-Poslední revize: 2026-07-28 (§19 Slack deep-link / session – k testování)
+Poslední revize: 2026-08-18 (§20 servis na všech prodejnách + výpomoc zaměstnanců)
 
 ---
 
@@ -625,10 +625,33 @@ Nízká — neblokuje tým; řešit až při opakovaném výskytu.
 
 ---
 
+## 20. Směny – servis na všech prodejnách + výpomoc zaměstnanců (tento týden)
+
+### Stav dnes (před změnou)
+
+- Pozice **servisní technik** jen tam, kde `Prodejna.povolena_pozice_servis` (historicky Globus).
+- **Výpomoc** jen u brigádníků (`brigadnik_rezim`) a mění sazbu (150 bodů/h, bez provize).
+- Cíle SERVIS se počítají z hodin na pozici servis (Globus má zvláštní intervalová pravidla).
+
+### Cíl tohoto týdne
+
+- [x] Servis pozice dostupná **na všech prodejnách** (`povolena_pozice_servis` default + backfill).
+- [x] Zaměstnanci (ne brigádníci) můžou na směně zvolit pozici **Výpomoc**.
+- [x] Odměňování zaměstnance se nemění; výpomoc jen obsadí slot výpomoci a **nezapočítá se do hodin plánu**.
+- [x] Cíle: servisní kategorie se rozdělí podle servisních směn i mimo Globus (jakmile je v měsíci alespoň jedna směna `pozice=servis`).
+
+### Poznámka k odměnám
+
+Brigádník: režim Výpomoc / Jako prodejce beze změny.  
+Zaměstnanec: pozice Výpomoc **nemění mzdu**, jen kalendář / slot / cíle.
+
+---
+
 ## 10. Historie změn dokumentu
 
 | Datum | Změna |
 |-------|-------|
+| 2026-08-18 | §20 Servis na všech prodejnách + pozice výpomoc pro zaměstnance (tento týden) |
 | 2026-07-28 | §19 Slack deep-link / session: `ERR_TOO_MANY_REDIRECTS` u Markoviče – k testování (Bulandra OK) |
 | 2026-07-09 | §16 + P2b: import Mastersheet logins – doplnit odkaz na e-shop (`website_url`) |
 | 2026-07-09 | §18 Symplio jeden zdroj přihlášení pro actory (termín červenec 2026) |
