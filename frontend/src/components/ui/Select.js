@@ -67,14 +67,26 @@ const Select = ({
         const trigger = triggerRef.current;
         if (!trigger || !usePortal) return;
         const rect = trigger.getBoundingClientRect();
+
+        // Select menu se renderuje přes portal na `document.body`.
+        // Když je trigger uvnitř modalu, overlay modalu má často vyšší `z-index`
+        // (např. `.modal-overlay { z-index: ... !important; } v `App.css`),
+        // takže menu jinak spadne "pod" modal.
+        let zIndex = 1500;
+        const overlayEl = rootRef.current?.closest?.('.modal-overlay, .task-modal-overlay');
+        if (overlayEl) {
+            const parsed = Number.parseInt(window.getComputedStyle(overlayEl).zIndex, 10);
+            if (!Number.isNaN(parsed)) zIndex = parsed + 10;
+        }
+
         setMenuStyle({
             position: 'fixed',
             top: rect.bottom + 4,
             left: rect.left,
             width: rect.width,
-            zIndex: 1500,
+            zIndex,
         });
-    }, [usePortal]);
+    }, [usePortal, rootRef]);
 
     useLayoutEffect(() => {
         if (!isOpen || !usePortal) return undefined;
