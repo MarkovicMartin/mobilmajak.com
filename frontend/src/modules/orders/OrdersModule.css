@@ -100,11 +100,22 @@
 .filters {
     display: flex;
     gap: 15px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    align-items: center;
     background: var(--bg-card);
     padding: 20px;
     border-radius: 15px;
     box-shadow: var(--shadow-card);
+}
+
+.filters .filter-input--search {
+    flex: 0 0 50%;
+    max-width: 50%;
+    min-width: 0;
+}
+
+.filters .filter-select--status {
+    flex: 0 0 auto;
 }
 
 .filter-input,
@@ -204,6 +215,7 @@
 
     .filters {
         flex-direction: column;
+        flex-wrap: wrap;
     }
 
     .filter-input,

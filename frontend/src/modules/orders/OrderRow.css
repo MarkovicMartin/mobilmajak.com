@@ -3,11 +3,11 @@
     grid-template-columns:
         44px   /* Datum */
         192px  /* Model */
-        212px  /* Věc */
+        202px  /* Věc */
         45px   /* Barva */
         88px   /* Serviska */
         135px  /* Zákazník */
-        80px   /* Telefon */
+        90px   /* Telefon */
         37px   /* Cena */
         54px   /* Zadal */
         56px   /* Prodejna */
@@ -297,11 +297,11 @@
     grid-template-columns:
         44px   /* Datum */
         192px  /* Model */
-        212px  /* Věc */
+        202px  /* Věc */
         45px   /* Barva */
         88px   /* Serviska */
         135px  /* Zákazník */
-        80px   /* Telefon */
+        90px   /* Telefon */
         37px   /* Cena */
         54px   /* Zadal */
         56px   /* Prodejna */

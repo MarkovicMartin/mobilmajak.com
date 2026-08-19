@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import api from '../../services/api';
-import { PageHeader, Select, DateRangePicker } from '../../components/ui';
+import { PageHeader, Select } from '../../components/ui';
 import KanbanBoard from './KanbanBoard';
 import OrderForm from './OrderForm';
 import OrderDetail from './OrderDetail';
@@ -74,10 +74,8 @@ const OrdersModule = () => {
     const [filters, setFilters] = useState({
         search: '',
         status: '',
-        date_from: '',
-        date_to: ''
+        // date range filtr je pryč (zůstává jen search + status)
     });
-    const [dashboardStats, setDashboardStats] = useState({});
 
     // Debounce: API search až ~300 ms po posledním stisku klávesy
     useEffect(() => {
@@ -90,24 +88,6 @@ const OrdersModule = () => {
         }, 300);
         return () => window.clearTimeout(timer);
     }, [searchInput]);
-
-    const applyOrderDateRange = useCallback(({ start_date, end_date }) => {
-        setFilters((prev) => ({ ...prev, date_from: start_date, date_to: end_date }));
-    }, []);
-
-    const statsSummary = useMemo(() => (
-        <div className="orders-stats-summary">
-            <span className="orders-stat">
-                Celkem: <strong>{dashboardStats.total_orders || 0}</strong>
-            </span>
-            <span className="orders-stat">
-                Dnes: <strong>{dashboardStats.today_orders || 0}</strong>
-            </span>
-            <span className="orders-stat">
-                Týden: <strong>{dashboardStats.week_orders || 0}</strong>
-            </span>
-        </div>
-    ), [dashboardStats]);
 
     const loadKanbanData = useCallback(async ({ silent = false } = {}) => {
         try {
@@ -134,38 +114,26 @@ const OrdersModule = () => {
         }
     }, [filters]);
 
-    const loadDashboardStats = useCallback(async () => {
-        try {
-            const response = await api.get('/orders/dashboard-stats/');
-            setDashboardStats(response.data);
-        } catch (err) {
-            console.error('Chyba při načítání statistik:', err);
-        }
-    }, []);
-
     useEffect(() => {
         loadKanbanData();
-        loadDashboardStats();
-    }, [filters, loadKanbanData, loadDashboardStats]);
+    }, [filters, loadKanbanData]);
 
     useEffect(() => {
         const interval = setInterval(() => {
             loadKanbanData({ silent: true });
-            loadDashboardStats();
         }, 120000);
         return () => clearInterval(interval);
-    }, [filters, loadKanbanData, loadDashboardStats]);
+    }, [filters, loadKanbanData]);
 
     // Po návratu na kartu / okno – tiché obnovení (bez čekání na 2min poll)
     useEffect(() => {
         const onVisible = () => {
             if (document.visibilityState !== 'visible') return;
             loadKanbanData({ silent: true });
-            loadDashboardStats();
         };
         document.addEventListener('visibilitychange', onVisible);
         return () => document.removeEventListener('visibilitychange', onVisible);
-    }, [loadKanbanData, loadDashboardStats]);
+    }, [loadKanbanData]);
     const handleStatusChange = async (orderId, newStatus, poznamka = '', dodavatel = null) => {
         const snapshot = kanbanData;
         const patch = dodavatel != null ? { dodavatel } : {};
@@ -283,8 +251,6 @@ const OrdersModule = () => {
         setFilters({
             search: '',
             status: '',
-            date_from: '',
-            date_to: '',
         });
     };
 
@@ -317,7 +283,6 @@ const OrdersModule = () => {
                             className="btn btn--secondary"
                             onClick={() => {
                                 loadKanbanData();
-                                loadDashboardStats();
                             }}
                             disabled={loading}
                         >
@@ -327,8 +292,6 @@ const OrdersModule = () => {
                 )}
             />
 
-            {statsSummary}
-
             <div className="filters-section">
                 <div className="filters">
                     <input
@@ -336,7 +299,7 @@ const OrdersModule = () => {
                         placeholder="Hledat podle jména, telefonu, modelu…"
                         value={searchInput}
                         onChange={(e) => setSearchInput(e.target.value)}
-                        className="filter-input input"
+                        className="filter-input filter-input--search input"
                     />
 
                     <Select
@@ -344,14 +307,7 @@ const OrdersModule = () => {
                         value={filters.status}
                         onChange={(v) => handleFilterChange('status', v)}
                         aria-label="Filtr stavu objednávky"
-                    />
-
-                    <DateRangePicker
-                        variant="inline"
-                        startDate={filters.date_from}
-                        endDate={filters.date_to}
-                        onApply={applyOrderDateRange}
-                        showError={false}
+                        className="filter-select filter-select--status"
                     />
 
                     <button
