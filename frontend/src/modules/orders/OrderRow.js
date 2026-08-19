@@ -181,7 +181,12 @@ const OrderRow = ({ order, isDragging = false, onOrderClick, onDeleteOrder }) =>
                             </span>
                         ) : null}
                     </span>
-                ) : null}
+                ) : (
+                    <span
+                        className="order-row__note order-row__note--placeholder"
+                        aria-hidden="true"
+                    />
+                )}
                 <button
                     type="button"
                     className="order-row__btn order-row__btn--delete"

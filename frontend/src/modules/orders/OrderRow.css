@@ -3,16 +3,16 @@
     grid-template-columns:
         44px   /* Datum */
         192px  /* Model */
-        222px  /* Věc */
-        25px   /* Barva */
+        212px  /* Věc */
+        45px   /* Barva */
         88px   /* Serviska */
-        155px  /* Zákazník */
+        135px  /* Zákazník */
         80px   /* Telefon */
         37px   /* Cena */
         54px   /* Zadal */
         56px   /* Prodejna */
         68px   /* Dodavatel */
-        18px   /* Akce */;
+        28px   /* Akce */;
     gap: 4px;
     align-items: center;
     padding: 3px 6px;
@@ -166,9 +166,9 @@
 
 .order-row__actions {
     display: flex;
-    gap: 0;
+    gap: 4px;
     align-items: center;
-    justify-content: flex-end;
+    justify-content: center;
 }
 
 .order-row__note {
@@ -177,10 +177,16 @@
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    width: 8px;
-    height: 8px;
+    width: 16px;
+    height: 16px;
     cursor: help;
     border-radius: 3px;
+}
+
+.order-row__note--placeholder {
+    opacity: 0;
+    pointer-events: none;
+    cursor: default;
 }
 
 .order-row__note:focus-visible {
@@ -189,7 +195,7 @@
 }
 
 .order-row__note-icon {
-    font-size: 10px;
+    font-size: 16px;
     line-height: 1;
     opacity: 0.9;
     transition: transform 0.12s ease, opacity 0.12s ease;
@@ -255,12 +261,12 @@
 .order-row__btn--delete {
     --delete-icon-color: #c62828;
     opacity: 1;
-    font-size: 10px;
+    font-size: 16px;
     font-weight: 900;
     color: transparent; /* Text může být ze staršího buntu (“Smazat”); zviditelníme ho až přes ::after */
     padding: 0;
-    width: 8px;
-    height: 8px;
+    width: 16px;
+    height: 16px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -280,7 +286,7 @@
     left: 50%;
     transform: translate(-50%, -50%);
     color: var(--delete-icon-color);
-    font-size: 10px;
+    font-size: 16px;
     font-weight: 900;
     line-height: 1;
     pointer-events: none;
@@ -291,16 +297,16 @@
     grid-template-columns:
         44px   /* Datum */
         192px  /* Model */
-        222px  /* Věc */
-        25px   /* Barva */
+        212px  /* Věc */
+        45px   /* Barva */
         88px   /* Serviska */
-        155px  /* Zákazník */
+        135px  /* Zákazník */
         80px   /* Telefon */
         37px   /* Cena */
         54px   /* Zadal */
         56px   /* Prodejna */
         68px   /* Dodavatel */
-        18px   /* Akce */;
+        28px   /* Akce */;
     gap: 4px;
     padding: 4px 6px;
     font-size: 10px;
