@@ -109,6 +109,7 @@ Poslední revize: 2026-08-18 (§20 servis na všech prodejnách + výpomoc zamě
 | **O7 – Mobilní zjednodušený formulář** | Rychlé založení z telefonu na prodejně | M | 4 | Adopce prodejci |
 | **O8 – Propojení s reklamacemi** | Objednávka dílu z reklamační evidence (viz §4) | L | 5 | Synergie modulů |
 | **O9 – MyRepair deep-link** | Klik na servisku → workspace search | S | 4 | **Hotovo** (live v buňce Serviska) |
+| **O10 – Mobilní optimalizace** | Upravit seznam/kanban objednávek pro malé displeje: čitelnější řádky, ovládání filtrů a akce bez horizontálního chaosu | M | 4 | Lepší použitelnost na telefonu bez ztráty důležitých dat |
 
 ### Doporučené pořadí
 
