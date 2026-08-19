@@ -26,7 +26,7 @@ sudo -u webmajak crontab -l 2>/dev/null | grep -v "\$MARKER" | grep -v 'send_dai
 cat >> "\$TMP" <<CRON
 
 \$MARKER
-30 20 * * * /bin/bash -lc 'cd \$PROD_PATH && source venv/bin/activate && export DJANGO_SETTINGS_MODULE=webapp.settings_production && python manage.py send_daily_slack_report >> logs/daily-slack-report.log 2>&1'
+35 20 * * * /bin/bash -lc 'cd \$PROD_PATH && source venv/bin/activate && export DJANGO_SETTINGS_MODULE=webapp.settings_production && python manage.py send_daily_slack_report >> logs/daily-slack-report.log 2>&1'
 CRON
 
 sudo -u webmajak crontab "\$TMP"
@@ -36,4 +36,4 @@ echo "=== webmajak crontab (daily slack report) ==="
 sudo -u webmajak crontab -l | grep -E 'send_daily_slack_report|mobilmajak-daily-slack' || true
 EOF
 
-echo "Cron pro denní Slack report nastaven (20:30 každý den)."
+echo "Cron pro denní Slack report nastaven (20:35 každý den)."
