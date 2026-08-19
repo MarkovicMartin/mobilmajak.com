@@ -185,14 +185,15 @@ const OrderRow = ({ order, isDragging = false, onOrderClick, onDeleteOrder }) =>
                 <button
                     type="button"
                     className="order-row__btn order-row__btn--delete"
-                    title="Smazat objednávku"
+                    title="Smazat"
+                    aria-label="Smazat"
                     onClick={(e) => {
                         e.stopPropagation();
                         onDeleteOrder(order.id);
                     }}
                     onPointerDown={(e) => e.stopPropagation()}
                 >
-                    Smazat
+                    ✕
                 </button>
             </div>
         </div>

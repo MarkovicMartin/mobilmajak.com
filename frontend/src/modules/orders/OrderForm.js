@@ -204,7 +204,7 @@ const OrderForm = ({ onClose, onSubmit }) => {
                         value={formData.jmeno_zakaznika}
                         onChange={handleInputChange}
                         className={errors.jmeno_zakaznika ? 'error' : ''}
-                        placeholder="Lukáš"
+                        placeholder="Pan"
                         autoComplete="off"
                     />
                     {errors.jmeno_zakaznika && (
@@ -220,7 +220,7 @@ const OrderForm = ({ onClose, onSubmit }) => {
                         name="prijmeni_zakaznika"
                         value={formData.prijmeni_zakaznika}
                         onChange={handleInputChange}
-                        placeholder="Duffek"
+                        placeholder="Zákazník"
                         autoComplete="off"
                     />
                 </div>
@@ -235,7 +235,7 @@ const OrderForm = ({ onClose, onSubmit }) => {
                     value={formData.telefon_zakaznika}
                     onChange={handleInputChange}
                     className={errors.telefon_zakaznika ? 'error' : ''}
-                    placeholder="602 568 825"
+                        placeholder="123 321 231"
                     autoComplete="off"
                 />
                 {errors.telefon_zakaznika && (

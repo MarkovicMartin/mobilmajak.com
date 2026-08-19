@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Modal from '../../components/Modal';
 import api from '../../services/api';
 import { copyToClipboard } from '../../utils/clipboard';
@@ -40,6 +40,13 @@ const OrderDetail = ({ order, onClose, onDelete, onStatusChange, onUpdate }) => 
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState('');
     const [phoneCopied, setPhoneCopied] = useState(false);
+    const mountedRef = useRef(true);
+
+    useEffect(() => {
+        return () => {
+            mountedRef.current = false;
+        };
+    }, []);
 
     useEffect(() => {
         setCurrentStatus(order.status);
@@ -106,6 +113,12 @@ const OrderDetail = ({ order, onClose, onDelete, onStatusChange, onUpdate }) => 
                 setSaveError(typeof msg === 'string' ? msg : 'Uložení selhalo');
                 return;
             }
+            // Po úspěšném uložení má edit okno zmizet (zabránění “záseku”).
+            if (onClose) {
+                onClose();
+                return;
+            }
+
             if (result.data) {
                 const next = emptyFieldsFromOrder(result.data);
                 setFields(next);
@@ -114,9 +127,9 @@ const OrderDetail = ({ order, onClose, onDelete, onStatusChange, onUpdate }) => 
                 setBaseline({ ...fields });
             }
         } catch (err) {
-            setSaveError('Uložení selhalo');
+            if (mountedRef.current) setSaveError('Uložení selhalo');
         } finally {
-            setSaving(false);
+            if (mountedRef.current) setSaving(false);
         }
     };
 

@@ -1,18 +1,18 @@
 .order-row {
     display: grid;
     grid-template-columns:
-        44px
-        minmax(70px, 1.1fr)
-        minmax(80px, 1.4fr)
-        48px
-        minmax(88px, 1fr)
-        minmax(80px, 1.2fr)
-        minmax(90px, 1fr)
-        52px
-        64px
-        56px
-        minmax(60px, 0.9fr)
-        72px;
+        44px   /* Datum */
+        192px  /* Model */
+        222px  /* Věc */
+        40px   /* Barva */
+        88px   /* Serviska */
+        70px   /* Zákazník */
+        62px   /* Telefon */
+        52px   /* Cena */
+        54px   /* Zadal */
+        76px   /* Prodejna */
+        68px   /* Dodavatel */
+        44px   /* Akce */
     gap: 4px;
     align-items: center;
     padding: 3px 6px;
@@ -99,6 +99,18 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     color: inherit;
+    position: relative;
+    z-index: 1;
+    border-radius: 3px;
+}
+
+.order-row__cell:hover,
+.order-row__cell:focus-visible {
+    overflow: visible;
+    text-overflow: clip;
+    z-index: 3;
+    background: var(--bg-card, rgba(255, 255, 255, 0.95));
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.14);
 }
 
 .order-row__empty {
@@ -165,8 +177,8 @@
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    width: 18px;
-    height: 18px;
+    width: 20px;
+    height: 20px;
     cursor: help;
     border-radius: 3px;
 }
@@ -177,14 +189,16 @@
 }
 
 .order-row__note-icon {
-    font-size: 12px;
+    font-size: 14px;
     line-height: 1;
-    opacity: 0.75;
+    opacity: 0.9;
+    transition: transform 0.12s ease, opacity 0.12s ease;
 }
 
 .order-row__note:hover .order-row__note-icon,
 .order-row__note:focus-visible .order-row__note-icon {
     opacity: 1;
+    transform: scale(1.08);
 }
 
 .order-row__note-bubble {
@@ -194,8 +208,9 @@
     overflow: auto;
     padding: 8px 10px;
     border-radius: 8px;
-    background: #1f2937;
-    color: #fff;
+    background: #fff3e0;
+    border: 1px solid #ffcc80;
+    color: #7a4a00;
     font-size: 12px;
     font-weight: 400;
     line-height: 1.4;
@@ -212,14 +227,14 @@
     top: 100%;
     right: 10px;
     border: 6px solid transparent;
-    border-top-color: #1f2937;
+    border-top-color: #fff3e0;
 }
 
 .order-row__note-bubble--below::after {
     top: auto;
     bottom: 100%;
     border-top-color: transparent;
-    border-bottom-color: #1f2937;
+    border-bottom-color: #fff3e0;
 }
 
 .order-row__btn {
@@ -238,34 +253,54 @@
 }
 
 .order-row__btn--delete {
+    --delete-icon-color: #c62828;
     opacity: 1;
-    font-size: 10px;
-    font-weight: 700;
-    color: #c62828;
-    padding: 2px 5px;
+    font-size: 14px;
+    font-weight: 900;
+    color: transparent; /* Text může být ze staršího buntu (“Smazat”); zviditelníme ho až přes ::after */
+    padding: 0;
+    width: 20px;
+    height: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     border-radius: 4px;
-    background: #ffebee;
+    background: transparent;
+    position: relative;
 }
 
 .order-row__btn--delete:hover {
     background: #ffcdd2;
 }
 
+.order-row__btn--delete::after {
+    content: '✕';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: var(--delete-icon-color);
+    font-size: 14px;
+    font-weight: 900;
+    line-height: 1;
+    pointer-events: none;
+}
+
 .order-row-header {
     display: grid;
     grid-template-columns:
-        44px
-        minmax(70px, 1.1fr)
-        minmax(80px, 1.4fr)
-        48px
-        minmax(88px, 1fr)
-        minmax(80px, 1.2fr)
-        minmax(90px, 1fr)
-        52px
-        64px
-        56px
-        minmax(60px, 0.9fr)
-        72px;
+        44px   /* Datum */
+        192px  /* Model */
+        222px  /* Věc */
+        40px   /* Barva */
+        88px   /* Serviska */
+        70px   /* Zákazník */
+        62px   /* Telefon */
+        52px   /* Cena */
+        54px   /* Zadal */
+        76px   /* Prodejna */
+        68px   /* Dodavatel */
+        44px   /* Akce */
     gap: 4px;
     padding: 4px 6px;
     font-size: 10px;
@@ -306,6 +341,20 @@
 }
 
 .dark-mode .order-row__btn--delete {
-    color: #b71c1c;
-    background: #ffcdd2;
+    --delete-icon-color: #b71c1c;
+    background: transparent;
+}
+
+.dark-mode .order-row__note-bubble {
+    background: #1f2937;
+    border-color: rgba(255, 255, 255, 0.18);
+    color: #fff;
+}
+
+.dark-mode .order-row__note-bubble::after {
+    border-top-color: #1f2937;
+}
+
+.dark-mode .order-row__note-bubble--below::after {
+    border-bottom-color: #1f2937;
 }
