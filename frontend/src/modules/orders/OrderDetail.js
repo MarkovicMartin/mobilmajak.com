@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Modal from '../../components/Modal';
-import api from '../../services/api';
+import api, { storeAPI } from '../../services/api';
 import { copyToClipboard } from '../../utils/clipboard';
 import {
     ALL_STATUS_OPTIONS,
@@ -25,6 +25,7 @@ const emptyFieldsFromOrder = (order) => ({
     dodavatel: order.dodavatel || '',
     servisni_cislo: order.servisni_cislo || '',
     poznamka: order.poznamka || '',
+    prodejna: order.prodejna?.id != null ? String(order.prodejna.id) : '',
 });
 
 const OrderDetail = ({ order, onClose, onDelete, onStatusChange, onUpdate }) => {
@@ -41,11 +42,27 @@ const OrderDetail = ({ order, onClose, onDelete, onStatusChange, onUpdate }) => 
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState('');
     const [phoneCopied, setPhoneCopied] = useState(false);
+    const [storeOptions, setStoreOptions] = useState([]);
     const mountedRef = useRef(true);
 
     useEffect(() => {
         return () => {
             mountedRef.current = false;
+        };
+    }, []);
+
+    useEffect(() => {
+        let cancelled = false;
+        storeAPI.getStoreChoices()
+            .then((data) => {
+                if (cancelled) return;
+                setStoreOptions(Array.isArray(data?.stores) ? data.stores : []);
+            })
+            .catch(() => {
+                if (!cancelled) setStoreOptions([]);
+            });
+        return () => {
+            cancelled = true;
         };
     }, []);
 
@@ -107,6 +124,9 @@ const OrderDetail = ({ order, onClose, onDelete, onStatusChange, onUpdate }) => 
                     if (key === 'cena') {
                         const raw = String(fields[key] ?? '').trim();
                         patch[key] = raw === '' ? null : raw;
+                    } else if (key === 'prodejna') {
+                        const raw = String(fields[key] ?? '').trim();
+                        patch[key] = raw === '' ? null : Number(raw);
                     } else {
                         patch[key] = fields[key];
                     }
@@ -212,7 +232,22 @@ const OrderDetail = ({ order, onClose, onDelete, onStatusChange, onUpdate }) => 
 
     const field = (label, name, opts = {}) => (
         <label className={`detail-item detail-item--field${opts.wide ? ' detail-item--nolabel' : ''}`}>
-            {label ? <span className="label">{label}</span> : null}
+            {label ? (
+                name === 'servisni_cislo' && repairLink ? (
+                    <a
+                        className="detail-serviska-link"
+                        href={repairLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="Otevřít v MyRepair"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        serviska <span className="detail-serviska-link__arrow" aria-hidden="true">↗</span>
+                    </a>
+                ) : (
+                    <span className="label">{label}</span>
+                )
+            ) : null}
             {opts.multiline ? (
                 <textarea
                     className="detail-edit__input"
@@ -232,18 +267,6 @@ const OrderDetail = ({ order, onClose, onDelete, onStatusChange, onUpdate }) => 
                     placeholder={opts.placeholder || ''}
                 />
             )}
-            {name === 'servisni_cislo' && repairLink ? (
-                <a
-                    className="detail-myrepair-btn"
-                    href={repairLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    title="Otevřít v MyRepair"
-                    onClick={(e) => e.stopPropagation()}
-                >
-                    MyRepair ↗
-                </a>
-            ) : null}
             {name === 'telefon_zakaznika' && phoneValue && (
                 <button
                     type="button"
@@ -285,51 +308,6 @@ const OrderDetail = ({ order, onClose, onDelete, onStatusChange, onUpdate }) => 
                 </>
             )}
         >
-            <div className="detail-section detail-section--move">
-                <h3>Přesunout do</h3>
-                <div className="status-move">
-                    <div className="status-move__buttons" role="group" aria-label="Hlavní stavy">
-                        {moveTargets.main.map((col) => (
-                            <button
-                                key={col.key}
-                                type="button"
-                                className="status-move__btn"
-                                style={{
-                                    backgroundColor: col.color,
-                                    color: col.textColor,
-                                }}
-                                disabled={changingStatus}
-                                onClick={() => handleMoveTo(col.key)}
-                            >
-                                {col.label}
-                            </button>
-                        ))}
-                    </div>
-
-                    <textarea
-                        value={statusNote}
-                        onChange={(e) => setStatusNote(e.target.value)}
-                        placeholder="Poznámka ke změně stavu (volitelné)"
-                        className="status-note"
-                        rows="2"
-                        disabled={changingStatus}
-                    />
-                    {changingStatus && (
-                        <p className="status-move__busy">Měním stav…</p>
-                    )}
-                </div>
-                <div className="detail-delete-row">
-                    <button
-                        type="button"
-                        className="btn-delete detail-delete-btn"
-                        onClick={() => onDelete(order.id)}
-                    >
-                        Smazat objednávku
-                    </button>
-                    <span className="detail-delete-hint">např. když zákazník zrušil</span>
-                </div>
-            </div>
-
             <div className="detail-section">
                 <h3>Údaje</h3>
                 {saveError && <p className="detail-save-error">{saveError}</p>}
@@ -340,10 +318,28 @@ const OrderDetail = ({ order, onClose, onDelete, onStatusChange, onUpdate }) => 
                     {field('Serviska', 'servisni_cislo')}
                     {field('Cena', 'cena', { type: 'number' })}
                     {field('Dodavatel', 'dodavatel')}
-                    <div className="detail-item detail-item--readonly">
-                        <span className="label">Prodejna:</span>
-                        <span className="value">{formatProdejna(order.prodejna)}</span>
-                    </div>
+                    <label className="detail-item detail-item--field">
+                        <span className="label">Prodejna</span>
+                        <select
+                            className="detail-edit__input"
+                            value={fields.prodejna}
+                            onChange={(e) => setField('prodejna', e.target.value)}
+                        >
+                            <option value="">—</option>
+                            {storeOptions.map((s) => (
+                                <option key={s.id} value={String(s.id)}>
+                                    {s.nazev_kratkiy || s.nazev}
+                                </option>
+                            ))}
+                            {fields.prodejna
+                                && !storeOptions.some((s) => String(s.id) === String(fields.prodejna))
+                                && order.prodejna ? (
+                                <option value={String(order.prodejna.id)}>
+                                    {formatProdejna(order.prodejna)}
+                                </option>
+                            ) : null}
+                        </select>
+                    </label>
                     <div className="detail-item detail-item--readonly">
                         <span className="label">Zadal:</span>
                         <span className="value">{formatZadal(order.zalozil)}</span>
@@ -365,6 +361,49 @@ const OrderDetail = ({ order, onClose, onDelete, onStatusChange, onUpdate }) => 
                         onChange={(e) => setField('poznamka', e.target.value)}
                         placeholder="Poznámka…"
                     />
+                </div>
+            </div>
+
+            <div className="detail-section detail-section--move">
+                <h3>Přesunout do</h3>
+                <div className="status-move">
+                    <div className="status-move__buttons" role="group" aria-label="Hlavní stavy">
+                        {moveTargets.main.map((col) => (
+                            <button
+                                key={col.key}
+                                type="button"
+                                className="status-move__btn"
+                                style={{
+                                    backgroundColor: col.color,
+                                    color: col.textColor,
+                                }}
+                                disabled={changingStatus}
+                                onClick={() => handleMoveTo(col.key)}
+                            >
+                                {col.label}
+                            </button>
+                        ))}
+                        <button
+                            type="button"
+                            className="btn-delete detail-delete-btn status-move__delete"
+                            title="např. když zákazník zrušil"
+                            onClick={() => onDelete(order.id)}
+                        >
+                            Smazat
+                        </button>
+                    </div>
+
+                    <textarea
+                        value={statusNote}
+                        onChange={(e) => setStatusNote(e.target.value)}
+                        placeholder="Poznámka ke změně stavu (volitelné)"
+                        className="status-note"
+                        rows="2"
+                        disabled={changingStatus}
+                    />
+                    {changingStatus && (
+                        <p className="status-move__busy">Měním stav…</p>
+                    )}
                 </div>
             </div>
 

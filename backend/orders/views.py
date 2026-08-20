@@ -156,7 +156,10 @@ class OrderViewSet(ModelViewSet):
             context={'request': request},
         )
         if serializer.is_valid():
-            serializer.save()
+            order = serializer.save()
+            order = Order.objects.select_related(
+                'zalozil', 'posledni_zmena_uzivatel', 'prodejna',
+            ).get(pk=order.pk)
             full_serializer = OrderSerializer(order)
             return Response(full_serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

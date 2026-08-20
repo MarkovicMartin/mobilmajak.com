@@ -76,7 +76,11 @@ class OrdersO2SymplioTests(TestCase):
         self.assertIsNone(resp.data.get("symplio_url"))
 
 
-@override_settings(SLACK_BOT_TOKEN="xoxb-test", MOBILMAJAK_APP_URL="https://mobilmajak.com")
+@override_settings(
+    SLACK_BOT_TOKEN="xoxb-test",
+    MOBILMAJAK_APP_URL="https://mobilmajak.com",
+    ORDERS_SLACK_TEST_MODE=False,
+)
 class OrdersO1SlackTests(TestCase):
     def setUp(self):
         self.client = APIClient()
@@ -221,7 +225,7 @@ class OrdersO3SlaTests(TestCase):
         self.assertEqual(order.status, "objednano")
 
 
-@override_settings(SLACK_BOT_TOKEN="xoxb-test")
+@override_settings(SLACK_BOT_TOKEN="xoxb-test", ORDERS_SLACK_TEST_MODE=False)
 class OrdersStaleTests(TestCase):
     def setUp(self):
         self.user = _make_user(9306, "PRODEJCE", prodejna_id=204)
@@ -312,6 +316,47 @@ class OrdersStaleTests(TestCase):
         texts = [call.args[1] for call in mock_dm.call_args_list]
         self.assertTrue(any("Zaseknutá objednávka!" in t for t in texts))
         self.assertTrue(any("Zaseklá objednávka" in t for t in texts))
+
+
+@override_settings(
+    SLACK_BOT_TOKEN="xoxb-test",
+    MOBILMAJAK_APP_URL="https://staging.mobilmajak.com",
+    ORDERS_SLACK_TEST_MODE=True,
+)
+class OrdersSlackTestModeTests(TestCase):
+    def setUp(self):
+        self.user = _make_user(9311, "PRODEJCE", prodejna_id=205)
+        self.store = Prodejna.objects.create(
+            id=205,
+            nazev="Senimo",
+            nazev_kratkiy="Sen",
+            aktivni=True,
+        )
+
+    @patch("orders.slack_notify.markovic_slack_id", return_value="UMARKOVIC")
+    @patch("orders.slack_notify.send_slack_dm", return_value=True)
+    def test_created_redirects_to_markovic_with_target(self, mock_dm, _markovic):
+        from orders.slack_notify import notify_order_created
+
+        order = Order.objects.create(
+            jmeno_zakaznika="Jan",
+            prijmeni_zakaznika="Novák",
+            telefon_zakaznika="777123456",
+            typ_telefonu="iPhone",
+            dil="LCD",
+            servisni_cislo="123",
+            status="nove",
+            zalozil=self.user,
+            posledni_zmena_uzivatel=self.user,
+            prodejna=self.store,
+        )
+        sent = notify_order_created(order)
+        self.assertEqual(sent, 1)
+        self.assertEqual(mock_dm.call_args[0][0], "UMARKOVIC")
+        body = mock_dm.call_args[0][1]
+        self.assertIn("[TEST objednávky", body)
+        self.assertIn("Servis Globus", body)
+        self.assertIn("Nová objednávka", body)
 
 
 @override_settings(SLACK_BOT_TOKEN="xoxb-test", MOBILMAJAK_APP_URL="https://mobilmajak.com")
@@ -563,6 +608,22 @@ class OrdersRedesignTests(TestCase):
         )
         self.assertEqual(blank.status_code, 400)
         self.assertIn("barva", blank.data)
+
+    def test_patch_updates_prodejna(self):
+        with patch("orders.serializers.notify_order_created", return_value=0):
+            created = self.client.post("/api/orders/orders/", _order_payload(), format="json")
+        order_id = created.data["id"]
+        self.assertEqual(created.data["prodejna"]["id"], self.store.id)
+
+        resp = self.client.patch(
+            f"/api/orders/orders/{order_id}/",
+            {"prodejna": self.shift_store.id},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.assertEqual(resp.data["prodejna"]["id"], self.shift_store.id)
+        order = Order.objects.get(pk=order_id)
+        self.assertEqual(order.prodejna_id, self.shift_store.id)
 
     def test_prodejce_can_delete_order(self):
         with patch("orders.serializers.notify_order_created", return_value=0):

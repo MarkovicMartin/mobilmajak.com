@@ -11,6 +11,10 @@ from .prodejna_resolve import resolve_order_prodejna
 from .status_config import STATUSES_REQUIRING_DODAVATEL, RETIRED_STATUSES
 
 
+def _active_prodejna_queryset():
+    return Prodejna.objects.filter(aktivni=True)
+
+
 class WebUserSimpleSerializer(serializers.ModelSerializer):
     """Jednoduchý serializer pro uživatele"""
     class Meta:
@@ -172,13 +176,18 @@ class OrderCreateSerializer(serializers.ModelSerializer):
     prijmeni_zakaznika = serializers.CharField(required=False, allow_blank=True, max_length=100)
     telefon_zakaznika = serializers.CharField(required=False, allow_blank=True, max_length=20)
     barva = serializers.CharField(required=False, allow_blank=True, max_length=50)
+    prodejna = serializers.PrimaryKeyRelatedField(
+        queryset=_active_prodejna_queryset(),
+        required=False,
+        allow_null=True,
+    )
 
     class Meta:
         model = Order
         fields = [
             'jmeno_zakaznika', 'prijmeni_zakaznika', 'telefon_zakaznika',
             'typ_telefonu', 'dil', 'barva', 'poznamka', 'cena',
-            'dodavatel', 'servisni_cislo', 'symplio_objednavka_id',
+            'dodavatel', 'servisni_cislo', 'symplio_objednavka_id', 'prodejna',
         ]
 
     def _merged(self, attrs, field):
@@ -246,6 +255,7 @@ class OrderCreateSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         validated_data['zalozil'] = request.user
         validated_data['posledni_zmena_uzivatel'] = request.user
+        # Při založení vždy směna / domácí prodejna – klientské prodejna ignorujeme
         validated_data['prodejna'] = resolve_order_prodejna(request.user)
         validated_data.setdefault('jmeno_zakaznika', '')
         validated_data.setdefault('prijmeni_zakaznika', '')

@@ -160,7 +160,6 @@ const OrdersModule = () => {
                 api.patch(`/orders/orders/${orderId}/update_status/`, body)
             );
             loadKanbanData({ silent: true });
-            loadDashboardStats();
             return { success: true };
         } catch (err) {
             console.error('Chyba při změně stavu:', err);
@@ -182,7 +181,6 @@ const OrdersModule = () => {
             await withGatewayRetry(() => api.post('/orders/orders/', orderData));
             setShowForm(false);
             await loadKanbanData();
-            await loadDashboardStats();
             return { success: true };
         } catch (err) {
             console.error('Chyba při vytváření objednávky:', err);
@@ -227,7 +225,6 @@ const OrdersModule = () => {
         try {
             await withGatewayRetry(() => api.delete(`/orders/orders/${orderId}/`));
             loadKanbanData({ silent: true });
-            loadDashboardStats();
         } catch (err) {
             console.error('Chyba při mazání objednávky:', err);
             setKanbanData(snapshot);

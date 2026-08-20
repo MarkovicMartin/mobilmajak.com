@@ -12,7 +12,9 @@ from .models import Order
 from .slack_recipients import (
     SERVIS_GLOBUS_SLACK_ID,
     bulandra_slack_id,
+    markovic_slack_id,
     servis_and_prodejna_slack_ids,
+    slack_id_label,
 )
 
 logger = logging.getLogger(__name__)
@@ -24,6 +26,10 @@ def _app_base_url() -> str:
 
 def _bot_token() -> str:
     return (getattr(settings, "SLACK_BOT_TOKEN", None) or "").strip()
+
+
+def _orders_slack_test_mode() -> bool:
+    return bool(getattr(settings, "ORDERS_SLACK_TEST_MODE", False))
 
 
 def _order_link(order: Order) -> str:
@@ -105,10 +111,48 @@ def _escape(text: str) -> str:
     return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
-def _send_to_slack_ids(slack_ids: list[str], text: str, *, order_id: int, event: str) -> int:
+def _wrap_test_message(text: str, *, intended_target: str, event: str) -> str:
+    return (
+        f"[TEST objednávky – {_app_base_url()}]\n"
+        f"Událost: {event}\n"
+        f"Cíl (produkce): {intended_target}\n"
+        f"---\n"
+        f"{text}"
+    )
+
+
+def _send_to_slack_ids(
+    slack_ids: list[str],
+    text: str,
+    *,
+    order_id: int,
+    event: str,
+    intended_labels: list[str] | None = None,
+) -> int:
     if not _bot_token():
         logger.debug("SLACK_BOT_TOKEN není nastaven – orders Slack přeskočeno (%s)", event)
         return 0
+
+    labels = intended_labels or [slack_id_label(sid) for sid in slack_ids]
+
+    if _orders_slack_test_mode():
+        test_recipient = markovic_slack_id()
+        if not test_recipient:
+            logger.debug("Orders Slack test – chybí Slack ID Markoviče (#%s, %s)", order_id, event)
+            return 0
+        sent = 0
+        pairs = [
+            (sid, label)
+            for sid, label in zip(slack_ids, labels)
+            if label
+        ]
+        if not pairs and labels:
+            pairs = [(slack_ids[0] if slack_ids else "", labels[0])]
+        for _sid, label in pairs:
+            payload = _wrap_test_message(text, intended_target=label, event=event)
+            if send_slack_dm(test_recipient, payload):
+                sent += 1
+        return sent
 
     sent = 0
     for slack_id in slack_ids:
@@ -136,17 +180,33 @@ def _send_to_slack_ids(slack_ids: list[str], text: str, *, order_id: int, event:
 
 def notify_order_created(order: Order) -> int:
     if is_vychodil_user(order.zalozil):
-        logger.debug("notify_order_created přeskočeno – založil Vychodil (#%s)", order.id)
-        return 0
+        if not _orders_slack_test_mode():
+            logger.debug("notify_order_created přeskočeno – založil Vychodil (#%s)", order.id)
+            return 0
+        text = build_order_message(order, "created")
+        return _send_to_slack_ids(
+            [SERVIS_GLOBUS_SLACK_ID],
+            text,
+            order_id=order.id,
+            event="created",
+            intended_labels=["Neposílat (založil František Vychodil)"],
+        )
+
     text = build_order_message(order, "created")
-    return _send_to_slack_ids([SERVIS_GLOBUS_SLACK_ID], text, order_id=order.id, event="created")
+    return _send_to_slack_ids(
+        [SERVIS_GLOBUS_SLACK_ID],
+        text,
+        order_id=order.id,
+        event="created",
+    )
 
 
 def notify_order_stale(order: Order, *, business_days: int | None = None) -> int:
     try:
         text = build_order_message(order, "stale", business_days=business_days)
+        slack_ids = servis_and_prodejna_slack_ids(order)
         return _send_to_slack_ids(
-            servis_and_prodejna_slack_ids(order),
+            slack_ids,
             text,
             order_id=order.id,
             event="stale",
@@ -161,13 +221,22 @@ def notify_order_sla(order: Order, *, days_in_status: int | None = None) -> int:
     try:
         sent = 0
         admin_id = bulandra_slack_id()
+        text_admin = build_order_message(order, "escalation_admin", days_in_status=days_in_status)
         if admin_id:
-            text_admin = build_order_message(order, "escalation_admin", days_in_status=days_in_status)
             sent += _send_to_slack_ids(
                 [admin_id],
                 text_admin,
                 order_id=order.id,
                 event="escalation_admin",
+                intended_labels=["Radek Bulandra (admin)"],
+            )
+        elif _orders_slack_test_mode():
+            sent += _send_to_slack_ids(
+                [],
+                text_admin,
+                order_id=order.id,
+                event="escalation_admin",
+                intended_labels=["Radek Bulandra (admin – Slack ID nenalezeno)"],
             )
         else:
             logger.debug("Orders 7d eskalace – chybí Slack ID Bulandra (#%s)", order.id)

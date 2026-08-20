@@ -18,6 +18,27 @@ PRODEJNA_SLACK_BY_NAZEV: dict[str, str] = {
 }
 
 BULANDRA_TECHNIK_ID = 103
+MARKOVIC_WEB_USER_ID = 999
+MARKOVIC_TECHNIK_ID = 101
+
+SLACK_ID_LABELS: dict[str, str] = {
+    SERVIS_GLOBUS_SLACK_ID: "Servis Globus (servis@mobilmajak.cz)",
+    "UJEURV2G4": "Prodejna Globus (globus@mobilmajak.cz)",
+    "U7X7ETS15": "Prodejna Senimo (senimo@mobilmajak.cz)",
+    "U026QUF0YAJ": "Prodejna Čepkov (cepkov@mobilmajak.cz)",
+    "U04HDHCN7JT": "Prodejna Přerov (prerov@mobilmajak.cz)",
+    "U07V55LAEA0": "Prodejna Vsetín (vsetin@mobilmajak.cz)",
+    "U7VG523Q9": "Prodejna Šternberk (sternberk@mobilmajak.cz)",
+}
+
+
+def slack_id_label(slack_id: str | None) -> str:
+    sid = (slack_id or "").strip()
+    if not sid:
+        return "—"
+    if sid in SLACK_ID_LABELS:
+        return SLACK_ID_LABELS[sid]
+    return sid
 
 
 def prodejna_slack_id_for_order(order) -> str | None:
@@ -44,6 +65,18 @@ def bulandra_slack_id() -> str | None:
     user = WebUser.objects.filter(technik_id=BULANDRA_TECHNIK_ID, aktivni=True).first()
     if not user:
         user = WebUser.objects.filter(prijmeni__iexact="Bulandra", aktivni=True).first()
+    if not user:
+        return None
+    return slack_user_id_for_web_user(user)
+
+
+def markovic_slack_id() -> str | None:
+    """Martin Markovič – testovací příjemce na stagingu."""
+    user = WebUser.objects.filter(pk=MARKOVIC_WEB_USER_ID, aktivni=True).first()
+    if not user:
+        user = WebUser.objects.filter(technik_id=MARKOVIC_TECHNIK_ID, aktivni=True).first()
+    if not user:
+        user = WebUser.objects.filter(prijmeni__iexact="Markovič", aktivni=True).first()
     if not user:
         return None
     return slack_user_id_for_web_user(user)

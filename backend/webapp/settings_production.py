@@ -247,6 +247,10 @@ MOBILMAJAK_APP_URL = _slack_prod.app_url or "https://mobilmajak.com"
 
 # Objednávky O3 – SLA práh (dny); cron jen Slack připomínka, nikdy auto status
 ORDERS_SLA_DAYS = int(os.getenv("ORDERS_SLA_DAYS", "7") or "7")
+_ORDERS_SLACK_TEST_ENV = os.getenv("ORDERS_SLACK_TEST_MODE", "").strip().lower()
+# Zatím všechny orders Slack → Markovič (příjemci připraveni v kódu).
+# Ostré zapnutí: ORDERS_SLACK_TEST_MODE=0 v .env
+ORDERS_SLACK_TEST_MODE = _ORDERS_SLACK_TEST_ENV not in ("0", "false", "no")
 
 # Logování pro produkci
 LOGGING = {
