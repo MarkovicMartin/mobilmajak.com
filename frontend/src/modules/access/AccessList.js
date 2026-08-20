@@ -146,27 +146,22 @@ const AccessList = ({ accesses, canEdit, canDelete, onEdit, onDelete, onRevealPa
 
                             <div className="detail-row">
                                 <span className="label">🔒 Heslo:</span>
-                                <div className="password-row">
-                                    <span className="masked-password">
+                                <span className={`access-action${pwdCopied ? ' access-action--done' : ''}`}>
+                                    <button
+                                        type="button"
+                                        className={`value clickable access-action__btn access-action__btn--password${pwdCopied ? ' access-action__btn--copied' : ''}`}
+                                        onClick={() => handleRevealPassword(access.id)}
+                                        aria-label={pwdCopied ? 'Zkopírováno' : 'Zkopírovat heslo'}
+                                    >
                                         {access.masked_password}
-                                    </span>
-                                    <span className={`access-action access-action--reveal${pwdCopied ? ' access-action--done' : ''}`}>
-                                        <button
-                                            type="button"
-                                            className={`btn-reveal${pwdCopied ? ' btn-reveal--copied' : ''}`}
-                                            onClick={() => handleRevealPassword(access.id)}
-                                            aria-label={pwdCopied ? 'Zkopírováno' : 'Odkrýt a zkopírovat heslo'}
-                                        >
-                                            👁️ Odkrýt
-                                        </button>
-                                        <span className="access-action__hint" aria-hidden="true">Kopírovat</span>
-                                        {pwdCopied ? (
-                                            <span className="access-action__toast" role="status">
-                                                Zkopírováno
-                                            </span>
-                                        ) : null}
-                                    </span>
-                                </div>
+                                    </button>
+                                    <span className="access-action__hint" aria-hidden="true">Kopírovat</span>
+                                    {pwdCopied ? (
+                                        <span className="access-action__toast" role="status">
+                                            Zkopírováno
+                                        </span>
+                                    ) : null}
+                                </span>
                             </div>
 
                             {access.description && (
