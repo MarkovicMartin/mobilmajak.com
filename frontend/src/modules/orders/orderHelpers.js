@@ -103,3 +103,21 @@ export function formatProdejna(prodejna) {
     if (!prodejna) return '—';
     return prodejna.nazev_kratkiy || prodejna.nazev || '—';
 }
+
+/** Prázdný telefon je OK; jinak min. 9 číslic, max 20 znaků vč. mezer, volitelná + předvolba. */
+export function validateTelefonZakaznika(value) {
+    const trimmed = (value || '').trim();
+    if (!trimmed) return null;
+
+    if (trimmed.length > 20) {
+        return 'Telefon může mít nejvýše 20 znaků';
+    }
+    if (!/^\+?[0-9\s]+$/.test(trimmed)) {
+        return 'Telefon smí obsahovat jen číslice, mezery a volitelně + na začátku';
+    }
+    const digits = trimmed.replace(/\D/g, '');
+    if (digits.length < 9) {
+        return 'Telefon musí mít alespoň 9 číslic';
+    }
+    return null;
+}

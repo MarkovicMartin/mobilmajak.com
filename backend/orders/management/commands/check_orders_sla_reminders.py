@@ -9,7 +9,10 @@ from orders.sla import run_orders_sla_reminders
 
 
 class Command(BaseCommand):
-    help = 'Slack připomínky u objednávek déle než ORDERS_SLA_DAYS ve stejném stavu (bez změny statusu).'
+    help = (
+        "7d eskalace objednávek – Bulandra + servis/prodejna "
+        "(ORDERS_SLA_DAYS, bez změny statusu)."
+    )
 
     def add_arguments(self, parser):
         parser.add_argument(

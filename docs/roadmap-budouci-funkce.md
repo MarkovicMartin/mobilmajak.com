@@ -100,7 +100,7 @@ Poslední revize: 2026-08-18 (§20 servis na všech prodejnách + výpomoc zamě
 
 | Varianta | Popis | Náročnost | Vliv | Poznámka |
 |----------|-------|-----------|------|----------|
-| **O1 – Notifikace** | Slack při nové objednávce + SLA připomínky (dlouho visící ve stavu); změna na „dorazilo čeká“ bez Slacku | M | 4 | Okamžitý provozní přínos |
+| **O1 – Notifikace** | Slack při nové objednávce + připomínky bez pohybu + 7d eskalace | M | 4 | **Hotovo**: servis Globus (+ prodejny), skip Vychodil, 1 prac. den, 7d → Bulandra |
 | **O2 – Vazba na Symplio** | Pole `symplio_objednavka_id`, odkaz jako v `AuditZbytekPanel` | S | 3 | Konzistence s ostatními moduly |
 | **O3 – SLA / eskalace** | Po X dnech ve stavu zvýraznit / eskalovat vedoucímu | M | 4 | Méně „zapomenutých“ dílů |
 | **O4 – Admin analytika UI** | Grafy průměrné doby stavů (API už je) | S | 3 | Řízení servisního skladu |

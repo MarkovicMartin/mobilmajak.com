@@ -5,11 +5,15 @@ import logging
 
 from django.conf import settings
 
-from stores.models import Prodejna
-from tasks.slack_notify import send_slack_dm, slack_user_id_for_web_user
-from users.models import WebUser
+from tasks.slack_notify import send_slack_dm
+from users.mzda_utils import is_vychodil_user
 
 from .models import Order
+from .slack_recipients import (
+    SERVIS_GLOBUS_SLACK_ID,
+    bulandra_slack_id,
+    servis_and_prodejna_slack_ids,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -22,29 +26,6 @@ def _bot_token() -> str:
     return (getattr(settings, "SLACK_BOT_TOKEN", None) or "").strip()
 
 
-def vedouci_user_id_for_order(order: Order) -> int | None:
-    """Vedoucí prodejny tvůrce objednávky (zalozil.prodejna_id)."""
-    try:
-        creator = order.zalozil
-    except Exception:
-        return None
-    prodejna_id = getattr(creator, "prodejna_id", None)
-    if not prodejna_id:
-        return None
-    store = Prodejna.objects.filter(pk=prodejna_id).only("vedouci_user_id").first()
-    return store.vedouci_user_id if store else None
-
-
-def order_recipient_ids(order: Order) -> list[int]:
-    ids: list[int] = []
-    if order.zalozil_id:
-        ids.append(order.zalozil_id)
-    vedouci_id = vedouci_user_id_for_order(order)
-    if vedouci_id:
-        ids.append(vedouci_id)
-    return list(dict.fromkeys(ids))
-
-
 def _order_link(order: Order) -> str:
     return f"{_app_base_url()}/orders?id={order.id}"
 
@@ -55,17 +36,67 @@ def _order_summary(order: Order) -> str:
     return f"#{order.id} {customer}: {item}"
 
 
-def build_order_message(order: Order, event: str, *, days_in_status: int | None = None) -> str:
+def _prodejna_label(order: Order) -> str:
+    prodejna = getattr(order, "prodejna", None)
+    if prodejna and getattr(prodejna, "nazev", None):
+        return prodejna.nazev
+    return "—"
+
+
+def _creator_label(order: Order) -> str:
+    try:
+        user = order.zalozil
+    except Exception:
+        return "—"
+    if not user:
+        return "—"
+    name = f"{user.jmeno} {user.prijmeni}".strip()
+    return name or f"#{user.id}"
+
+
+def build_order_message(
+    order: Order,
+    event: str,
+    *,
+    days_in_status: int | None = None,
+    business_days: int | None = None,
+) -> str:
     link = _order_link(order)
     summary = _order_summary(order)
     status_label = order.get_status_display()
+    prodejna = _prodejna_label(order)
+
     if event == "created":
-        return f"Nová objednávka {summary}\nStav: {status_label}\n{_escape(link)}"
-    if event == "sla":
+        return (
+            f"Nová objednávka {summary}\n"
+            f"Prodejna: {prodejna} | Stav: {status_label}\n"
+            f"Založil: {_creator_label(order)}\n"
+            f"{_escape(link)}"
+        )
+    if event == "stale":
+        bd = business_days if business_days is not None else 1
+        day_word = "den" if bd == 1 else "dny" if 2 <= bd <= 4 else "dní"
+        return (
+            f"Objednávka bez pohybu {bd} prac. {day_word}\n"
+            f"{summary}\n"
+            f"Prodejna: {prodejna} | Stav: {status_label}\n"
+            f"{_escape(link)}"
+        )
+    if event == "escalation_admin":
         days = days_in_status if days_in_status is not None else order.days_in_current_status()
         return (
-            f"Připomínka: objednávka {days} dní ve stavu „{status_label}“\n"
-            f"{summary}\n{_escape(link)}"
+            f"Zaseknutá objednávka!\n"
+            f"{summary}\n"
+            f"Prodejna: {prodejna} | {days} dní ve stavu „{status_label}“\n"
+            f"{_escape(link)}"
+        )
+    if event == "escalation_store":
+        days = days_in_status if days_in_status is not None else order.days_in_current_status()
+        return (
+            f"Zaseklá objednávka\n"
+            f"{summary}\n"
+            f"Prodejna: {prodejna} | {days} dní ve stavu „{status_label}“\n"
+            f"{_escape(link)}"
         )
     return f"Objednávka {summary}\n{_escape(link)}"
 
@@ -74,47 +105,81 @@ def _escape(text: str) -> str:
     return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
-def send_order_slack_to_recipients(order: Order, event: str, *, days_in_status: int | None = None) -> int:
-    """Odešle DM příjemcům. Fail-soft: chybějící Slack ID / token = skip. Vrací počet odeslaných."""
+def _send_to_slack_ids(slack_ids: list[str], text: str, *, order_id: int, event: str) -> int:
     if not _bot_token():
         logger.debug("SLACK_BOT_TOKEN není nastaven – orders Slack přeskočeno (%s)", event)
         return 0
 
-    text = build_order_message(order, event, days_in_status=days_in_status)
     sent = 0
-    for user_id in order_recipient_ids(order):
+    for slack_id in slack_ids:
+        if not slack_id:
+            continue
         try:
-            user = WebUser.objects.filter(pk=user_id).first()
-            slack_id = slack_user_id_for_web_user(user)
-            if not slack_id:
-                logger.debug(
-                    "Orders Slack přeskočeno – chybí Slack ID WebUser #%s (objednávka #%s, %s)",
-                    user_id,
-                    order.id,
-                    event,
-                )
-                continue
             if send_slack_dm(slack_id, text):
                 sent += 1
+            else:
+                logger.debug(
+                    "Orders Slack selhalo pro %s (objednávka #%s, %s)",
+                    slack_id,
+                    order_id,
+                    event,
+                )
         except Exception:
             logger.exception(
-                "Orders Slack selhalo pro WebUser #%s (objednávka #%s, %s)",
-                user_id,
-                order.id,
+                "Orders Slack selhalo pro %s (objednávka #%s, %s)",
+                slack_id,
+                order_id,
                 event,
             )
     return sent
 
 
 def notify_order_created(order: Order) -> int:
-    # Zatím vypnuto – notifikace o založení objednávky neposíláme.
-    logger.debug("notify_order_created přeskočeno (vypnuto) pro #%s", order.id)
-    return 0
+    if is_vychodil_user(order.zalozil):
+        logger.debug("notify_order_created přeskočeno – založil Vychodil (#%s)", order.id)
+        return 0
+    text = build_order_message(order, "created")
+    return _send_to_slack_ids([SERVIS_GLOBUS_SLACK_ID], text, order_id=order.id, event="created")
+
+
+def notify_order_stale(order: Order, *, business_days: int | None = None) -> int:
+    try:
+        text = build_order_message(order, "stale", business_days=business_days)
+        return _send_to_slack_ids(
+            servis_and_prodejna_slack_ids(order),
+            text,
+            order_id=order.id,
+            event="stale",
+        )
+    except Exception:
+        logger.exception("notify_order_stale selhalo pro #%s", order.id)
+        return 0
 
 
 def notify_order_sla(order: Order, *, days_in_status: int | None = None) -> int:
+    """7d eskalace: Bulandra (admin) + servis Globus + prodejna."""
     try:
-        return send_order_slack_to_recipients(order, "sla", days_in_status=days_in_status)
+        sent = 0
+        admin_id = bulandra_slack_id()
+        if admin_id:
+            text_admin = build_order_message(order, "escalation_admin", days_in_status=days_in_status)
+            sent += _send_to_slack_ids(
+                [admin_id],
+                text_admin,
+                order_id=order.id,
+                event="escalation_admin",
+            )
+        else:
+            logger.debug("Orders 7d eskalace – chybí Slack ID Bulandra (#%s)", order.id)
+
+        text_store = build_order_message(order, "escalation_store", days_in_status=days_in_status)
+        sent += _send_to_slack_ids(
+            servis_and_prodejna_slack_ids(order),
+            text_store,
+            order_id=order.id,
+            event="escalation_store",
+        )
+        return sent
     except Exception:
         logger.exception("notify_order_sla selhalo pro #%s", order.id)
         return 0

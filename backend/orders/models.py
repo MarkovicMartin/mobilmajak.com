@@ -72,6 +72,13 @@ class Order(models.Model):
         null=True,
         verbose_name="SLA připomínka odeslána",
     )
+
+    # ≥1 pracovní den bez pohybu – Slack servis + prodejna
+    stale_reminder_sent_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        verbose_name="Připomínka bez pohybu odeslána",
+    )
     
     class Meta:
         db_table = 'WEB_OBJEDNAVKY'

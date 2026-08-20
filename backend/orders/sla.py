@@ -1,4 +1,4 @@
-"""O3: SLA připomínky k objednávkám – jen Slack, nikdy nemění status."""
+"""7d eskalace objednávek – Bulandra + servis/prodejna, nikdy nemění status."""
 from __future__ import annotations
 
 import logging

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import Modal from '../../components/Modal';
+import { validateTelefonZakaznika } from './orderHelpers';
 import './OrderForm.css';
 
 const OrderForm = ({ onClose, onSubmit }) => {
@@ -40,9 +41,9 @@ const OrderForm = ({ onClose, onSubmit }) => {
             newErrors.jmeno_zakaznika = 'Nebo vyplňte jméno a telefon';
         }
 
-        if (formData.telefon_zakaznika.trim()
-            && !/^(\+420\s?)?[0-9\s]{9,}$/.test(formData.telefon_zakaznika)) {
-            newErrors.telefon_zakaznika = 'Nesprávný formát telefonu';
+        const telefonErr = validateTelefonZakaznika(formData.telefon_zakaznika);
+        if (telefonErr) {
+            newErrors.telefon_zakaznika = telefonErr;
         }
 
         if (formData.cena && isNaN(parseFloat(formData.cena))) {
@@ -235,7 +236,8 @@ const OrderForm = ({ onClose, onSubmit }) => {
                     value={formData.telefon_zakaznika}
                     onChange={handleInputChange}
                     className={errors.telefon_zakaznika ? 'error' : ''}
-                        placeholder="123 321 231"
+                    placeholder="777 123 456"
+                    maxLength={20}
                     autoComplete="off"
                 />
                 {errors.telefon_zakaznika && (

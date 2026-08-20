@@ -1,3 +1,5 @@
+import re
+
 from rest_framework import serializers
 
 from .models import Order, OrderStatusHistory
@@ -207,6 +209,20 @@ class OrderCreateSerializer(serializers.ModelSerializer):
     def validate_servisni_cislo(self, value):
         return (value or '').strip()
 
+    def validate_telefon_zakaznika(self, value):
+        value = (value or '').strip()
+        if not value:
+            return value
+        if len(value) > 20:
+            raise serializers.ValidationError('Telefon může mít nejvýše 20 znaků.')
+        if not re.match(r'^\+?[0-9\s]+$', value):
+            raise serializers.ValidationError(
+                'Telefon smí obsahovat jen číslice, mezery a volitelně + na začátku.'
+            )
+        if len(re.sub(r'\D', '', value)) < 9:
+            raise serializers.ValidationError('Telefon musí mít alespoň 9 číslic.')
+        return value
+
     def validate(self, attrs):
         attrs = super().validate(attrs)
         # Při partial update vyžaduj barvu jen když se mění nebo při create
@@ -302,8 +318,9 @@ class OrderUpdateStatusSerializer(serializers.Serializer):
             instance.status = novy_status
             instance.posledni_zmena_uzivatel = request.user
             instance.sla_reminder_sent_at = None
+            instance.stale_reminder_sent_at = None
             update_fields.extend([
-                'status', 'posledni_zmena_uzivatel', 'sla_reminder_sent_at',
+                'status', 'posledni_zmena_uzivatel', 'sla_reminder_sent_at', 'stale_reminder_sent_at',
             ])
             
             OrderStatusHistory.objects.create(

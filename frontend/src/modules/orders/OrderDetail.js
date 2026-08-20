@@ -10,6 +10,7 @@ import {
     myrepairUrl,
     formatZadal,
     formatProdejna,
+    validateTelefonZakaznika,
 } from './orderHelpers';
 import './OrderDetail.css';
 
@@ -90,6 +91,13 @@ const OrderDetail = ({ order, onClose, onDelete, onStatusChange, onUpdate }) => 
 
     const handleSave = async () => {
         if (!onUpdate || !dirty || saving) return;
+
+        const telefonErr = validateTelefonZakaznika(fields.telefon_zakaznika);
+        if (telefonErr) {
+            setSaveError(telefonErr);
+            return;
+        }
+
         setSaving(true);
         setSaveError('');
         try {
@@ -218,6 +226,7 @@ const OrderDetail = ({ order, onClose, onDelete, onStatusChange, onUpdate }) => 
                     className="detail-edit__input"
                     type={opts.type || 'text'}
                     step={opts.type === 'number' ? '0.01' : undefined}
+                    maxLength={opts.maxLength}
                     value={fields[name]}
                     onChange={(e) => setField(name, e.target.value)}
                     placeholder={opts.placeholder || ''}
@@ -344,7 +353,7 @@ const OrderDetail = ({ order, onClose, onDelete, onStatusChange, onUpdate }) => 
                 <div className="detail-grid detail-grid--customer">
                     {field('Jméno', 'jmeno_zakaznika')}
                     {field('Příjmení', 'prijmeni_zakaznika')}
-                    {field('Telefon', 'telefon_zakaznika')}
+                    {field('Telefon', 'telefon_zakaznika', { type: 'tel', maxLength: 20 })}
                 </div>
 
                 <div className="detail-note detail-note--editable">

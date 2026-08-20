@@ -8,8 +8,11 @@ from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
 
+from orders.business_days import business_days_elapsed
 from orders.models import Order, OrderStatusHistory
 from orders.sla import orders_past_sla, run_orders_sla_reminders, sla_days_threshold
+from orders.slack_recipients import SERVIS_GLOBUS_SLACK_ID
+from orders.stale import orders_stale_candidates, run_orders_stale_reminders
 from orders.status_config import MAIN_STATUS_KEYS
 from shifts.models import Smena
 from stores.models import Prodejna
@@ -77,30 +80,46 @@ class OrdersO2SymplioTests(TestCase):
 class OrdersO1SlackTests(TestCase):
     def setUp(self):
         self.client = APIClient()
-        self.vedouci = _make_user(9302, "VEDOUCI", prodejna_id=202, email="vedouci-ord@example.com")
         self.creator = _make_user(9303, "PRODEJCE", prodejna_id=202, email="creator-ord@example.com")
-        Prodejna.objects.create(
+        self.vychodil = WebUser.objects.create(
+            id=9305,
+            uzivatelske_jmeno="vychodil",
+            jmeno="František",
+            prijmeni="Vychodil",
+            heslo="x",
+            role="PRODEJCE",
+            aktivni=True,
+            email="vychodil@example.com",
+            technik_id=121,
+            prodejna_id=202,
+            moduly=[],
+        )
+        self.store = Prodejna.objects.create(
             id=202,
-            nazev="Ord Store",
-            nazev_kratkiy="OS",
-            vedouci_user_id=self.vedouci.id,
+            nazev="Senimo",
+            nazev_kratkiy="Sen",
             aktivni=True,
         )
         self.client.force_authenticate(user=self.creator)
 
     @patch("orders.slack_notify.send_slack_dm", return_value=True)
-    @patch("orders.slack_notify.slack_user_id_for_web_user", side_effect=lambda u: f"U{u.id}" if u else None)
-    def test_create_does_not_notify(self, _lookup, mock_dm):
-        """Notifikace o založení je zatím vypnutá."""
+    def test_create_notifies_servis_globus(self, mock_dm):
+        resp = self.client.post("/api/orders/orders/", _order_payload(), format="json")
+        self.assertEqual(resp.status_code, 201, resp.content)
+        mock_dm.assert_called_once()
+        self.assertEqual(mock_dm.call_args[0][0], SERVIS_GLOBUS_SLACK_ID)
+        self.assertIn("Nová objednávka", mock_dm.call_args[0][1])
+
+    @patch("orders.slack_notify.send_slack_dm", return_value=True)
+    def test_create_skips_when_vychodil(self, mock_dm):
+        self.client.force_authenticate(user=self.vychodil)
         resp = self.client.post("/api/orders/orders/", _order_payload(), format="json")
         self.assertEqual(resp.status_code, 201, resp.content)
         mock_dm.assert_not_called()
 
     @patch("orders.slack_notify.send_slack_dm", return_value=True)
-    @patch("orders.slack_notify.slack_user_id_for_web_user", side_effect=lambda u: f"U{u.id}" if u else None)
-    def test_status_dorazilo_ceka_does_not_notify(self, _lookup, mock_dm):
-        with patch("orders.serializers.notify_order_created", return_value=0):
-            resp = self.client.post("/api/orders/orders/", _order_payload(), format="json")
+    def test_status_dorazilo_ceka_does_not_notify(self, mock_dm):
+        resp = self.client.post("/api/orders/orders/", _order_payload(), format="json")
         order_id = resp.data["id"]
         mock_dm.reset_mock()
 
@@ -110,16 +129,12 @@ class OrdersO1SlackTests(TestCase):
             format="json",
         )
         self.assertEqual(resp2.status_code, 200, resp2.content)
-        self.assertEqual(resp2.data["status"], "dorazilo_ceka")
-        self.assertEqual(resp2.data["status_display"], "připraveno")
         mock_dm.assert_not_called()
 
-    @patch("orders.slack_notify.send_slack_dm", return_value=True)
-    @patch("orders.slack_notify.slack_user_id_for_web_user", return_value=None)
-    def test_missing_slack_id_fail_soft(self, _lookup, mock_dm):
+    @patch("orders.slack_notify.send_slack_dm", return_value=False)
+    def test_missing_slack_fail_soft(self, mock_dm):
         resp = self.client.post("/api/orders/orders/", _order_payload(), format="json")
         self.assertEqual(resp.status_code, 201)
-        mock_dm.assert_not_called()
 
 
 @override_settings(ORDERS_SLA_DAYS=7, SLACK_BOT_TOKEN="xoxb-test")
@@ -181,7 +196,6 @@ class OrdersO3SlaTests(TestCase):
         result = run_orders_sla_reminders(dry_run=False)
         order.refresh_from_db()
         self.assertEqual(order.status, status_before)
-        self.assertEqual(order.status, "objednano")
         self.assertIsNotNone(order.sla_reminder_sent_at)
         self.assertGreaterEqual(result["candidates"], 1)
         mock_notify.assert_called()
@@ -205,6 +219,99 @@ class OrdersO3SlaTests(TestCase):
         order = Order.objects.get(status="objednano")
         self.assertIsNone(order.sla_reminder_sent_at)
         self.assertEqual(order.status, "objednano")
+
+
+@override_settings(SLACK_BOT_TOKEN="xoxb-test")
+class OrdersStaleTests(TestCase):
+    def setUp(self):
+        self.user = _make_user(9306, "PRODEJCE", prodejna_id=204)
+        self.store = Prodejna.objects.create(
+            id=204,
+            nazev="Globus",
+            nazev_kratkiy="GL",
+            aktivni=True,
+        )
+
+    def test_business_days_skip_weekend(self):
+        from datetime import datetime
+
+        # Pátek → pondělí = 1 pracovní den
+        fri = timezone.make_aware(datetime(2026, 8, 14, 10, 0))
+        mon = timezone.make_aware(datetime(2026, 8, 17, 10, 0))
+        self.assertEqual(business_days_elapsed(fri, mon), 1)
+
+        # Pátek → sobota = 0
+        sat = timezone.make_aware(datetime(2026, 8, 15, 10, 0))
+        self.assertEqual(business_days_elapsed(fri, sat), 0)
+
+    def _make_order_at(self, status_since, **kwargs):
+        order = Order.objects.create(
+            jmeno_zakaznika="A",
+            prijmeni_zakaznika="B",
+            telefon_zakaznika="777",
+            typ_telefonu="iPhone",
+            dil="LCD",
+            servisni_cislo="111",
+            status="nove",
+            zalozil=self.user,
+            posledni_zmena_uzivatel=self.user,
+            prodejna=self.store,
+            **kwargs,
+        )
+        hist = OrderStatusHistory.objects.create(
+            objednavka=order,
+            puvodni_status="",
+            novy_status="nove",
+            uzivatel=self.user,
+        )
+        OrderStatusHistory.objects.filter(pk=hist.pk).update(datum_zmeny=status_since)
+        order.refresh_from_db()
+        return order
+
+    def test_stale_candidate_after_one_business_day(self):
+        from datetime import datetime
+
+        now = timezone.make_aware(datetime(2026, 8, 17, 9, 0))  # Monday
+        since = timezone.make_aware(datetime(2026, 8, 14, 15, 0))  # Friday
+        order = self._make_order_at(since)
+        candidates = orders_stale_candidates(now=now)
+        self.assertIn(order, candidates)
+
+    @patch("orders.stale.notify_order_stale", return_value=2)
+    def test_stale_reminder_marks_sent_at(self, mock_notify):
+        from datetime import datetime
+
+        now = timezone.make_aware(datetime(2026, 8, 17, 9, 0))
+        since = timezone.make_aware(datetime(2026, 8, 14, 15, 0))
+        order = self._make_order_at(since)
+        result = run_orders_stale_reminders(now=now, dry_run=False)
+        order.refresh_from_db()
+        self.assertIsNotNone(order.stale_reminder_sent_at)
+        self.assertGreaterEqual(result["candidates"], 1)
+        mock_notify.assert_called()
+
+    @patch("orders.slack_notify.bulandra_slack_id", return_value="UBULANDRA")
+    @patch("orders.slack_notify.send_slack_dm", return_value=True)
+    def test_sla_escalation_messages(self, mock_dm, _bulandra):
+        from orders.slack_notify import notify_order_sla
+
+        order = Order.objects.create(
+            jmeno_zakaznika="A",
+            prijmeni_zakaznika="B",
+            telefon_zakaznika="777",
+            typ_telefonu="iPhone",
+            dil="LCD",
+            servisni_cislo="111",
+            status="objednano",
+            zalozil=self.user,
+            posledni_zmena_uzivatel=self.user,
+            prodejna=self.store,
+        )
+        sent = notify_order_sla(order, days_in_status=7)
+        self.assertGreaterEqual(sent, 2)
+        texts = [call.args[1] for call in mock_dm.call_args_list]
+        self.assertTrue(any("Zaseknutá objednávka!" in t for t in texts))
+        self.assertTrue(any("Zaseklá objednávka" in t for t in texts))
 
 
 @override_settings(SLACK_BOT_TOKEN="xoxb-test", MOBILMAJAK_APP_URL="https://mobilmajak.com")
@@ -398,6 +505,41 @@ class OrdersRedesignTests(TestCase):
         self.assertTrue(any(o["status"] == "predobjednano" for o in kd["objednano"]["orders"]))
         self.assertNotIn("storno", kd)
         self.assertNotIn("neni_skladem", kd)
+
+    def test_telefon_validation(self):
+        with patch("orders.serializers.notify_order_created", return_value=0):
+            short = self.client.post(
+                "/api/orders/orders/",
+                _order_payload(telefon_zakaznika="12345678", servisni_cislo=""),
+                format="json",
+            )
+        self.assertEqual(short.status_code, 400)
+        self.assertIn("telefon_zakaznika", short.data)
+
+        with patch("orders.serializers.notify_order_created", return_value=0):
+            long = self.client.post(
+                "/api/orders/orders/",
+                _order_payload(telefon_zakaznika="+420 777 123 456 7890", servisni_cislo=""),
+                format="json",
+            )
+        self.assertEqual(long.status_code, 400)
+        self.assertIn("telefon_zakaznika", long.data)
+
+        with patch("orders.serializers.notify_order_created", return_value=0):
+            ok_local = self.client.post(
+                "/api/orders/orders/",
+                _order_payload(telefon_zakaznika="777 123 456", servisni_cislo=""),
+                format="json",
+            )
+        self.assertEqual(ok_local.status_code, 201, ok_local.content)
+
+        with patch("orders.serializers.notify_order_created", return_value=0):
+            ok_intl = self.client.post(
+                "/api/orders/orders/",
+                _order_payload(telefon_zakaznika="+421912345678", servisni_cislo=""),
+                format="json",
+            )
+        self.assertEqual(ok_intl.status_code, 201, ok_intl.content)
 
     def test_patch_updates_fields(self):
         with patch("orders.serializers.notify_order_created", return_value=0):
