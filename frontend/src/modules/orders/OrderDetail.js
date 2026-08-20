@@ -256,6 +256,49 @@ const OrderDetail = ({ order, onClose, onDelete, onStatusChange, onUpdate }) => 
                     onChange={(e) => setField(name, e.target.value)}
                     placeholder={opts.placeholder || ''}
                 />
+            ) : name === 'telefon_zakaznika' ? (
+                <div className="detail-input-row">
+                    <input
+                        className="detail-edit__input"
+                        type={opts.type || 'text'}
+                        maxLength={opts.maxLength}
+                        value={fields[name]}
+                        onChange={(e) => setField(name, e.target.value)}
+                        placeholder={opts.placeholder || ''}
+                    />
+                    {phoneValue ? (
+                        <span className="detail-copy-wrap">
+                            <button
+                                type="button"
+                                className={`detail-copy-btn${phoneCopied ? ' detail-copy-btn--done' : ''}`}
+                                aria-label={phoneCopied ? 'Zkopírováno' : 'Zkopírovat telefon'}
+                                onClick={async () => {
+                                    const result = await copyToClipboard(phoneValue);
+                                    if (result.success) {
+                                        setPhoneCopied(true);
+                                        window.setTimeout(() => setPhoneCopied(false), 1600);
+                                    }
+                                }}
+                            >
+                                <svg className="detail-copy-icon" viewBox="0 0 16 16" aria-hidden="true">
+                                    <rect x="5.5" y="5.5" width="8" height="8" rx="1.2" fill="none" stroke="currentColor" strokeWidth="1.4" />
+                                    <path
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="1.4"
+                                        d="M10.5 5.5V3.7A1.2 1.2 0 0 0 9.3 2.5H3.7A1.2 1.2 0 0 0 2.5 3.7v5.6A1.2 1.2 0 0 0 3.7 10.5H5.5"
+                                    />
+                                </svg>
+                                <span className="detail-copy-hint" aria-hidden="true">Kopírovat</span>
+                            </button>
+                            {phoneCopied ? (
+                                <span className="detail-copy-toast" role="status">
+                                    Zkopírováno
+                                </span>
+                            ) : null}
+                        </span>
+                    ) : null}
+                </div>
             ) : (
                 <input
                     className="detail-edit__input"
@@ -267,22 +310,6 @@ const OrderDetail = ({ order, onClose, onDelete, onStatusChange, onUpdate }) => 
                     placeholder={opts.placeholder || ''}
                 />
             )}
-            {name === 'telefon_zakaznika' && phoneValue && (
-                <button
-                    type="button"
-                    className="detail-field-link detail-field-link--btn"
-                    title={phoneCopied ? 'Zkopírováno' : 'Zkopírovat telefon'}
-                    onClick={async () => {
-                        const result = await copyToClipboard(phoneValue);
-                        if (result.success) {
-                            setPhoneCopied(true);
-                            window.setTimeout(() => setPhoneCopied(false), 1200);
-                        }
-                    }}
-                >
-                    {phoneCopied ? 'Zkopírováno' : 'Kopírovat'}
-                </button>
-            )}
         </label>
     );
 
@@ -293,31 +320,41 @@ const OrderDetail = ({ order, onClose, onDelete, onStatusChange, onUpdate }) => 
             size="md"
             bodyClassName="order-detail-content"
             footer={(
-                <>
-                    <button type="button" className="btn-cancel" onClick={onClose}>
-                        Zavřít
-                    </button>
+                <div className="order-detail-footer">
                     <button
                         type="button"
-                        className="btn-submit"
-                        disabled={!dirty || saving}
-                        onClick={handleSave}
+                        className="btn-delete"
+                        title="např. když zákazník zrušil"
+                        onClick={() => onDelete(order.id)}
                     >
-                        {saving ? 'Ukládám…' : 'Uložit'}
+                        Smazat
                     </button>
-                </>
+                    <div className="order-detail-footer__actions">
+                        <button type="button" className="btn-cancel" onClick={onClose}>
+                            Zavřít
+                        </button>
+                        <button
+                            type="button"
+                            className="btn-submit"
+                            disabled={!dirty || saving}
+                            onClick={handleSave}
+                        >
+                            {saving ? 'Ukládám…' : 'Uložit'}
+                        </button>
+                    </div>
+                </div>
             )}
         >
             <div className="detail-section">
                 <h3>Údaje</h3>
                 {saveError && <p className="detail-save-error">{saveError}</p>}
-                <div className="detail-grid">
+                <div className="detail-grid detail-grid--model">
                     {field('Model', 'typ_telefonu')}
                     {field('Díl', 'dil')}
+                </div>
+
+                <div className="detail-grid detail-grid--row3">
                     {field('Barva', 'barva')}
-                    {field('Serviska', 'servisni_cislo')}
-                    {field('Cena', 'cena', { type: 'number' })}
-                    {field('Dodavatel', 'dodavatel')}
                     <label className="detail-item detail-item--field">
                         <span className="label">Prodejna</span>
                         <select
@@ -340,16 +377,22 @@ const OrderDetail = ({ order, onClose, onDelete, onStatusChange, onUpdate }) => 
                             ) : null}
                         </select>
                     </label>
-                    <div className="detail-item detail-item--readonly">
-                        <span className="label">Zadal:</span>
-                        <span className="value">{formatZadal(order.zalozil)}</span>
-                    </div>
+                    {field('Cena', 'cena', { type: 'number' })}
                 </div>
 
-                <div className="detail-grid detail-grid--customer">
+                <div className="detail-grid detail-grid--row3">
+                    <div className="detail-item detail-item--readonly">
+                        <span className="label">Zadal</span>
+                        <span className="value">{formatZadal(order.zalozil)}</span>
+                    </div>
                     {field('Jméno', 'jmeno_zakaznika')}
                     {field('Příjmení', 'prijmeni_zakaznika')}
+                </div>
+
+                <div className="detail-grid detail-grid--row3">
+                    {field('Dodavatel', 'dodavatel')}
                     {field('Telefon', 'telefon_zakaznika', { type: 'tel', maxLength: 20 })}
+                    {field('Serviska', 'servisni_cislo')}
                 </div>
 
                 <div className="detail-note detail-note--editable">
@@ -383,14 +426,6 @@ const OrderDetail = ({ order, onClose, onDelete, onStatusChange, onUpdate }) => 
                                 {col.label}
                             </button>
                         ))}
-                        <button
-                            type="button"
-                            className="btn-delete detail-delete-btn status-move__delete"
-                            title="např. když zákazník zrušil"
-                            onClick={() => onDelete(order.id)}
-                        >
-                            Smazat
-                        </button>
                     </div>
 
                     <textarea

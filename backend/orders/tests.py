@@ -454,6 +454,31 @@ class OrdersRedesignTests(TestCase):
         self.assertEqual(resp.status_code, 201, resp.content)
         self.assertEqual(resp.data["prodejna"]["id"], self.shift_store.id)
 
+    def test_default_prodejna_endpoint(self):
+        today = timezone.localdate()
+        Smena.objects.create(
+            user=self.user,
+            prodejna=self.shift_store,
+            datum=today,
+            cas_od=time(8, 0),
+            cas_do=time(16, 0),
+            typ_smeny="prace",
+            aktivni=True,
+        )
+        resp = self.client.get("/api/orders/orders/default-prodejna/")
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.assertEqual(resp.data["prodejna"]["id"], self.shift_store.id)
+
+    def test_create_accepts_explicit_prodejna(self):
+        with patch("orders.serializers.notify_order_created", return_value=0):
+            resp = self.client.post(
+                "/api/orders/orders/",
+                _order_payload(prodejna=self.shift_store.id),
+                format="json",
+            )
+        self.assertEqual(resp.status_code, 201, resp.content)
+        self.assertEqual(resp.data["prodejna"]["id"], self.shift_store.id)
+
     def test_create_requires_typ_and_dil(self):
         with patch("orders.serializers.notify_order_created", return_value=0):
             resp = self.client.post(

@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Modal from '../../components/Modal';
+import api, { storeAPI } from '../../services/api';
 import { validateTelefonZakaznika } from './orderHelpers';
 import './OrderForm.css';
 
@@ -15,9 +16,40 @@ const OrderForm = ({ onClose, onSubmit }) => {
         cena: '',
         dodavatel: '',
         servisni_cislo: '',
+        prodejna: '',
     });
+    const [storeOptions, setStoreOptions] = useState([]);
     const [errors, setErrors] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    useEffect(() => {
+        let cancelled = false;
+        storeAPI.getStoreChoices()
+            .then((data) => {
+                if (!cancelled) {
+                    setStoreOptions(Array.isArray(data?.stores) ? data.stores : []);
+                }
+            })
+            .catch(() => {
+                if (!cancelled) setStoreOptions([]);
+            });
+
+        api.get('/orders/orders/default-prodejna/')
+            .then((res) => {
+                if (cancelled) return;
+                const id = res.data?.prodejna?.id;
+                if (id != null) {
+                    setFormData((prev) => (
+                        prev.prodejna ? prev : { ...prev, prodejna: String(id) }
+                    ));
+                }
+            })
+            .catch(() => {});
+
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
     const validateForm = () => {
         const newErrors = {};
@@ -86,6 +118,7 @@ const OrderForm = ({ onClose, onSubmit }) => {
                 jmeno_zakaznika: formData.jmeno_zakaznika.trim() || '',
                 prijmeni_zakaznika: formData.prijmeni_zakaznika.trim() || '',
                 telefon_zakaznika: formData.telefon_zakaznika.trim() || '',
+                prodejna: formData.prodejna ? Number(formData.prodejna) : null,
             };
 
             const result = await onSubmit(submitData);
@@ -178,21 +211,46 @@ const OrderForm = ({ onClose, onSubmit }) => {
                 </div>
             </div>
 
-            <div className="form-group">
-                <label htmlFor="servisni_cislo">Serviska</label>
-                <input
-                    type="text"
-                    id="servisni_cislo"
-                    name="servisni_cislo"
-                    value={formData.servisni_cislo}
-                    onChange={handleInputChange}
-                    className={errors.servisni_cislo ? 'error' : ''}
-                    placeholder="952501099"
-                    autoComplete="off"
-                />
-                {errors.servisni_cislo && (
-                    <span className="error-message">{errors.servisni_cislo}</span>
-                )}
+            <div className="form-row">
+                <div className="form-group">
+                    <label htmlFor="servisni_cislo">Serviska</label>
+                    <input
+                        type="text"
+                        id="servisni_cislo"
+                        name="servisni_cislo"
+                        value={formData.servisni_cislo}
+                        onChange={handleInputChange}
+                        className={errors.servisni_cislo ? 'error' : ''}
+                        placeholder="952501099"
+                        autoComplete="off"
+                    />
+                    {errors.servisni_cislo && (
+                        <span className="error-message">{errors.servisni_cislo}</span>
+                    )}
+                </div>
+
+                <div className="form-group">
+                    <label htmlFor="prodejna">Prodejna</label>
+                    <select
+                        id="prodejna"
+                        name="prodejna"
+                        value={formData.prodejna}
+                        onChange={handleInputChange}
+                        className={errors.prodejna ? 'error' : ''}
+                    >
+                        <option value="">—</option>
+                        {storeOptions.map((s) => (
+                            <option key={s.id} value={String(s.id)}>
+                                {s.nazev_kratkiy || s.nazev}
+                            </option>
+                        ))}
+                    </select>
+                    {errors.prodejna && (
+                        <span className="error-message">
+                            {Array.isArray(errors.prodejna) ? errors.prodejna[0] : errors.prodejna}
+                        </span>
+                    )}
+                </div>
             </div>
 
             <div className="form-row">

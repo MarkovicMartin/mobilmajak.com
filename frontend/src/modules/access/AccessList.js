@@ -1,22 +1,24 @@
-import React from 'react';
-import { copyToClipboard, showCopySuccess, showCopyError } from '../../utils/clipboard';
+import React, { useState } from 'react';
+import { copyToClipboard, showCopyError } from '../../utils/clipboard';
 import './AccessList.css';
 
 const AccessList = ({ accesses, canEdit, canDelete, onEdit, onDelete, onRevealPassword }) => {
+    const [copiedKey, setCopiedKey] = useState(null);
+
     const formatDate = (dateString) => {
         if (!dateString) return 'Nikdy';
         return new Date(dateString).toLocaleString('cs-CZ');
     };
 
-    const handleCopyToClipboard = async (text, field) => {
+    const handleCopyToClipboard = async (text, key) => {
         const result = await copyToClipboard(text);
-        
+
         if (result.success) {
-            showCopySuccess(field, result.method);
+            setCopiedKey(key);
+            window.setTimeout(() => setCopiedKey(null), 1600);
         } else {
             showCopyError(result.error);
-            // Zobrazíme text v alert jako backup
-            alert(`${field}: ${text}\n\n(Zkopírujte ručně)`);
+            alert(`Login: ${text}\n\n(Zkopírujte ručně)`);
         }
     };
 
@@ -40,7 +42,11 @@ const AccessList = ({ accesses, canEdit, canDelete, onEdit, onDelete, onRevealPa
     return (
         <div className="access-list">
             <div className="access-grid">
-                {accesses.map(access => (
+                {accesses.map(access => {
+                    const loginKey = `login-${access.id}`;
+                    const loginCopied = copiedKey === loginKey;
+
+                    return (
                     <div key={access.id} className="access-card">
                         <div className="access-header">
                             <div className="company-info">
@@ -83,24 +89,37 @@ const AccessList = ({ accesses, canEdit, canDelete, onEdit, onDelete, onRevealPa
                             {access.website_url && (
                                 <div className="detail-row">
                                     <span className="label">🌐 Web:</span>
-                                    <span 
-                                        className="value link"
-                                        onClick={() => handleOpenWebsite(access.website_url)}
-                                        title="Otevřít v novém okně"
-                                    >
-                                        {access.website_url}
+                                    <span className="access-action">
+                                        <button
+                                            type="button"
+                                            className="value link access-action__btn"
+                                            onClick={() => handleOpenWebsite(access.website_url)}
+                                            aria-label="Otevřít web"
+                                        >
+                                            {access.website_url}
+                                        </button>
+                                        <span className="access-action__hint" aria-hidden="true">Otevřít</span>
                                     </span>
                                 </div>
                             )}
 
                             <div className="detail-row">
                                 <span className="label">👤 Login:</span>
-                                <span 
-                                    className="value clickable"
-                                    onClick={() => handleCopyToClipboard(access.username, 'Uživatelské jméno')}
-                                    title="Klikněte pro kopírování"
-                                >
-                                    {access.username}
+                                <span className={`access-action${loginCopied ? ' access-action--done' : ''}`}>
+                                    <button
+                                        type="button"
+                                        className={`value clickable access-action__btn${loginCopied ? ' access-action__btn--copied' : ''}`}
+                                        onClick={() => handleCopyToClipboard(access.username, loginKey)}
+                                        aria-label={loginCopied ? 'Zkopírováno' : 'Zkopírovat login'}
+                                    >
+                                        {access.username}
+                                    </button>
+                                    <span className="access-action__hint" aria-hidden="true">Kopírovat</span>
+                                    {loginCopied ? (
+                                        <span className="access-action__toast" role="status">
+                                            Zkopírováno
+                                        </span>
+                                    ) : null}
                                 </span>
                             </div>
 
@@ -148,10 +167,11 @@ const AccessList = ({ accesses, canEdit, canDelete, onEdit, onDelete, onRevealPa
                             </div>
                         </div>
                     </div>
-                ))}
+                    );
+                })}
             </div>
         </div>
     );
 };
 
-export default AccessList; 
+export default AccessList;

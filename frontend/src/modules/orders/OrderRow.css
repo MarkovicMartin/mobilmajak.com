@@ -137,7 +137,8 @@
     color: #fff;
 }
 
-.order-chip--link:hover {
+.order-chip--link:hover,
+.order-chip--link:focus-visible {
     background: #333;
     text-decoration: underline;
 }
@@ -149,14 +150,108 @@
     font-weight: 700;
     font-size: 11px;
     line-height: inherit;
+    text-decoration: none;
 }
 
-.order-chip--copy:hover {
+.order-chip--copy:hover,
+.order-chip--copy:focus-visible {
     background: #333;
+    text-decoration: underline;
 }
 
-.order-chip--copied {
+.order-chip--copied,
+.order-chip--copied:hover,
+.order-chip--copied:focus-visible {
     background: #1b7a3d;
+    text-decoration: none;
+}
+
+.order-chip-action {
+    position: relative;
+    display: inline-flex;
+    max-width: 100%;
+    vertical-align: middle;
+}
+
+.order-chip-action__hint,
+.order-chip-action__toast {
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 6px);
+    transform: translateX(-50%);
+    padding: 3px 7px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1.2;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 20;
+}
+
+.order-chip-action__hint {
+    background: #2c3340;
+    color: #fff;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateX(-50%) translateY(2px);
+    transition: opacity 0.12s ease, transform 0.12s ease, visibility 0.12s;
+}
+
+.order-chip-action__hint::after,
+.order-chip-action__toast::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -4px;
+    border: 4px solid transparent;
+}
+
+.order-chip-action__hint::after {
+    border-top-color: #2c3340;
+}
+
+.order-chip-action:hover .order-chip-action__hint,
+.order-chip-action:focus-within .order-chip-action__hint {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
+}
+
+.order-chip-action--done .order-chip-action__hint {
+    opacity: 0;
+    visibility: hidden;
+}
+
+.order-chip-action__toast {
+    background: #1b7a3d;
+    color: #fff;
+    animation: order-chip-toast-in 0.16s ease, order-chip-toast-out 0.25s ease 1.25s forwards;
+}
+
+.order-chip-action__toast::after {
+    border-top-color: #1b7a3d;
+}
+
+@keyframes order-chip-toast-in {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+}
+
+@keyframes order-chip-toast-out {
+    from {
+        opacity: 1;
+    }
+    to {
+        opacity: 0;
+    }
 }
 
 .order-row__cena {

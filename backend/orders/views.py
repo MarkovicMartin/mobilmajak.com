@@ -177,6 +177,17 @@ class OrderViewSet(ModelViewSet):
         except Order.DoesNotExist:
             return Response({'error': 'Objednávka nenalezena'}, status=status.HTTP_404_NOT_FOUND)
     
+    @action(detail=False, methods=['get'], url_path='default-prodejna')
+    def default_prodejna(self, request):
+        """Předvyplnění: dnešní směna, jinak domácí prodejna uživatele."""
+        from .prodejna_resolve import resolve_order_prodejna
+        from .serializers import ProdejnaSimpleSerializer
+
+        store = resolve_order_prodejna(request.user)
+        if not store:
+            return Response({'prodejna': None})
+        return Response({'prodejna': ProdejnaSimpleSerializer(store).data})
+
     @action(detail=True, methods=['patch'])
     def update_status(self, request, pk=None):
         """Speciální endpoint pro změnu stavu objednávky (pro drag & drop)"""

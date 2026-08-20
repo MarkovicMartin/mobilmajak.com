@@ -95,17 +95,20 @@ const OrderRow = ({ order, isDragging = false, onOrderClick, onDeleteOrder }) =>
             </div>
             <div className="order-row__cell order-row__serviska">
                 {repairLink ? (
-                    <a
-                        className="order-chip order-chip--link"
-                        href={repairLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        title="Otevřít v MyRepair"
-                        onClick={(e) => e.stopPropagation()}
-                        onPointerDown={(e) => e.stopPropagation()}
-                    >
-                        {order.servisni_cislo}
-                    </a>
+                    <span className="order-chip-action">
+                        <a
+                            className="order-chip order-chip--link"
+                            href={repairLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label="Otevřít v MyRepair"
+                            onClick={(e) => e.stopPropagation()}
+                            onPointerDown={(e) => e.stopPropagation()}
+                        >
+                            {order.servisni_cislo}
+                        </a>
+                        <span className="order-chip-action__hint" aria-hidden="true">Otevřít</span>
+                    </span>
                 ) : order.servisni_cislo ? (
                     <span className="order-chip">{order.servisni_cislo}</span>
                 ) : (
@@ -117,22 +120,30 @@ const OrderRow = ({ order, isDragging = false, onOrderClick, onDeleteOrder }) =>
             </div>
             <div className="order-row__cell order-row__telefon">
                 {order.telefon_zakaznika ? (
-                    <button
-                        type="button"
-                        className={`order-chip order-chip--copy${phoneCopied ? ' order-chip--copied' : ''}`}
-                        title={phoneCopied ? 'Zkopírováno' : 'Klikněte pro zkopírování'}
-                        onClick={async (e) => {
-                            e.stopPropagation();
-                            const result = await copyToClipboard(order.telefon_zakaznika);
-                            if (result.success) {
-                                setPhoneCopied(true);
-                                window.setTimeout(() => setPhoneCopied(false), 1200);
-                            }
-                        }}
-                        onPointerDown={(e) => e.stopPropagation()}
-                    >
-                        {order.telefon_zakaznika}
-                    </button>
+                    <span className={`order-chip-action${phoneCopied ? ' order-chip-action--done' : ''}`}>
+                        <button
+                            type="button"
+                            className={`order-chip order-chip--copy${phoneCopied ? ' order-chip--copied' : ''}`}
+                            aria-label={phoneCopied ? 'Zkopírováno' : 'Zkopírovat telefon'}
+                            onClick={async (e) => {
+                                e.stopPropagation();
+                                const result = await copyToClipboard(order.telefon_zakaznika);
+                                if (result.success) {
+                                    setPhoneCopied(true);
+                                    window.setTimeout(() => setPhoneCopied(false), 1600);
+                                }
+                            }}
+                            onPointerDown={(e) => e.stopPropagation()}
+                        >
+                            {order.telefon_zakaznika}
+                        </button>
+                        <span className="order-chip-action__hint" aria-hidden="true">Kopírovat</span>
+                        {phoneCopied ? (
+                            <span className="order-chip-action__toast" role="status">
+                                Zkopírováno
+                            </span>
+                        ) : null}
+                    </span>
                 ) : (
                     <span className="order-row__empty">—</span>
                 )}

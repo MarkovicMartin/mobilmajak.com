@@ -33,6 +33,7 @@
 }
 
 .order-form .form-group input,
+.order-form .form-group select,
 .order-form .form-group textarea {
     width: 100%;
     padding: 8px 10px;
@@ -56,6 +57,7 @@
 }
 
 .order-form .form-group input.error,
+.order-form .form-group select.error,
 .order-form .form-group textarea.error {
     border-color: var(--accent-danger, #ff6b6b);
 }

@@ -255,8 +255,9 @@ class OrderCreateSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         validated_data['zalozil'] = request.user
         validated_data['posledni_zmena_uzivatel'] = request.user
-        # Při založení vždy směna / domácí prodejna – klientské prodejna ignorujeme
-        validated_data['prodejna'] = resolve_order_prodejna(request.user)
+        # Klient může poslat předvyplněnou / upravenou prodejnu; jinak směna / domácí
+        if validated_data.get('prodejna') is None:
+            validated_data['prodejna'] = resolve_order_prodejna(request.user)
         validated_data.setdefault('jmeno_zakaznika', '')
         validated_data.setdefault('prijmeni_zakaznika', '')
         validated_data.setdefault('telefon_zakaznika', '')

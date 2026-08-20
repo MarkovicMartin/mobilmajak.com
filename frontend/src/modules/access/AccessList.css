@@ -163,9 +163,16 @@
     cursor: pointer;
     text-decoration: none;
     transition: color 0.3s ease;
+    appearance: none;
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    text-align: left;
 }
 
-.value.link:hover {
+.value.link:hover,
+.value.link:focus-visible {
     color: #2b6cb0;
     text-decoration: underline;
 }
@@ -176,13 +183,121 @@
     background: #e6f3ff;
     padding: 4px 8px;
     border-radius: 6px;
-    transition: all 0.3s ease;
+    transition: background 0.2s ease, color 0.2s ease;
     display: inline-block;
+    appearance: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    text-decoration: none;
 }
 
-.value.clickable:hover {
+.value.clickable:hover,
+.value.clickable:focus-visible {
     background: #bee3f8;
-    transform: scale(1.02);
+    text-decoration: underline;
+}
+
+.value.clickable.access-action__btn--copied,
+.value.clickable.access-action__btn--copied:hover,
+.value.clickable.access-action__btn--copied:focus-visible {
+    background: #c6f6d5;
+    color: #276749;
+    text-decoration: none;
+}
+
+.access-action {
+    position: relative;
+    display: inline-flex;
+    max-width: 100%;
+    flex: 1;
+    min-width: 0;
+    vertical-align: middle;
+}
+
+.access-action__btn {
+    max-width: 100%;
+}
+
+.access-action__hint,
+.access-action__toast {
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 6px);
+    transform: translateX(-50%);
+    padding: 3px 7px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1.2;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 20;
+}
+
+.access-action__hint {
+    background: #2c3340;
+    color: #fff;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateX(-50%) translateY(2px);
+    transition: opacity 0.12s ease, transform 0.12s ease, visibility 0.12s;
+}
+
+.access-action__hint::after,
+.access-action__toast::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -4px;
+    border: 4px solid transparent;
+}
+
+.access-action__hint::after {
+    border-top-color: #2c3340;
+}
+
+.access-action:hover .access-action__hint,
+.access-action:focus-within .access-action__hint {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
+}
+
+.access-action--done .access-action__hint {
+    opacity: 0;
+    visibility: hidden;
+}
+
+.access-action__toast {
+    background: #1b7a3d;
+    color: #fff;
+    animation: access-copy-toast-in 0.16s ease, access-copy-toast-out 0.25s ease 1.25s forwards;
+}
+
+.access-action__toast::after {
+    border-top-color: #1b7a3d;
+}
+
+@keyframes access-copy-toast-in {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+}
+
+@keyframes access-copy-toast-out {
+    from {
+        opacity: 1;
+    }
+    to {
+        opacity: 0;
+    }
 }
 
 .password-row {
