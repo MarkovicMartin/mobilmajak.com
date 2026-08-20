@@ -10,15 +10,34 @@ const AccessList = ({ accesses, canEdit, canDelete, onEdit, onDelete, onRevealPa
         return new Date(dateString).toLocaleString('cs-CZ');
     };
 
+    const markCopied = (key) => {
+        setCopiedKey(key);
+        window.setTimeout(() => setCopiedKey(null), 1600);
+    };
+
     const handleCopyToClipboard = async (text, key) => {
         const result = await copyToClipboard(text);
 
         if (result.success) {
-            setCopiedKey(key);
-            window.setTimeout(() => setCopiedKey(null), 1600);
+            markCopied(key);
         } else {
             showCopyError(result.error);
             alert(`Login: ${text}\n\n(Zkopírujte ručně)`);
+        }
+    };
+
+    const handleRevealPassword = async (accessId) => {
+        const key = `pwd-${accessId}`;
+        const result = await onRevealPassword(accessId);
+
+        if (result?.success) {
+            markCopied(key);
+            return;
+        }
+
+        if (result?.password) {
+            showCopyError(result.error);
+            alert(`Heslo: ${result.password}\n\n(Zkopírujte ručně)`);
         }
     };
 
@@ -44,7 +63,9 @@ const AccessList = ({ accesses, canEdit, canDelete, onEdit, onDelete, onRevealPa
             <div className="access-grid">
                 {accesses.map(access => {
                     const loginKey = `login-${access.id}`;
+                    const pwdKey = `pwd-${access.id}`;
                     const loginCopied = copiedKey === loginKey;
+                    const pwdCopied = copiedKey === pwdKey;
 
                     return (
                     <div key={access.id} className="access-card">
@@ -129,13 +150,22 @@ const AccessList = ({ accesses, canEdit, canDelete, onEdit, onDelete, onRevealPa
                                     <span className="masked-password">
                                         {access.masked_password}
                                     </span>
-                                    <button
-                                        className="btn-reveal"
-                                        onClick={() => onRevealPassword(access.id)}
-                                        title="Zobrazit a zkopírovat heslo"
-                                    >
-                                        👁️ Odkrýt
-                                    </button>
+                                    <span className={`access-action access-action--reveal${pwdCopied ? ' access-action--done' : ''}`}>
+                                        <button
+                                            type="button"
+                                            className={`btn-reveal${pwdCopied ? ' btn-reveal--copied' : ''}`}
+                                            onClick={() => handleRevealPassword(access.id)}
+                                            aria-label={pwdCopied ? 'Zkopírováno' : 'Odkrýt a zkopírovat heslo'}
+                                        >
+                                            👁️ Odkrýt
+                                        </button>
+                                        <span className="access-action__hint" aria-hidden="true">Kopírovat</span>
+                                        {pwdCopied ? (
+                                            <span className="access-action__toast" role="status">
+                                                Zkopírováno
+                                            </span>
+                                        ) : null}
+                                    </span>
                                 </div>
                             </div>
 

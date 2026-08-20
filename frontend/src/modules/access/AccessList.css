@@ -314,6 +314,10 @@
     letter-spacing: 2px;
 }
 
+.access-action--reveal {
+    flex: 0 0 auto;
+}
+
 .btn-reveal {
     background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
     border: none;
@@ -323,13 +327,22 @@
     font-size: 0.85rem;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: background 0.2s ease, box-shadow 0.2s ease;
     box-shadow: 0 2px 8px rgba(72, 187, 120, 0.3);
+    text-decoration: none;
 }
 
-.btn-reveal:hover {
-    transform: translateY(-1px);
+.btn-reveal:hover,
+.btn-reveal:focus-visible {
     box-shadow: 0 4px 15px rgba(72, 187, 120, 0.4);
+    text-decoration: underline;
+}
+
+.btn-reveal--copied,
+.btn-reveal--copied:hover,
+.btn-reveal--copied:focus-visible {
+    background: #1b7a3d;
+    text-decoration: none;
 }
 
 .access-footer {

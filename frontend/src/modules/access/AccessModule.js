@@ -4,7 +4,7 @@ import AccessList from './AccessList';
 import AccessForm from './AccessForm';
 import AccessFilter from './AccessFilter';
 import { PageHeader } from '../../components/ui';
-import { copyToClipboard, showCopySuccess, showCopyError } from '../../utils/clipboard';
+import { copyToClipboard } from '../../utils/clipboard';
 import './AccessModule.css';
 
 const AccessModule = () => {
@@ -282,25 +282,27 @@ const AccessModule = () => {
                 }
             });
 
-            if (response.ok) {
-                const data = await response.json();
-                
-                // Bezpečné kopírování do schránky s fallback
-                const result = await copyToClipboard(data.password);
-                
-                if (result.success) {
-                    showCopySuccess('Heslo', result.method);
-                    await loadAccesses(); // Refresh to update last_used
-                } else {
-                    showCopyError(result.error);
-                    // Zobrazíme heslo v alert jako backup
-                    alert(`Heslo: ${data.password}\n\n(Zkopírujte ručně)`);
-                }
-            } else {
+            if (!response.ok) {
                 setError('Chyba při získávání hesla');
+                return { success: false };
             }
+
+            const data = await response.json();
+            const result = await copyToClipboard(data.password);
+
+            if (result.success) {
+                await loadAccesses();
+                return { success: true };
+            }
+
+            return {
+                success: false,
+                password: data.password,
+                error: result.error,
+            };
         } catch (err) {
             setError('Chyba při získávání hesla: ' + err.message);
+            return { success: false };
         }
     };
 
