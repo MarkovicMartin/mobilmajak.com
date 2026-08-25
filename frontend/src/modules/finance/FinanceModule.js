@@ -189,7 +189,6 @@ const FinanceModule = () => {
         }
     };
 
-    const fioNote = status?.fio?.message || 'Fio token vyžaduje admin účet – zatím nedostupné';
     const counts = status?.counts || {};
     const lastImport = status?.fio?.last_import;
 
@@ -220,13 +219,6 @@ const FinanceModule = () => {
                             : 'zatím žádný'}
                     </span>
                 </div>
-            </div>
-
-            <div className="finance-fio-banner" role="status">
-                <strong>Fio banka:</strong> {fioNote}
-                <span className="finance-fio-banner__hint">
-                    DPH se doplní až po nahrání faktury (OCR). Import běží cronem ve 22:30.
-                </span>
             </div>
 
             <nav className="finance-tabs" aria-label="Finance záložky">

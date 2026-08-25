@@ -3,7 +3,6 @@ import { financeAPI } from '../../services/api';
 import FinanceZdrojFilter from './FinanceZdrojFilter';
 import FinanceDropZone from './FinanceDropZone';
 import FinanceDokladSummary from './FinanceDokladSummary';
-import FinanceDokladEditForm from './FinanceDokladEditForm';
 import { movementLabel, zdrojMeta } from './financeUtils';
 import './FinanceFakturyPanel.css';
 
@@ -23,14 +22,10 @@ const FinanceFakturyPanel = ({ intro }) => {
     const [error, setError] = useState('');
     const [message, setMessage] = useState('');
     const [uploadingId, setUploadingId] = useState(null);
-    const [orphanUploading, setOrphanUploading] = useState(false);
     const [forms, setForms] = useState({});
     const [filterZdroj, setFilterZdroj] = useState('');
     /** Položky právě nahrané v této relaci – držíme kartu s OCR shrnutím. */
     const [doneUploads, setDoneUploads] = useState([]);
-    /** Osiřelé FA právě nahrané – editace VS když OCR selže. */
-    const [orphanDoklady, setOrphanDoklady] = useState([]);
-    const [orphanBusyId, setOrphanBusyId] = useState(null);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -75,57 +70,6 @@ const FinanceFakturyPanel = ({ intro }) => {
             ...prev,
             [id]: { ...(prev[id] || {}), [field]: value },
         }));
-    };
-
-    const uploadOrphan = async (file) => {
-        if (!file) return;
-        setOrphanUploading(true);
-        setMessage('');
-        setError('');
-        try {
-            const result = await financeAPI.uploadDoklad({ file });
-            const d = result?.doklad;
-            if (d) {
-                setOrphanDoklady((prev) => [d, ...prev.filter((x) => x.id !== d.id)]);
-            }
-            if (d?.prirazeno_automaticky) {
-                setMessage(
-                    `FA nahrána a automaticky přiřazena (VS ${d.vs || '–'}). Zkontrolujte v Kontrola FA.`,
-                );
-            } else if (!d?.vs && !d?.cislo_faktury) {
-                setMessage(
-                    'FA nahrána, ale OCR nic nevyčetlo – doplňte VS níže (pak půjde párovat s Fio).',
-                );
-            } else if (d?.ceka_na_platbu) {
-                setMessage(
-                    `FA nahrána bez výdeje (VS ${d.vs || '–'}). Po Fio platbě se přiřadí sama.`,
-                );
-            } else {
-                setMessage('FA nahrána – ke kontrole.');
-            }
-        } catch (e) {
-            setError(e.response?.data?.error || e.message || 'Nahrání selhalo');
-        } finally {
-            setOrphanUploading(false);
-        }
-    };
-
-    const saveOrphanFields = async (id, payload) => {
-        setOrphanBusyId(id);
-        setMessage('');
-        try {
-            const d = await financeAPI.updateDoklad(id, payload);
-            setOrphanDoklady((prev) => prev.map((x) => (x.id === id ? d : x)));
-            if (d?.prirazeno_automaticky) {
-                setMessage(`Údaje uloženy a FA automaticky přiřazena (VS ${d.vs || '–'}).`);
-            } else {
-                setMessage(`Údaje uloženy (VS ${d.vs || '–'}). Čeká na Fio / kontrolu.`);
-            }
-        } catch (e) {
-            setError(e.response?.data?.error || e.message || 'Uložení selhalo');
-        } finally {
-            setOrphanBusyId(null);
-        }
     };
 
     const handleUpload = async (polozka) => {
@@ -260,39 +204,9 @@ const FinanceFakturyPanel = ({ intro }) => {
     return (
         <section className="finance-faktury-panel">
             {intro && <p className="finance-faktury-panel__intro">{intro}</p>}
-            <div className="finance-faktury-orphan">
-                <h3 className="finance-faktury-section-title">Nahrát FA bez výdeje</h3>
-                <p className="finance-faktury-panel__hint">
-                    PDF před platbou – OCR vytáhne VS a částky. Až přijde Fio se stejným VS, FA se
-                    přiřadí automaticky a zůstane ke kontrole.
-                </p>
-                <FinanceDropZone
-                    disabled={orphanUploading}
-                    label={
-                        orphanUploading
-                            ? 'Nahrávám…'
-                            : 'Přetáhněte FA sem (bez výdeje) nebo klepněte'
-                    }
-                    onFile={uploadOrphan}
-                />
-                {orphanDoklady.length > 0 && (
-                    <div className="finance-faktury-orphan-list">
-                        {orphanDoklady.map((d) => (
-                            <div key={d.id} className="finance-faktury-orphan-card">
-                                <FinanceDokladSummary doklad={d} />
-                                <FinanceDokladEditForm
-                                    doklad={d}
-                                    busy={orphanBusyId === d.id}
-                                    onSave={(payload) => saveOrphanFields(d.id, payload)}
-                                />
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </div>
             <p className="finance-faktury-panel__hint">
-                Nebo přiložte FA k výdeji níže. Výdej z pokladny se sem dostane po nočním importu
-                (cca 22:00). Prodejna je podle pokladny, kde byl výběr.
+                Výdej z pokladny se sem dostane po importu ze Symplio. Prodejna je podle pokladny,
+                kde byl výběr.
             </p>
             {loading && <p>Načítám…</p>}
             {error && <p className="finance-faktury-error">{error}</p>}
