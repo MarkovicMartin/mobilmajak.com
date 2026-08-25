@@ -8,6 +8,7 @@ urlpatterns = [
     path('naklady/nezarazene/', views.naklady_nezarazene, name='finance-naklady-nezarazene'),
     path('naklady/prehled/', views.naklady_prehled, name='finance-naklady-prehled'),
     path('naklady/ceka-na-fakturu/', views.naklady_ceka_na_fakturu, name='finance-naklady-ceka-fakturu'),
+    path('naklady/analytika/', views.naklady_analytika, name='finance-naklady-analytika'),
     path('naklady/manual/', views.naklad_manual_create, name='finance-naklad-manual'),
     path('naklady/<int:polozka_id>/', views.naklad_update, name='finance-naklad-update'),
     path('pravidla/', views.pravidla_list_create, name='finance-pravidla'),

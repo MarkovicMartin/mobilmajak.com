@@ -5,7 +5,7 @@ const SLACK_MINE_GROUPS = [
         title: 'Moje úkoly',
         items: [
             { key: 'assigned_mine', label: 'Nový úkol mi přiřazen' },
-            { key: 'created_confirm', label: 'Potvrzení úkolu, který založím' },
+            { key: 'created_confirm', label: 'Když vytvořím úkol – chci upozornění' },
             { key: 'due_soon_mine', label: 'Blížící se termín (jsem řešitel nebo zadavatel)' },
             { key: 'overdue_mine', label: 'Po termínu (jsem řešitel nebo zadavatel)' },
             { key: 'awaiting_approval', label: 'Čeká na mé schválení' },
@@ -35,8 +35,10 @@ const SLACK_ADMIN_GROUPS = [
     },
 ];
 
+const DEFAULT_OFF_KEYS = new Set(['created_confirm', 'comment_mine', 'comment_all']);
+
 const buildDefaultPrefs = (groups) => groups.flatMap((g) => g.items).reduce((acc, item) => {
-    acc[item.key] = !item.key.endsWith('_all');
+    acc[item.key] = !item.key.endsWith('_all') && !DEFAULT_OFF_KEYS.has(item.key);
     return acc;
 }, {});
 

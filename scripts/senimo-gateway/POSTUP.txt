@@ -16,7 +16,7 @@ V CMD jako SPRAVCE:
 Co skript udelá:
   - zkopiruje aktualni skripty z camera-gateway do
     C:\ProgramData\Mobilmajak\SenimoCameraGateway
-  - PREPÍŠE config.json z USB (senimo-gateway\config.json)  -> nvr_host 192.168.1.109
+  - PREPÍŠE config.json z USB (senimo-gateway\config.json)  -> nvr_host 192.168.1.100
   - preregistruje ulohy Plánovače (wscript bez okna + WakeKick kazdych 30 min)
   - restartuje branu
 

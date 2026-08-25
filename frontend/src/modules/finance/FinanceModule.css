@@ -314,3 +314,14 @@
     margin: 0.5rem 0 0;
     padding-left: 1.25rem;
 }
+
+.finance-kat-edit {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.finance-kat-edit select {
+    max-width: 14rem;
+}

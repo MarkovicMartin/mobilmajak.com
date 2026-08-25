@@ -112,7 +112,8 @@ const AccessForm = ({ access, stores, categories, onSubmit, onCancel, canUseAdmi
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        
+        if (loading) return;
+
         if (!validateForm()) {
             return;
         }

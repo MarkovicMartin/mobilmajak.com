@@ -48,6 +48,21 @@
     font-size: 0.68rem;
     line-height: 1.35;
     text-align: left;
+    max-height: 260px;
+    overflow-y: auto;
+}
+
+.camera-motion-day + .camera-motion-day {
+    margin-top: 8px;
+}
+
+.camera-motion-day-label {
+    font-weight: 700;
+    color: #334155;
+    font-size: 0.62rem;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    margin-bottom: 2px;
 }
 
 .camera-motion-current-quiet {
@@ -86,4 +101,8 @@
 .camera-motion-quiet-dur {
     font-weight: 700;
     color: #b45309;
+}
+
+.camera-motion-quiet--long .camera-motion-quiet-dur {
+    color: #9a3412;
 }

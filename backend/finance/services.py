@@ -63,8 +63,9 @@ def _matches_rule(rule: FioKategorizacniPravidlo, row: dict) -> bool:
         return False
     if rule.vs and rule.vs != (row.get('vs') or ''):
         return False
-    zprava = (row.get('zprava') or '').lower()
-    if rule.zprava_obsahuje and rule.zprava_obsahuje.lower() not in zprava:
+    # Zpráva + popis – Symplio/manuál často má text jen v popisu
+    text = f"{row.get('zprava') or ''} {row.get('popis') or ''}".lower()
+    if rule.zprava_obsahuje and rule.zprava_obsahuje.lower() not in text:
         return False
     castka = abs(Decimal(str(row.get('castka') or 0)))
     if rule.castka_min is not None and castka < rule.castka_min:
@@ -72,6 +73,103 @@ def _matches_rule(rule: FioKategorizacniPravidlo, row: dict) -> bool:
     if rule.castka_max is not None and castka > rule.castka_max:
         return False
     return True
+
+
+def _normalize_rule_snippet(text: str, max_len: int = 80) -> str:
+    """Normalizovaný úryvek pro zprava_obsahuje (min. 4 znaky)."""
+    cleaned = ' '.join((text or '').split())
+    if len(cleaned) < 4:
+        return ''
+    return cleaned[:max_len]
+
+
+def rule_key_from_polozka(polozka: NakladPolozka) -> dict | None:
+    """
+    Preferovaný klíč pravidla: protiucet → vs → úryvek zpravy/popisu.
+    Vrací dict polí pro FioKategorizacniPravidlo, nebo None.
+    """
+    protiucet = (polozka.protiucet or '').strip()
+    if protiucet:
+        return {'protiucet': protiucet[:64], 'vs': '', 'zprava_obsahuje': ''}
+    vs = (polozka.vs or '').strip()
+    if vs:
+        return {'protiucet': '', 'vs': vs[:32], 'zprava_obsahuje': ''}
+    snippet = _normalize_rule_snippet(polozka.zprava or '') or _normalize_rule_snippet(polozka.popis or '')
+    if snippet:
+        return {'protiucet': '', 'vs': '', 'zprava_obsahuje': snippet[:200]}
+    return None
+
+
+def upsert_pravidlo_from_polozka(polozka: NakladPolozka, user_id: int | None = None) -> dict:
+    """
+    Po ručním zařazení/změně kategorie: upsert aktivního Fio pravidla.
+    Vrací {pravidlo_created, pravidlo_updated, pravidlo_id}.
+    """
+    empty = {'pravidlo_created': False, 'pravidlo_updated': False, 'pravidlo_id': None}
+    if not polozka.kategorie_id:
+        return empty
+    key = rule_key_from_polozka(polozka)
+    if not key:
+        return empty
+
+    existing = (
+        FioKategorizacniPravidlo.objects.filter(
+            aktivni=True,
+            protiucet=key['protiucet'],
+            vs=key['vs'],
+            zprava_obsahuje=key['zprava_obsahuje'],
+        )
+        .order_by('id')
+        .first()
+    )
+    if existing:
+        changed = False
+        if existing.kategorie_id != polozka.kategorie_id:
+            existing.kategorie_id = polozka.kategorie_id
+            changed = True
+        if polozka.prodejna_id and existing.prodejna_id != polozka.prodejna_id:
+            existing.prodejna_id = polozka.prodejna_id
+            changed = True
+        if existing.ignorovat:
+            existing.ignorovat = False
+            changed = True
+        if changed:
+            existing.save()
+        return {
+            'pravidlo_created': False,
+            'pravidlo_updated': changed,
+            'pravidlo_id': existing.id,
+        }
+
+    rule = FioKategorizacniPravidlo.objects.create(
+        protiucet=key['protiucet'],
+        vs=key['vs'],
+        zprava_obsahuje=key['zprava_obsahuje'],
+        kategorie_id=polozka.kategorie_id,
+        prodejna_id=polozka.prodejna_id,
+        ignorovat=False,
+        aktivni=True,
+        vytvoril_user_id=user_id,
+    )
+    return {
+        'pravidlo_created': True,
+        'pravidlo_updated': False,
+        'pravidlo_id': rule.id,
+    }
+
+
+def compute_stav_rozdilu(prijmy, naklady) -> str:
+    """minus | vyrovnano | plus – KPI barva rozdílu."""
+    p = Decimal(str(prijmy or 0))
+    n = Decimal(str(naklady or 0))
+    rozdil = p - n
+    if rozdil < 0:
+        return 'minus'
+    if p > 0 and (abs(rozdil) / p) < Decimal('0.05'):
+        return 'vyrovnano'
+    if rozdil > 0:
+        return 'plus'
+    return 'vyrovnano'
 
 
 def apply_categorization_rules(row: dict) -> dict:

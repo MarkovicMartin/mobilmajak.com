@@ -34,6 +34,7 @@ const ReklamaceForm = ({ defaultProdejna, onSave, onCancel }) => {
     };
 
     const submitForm = async () => {
+        if (saving) return;
         setSaving(true);
         setError('');
         try {
@@ -53,6 +54,7 @@ const ReklamaceForm = ({ defaultProdejna, onSave, onCancel }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (saving) return;
         if (!form.nazev_zbozi.trim() || !form.prodejna.trim()) {
             setError('Prodejna a název zboží jsou povinné.');
             return;

@@ -1,6 +1,10 @@
 """Finance API – všechny endpointy ADMIN-only."""
-from datetime import datetime
+import calendar
+from datetime import date, datetime
+from decimal import Decimal
 
+from django.db.models import Count, F, Sum
+from django.db.models.functions import Abs, Coalesce
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.parsers import FormParser, MultiPartParser
@@ -21,6 +25,7 @@ from .permissions import (
 from .doklady import link_doklad_to_polozka, serialize_doklad
 from .faktura_process import process_doklad_ocr, schvalit_doklad, zamitnout_doklad
 from .services import (
+    compute_stav_rozdilu,
     get_finance_counts,
     get_last_fio_import_info,
     log_finance_audit,
@@ -29,6 +34,7 @@ from .services import (
     serialize_naklad_polozky,
     serialize_pravidlo,
     typ_platby_from_castka,
+    upsert_pravidlo_from_polozka,
 )
 
 
@@ -58,22 +64,68 @@ def finance_status(request):
     })
 
 
-@api_view(['GET'])
+def _serialize_kategorie(k: NakladKategorie) -> dict:
+    return {
+        'id': k.id,
+        'nazev': k.nazev,
+        'poradi': k.poradi,
+        'parent_id': k.parent_id,
+        'typ_dph': k.typ_dph,
+    }
+
+
+@api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 @finance_admin_view
 def naklad_kategorie_list(request):
+    if request.method == 'POST':
+        data = request.data
+        nazev = (data.get('nazev') or '').strip()
+        if not nazev:
+            return _no_store_response({'error': 'Chybí název'}, status.HTTP_400_BAD_REQUEST)
+        if NakladKategorie.objects.filter(nazev=nazev).exists():
+            return _no_store_response(
+                {'error': 'Kategorie s tímto názvem už existuje'},
+                status.HTTP_400_BAD_REQUEST,
+            )
+
+        parent_id = data.get('parent_id')
+        if parent_id in (None, ''):
+            parent_id = None
+        else:
+            try:
+                parent_id = int(parent_id)
+            except (TypeError, ValueError):
+                return _no_store_response({'error': 'Neplatný parent_id'}, status.HTTP_400_BAD_REQUEST)
+            if not NakladKategorie.objects.filter(pk=parent_id).exists():
+                return _no_store_response({'error': 'Nadřazená kategorie neexistuje'}, status.HTTP_400_BAD_REQUEST)
+
+        typ_dph = (data.get('typ_dph') or NakladKategorie.TYP_DPH_Z_FAKTURY).strip()
+        if typ_dph not in dict(NakladKategorie.TYP_DPH_CHOICES):
+            return _no_store_response(
+                {'error': 'typ_dph musí být z_faktury nebo bez'},
+                status.HTTP_400_BAD_REQUEST,
+            )
+
+        poradi = data.get('poradi', 0)
+        try:
+            poradi = int(poradi)
+        except (TypeError, ValueError):
+            return _no_store_response({'error': 'Neplatné pořadí'}, status.HTTP_400_BAD_REQUEST)
+
+        kat = NakladKategorie.objects.create(
+            nazev=nazev[:120],
+            parent_id=parent_id,
+            typ_dph=typ_dph,
+            poradi=poradi,
+            aktivni=True,
+        )
+        log_finance_audit(request, 'kategorie_create', f'id={kat.id}')
+        return _no_store_response(_serialize_kategorie(kat), status.HTTP_201_CREATED)
+
     log_finance_audit(request, 'kategorie_list')
     rows = NakladKategorie.objects.filter(aktivni=True).order_by('poradi', 'nazev')
-    return _no_store_response([
-        {
-            'id': k.id,
-            'nazev': k.nazev,
-            'poradi': k.poradi,
-            'parent_id': k.parent_id,
-            'typ_dph': k.typ_dph,
-        }
-        for k in rows
-    ])
+    return _no_store_response([_serialize_kategorie(k) for k in rows])
 
 
 @api_view(['GET'])
@@ -130,6 +182,181 @@ def naklady_prehled(request):
     return _no_store_response(serialize_naklad_polozky(qs[:400]))
 
 
+def _default_analytika_period():
+    """Aktuální kalendářní měsíc (1. den → poslední den)."""
+    today = date.today()
+    start = date(today.year, today.month, 1)
+    end = date(today.year, today.month, calendar.monthrange(today.year, today.month)[1])
+    return start, end
+
+
+def _parse_analytika_date(value, fallback):
+    if not value:
+        return fallback
+    try:
+        return datetime.strptime(str(value)[:10], '%Y-%m-%d').date()
+    except ValueError:
+        return None
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+@finance_admin_view
+def naklady_analytika(request):
+    """Příjmy s DPH (WEB_PRODEJE_ALL) vs náklady s DPH (odchozí položky) po kategoriích."""
+    from analytics.models import WebProdejeAll
+    from analytics.views import _apply_web_prodeje_date_filters
+
+    start_default, end_default = _default_analytika_period()
+    start_raw = request.GET.get('start_date')
+    end_raw = request.GET.get('end_date')
+    start_date = _parse_analytika_date(start_raw, start_default)
+    end_date = _parse_analytika_date(end_raw, end_default)
+    if start_date is None or end_date is None:
+        return _no_store_response(
+            {'error': 'Neplatný start_date / end_date (YYYY-MM-DD)'},
+            status.HTTP_400_BAD_REQUEST,
+        )
+    if start_date > end_date:
+        return _no_store_response(
+            {'error': 'start_date nesmí být po end_date'},
+            status.HTTP_400_BAD_REQUEST,
+        )
+
+    prodejna_id = request.GET.get('prodejna_id')
+    if prodejna_id not in (None, ''):
+        try:
+            prodejna_id = int(prodejna_id)
+        except (TypeError, ValueError):
+            return _no_store_response({'error': 'Neplatná prodejna_id'}, status.HTTP_400_BAD_REQUEST)
+    else:
+        prodejna_id = None
+
+    # Příjmy = obrat s DPH (stejný filtr data jako Celková čísla)
+    sales_qs = WebProdejeAll.objects.all()
+    sales_qs, sd, ed = _apply_web_prodeje_date_filters(
+        sales_qs,
+        start_date=start_date.isoformat(),
+        end_date=end_date.isoformat(),
+        period='custom',
+    )
+    if prodejna_id is not None:
+        sales_qs = sales_qs.filter(id_prodejny=prodejna_id)
+    prijmy_raw = sales_qs.aggregate(
+        total=Coalesce(
+            Sum(F('pocet_kusu') * F('cena_ks_vcl_dph')),
+            Decimal('0'),
+        ),
+    )['total']
+    prijmy = Decimal(str(prijmy_raw or 0))
+
+    # Náklady = abs(castka) odchozí, ne ignorované
+    naklady_qs = (
+        NakladPolozka.objects.filter(
+            datum__gte=sd or start_date,
+            datum__lte=ed or end_date,
+            typ_platby=NakladPolozka.TYP_PLATBY_ODCHOZI,
+            ignorovat=False,
+        )
+        .exclude(stav=NakladPolozka.STAV_IGNOROVAT)
+        .select_related('kategorie')
+    )
+    if prodejna_id is not None:
+        naklady_qs = naklady_qs.filter(prodejna_id=prodejna_id)
+
+    naklady_raw = naklady_qs.aggregate(
+        total=Coalesce(Sum(Abs('castka')), Decimal('0')),
+    )['total']
+    naklady = Decimal(str(naklady_raw or 0))
+    rozdil = prijmy - naklady
+    stav = compute_stav_rozdilu(prijmy, naklady)
+
+    grouped = (
+        naklady_qs.values('kategorie_id')
+        .annotate(
+            suma=Coalesce(Sum(Abs('castka')), Decimal('0')),
+            pocet=Count('id'),
+        )
+    )
+    kat_ids = [r['kategorie_id'] for r in grouped if r['kategorie_id']]
+    kat_map = {
+        k.id: k
+        for k in NakladKategorie.objects.filter(pk__in=kat_ids).only('id', 'nazev', 'parent_id', 'poradi')
+    }
+    kategorie_rows = []
+    for row in grouped:
+        kid = row['kategorie_id']
+        if kid is None:
+            kategorie_rows.append({
+                'id': None,
+                'nazev': 'Nezařazené',
+                'parent_id': None,
+                'suma': float(row['suma'] or 0),
+                'pocet': row['pocet'],
+            })
+        else:
+            kat = kat_map.get(kid)
+            kategorie_rows.append({
+                'id': kid,
+                'nazev': kat.nazev if kat else f'#{kid}',
+                'parent_id': kat.parent_id if kat else None,
+                'suma': float(row['suma'] or 0),
+                'pocet': row['pocet'],
+            })
+    kategorie_rows.sort(
+        key=lambda r: (
+            1 if r['id'] is None else 0,
+            kat_map[r['id']].poradi if r['id'] in kat_map else 9999,
+            r['nazev'] or '',
+        )
+    )
+
+    polozky_qs = naklady_qs.order_by('-datum', '-id')
+    kategorie_filter = request.GET.get('kategorie_id')
+    if kategorie_filter is not None and kategorie_filter != '':
+        if str(kategorie_filter).lower() in ('null', 'none', 'nezarazene'):
+            polozky_qs = polozky_qs.filter(kategorie_id__isnull=True)
+        else:
+            try:
+                polozky_qs = polozky_qs.filter(kategorie_id=int(kategorie_filter))
+            except (TypeError, ValueError):
+                return _no_store_response({'error': 'Neplatná kategorie_id'}, status.HTTP_400_BAD_REQUEST)
+
+    polozky = [
+        {
+            'id': p.id,
+            'datum': p.datum.isoformat(),
+            'castka': str(p.castka),
+            'popis': p.popis,
+            'zprava': p.zprava,
+            'zdroj': p.zdroj,
+            'stav': p.stav,
+            'kategorie_id': p.kategorie_id,
+            'kategorie_nazev': p.kategorie.nazev if p.kategorie_id else None,
+            'protiucet': p.protiucet,
+            'vs': p.vs,
+            'prodejna_id': p.prodejna_id,
+        }
+        for p in polozky_qs[:2000]
+    ]
+
+    log_finance_audit(
+        request,
+        'naklady_analytika',
+        f'{start_date}:{end_date} prodejna={prodejna_id or "-"}',
+    )
+    return _no_store_response({
+        'start_date': (sd or start_date).isoformat(),
+        'end_date': (ed or end_date).isoformat(),
+        'prijmy_s_dph': float(prijmy),
+        'naklady_s_dph': float(naklady),
+        'rozdil': float(rozdil),
+        'stav_rozdilu': stav,
+        'kategorie': kategorie_rows,
+        'polozky': polozky,
+    })
+
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 @finance_admin_view
@@ -178,8 +405,13 @@ def naklad_manual_create(request):
         upravil_user_id=request.user.id,
         upraveno=timezone.now(),
     )
+    pravidlo_meta = {}
+    if kategorie_id:
+        pravidlo_meta = upsert_pravidlo_from_polozka(polozka, user_id=request.user.id)
     log_finance_audit(request, 'naklad_manual_create', f'id={polozka.id}')
-    return _no_store_response(serialize_naklad_polozka(polozka), status.HTTP_201_CREATED)
+    payload = serialize_naklad_polozka(polozka)
+    payload.update(pravidlo_meta)
+    return _no_store_response(payload, status.HTTP_201_CREATED)
 
 
 @api_view(['PATCH'])
@@ -225,11 +457,20 @@ def naklad_update(request, polozka_id):
         polozka.ignorovat = False
         polozka.dph_stav = resolve_dph_stav(polozka.kategorie_id, polozka.typ_platby)
 
+    kategorie_touched = 'kategorie_id' in data or bool(data.get('zaradit'))
+
     polozka.upravil_user_id = request.user.id
     polozka.upraveno = timezone.now()
     polozka.save()
+
+    pravidlo_meta = {}
+    if kategorie_touched and polozka.kategorie_id and not polozka.ignorovat:
+        pravidlo_meta = upsert_pravidlo_from_polozka(polozka, user_id=request.user.id)
+
     log_finance_audit(request, 'naklad_update', f'id={polozka.id}')
-    return _no_store_response(serialize_naklad_polozka(polozka))
+    payload = serialize_naklad_polozka(polozka)
+    payload.update(pravidlo_meta)
+    return _no_store_response(payload)
 
 
 @api_view(['GET', 'POST'])

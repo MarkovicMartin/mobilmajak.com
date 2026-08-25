@@ -18,9 +18,12 @@ export function taskDeadlineDate(task) {
 }
 
 export function urgencyForTask(task, now = new Date()) {
-    if (task?.urgency) return task.urgency;
+    if (task?.stav === 'hotovo') return URGENCY_NEUTRAL;
+    // Prefer live recalc so badges stay correct after local edits; API value as fallback seed.
     const deadline = taskDeadlineDate(task);
-    if (!deadline) return URGENCY_NEUTRAL;
+    if (!deadline) {
+        return task?.urgency && task.urgency !== URGENCY_NEUTRAL ? task.urgency : URGENCY_NEUTRAL;
+    }
     if (isPast(deadline)) return URGENCY_OVERDUE;
     const hours = differenceInHours(deadline, now);
     if (hours <= 24) return URGENCY_URGENT;
@@ -30,16 +33,16 @@ export function urgencyForTask(task, now = new Date()) {
 }
 
 export function urgencyLabel(urgency, task) {
-    if (task?.at_risk) return 'At risk';
+    if (task?.at_risk && urgency !== URGENCY_OVERDUE) return 'At risk';
     switch (urgency) {
         case URGENCY_OVERDUE:
             return 'Po termínu';
         case URGENCY_URGENT:
             return 'Do 24 h';
         case URGENCY_WARN:
-            return 'Blíží se termín';
+            return 'Blíží se';
         default:
-            return '';
+            return '—';
     }
 }
 

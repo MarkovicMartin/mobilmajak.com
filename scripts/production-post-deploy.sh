@@ -20,6 +20,15 @@ if [ -f "$ENV_FILE" ]; then
     chmod 600 "$ENV_FILE"
     echo "OK: doplněn SHIFTS_CALENDAR_SEE_ALL_EMPLOYEES do .env"
   fi
+  # Ostrý provoz orders Slack (ne test → Markovič)
+  if grep -q '^ORDERS_SLACK_TEST_MODE=' "$ENV_FILE" 2>/dev/null; then
+    sed -i 's/^ORDERS_SLACK_TEST_MODE=.*/ORDERS_SLACK_TEST_MODE=0/' "$ENV_FILE"
+  else
+    echo 'ORDERS_SLACK_TEST_MODE=0' >> "$ENV_FILE"
+  fi
+  chown webmajak:webmajak "$ENV_FILE"
+  chmod 600 "$ENV_FILE"
+  echo "OK: ORDERS_SLACK_TEST_MODE=0 (ostrý Slack provoz)"
 fi
 
 # Po přesunu Packeta do app packeta zůstávaly staré soubory ve finance/ a rozbíjely cron import.

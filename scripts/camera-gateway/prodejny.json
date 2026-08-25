@@ -10,7 +10,7 @@
   "senimo": {
     "prodejna_id": 2,
     "prodejna_nazev": "Senimo",
-    "nvr_host": "192.168.1.109",
+    "nvr_host": "192.168.1.100",
     "camera_host": "",
     "install_cmd": "install-senimo-camera-gateway.cmd",
     "gateway_dir": "senimo-gateway"

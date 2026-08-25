@@ -103,6 +103,7 @@ const OrderForm = ({ onClose, onSubmit }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (isSubmitting) return;
 
         if (!validateForm()) {
             return;

@@ -235,6 +235,7 @@ function ShiftForm({ user, onClose, onSuccess, initialDatum = '', editShift = nu
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (loading) return;
         if (backofficeShift && !formData.poznamka?.trim()) {
             setError('U směny Backoffice je povinná poznámka – popište, co jste ten den dělali.');
             return;

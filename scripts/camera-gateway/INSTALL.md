@@ -119,7 +119,7 @@ MOBILMAJAK → Směny → Není v práci → majáček u prodejny.
 | Prodejna | slug | ID | NVR |
 |----------|------|----|-----|
 | Globus | `globus` | 1 | NVR `10.0.0.250`, kamera `192.168.254.3` |
-| Senimo | `senimo` | 2 | 192.168.1.109 |
+| Senimo | `senimo` | 2 | 192.168.1.100 |
 | Čepkov / Zlín | `zlin` | 3 | 10.0.0.250 |
 | Šternberk | `sternberk` | 6 | 10.0.1.112 |
 | Přerov | `prerov` | 4 | NVR `10.0.0.90`, kamera `10.0.0.3` |

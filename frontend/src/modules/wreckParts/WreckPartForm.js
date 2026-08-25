@@ -42,6 +42,7 @@ const WreckPartForm = ({ initial, defaultStore = '', onSave, onCancel }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (saving) return;
         setSaving(true);
         try {
             await onSave(form);

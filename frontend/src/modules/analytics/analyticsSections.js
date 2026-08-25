@@ -7,6 +7,7 @@ export const ANALYTICS_SECTIONS = [
     { id: 'prodejny-traffic', label: 'Prodejny & Zákazníci', tabLabel: 'Návštěvy', icon: '🧑‍🤝‍🧑' },
     { id: 'zasilkovna-konverze', label: 'Zásilkovna', tabLabel: 'Zásilkovna', icon: '📦' },
     { id: 'eshop', label: 'E-shop', tabLabel: 'E-shop', icon: '🛒' },
+    { id: 'naklady', label: 'Náklady', tabLabel: 'Náklady', icon: '💸' },
 ];
 
 export const DEFAULT_ANALYTICS_SECTION = ANALYTICS_SECTIONS[0].id;

@@ -17,6 +17,7 @@ const MyTasksModule = ({ embedded = false }) => {
     const [filter, setFilter] = useState('aktivni');
     const [selected, setSelected] = useState(null);
     const [newUkol, setNewUkol] = useState('');
+    const [creating, setCreating] = useState(false);
     const deepLinkTried = useRef(null);
 
     const listParams = useMemo(() => {
@@ -89,7 +90,8 @@ const MyTasksModule = ({ embedded = false }) => {
 
     const addPersonalTask = async (e) => {
         e.preventDefault();
-        if (!newUkol.trim()) return;
+        if (creating || !newUkol.trim()) return;
+        setCreating(true);
         try {
             const created = await create({
                 ukol: newUkol.trim(),
@@ -100,6 +102,8 @@ const MyTasksModule = ({ embedded = false }) => {
             if (created?.id) selectTask(created);
         } catch {
             /* tiché */
+        } finally {
+            setCreating(false);
         }
     };
 
@@ -157,8 +161,8 @@ const MyTasksModule = ({ embedded = false }) => {
                     value={newUkol}
                     onChange={(e) => setNewUkol(e.target.value)}
                 />
-                <button type="submit" className="btn btn--primary task-submit-btn">
-                    Přidat osobní úkol
+                <button type="submit" className="btn btn--primary task-submit-btn" disabled={creating || !newUkol.trim()}>
+                    {creating ? 'Přidávám…' : 'Přidat osobní úkol'}
                 </button>
             </form>
             <div className="profile-tasks-filters tasks-filter-pills">
@@ -196,9 +200,6 @@ const MyTasksModule = ({ embedded = false }) => {
             </div>
 
             <div className="tasks-list-section">
-                <p className="tasks-list-hint muted">
-                    Přetahujte mezi stavy · kliknutím rozbalíte detail
-                </p>
                 <TaskKanbanBoard
                     tasks={displayed}
                     loading={loading}

@@ -7,7 +7,7 @@ Instalace používá sdílený balíček `scripts/camera-gateway/` (stejně jako
 
 | Zařízení | IP |
 |----------|-----|
-| NVR | `192.168.1.109` |
+| NVR | `192.168.1.100` |
 
 Brána komunikuje jen s **NVR** (ISAPI alertStream). U kanálu kamery: **Detekce → Propojení → Upozornit iVMS**.
 

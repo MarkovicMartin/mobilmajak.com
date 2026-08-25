@@ -13,6 +13,7 @@ from tasks.slack_notify import (
 from tasks.slack_prefs import (
     PREF_COMMENT_ALL,
     PREF_CREATED_ALL,
+    PREF_CREATED_CONFIRM,
     PREF_DUE_SOON_ALL,
     PREF_DUE_SOON_MINE,
     PREF_OVERDUE_MINE,
@@ -20,6 +21,7 @@ from tasks.slack_prefs import (
     invalidate_global_watcher_cache,
     normalize_slack_ukoly_prefs,
 )
+from stores.models import Prodejna
 from users.models import WebUser
 
 
@@ -59,7 +61,10 @@ class SlackUkolyPrefsTests(TestCase):
             "ADMIN",
             jmeno="Martin",
             prijmeni="Manager",
-            slack_ukoly_prefs={PREF_DUE_SOON_MINE: False},
+            slack_ukoly_prefs={
+                PREF_DUE_SOON_MINE: False,
+                PREF_CREATED_CONFIRM: True,
+            },
         )
         self.assignee = _make_user(9203, email="assignee@example.com")
         self.store = Prodejna.objects.create(
@@ -96,6 +101,18 @@ class SlackUkolyPrefsTests(TestCase):
         recipients = _recipient_user_ids(task, "created")
         self.assertIn(self.supervisor.id, recipients)
         self.assertIn(self.manager.id, recipients)
+
+    def test_zadavatel_skips_created_when_confirm_off(self):
+        self.manager.slack_ukoly_prefs = {
+            PREF_DUE_SOON_MINE: False,
+            PREF_CREATED_CONFIRM: False,
+        }
+        self.manager.save(update_fields=["slack_ukoly_prefs"])
+        invalidate_global_watcher_cache()
+        task = self._task()
+        recipients = _recipient_user_ids(task, "created")
+        self.assertNotIn(self.manager.id, recipients)
+        self.assertIn(self.supervisor.id, recipients)
 
     def test_manager_skips_due_soon_for_own_task(self):
         task = self._task()

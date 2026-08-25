@@ -56,6 +56,13 @@ const FinanceModule = () => {
         ignorovat: false,
     });
 
+    const [katForm, setKatForm] = useState({
+        nazev: '',
+        parent_id: '',
+        typ_dph: 'z_faktury',
+        poradi: '0',
+    });
+
     const loadAll = useCallback(async () => {
         setLoading(true);
         setError('');
@@ -112,16 +119,38 @@ const FinanceModule = () => {
             ? Number(prodejnaId)
             : (polozka.prodejna_id ? Number(polozka.prodejna_id) : null);
         try {
-            await financeAPI.updateNaklad(polozka.id, {
+            const res = await financeAPI.updateNaklad(polozka.id, {
                 kategorie_id: Number(kategorieId),
                 prodejna_id: resolvedProdejna,
                 zaradit: true,
                 poznamka_admin: document.getElementById(`note-${polozka.id}`)?.value || '',
             });
-            setMessage(`Položka #${polozka.id} zařazena.`);
+            let msg = `Položka #${polozka.id} zařazena.`;
+            if (res?.pravidlo_created || res?.pravidlo_updated) {
+                msg += ' Pravidlo uloženo pro další podobné náklady.';
+            }
+            setMessage(msg);
             loadAll();
         } catch (err) {
             setMessage(err.response?.data?.error || 'Zařazení selhalo');
+        }
+    };
+
+    const handleKategorieSubmit = async (e) => {
+        e.preventDefault();
+        setMessage('');
+        try {
+            await financeAPI.createKategorie({
+                nazev: katForm.nazev.trim(),
+                parent_id: katForm.parent_id || null,
+                typ_dph: katForm.typ_dph,
+                poradi: Number(katForm.poradi) || 0,
+            });
+            setMessage('Kategorie vytvořena.');
+            setKatForm({ nazev: '', parent_id: '', typ_dph: 'z_faktury', poradi: '0' });
+            loadAll();
+        } catch (err) {
+            setMessage(err.response?.data?.error || 'Vytvoření kategorie selhalo');
         }
     };
 
@@ -242,6 +271,13 @@ const FinanceModule = () => {
                     onClick={() => setTab('pravidla')}
                 >
                     Pravidla
+                </button>
+                <button
+                    type="button"
+                    className={tab === 'kategorie' ? 'active' : ''}
+                    onClick={() => setTab('kategorie')}
+                >
+                    Kategorie
                 </button>
             </nav>
 
@@ -370,7 +406,12 @@ const FinanceModule = () => {
                 </section>
             )}
 
-            {tab === 'prehled' && <FinancePrehledPanel />}
+            {tab === 'prehled' && (
+                <FinancePrehledPanel
+                    kategorie={kategorieVyber}
+                    onMessage={setMessage}
+                />
+            )}
 
             {!loading && tab === 'kontrola' && <FinanceKontrolaPanel />}
 
@@ -434,6 +475,82 @@ const FinanceModule = () => {
                         </label>
                         <button type="submit" className="finance-btn-primary">Uložit náklad</button>
                     </form>
+                </section>
+            )}
+
+            {!loading && tab === 'kategorie' && (
+                <section className="finance-panel">
+                    <p className="finance-panel__intro">
+                        Nová kategorie nákladů – po uložení se objeví ve všech výběrech.
+                    </p>
+                    <form className="finance-form" onSubmit={handleKategorieSubmit}>
+                        <label>
+                            Název
+                            <input
+                                type="text"
+                                value={katForm.nazev}
+                                onChange={(e) => setKatForm((f) => ({ ...f, nazev: e.target.value }))}
+                                required
+                            />
+                        </label>
+                        <label>
+                            Nadřazená
+                            <select
+                                value={katForm.parent_id}
+                                onChange={(e) => setKatForm((f) => ({ ...f, parent_id: e.target.value }))}
+                            >
+                                <option value="">— kořenová —</option>
+                                {kategorie.filter((k) => !k.parent_id).map((k) => (
+                                    <option key={k.id} value={k.id}>{k.nazev}</option>
+                                ))}
+                            </select>
+                        </label>
+                        <label>
+                            Typ DPH
+                            <select
+                                value={katForm.typ_dph}
+                                onChange={(e) => setKatForm((f) => ({ ...f, typ_dph: e.target.value }))}
+                            >
+                                <option value="z_faktury">DPH z faktury</option>
+                                <option value="bez">Bez DPH</option>
+                            </select>
+                        </label>
+                        <label>
+                            Pořadí
+                            <input
+                                type="number"
+                                value={katForm.poradi}
+                                onChange={(e) => setKatForm((f) => ({ ...f, poradi: e.target.value }))}
+                            />
+                        </label>
+                        <button type="submit" className="finance-btn-primary">Vytvořit kategorii</button>
+                    </form>
+                    <div className="finance-table-wrap finance-table-wrap--top">
+                        <table className="finance-table">
+                            <thead>
+                                <tr>
+                                    <th>Název</th>
+                                    <th>Parent</th>
+                                    <th>DPH</th>
+                                    <th>Pořadí</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {kategorie.map((k) => (
+                                    <tr key={k.id}>
+                                        <td>{k.nazev}</td>
+                                        <td>
+                                            {k.parent_id
+                                                ? (kategorie.find((x) => x.id === k.parent_id)?.nazev || k.parent_id)
+                                                : '–'}
+                                        </td>
+                                        <td>{k.typ_dph === 'bez' ? 'bez DPH' : 'z faktury'}</td>
+                                        <td>{k.poradi}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 </section>
             )}
 

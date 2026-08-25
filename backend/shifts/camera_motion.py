@@ -9,16 +9,22 @@ import json
 import os
 import re
 from datetime import timedelta
+from zoneinfo import ZoneInfo
 
 from django.utils import timezone
 
 from stores.models import Prodejna
+from stores.oteviraci_doba_utils import clip_interval_to_opening_hours
 
 from .models import ProdejnaPohybUdalost
+
+PRAGUE_TZ = ZoneInfo('Europe/Prague')
 
 MOTION_WINDOW_MINUTES = int(os.getenv('CAMERA_MOTION_WINDOW_MINUTES', '15'))
 MOTION_ACTIVE_MINUTES = int(os.getenv('CAMERA_MOTION_ACTIVE_MINUTES', '5'))
 EVENT_RETENTION_DAYS = int(os.getenv('CAMERA_MOTION_RETENTION_DAYS', '7'))
+QUIET_LOG_MIN_MINUTES = int(os.getenv('CAMERA_MOTION_QUIET_LOG_MINUTES', '10'))
+QUIET_LOG_MAX_PERIODS = int(os.getenv('CAMERA_MOTION_QUIET_LOG_MAX', '80'))
 SIGNATURE_MAX_AGE_SECONDS = int(os.getenv('CAMERA_MOTION_SIGNATURE_MAX_AGE', '300'))
 
 
@@ -202,40 +208,66 @@ def motion_status_for_prodejna(prodejna_id, now=None):
     }
 
 
-def motion_detail_for_prodejna(prodejna_id, now=None, lookback_hours=16):
-    """Období klidu (bez pohybu) pro rozbalovací log – zaměřeno na trvání klidu."""
+def motion_detail_for_prodejna(prodejna_id, now=None, lookback_hours=None):
+    """Období bez pohybu ≥ QUIET_LOG_MIN_MINUTES jen uvnitř otevírací doby."""
     now = now or timezone.now()
+    if lookback_hours is None:
+        lookback_hours = EVENT_RETENTION_DAYS * 24
     since = now - timedelta(hours=lookback_hours)
-    events = list(
-        ProdejnaPohybUdalost.objects.filter(
-            prodejna_id=prodejna_id,
-            cas__gte=since,
-        ).order_by('cas')
-    )
 
-    motion_events = [e for e in events if e.pohyb]
-    last_motion = motion_events[-1] if motion_events else None
+    try:
+        store = Prodejna.objects.only('id', 'oteviraci_doba').get(pk=prodejna_id)
+        oteviraci = store.oteviraci_doba
+    except Prodejna.DoesNotExist:
+        oteviraci = {}
+
+    motion_qs = ProdejnaPohybUdalost.objects.filter(
+        prodejna_id=prodejna_id,
+        pohyb=True,
+    )
+    motion_times = list(
+        motion_qs.filter(cas__gte=since).order_by('cas').values_list('cas', flat=True)
+    )
+    seed = motion_qs.filter(cas__lt=since).order_by('-cas').values_list('cas', flat=True).first()
+    if seed is not None:
+        motion_times = [seed] + motion_times
+
+    last_motion_at = motion_times[-1] if motion_times else None
+    open_quiet_segments = []
+    if last_motion_at:
+        open_quiet_segments = clip_interval_to_opening_hours(
+            last_motion_at, now, oteviraci, PRAGUE_TZ,
+        )
     current_quiet_minutes = None
-    if last_motion:
-        mins = int((now - last_motion.cas).total_seconds() // 60)
-        if mins >= MOTION_ACTIVE_MINUTES:
-            current_quiet_minutes = mins
+    if open_quiet_segments:
+        open_mins = sum(
+            int((seg_end - seg_start).total_seconds() // 60)
+            for seg_start, seg_end in open_quiet_segments
+        )
+        if open_mins >= MOTION_ACTIVE_MINUTES:
+            current_quiet_minutes = open_mins
 
     quiet_periods = []
-    for i, me in enumerate(motion_events):
-        start = me.cas
-        if i + 1 < len(motion_events):
-            end = motion_events[i + 1].cas
-            ongoing = False
+    for i, start in enumerate(motion_times):
+        if i + 1 < len(motion_times):
+            end = motion_times[i + 1]
+            gap_ongoing = False
         else:
+            if current_quiet_minutes is None and not open_quiet_segments:
+                continue
             end = now
-            ongoing = current_quiet_minutes is not None
+            gap_ongoing = True
 
-        minutes = int((end - start).total_seconds() // 60)
-        if minutes >= MOTION_ACTIVE_MINUTES:
+        for seg_start, seg_end in clip_interval_to_opening_hours(
+            start, end, oteviraci, PRAGUE_TZ,
+        ):
+            minutes = int((seg_end - seg_start).total_seconds() // 60)
+            if minutes < QUIET_LOG_MIN_MINUTES:
+                continue
+            ongoing = bool(gap_ongoing and seg_end >= now)
             quiet_periods.append({
-                'from': start.isoformat(),
-                'to': end.isoformat() if not ongoing else None,
+                'from': seg_start.isoformat(),
+                'to': None if ongoing else seg_end.isoformat(),
                 'minutes': minutes,
                 'ongoing': ongoing,
             })
@@ -243,9 +275,10 @@ def motion_detail_for_prodejna(prodejna_id, now=None, lookback_hours=16):
     quiet_periods.sort(key=lambda p: p['from'], reverse=True)
 
     return {
-        'quiet_periods': quiet_periods[:12],
+        'quiet_periods': quiet_periods[:QUIET_LOG_MAX_PERIODS],
         'current_quiet_minutes': current_quiet_minutes,
         'active_minutes': MOTION_ACTIVE_MINUTES,
+        'quiet_log_min_minutes': QUIET_LOG_MIN_MINUTES,
     }
 
 

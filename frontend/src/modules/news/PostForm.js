@@ -29,7 +29,8 @@ const PostForm = ({ onSubmit, onCancel }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        
+        if (isSubmitting) return;
+
         if (!content.trim() && files.length === 0) {
             alert('Zadejte obsah nebo nahrajte soubor');
             return;

@@ -1,0 +1,10 @@
+{
+  "mobilmajak_api": "https://mobilmajak.com",
+  "prodejna_id": 2,
+  "prodejna_nazev": "Senimo",
+  "motion_secret": "DOPLNTE_STEJNY_HEX_JAKO_NA_VPS_SECRETS_JSON_KLIC_2",
+  "autodiscover_nvr": true,
+  "nvr_host": "192.168.1.109",
+  "nvr_user": "admin",
+  "nvr_pass": "DOPLNTE_HESLO_NVR"
+}

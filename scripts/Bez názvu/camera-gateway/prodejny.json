@@ -1,0 +1,50 @@
+{
+  "globus": {
+    "prodejna_id": 1,
+    "prodejna_nazev": "Globus",
+    "nvr_host": "10.0.0.250",
+    "camera_host": "192.168.254.3",
+    "install_cmd": "install-globus-camera-gateway.cmd",
+    "gateway_dir": "globus-gateway"
+  },
+  "senimo": {
+    "prodejna_id": 2,
+    "prodejna_nazev": "Senimo",
+    "nvr_host": "192.168.1.109",
+    "camera_host": "",
+    "install_cmd": "install-senimo-camera-gateway.cmd",
+    "gateway_dir": "senimo-gateway"
+  },
+  "zlin": {
+    "prodejna_id": 3,
+    "prodejna_nazev": "Zlin",
+    "nvr_host": "10.0.0.250",
+    "camera_host": "10.0.0.246",
+    "install_cmd": "install-zlin-camera-gateway.cmd",
+    "gateway_dir": "zlin-gateway"
+  },
+  "sternberk": {
+    "prodejna_id": 6,
+    "prodejna_nazev": "Sternberk",
+    "nvr_host": "10.0.1.112",
+    "camera_host": "192.168.254.6",
+    "install_cmd": "install-sternberk-camera-gateway.cmd",
+    "gateway_dir": "sternberk-gateway"
+  },
+  "prerov": {
+    "prodejna_id": 4,
+    "prodejna_nazev": "Prerov",
+    "nvr_host": "10.0.0.90",
+    "camera_host": "10.0.0.3",
+    "install_cmd": "install-prerov-camera-gateway.cmd",
+    "gateway_dir": "prerov-gateway"
+  },
+  "vsetin": {
+    "prodejna_id": 5,
+    "prodejna_nazev": "Vsetin",
+    "nvr_host": "10.0.0.23",
+    "camera_host": "192.168.254.11",
+    "install_cmd": "install-vsetin-camera-gateway.cmd",
+    "gateway_dir": "vsetin-gateway"
+  }
+}

@@ -28,7 +28,7 @@ const TaskComments = ({ taskId, onCommentAdded }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!text.trim() || !taskId) return;
+        if (sending || !text.trim() || !taskId) return;
         setSending(true);
         try {
             await taskAPI.addComment(taskId, text.trim());

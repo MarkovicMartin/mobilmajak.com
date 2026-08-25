@@ -194,6 +194,48 @@
     max-width: 100%;
 }
 
+.task-urgency {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    width: fit-content;
+    letter-spacing: 0.02em;
+}
+
+.task-urgency--neutral {
+    background: #f1f5f9;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
+    font-weight: 600;
+}
+
+.task-urgency--warn {
+    background: #fffbeb;
+    color: #b45309;
+    border: 1px solid #fde68a;
+}
+
+.task-urgency--urgent {
+    background: #fff7ed;
+    color: #c2410c;
+    border: 1px solid #fed7aa;
+}
+
+.task-urgency--overdue {
+    background: #fef2f2;
+    color: #b91c1c;
+    border: 1px solid #fecaca;
+}
+
+.task-urgency--at-risk {
+    background: #fef2f2;
+    color: #b91c1c;
+    border: 1px solid #fecaca;
+}
+
 .task-row-detail {
     padding: 0.85rem 1rem 1rem;
     background: #f1f5f9;

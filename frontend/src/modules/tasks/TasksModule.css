@@ -81,10 +81,21 @@
     flex-wrap: wrap;
     gap: 0.5rem;
     align-items: center;
+    width: 100%;
+}
+
+.tasks-filters__new {
+    margin-left: auto;
 }
 
 .tasks-filters .ui-select {
     min-width: 130px;
+}
+
+.tasks-module .page-header__actions,
+.tasks-module .ui-page-header__actions {
+    flex: 1 1 auto;
+    min-width: 0;
 }
 
 /* --- Layout --- */

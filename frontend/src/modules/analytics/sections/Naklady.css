@@ -1,0 +1,163 @@
+.naklady-analytika {
+    padding: 0;
+}
+
+.naklady-filters {
+    align-items: flex-end;
+}
+
+.naklady-filter-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    align-items: center;
+}
+
+.naklady-period-label {
+    margin: 0;
+    font-size: 0.85rem;
+    color: #6b7280;
+    width: 100%;
+}
+
+.naklady-toast {
+    background: #ecfdf5;
+    border: 1px solid #a7f3d0;
+    color: #065f46;
+    padding: 0.5rem 0.75rem;
+    border-radius: 8px;
+    margin: 0 0 0.75rem;
+    font-size: 0.9rem;
+}
+
+.naklady-loading,
+.naklady-error {
+    padding: 0.75rem 0;
+}
+
+.naklady-error {
+    color: #b91c1c;
+}
+
+.naklady-kpi-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.65rem;
+    margin-bottom: 0.85rem;
+}
+
+.naklady-kpi-row .metric-card {
+    background: var(--bg-card, #fff);
+    padding: 14px 16px;
+    border-radius: 10px;
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08);
+    border-left: 4px solid var(--chart-1, #3b82f6);
+}
+
+.naklady-kpi-row .metric-card:nth-child(2) {
+    border-left-color: var(--chart-2, #f59e0b);
+}
+
+.naklady-kpi-row .metric-card h3 {
+    margin: 0 0 0.25rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #6b7280;
+}
+
+.naklady-kpi-row .metric-value {
+    margin: 0;
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: #111827;
+}
+
+.naklady-kpi--minus .metric-value {
+    color: #dc2626;
+}
+
+.naklady-kpi--plus .metric-value {
+    color: #059669;
+}
+
+.naklady-kpi--vyrovnano .metric-value {
+    color: #111827;
+}
+
+.naklady-table-wrap {
+    overflow-x: auto;
+    background: var(--bg-card, #fff);
+    border-radius: 10px;
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.06);
+}
+
+.naklady-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.naklady-table th,
+.naklady-table td {
+    padding: 0.55rem 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid #eef2f6;
+}
+
+.naklady-table th {
+    font-size: 0.8rem;
+    color: #6b7280;
+    font-weight: 600;
+}
+
+.naklady-kat-row {
+    cursor: pointer;
+}
+
+.naklady-kat-row:hover {
+    background: #f8fafc;
+}
+
+.naklady-expand {
+    color: #9ca3af;
+    font-size: 0.85rem;
+}
+
+.naklady-detail-row td {
+    background: #f9fafb;
+    font-size: 0.85rem;
+}
+
+.naklady-detail {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+    align-items: center;
+}
+
+.naklady-detail__meta {
+    color: #6b7280;
+    white-space: nowrap;
+}
+
+.naklady-detail__popis {
+    flex: 1 1 12rem;
+    min-width: 0;
+}
+
+.naklady-detail__edit {
+    display: flex;
+    gap: 0.35rem;
+    align-items: center;
+}
+
+.naklady-detail__edit select {
+    max-width: 14rem;
+    padding: 0.25rem 0.4rem;
+    font-size: 0.85rem;
+}
+
+.naklady-detail__edit button {
+    padding: 0.25rem 0.55rem;
+    font-size: 0.8rem;
+}

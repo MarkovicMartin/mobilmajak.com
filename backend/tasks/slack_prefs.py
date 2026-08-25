@@ -36,7 +36,7 @@ SLACK_UKOLY_PREF_KEYS = (
 
 DEFAULT_SLACK_UKOLY_PREFS: dict[str, bool] = {
     PREF_ASSIGNED_MINE: True,
-    PREF_CREATED_CONFIRM: True,
+    PREF_CREATED_CONFIRM: False,
     PREF_CREATED_ALL: False,
     PREF_DUE_SOON_MINE: True,
     PREF_DUE_SOON_ALL: False,
@@ -60,8 +60,9 @@ USER_SLACK_UKOLY_PRESETS: dict[int, dict[str, bool]] = {
         PREF_OVERDUE_MINE: False,
         PREF_COMMENT_ALL: True,
     },
-  # Martin Markovič – jen vlastní + po termínu
+    # Martin Markovič – jen vlastní + po termínu
     999: {
+        PREF_CREATED_CONFIRM: False,
         PREF_DUE_SOON_MINE: False,
         PREF_CREATED_ALL: False,
         PREF_DUE_SOON_ALL: False,

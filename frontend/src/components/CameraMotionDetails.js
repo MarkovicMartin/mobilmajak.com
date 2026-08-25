@@ -1,6 +1,11 @@
 import React from 'react';
 import CameraBeacon from './CameraBeacon';
-import { formatPragueEventAt } from '../utils/pragueDateTime';
+import {
+    formatPragueDay,
+    formatPragueEventAt,
+    formatPragueHm,
+    pragueDateKey,
+} from '../utils/pragueDateTime';
 import './CameraMotionDetails.css';
 
 function motionToCamera(motion) {
@@ -19,6 +24,31 @@ function formatDuration(minutes) {
     return r > 0 ? `${h} h ${r} min` : `${h} h`;
 }
 
+function formatQuietRange(from, to, ongoing) {
+    const start = formatPragueHm(from);
+    if (ongoing) return `${start} → teď`;
+    if (!to) return start;
+    if (pragueDateKey(from) === pragueDateKey(to)) {
+        return `${start} → ${formatPragueHm(to)}`;
+    }
+    return `${start} → ${formatPragueDay(to)} ${formatPragueHm(to)}`;
+}
+
+function groupQuietByDay(periods) {
+    const groups = [];
+    const byKey = new Map();
+    periods.forEach((p) => {
+        const key = pragueDateKey(p.from);
+        if (!byKey.has(key)) {
+            const group = { key, from: p.from, periods: [] };
+            byKey.set(key, group);
+            groups.push(group);
+        }
+        byKey.get(key).periods.push(p);
+    });
+    return groups;
+}
+
 /**
  * Majáček + volitelný rozbalovací log klidu (bez pohybu).
  * compact = jen majáček a štítek; detail v <details>.
@@ -34,6 +64,8 @@ export default function CameraMotionDetails({
     const camera = motionToCamera(motion);
     const quietPeriods = detail?.quiet_periods || [];
     const currentQuiet = detail?.current_quiet_minutes ?? motion.quiet_minutes;
+    const minQuiet = detail?.quiet_log_min_minutes || 10;
+    const dayGroups = groupQuietByDay(quietPeriods);
 
     const beaconTitle = motion.last_event_at
         ? `Poslední signál: ${formatPragueEventAt(motion.last_event_at)}`
@@ -63,23 +95,33 @@ export default function CameraMotionDetails({
                         </p>
                     )}
                     {quietPeriods.length === 0 ? (
-                        <p className="camera-motion-empty">Zatím žádné delší období klidu.</p>
+                        <p className="camera-motion-empty">
+                            Žádné období bez pohybu ≥ {minQuiet} min.
+                        </p>
                     ) : (
-                        <ul className="camera-motion-quiet-list">
-                            {quietPeriods.map((p) => (
-                                <li key={`${p.from}-${p.to || 'now'}`}>
-                                    <span className="camera-motion-quiet-range">
-                                        {formatPragueEventAt(p.from)}
-                                        {' → '}
-                                        {p.ongoing ? 'teď' : formatPragueEventAt(p.to)}
-                                    </span>
-                                    <span className="camera-motion-quiet-dur">
-                                        {formatDuration(p.minutes)}
-                                        {p.ongoing ? ' (běží)' : ''}
-                                    </span>
-                                </li>
-                            ))}
-                        </ul>
+                        dayGroups.map((day) => (
+                            <div key={day.key} className="camera-motion-day">
+                                <div className="camera-motion-day-label">
+                                    {formatPragueDay(day.from)}
+                                </div>
+                                <ul className="camera-motion-quiet-list">
+                                    {day.periods.map((p) => (
+                                        <li
+                                            key={`${p.from}-${p.to || 'now'}`}
+                                            className={p.minutes >= 60 ? 'camera-motion-quiet--long' : undefined}
+                                        >
+                                            <span className="camera-motion-quiet-range">
+                                                {formatQuietRange(p.from, p.to, p.ongoing)}
+                                            </span>
+                                            <span className="camera-motion-quiet-dur">
+                                                {formatDuration(p.minutes)}
+                                                {p.ongoing ? ' (běží)' : ''}
+                                            </span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        ))
                     )}
                 </div>
             </details>

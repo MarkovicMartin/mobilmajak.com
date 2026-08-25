@@ -9,32 +9,14 @@ import TaskDetailPanel from './TaskDetailPanel';
 import TaskEditForm from './TaskEditForm';
 import TaskKanbanBoard from './TaskKanbanBoard';
 import { buildAssigneeSelectOptions } from './TaskAssigneeOptions';
-import { ACTIVE_TASK_STAVY } from '../../utils/taskDisplay';
 import { parseTaskId, sameTaskId, TASKS_MANAGE_PATH } from '../../utils/taskNavigation';
 import './TasksModule.css';
-
-const STAV_OPTIONS = [
-    { value: 'vse', label: 'Všechny stavy' },
-    { value: 'novy', label: 'Nové' },
-    { value: 'v_procesu', label: 'V procesu' },
-    { value: 'blokovany', label: 'Blokované' },
-    { value: 'ceka_schvaleni', label: 'Čeká schválení' },
-    { value: 'hotovo', label: 'Hotové' },
-];
-
-const FILTER_OPTIONS = [
-    { value: '', label: 'Vše' },
-    { value: 'at_risk', label: 'At risk' },
-    { value: 'cekajici_schvaleni', label: 'Čeká schválení' },
-];
 
 const PRIORITA_OPTIONS = [
     { value: 'nizka', label: 'Nízká' },
     { value: 'stredni', label: 'Střední' },
     { value: 'vysoka', label: 'Vysoká' },
 ];
-
-const WIP_LIMIT = 3;
 
 const emptyDodRow = () => ({ text: '', splneno: false });
 
@@ -47,14 +29,12 @@ const TasksManageModule = ({ embedded = false }) => {
     const deepLinkTried = useRef(null);
     const [stores, setStores] = useState([]);
     const [formAssignees, setFormAssignees] = useState([]);
-    const [filterAssignees, setFilterAssignees] = useState([]);
-    const [filterStav, setFilterStav] = useState('vse');
-    const [filterSpecial, setFilterSpecial] = useState('');
     const [filterStore, setFilterStore] = useState('');
     const [filterAssignee, setFilterAssignee] = useState('');
     const [selected, setSelected] = useState(null);
     const [editing, setEditing] = useState(false);
     const [createOpen, setCreateOpen] = useState(false);
+    const [creating, setCreating] = useState(false);
     const [formError, setFormError] = useState('');
     const [wipWarning, setWipWarning] = useState('');
     const [form, setForm] = useState({
@@ -73,17 +53,20 @@ const TasksManageModule = ({ embedded = false }) => {
     });
 
     const listParams = useMemo(() => {
-        const p = { stav: filterStav, typ: 'prirazeny' };
+        const p = { stav: 'vse', typ: 'prirazeny' };
         if (filterStore) p.prodejna_id = filterStore;
-        if (filterAssignee) p.prodejce_id = filterAssignee;
-        if (filterSpecial) p.filter = filterSpecial;
         return p;
-    }, [filterStav, filterStore, filterAssignee, filterSpecial]);
+    }, [filterStore]);
 
     const { tasks, loading, load, create, update, setTasks } = useTasks({
         autoLoad: false,
         listParams,
     });
+
+    const displayedTasks = useMemo(() => {
+        if (!filterAssignee) return tasks;
+        return tasks.filter((t) => String(t.id_prodejce_ukol) === String(filterAssignee));
+    }, [tasks, filterAssignee]);
 
     const vedouciStores = useMemo(() => {
         if (isAdmin()) return stores;
@@ -92,16 +75,6 @@ const TasksManageModule = ({ embedded = false }) => {
         }
         return [];
     }, [stores, user, isAdmin]);
-
-    const wipByAssignee = useMemo(() => {
-        const counts = {};
-        tasks.forEach((t) => {
-            if (!ACTIVE_TASK_STAVY.includes(t.stav)) return;
-            const id = t.id_prodejce_ukol;
-            counts[id] = (counts[id] || 0) + 1;
-        });
-        return counts;
-    }, [tasks]);
 
     const storeOptionsForForm = useMemo(
         () => (isAdmin() ? stores : vedouciStores),
@@ -131,10 +104,23 @@ const TasksManageModule = ({ embedded = false }) => {
         [storeOptionsForForm],
     );
 
-    const assigneeFilterOptions = useMemo(
-        () => buildAssigneeSelectOptions(filterAssignees, 'Všichni zaměstnanci'),
-        [filterAssignees],
-    );
+    /** Filtr zaměstnanců: jen lidé, kteří mají alespoň jeden úkol v aktuálním výběru pobočky. */
+    const assigneeFilterOptions = useMemo(() => {
+        const byId = new Map();
+        for (const t of tasks) {
+            const id = t.id_prodejce_ukol;
+            if (!id) continue;
+            if (!byId.has(id)) {
+                byId.set(id, t.assignee?.jmeno_plne || `#${id}`);
+            }
+        }
+        return [
+            { value: '', label: 'Všichni zaměstnanci' },
+            ...[...byId.entries()]
+                .map(([id, name]) => ({ value: String(id), label: name }))
+                .sort((a, b) => a.label.localeCompare(b.label, 'cs')),
+        ];
+    }, [tasks]);
 
     const assigneeFormOptions = useMemo(
         () => buildAssigneeSelectOptions(formAssignees, 'Přiřadit…'),
@@ -158,18 +144,6 @@ const TasksManageModule = ({ embedded = false }) => {
         } catch {
             return [];
         }
-    }, []);
-
-    const mergeAssigneesById = useCallback((lists) => {
-        const seen = new Map();
-        for (const list of lists) {
-            for (const a of list) {
-                if (a?.id != null && !seen.has(a.id)) seen.set(a.id, a);
-            }
-        }
-        return [...seen.values()].sort((a, b) =>
-            (a.jmeno_plne || '').localeCompare(b.jmeno_plne || '', 'cs'),
-        );
     }, []);
 
     useEffect(() => {
@@ -219,43 +193,14 @@ const TasksManageModule = ({ embedded = false }) => {
         return () => { cancelled = true; };
     }, [form.id_prodejny, form.bezPobocky, user?.role, fetchAssigneesForStore, fetchAssigneesStoreless]);
 
-    // Assignees for filter bar (independent of create form)
-    useEffect(() => {
-        let cancelled = false;
-        (async () => {
-            if (filterStore) {
-                const list = await fetchAssigneesForStore(filterStore);
-                if (!cancelled) setFilterAssignees(list);
-                return;
-            }
-            if (user?.role === 'ADMIN') {
-                const list = await fetchAssigneesStoreless();
-                if (!cancelled) setFilterAssignees(list);
-                return;
-            }
-            // Vedoucí – „všechny moje pobočky“: sloučit zaměstnance ze všech poboček
-            const lists = await Promise.all(
-                vedouciStores.map((s) => fetchAssigneesForStore(s.id)),
-            );
-            if (!cancelled) setFilterAssignees(mergeAssigneesById(lists));
-        })();
-        return () => { cancelled = true; };
-    }, [
-        filterStore,
-        user?.role,
-        vedouciStores,
-        fetchAssigneesForStore,
-        fetchAssigneesStoreless,
-        mergeAssigneesById,
-    ]);
-
-    // Drop invalid assignee when store filter changes
+    // Drop assignee filter when selected person no longer has tasks in current store view
     useEffect(() => {
         if (!filterAssignee) return;
-        if (!filterAssignees.some((a) => String(a.id) === String(filterAssignee))) {
-            setFilterAssignee('');
-        }
-    }, [filterAssignees, filterAssignee]);
+        const stillPresent = tasks.some(
+            (t) => String(t.id_prodejce_ukol) === String(filterAssignee),
+        );
+        if (!stillPresent) setFilterAssignee('');
+    }, [tasks, filterAssignee]);
 
     const selectTask = useCallback((task) => {
         setSelected(task);
@@ -340,6 +285,7 @@ const TasksManageModule = ({ embedded = false }) => {
 
     const handleCreate = async (e) => {
         e.preventDefault();
+        if (creating) return;
         setFormError('');
         setWipWarning('');
         const dod = form.dod_polozky
@@ -357,6 +303,7 @@ const TasksManageModule = ({ embedded = false }) => {
             setFormError('Přidejte alespoň jednu položku Definition of Done.');
             return;
         }
+        setCreating(true);
         try {
             const created = await create({
                 vysledek: form.vysledek.trim(),
@@ -396,6 +343,8 @@ const TasksManageModule = ({ embedded = false }) => {
             await load(listParams);
         } catch (err) {
             setFormError(err?.response?.data?.error || 'Vytvoření se nezdařilo.');
+        } finally {
+            setCreating(false);
         }
     };
 
@@ -432,65 +381,14 @@ const TasksManageModule = ({ embedded = false }) => {
     const storeLocked = user?.role === 'VEDOUCI' && vedouciStores.length <= 1;
     const showFilterStore = isAdmin() || vedouciStores.length > 1;
 
-    const wipChips = useMemo(() => {
-        const byId = new Map();
-        for (const a of filterAssignees) {
-            byId.set(a.id, a.jmeno_plne || `${a.jmeno || ''} ${a.prijmeni || ''}`.trim());
-        }
-        for (const t of tasks) {
-            const id = t.id_prodejce_ukol;
-            if (!id || byId.has(id)) continue;
-            byId.set(id, t.assignee?.jmeno_plne || `#${id}`);
-        }
-        return Object.entries(wipByAssignee)
-            .map(([id, count]) => ({
-                id: Number(id),
-                count,
-                name: byId.get(Number(id)) || `#${id}`,
-            }))
-            .filter((row) => row.count > 0)
-            .sort((a, b) => a.name.localeCompare(b.name, 'cs'));
-    }, [filterAssignees, tasks, wipByAssignee]);
-
-    const selectedAssigneeWip = selected?.id_prodejce_ukol
-        ? wipByAssignee[selected.id_prodejce_ukol] || 0
-        : 0;
+    const handleAssigneeFilterChange = (v) => {
+        setFilterAssignee((prev) => (
+            prev && String(prev) === String(v) && v !== '' ? '' : v
+        ));
+    };
 
     const filterBar = (
         <div className="tasks-filters">
-            {canManageTasks() && (
-                <button
-                    type="button"
-                    className="btn btn--primary"
-                    onClick={() => {
-                        setFormError('');
-                        setWipWarning('');
-                        setCreateOpen(true);
-                    }}
-                >
-                    Nový úkol
-                </button>
-            )}
-            <Select
-                options={FILTER_OPTIONS}
-                value={filterSpecial}
-                onChange={(v) => {
-                    setFilterSpecial(v);
-                    if (v === 'cekajici_schvaleni') setFilterStav('vse');
-                }}
-                aria-label="Speciální filtr"
-            />
-            <Select
-                options={STAV_OPTIONS}
-                value={filterStav}
-                onChange={(v) => {
-                    setFilterStav(v);
-                    if (v !== 'vse' && filterSpecial === 'cekajici_schvaleni') {
-                        setFilterSpecial('');
-                    }
-                }}
-                aria-label="Filtr stavu"
-            />
             {showFilterStore && (
                 <Select
                     options={filterStoreOptions}
@@ -505,10 +403,23 @@ const TasksManageModule = ({ embedded = false }) => {
             <Select
                 options={assigneeFilterOptions}
                 value={filterAssignee}
-                onChange={setFilterAssignee}
+                onChange={handleAssigneeFilterChange}
                 searchable
                 aria-label="Filtr zaměstnance"
             />
+            {canManageTasks() && (
+                <button
+                    type="button"
+                    className="btn btn--primary tasks-filters__new"
+                    onClick={() => {
+                        setFormError('');
+                        setWipWarning('');
+                        setCreateOpen(true);
+                    }}
+                >
+                    Nový úkol
+                </button>
+            )}
         </div>
     );
 
@@ -525,23 +436,6 @@ const TasksManageModule = ({ embedded = false }) => {
             ) : (
                 filterBar
             )}
-            {wipChips.length > 0 && (
-                <div className="tasks-wip-bar">
-                    {wipChips.map((a) => {
-                        const over = a.count >= WIP_LIMIT;
-                        return (
-                            <button
-                                key={a.id}
-                                type="button"
-                                className={`tasks-wip-chip${over ? ' is-over' : ''}`}
-                                onClick={() => setFilterAssignee(String(a.id))}
-                            >
-                                {a.name}: {a.count}/{WIP_LIMIT}
-                            </button>
-                        );
-                    })}
-                </div>
-            )}
 
             {createOpen && (
                 <Modal
@@ -553,11 +447,11 @@ const TasksManageModule = ({ embedded = false }) => {
                     bodyClassName="task-create-modal__body"
                     footer={(
                         <>
-                            <button type="button" className="btn btn--ghost" onClick={closeCreateModal}>
+                            <button type="button" className="btn btn--ghost" onClick={closeCreateModal} disabled={creating}>
                                 Zrušit
                             </button>
-                            <button type="submit" className="btn btn--primary">
-                                Vytvořit úkol
+                            <button type="submit" className="btn btn--primary" disabled={creating}>
+                                {creating ? 'Vytvářím…' : 'Vytvořit úkol'}
                             </button>
                         </>
                     )}
@@ -722,14 +616,10 @@ const TasksManageModule = ({ embedded = false }) => {
             )}
 
             <div className="tasks-list-section">
-                <p className="tasks-list-hint muted">
-                    Přetahujte mezi stavy · kliknutím rozbalíte detail
-                </p>
                 <TaskKanbanBoard
-                    tasks={tasks}
+                    tasks={displayedTasks}
                     loading={loading}
                     variant="manage"
-                    statusFilter={filterStav}
                     expandedId={selected?.id ?? null}
                     onToggle={toggleTask}
                     onStatusChange={handleStatusChange}
@@ -783,11 +673,6 @@ const TasksManageModule = ({ embedded = false }) => {
                                         </button>
                                     )}
                                 </div>
-                                {selectedAssigneeWip > 0 && (
-                                    <p className="task-row-detail-hint">
-                                        WIP: {selectedAssigneeWip}/{WIP_LIMIT} aktivních u {task.assignee?.jmeno_plne}
-                                    </p>
-                                )}
                             </>
                         )
                     )}

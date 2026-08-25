@@ -26,3 +26,23 @@ export function formatPragueEventAt(iso) {
         second: '2-digit',
     });
 }
+
+export function pragueDateKey(iso) {
+    if (!iso) return '';
+    return new Date(iso).toLocaleDateString('sv-SE', { timeZone: PRAGUE_TZ });
+}
+
+export function formatPragueDay(iso) {
+    return formatPragueDateTime(iso, {
+        weekday: 'short',
+        day: '2-digit',
+        month: '2-digit',
+    });
+}
+
+export function formatPragueHm(iso) {
+    return formatPragueDateTime(iso, {
+        hour: '2-digit',
+        minute: '2-digit',
+    });
+}

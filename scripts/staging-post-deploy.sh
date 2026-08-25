@@ -45,6 +45,20 @@ if [ -f "$ENV_FILE" ]; then
     chmod 600 "$ENV_FILE"
     echo "OK: doplněn SHIFTS_CALENDAR_SEE_ALL_EMPLOYEES do staging .env"
   fi
+  # Staging vždy test Slack → Markovič (i když .env vznikne z produkce)
+  if grep -q '^ORDERS_SLACK_TEST_MODE=' "$ENV_FILE" 2>/dev/null; then
+    sed -i 's/^ORDERS_SLACK_TEST_MODE=.*/ORDERS_SLACK_TEST_MODE=1/' "$ENV_FILE"
+  else
+    echo 'ORDERS_SLACK_TEST_MODE=1' >> "$ENV_FILE"
+  fi
+  if grep -q '^MOBILMAJAK_APP_URL=' "$ENV_FILE" 2>/dev/null; then
+    sed -i 's|^MOBILMAJAK_APP_URL=.*|MOBILMAJAK_APP_URL=https://staging.mobilmajak.com|' "$ENV_FILE"
+  else
+    echo 'MOBILMAJAK_APP_URL=https://staging.mobilmajak.com' >> "$ENV_FILE"
+  fi
+  chown webmajak:webmajak "$ENV_FILE"
+  chmod 600 "$ENV_FILE"
+  echo "OK: staging ORDERS_SLACK_TEST_MODE=1"
 fi
 
 rm -f "$STAGING/finance/packeta_fetch.py" "$STAGING/finance/packeta_parser.py" "$STAGING/finance/packeta_shift_assign.py" \

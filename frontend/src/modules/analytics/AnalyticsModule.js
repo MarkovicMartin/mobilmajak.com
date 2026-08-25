@@ -10,6 +10,7 @@ import Eshop from './sections/Eshop';
 import CelkovaCisla from './sections/CelkovaCisla';
 import ProdejniAnalytika from './sections/ProdejniAnalytika';
 import ZasilkovnaKonverze from './sections/ZasilkovnaKonverze';
+import Naklady from './sections/Naklady';
 import './AnalyticsModule.css';
 import './AnalyticsDensity.css';
 
@@ -31,6 +32,7 @@ const AnalyticsModule = ({ currentUser }) => {
                     <Route path="eshop" element={<Eshop currentUser={currentUser} />} />
                     <Route path="celkova-cisla" element={<CelkovaCisla currentUser={currentUser} />} />
                     <Route path="prodejni-analytika" element={<ProdejniAnalytika currentUser={currentUser} />} />
+                    <Route path="naklady" element={<Naklady currentUser={currentUser} />} />
                     <Route path="*" element={<Navigate to={`/analytics/${DEFAULT_ANALYTICS_SECTION}`} replace />} />
                 </Routes>
             </div>

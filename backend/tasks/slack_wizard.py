@@ -15,6 +15,7 @@ from users.vedouci_utils import is_task_manager, vedouci_store_ids
 from .models import SlackTaskDraft, Ukol
 from .permissions import assignees_for_store, assignees_storeless
 from .slack_notify import _app_base_url, _escape_slack, open_slack_modal, send_slack_dm
+from .slack_prefs import PREF_CREATED_CONFIRM, get_slack_ukoly_prefs
 from .task_create_service import create_ukol_for_user
 
 logger = logging.getLogger(__name__)
@@ -660,14 +661,15 @@ def _finalize_draft(draft: SlackTaskDraft, user: WebUser) -> bool:
         return True
 
     _delete_draft(draft)
-    link = f"{_app_base_url()}/tasks/mine?id={task.id}"
-    if task.typ == "prirazeny" and task.id_prodejce_ukol != user.id:
-        link = f"{_app_base_url()}/tasks/manage?id={task.id}"
-    title = (task.vysledek or task.ukol or f"Úkol #{task.id}").strip()
-    send_slack_dm(
-        draft.slack_user_id,
-        f":white_check_mark: Úkol *{_escape_slack(title)}* (#{task.id}) byl vytvořen.\n<{link}|Otevřít v MOBILMAJAK>",
-    )
+    if get_slack_ukoly_prefs(user).get(PREF_CREATED_CONFIRM):
+        link = f"{_app_base_url()}/tasks/mine?id={task.id}"
+        if task.typ == "prirazeny" and task.id_prodejce_ukol != user.id:
+            link = f"{_app_base_url()}/tasks/manage?id={task.id}"
+        title = (task.vysledek or task.ukol or f"Úkol #{task.id}").strip()
+        send_slack_dm(
+            draft.slack_user_id,
+            f":white_check_mark: Úkol *{_escape_slack(title)}* (#{task.id}) byl vytvořen.\n<{link}|Otevřít v MOBILMAJAK>",
+        )
     return True
 
 

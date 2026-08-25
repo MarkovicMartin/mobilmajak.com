@@ -30,7 +30,7 @@ def task_deadline_dt(task: Ukol) -> datetime | None:
 
 def urgency_for_task(task: Ukol, now: datetime | None = None) -> str:
     now = now or timezone.now()
-    if task.stav in ("hotovo", "ceka_schvaleni"):
+    if task.stav == "hotovo":
         return URGENCY_NEUTRAL
     deadline = task_deadline_dt(task)
     if not deadline:

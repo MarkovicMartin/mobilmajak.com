@@ -463,11 +463,15 @@ export const packetaAPI = {
 export const financeAPI = {
     getStatus: async () => (await api.get('/finance/status/')).data,
     getKategorie: async () => (await api.get('/finance/kategorie/')).data,
+    createKategorie: async (payload) => (await api.post('/finance/kategorie/', payload)).data,
     getNezarazene: async (params = {}) => (
         await api.get('/finance/naklady/nezarazene/', { params })
     ).data,
     getPrehled: async (params = {}) => (
         await api.get('/finance/naklady/prehled/', { params })
+    ).data,
+    getNakladyAnalytika: async (params = {}) => (
+        await api.get('/finance/naklady/analytika/', { params })
     ).data,
     getCekaNaFakturu: async () => (await api.get('/finance/naklady/ceka-na-fakturu/')).data,
     getDokladyKeKontrole: async () => (await api.get('/finance/doklady/ke-kontrole/')).data,

@@ -31,12 +31,14 @@ const stavBadge = (p) => {
     return { cls: '', text: p.stav };
 };
 
-const FinancePrehledPanel = () => {
+const FinancePrehledPanel = ({ kategorie = [], onMessage }) => {
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [stavFilter, setStavFilter] = useState('vse');
     const [filterZdroj, setFilterZdroj] = useState('');
+    const [draftKat, setDraftKat] = useState({});
+    const [savingId, setSavingId] = useState(null);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -47,6 +49,7 @@ const FinancePrehledPanel = () => {
                 ...(filterZdroj ? { zdroj: filterZdroj } : {}),
             });
             setItems(Array.isArray(rows) ? rows : []);
+            setDraftKat({});
         } catch (e) {
             setError(e.response?.data?.error || e.message || 'Chyba načítání');
         } finally {
@@ -64,12 +67,44 @@ const FinancePrehledPanel = () => {
         kasa: items.filter((p) => p.zdroj === 'symplio_pokladna').length,
     }), [items]);
 
+    const handleSaveKategorie = async (polozka) => {
+        const selected = draftKat[polozka.id];
+        const nextId = selected === undefined
+            ? (polozka.kategorie_id || '')
+            : selected;
+        if (!nextId) {
+            onMessage?.('Vyberte kategorii.');
+            return;
+        }
+        if (Number(nextId) === Number(polozka.kategorie_id)) {
+            onMessage?.('Kategorie beze změny.');
+            return;
+        }
+        setSavingId(polozka.id);
+        try {
+            const res = await financeAPI.updateNaklad(polozka.id, {
+                kategorie_id: Number(nextId),
+                zaradit: true,
+            });
+            let msg = `Kategorie u #${polozka.id} uložena.`;
+            if (res?.pravidlo_created || res?.pravidlo_updated) {
+                msg += ' Pravidlo uloženo pro další podobné náklady.';
+            }
+            onMessage?.(msg);
+            await load();
+        } catch (err) {
+            onMessage?.(err.response?.data?.error || 'Uložení kategorie selhalo');
+        } finally {
+            setSavingId(null);
+        }
+    };
+
     return (
         <section className="finance-panel">
             <p className="finance-panel__intro">
                 Přehled zařazení: <strong>Auto ✓</strong> = pravidlo + kategorie,
                 <strong> chybí</strong> = bez kategorie, <strong>ignorovat</strong> = převody / vklad na účet.
-                Sloupec Pravidlo ukazuje, které pravidlo položku zařadilo.
+                Kategorii lze změnit i zpětně – uložením se aktualizuje i auto-pravidlo.
             </p>
             <div className="finance-filters" role="group" aria-label="Filtr stavu">
                 {STAV_FILTERS.map((f) => (
@@ -118,6 +153,11 @@ const FinancePrehledPanel = () => {
                             {items.map((p) => {
                                 const src = zdrojMeta(p.zdroj);
                                 const badge = stavBadge(p);
+                                const current = draftKat[p.id] !== undefined
+                                    ? draftKat[p.id]
+                                    : (p.kategorie_id ? String(p.kategorie_id) : '');
+                                const dirty = draftKat[p.id] !== undefined
+                                    && String(draftKat[p.id]) !== String(p.kategorie_id || '');
                                 return (
                                     <tr key={p.id} className={src.rowClass}>
                                         <td>{p.datum}</td>
@@ -129,7 +169,36 @@ const FinancePrehledPanel = () => {
                                             <span className={`finance-badge ${badge.cls}`}>{badge.text}</span>
                                         </td>
                                         <td className="finance-cell-pravidlo">{p.auto_pravidlo || '–'}</td>
-                                        <td>{p.kategorie_nazev || '–'}</td>
+                                        <td>
+                                            {kategorie.length > 0 ? (
+                                                <div className="finance-kat-edit">
+                                                    <select
+                                                        value={current}
+                                                        onChange={(e) => setDraftKat((d) => ({
+                                                            ...d,
+                                                            [p.id]: e.target.value,
+                                                        }))}
+                                                        disabled={p.stav === 'ignorovat' || savingId === p.id}
+                                                    >
+                                                        <option value="">— vyberte —</option>
+                                                        {kategorie.map((k) => (
+                                                            <option key={k.id} value={k.id}>{k.nazev}</option>
+                                                        ))}
+                                                    </select>
+                                                    {dirty && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleSaveKategorie(p)}
+                                                            disabled={savingId === p.id}
+                                                        >
+                                                            Uložit
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                p.kategorie_nazev || '–'
+                                            )}
+                                        </td>
                                         <td>{p.prodejna_nazev || '–'}</td>
                                         <td className="finance-cell-zprava">{movementLabel(p)}</td>
                                     </tr>

@@ -299,6 +299,11 @@ MOBILMAJAK_APP_URL = _slack.app_url or "http://localhost:3000"
 
 # Objednávky O3 – dny ve stejném stavu před Slack připomínkou / FE highlight (bez auto změny statusu)
 ORDERS_SLA_DAYS = int(os.getenv("ORDERS_SLA_DAYS", "7") or "7")
-# Stejně jako produkce: default test → Markovič, dokud ORDERS_SLACK_TEST_MODE=0
 _ORDERS_SLACK_TEST_ENV = os.getenv("ORDERS_SLACK_TEST_MODE", "").strip().lower()
-ORDERS_SLACK_TEST_MODE = _ORDERS_SLACK_TEST_ENV not in ("0", "false", "no")
+_app_url = (os.getenv("MOBILMAJAK_APP_URL", "") or MOBILMAJAK_APP_URL or "").lower()
+if _ORDERS_SLACK_TEST_ENV in ("1", "true", "yes"):
+    ORDERS_SLACK_TEST_MODE = True
+elif _ORDERS_SLACK_TEST_ENV in ("0", "false", "no"):
+    ORDERS_SLACK_TEST_MODE = False
+else:
+    ORDERS_SLACK_TEST_MODE = "staging." in _app_url

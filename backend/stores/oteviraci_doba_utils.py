@@ -1,4 +1,5 @@
 """Normalizace JSON otevírací doby Po–Ne."""
+from datetime import date, datetime, timedelta
 
 DNY_KLICE = ('po', 'ut', 'st', 'ct', 'pa', 'so', 'ne')
 VYCHOZI_OD = '08:00'
@@ -53,3 +54,49 @@ def resolve_den_hours(oteviraci_doba, den_key):
         return day['od'], day['do']
     v = cfg.get('vychozi') or {}
     return v.get('od'), v.get('do')
+
+
+def _parse_hm(value):
+    try:
+        h, m = value.split(':')[:2]
+        return int(h), int(m)
+    except (AttributeError, TypeError, ValueError):
+        return None
+
+
+def opening_window_for_date(oteviraci_doba, day: date, tz):
+    """Aware (od, do) pro kalendářní den, nebo None (zavřeno / neplatné)."""
+    den_key = DNY_KLICE[day.weekday()]
+    pair = resolve_den_hours(oteviraci_doba, den_key)
+    if not pair or not pair[0] or not pair[1]:
+        return None
+    od_hm = _parse_hm(pair[0])
+    do_hm = _parse_hm(pair[1])
+    if not od_hm or not do_hm:
+        return None
+    start = datetime(day.year, day.month, day.day, od_hm[0], od_hm[1], tzinfo=tz)
+    end = datetime(day.year, day.month, day.day, do_hm[0], do_hm[1], tzinfo=tz)
+    if end <= start:
+        return None
+    return start, end
+
+
+def clip_interval_to_opening_hours(start, end, oteviraci_doba, tz):
+    """Průnik [start, end] s otevíracími okny (po dnech)."""
+    if end <= start:
+        return []
+    local_start = start.astimezone(tz)
+    local_end = end.astimezone(tz)
+    segments = []
+    day = local_start.date()
+    last_day = local_end.date()
+    while day <= last_day:
+        window = opening_window_for_date(oteviraci_doba, day, tz)
+        day += timedelta(days=1)
+        if not window:
+            continue
+        seg_start = max(local_start, window[0])
+        seg_end = min(local_end, window[1])
+        if seg_end > seg_start:
+            segments.append((seg_start, seg_end))
+    return segments

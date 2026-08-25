@@ -132,6 +132,7 @@ const TaskEditForm = ({
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (saving) return;
         const title = form.vysledek.trim() || form.ukol.trim();
         if (!title) {
             setError('Výsledek úkolu je povinný.');
