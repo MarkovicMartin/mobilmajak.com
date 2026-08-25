@@ -1,6 +1,7 @@
 """Audit log, kategorizace Fio pohybů a DPH logika."""
 from __future__ import annotations
 
+import logging
 from decimal import Decimal
 
 from django.utils import timezone
@@ -9,6 +10,8 @@ from .models import FinanceDoklad, FioKategorizacniPravidlo, NakladKategorie, Na
 
 from .kategorizace import apply_all_rules
 from .symplio_vydej_parse import faktura_hint_from_polozka
+
+logger = logging.getLogger(__name__)
 
 
 def log_finance_audit(request, akce: str, detail: str = ''):
@@ -336,7 +339,12 @@ def upsert_fio_row(row: dict, dry_run: bool = False) -> str:
     }
     if dry_run:
         return 'created'
-    NakladPolozka.objects.create(**payload)
+    polozka = NakladPolozka.objects.create(**payload)
+    try:
+        from .doklady import try_auto_link_polozka
+        try_auto_link_polozka(polozka)
+    except Exception:
+        logger.exception('Auto-link doklad failed for fio_id=%s', fio_id)
     return 'created'
 
 

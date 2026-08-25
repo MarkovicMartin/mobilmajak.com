@@ -43,11 +43,23 @@ def resolve_flexi_match_keys(doklad: FinanceDoklad, polozka: NakladPolozka | Non
         keys.append({'field': field, 'value': value, 'source': source, 'op': op})
 
     if polozka and polozka.zdroj == NakladPolozka.ZDROJ_FIO:
-        add('varSym', polozka.vs or '', 'fio_vs')
+        vs = (polozka.vs or '').strip()
+        # Legacy bug: dřív se do vs ukládal column10 (název), VS bylo v protiucet (column5).
+        if not re.fullmatch(r'\d{4,}', vs):
+            legacy = (polozka.protiucet or '').strip()
+            if re.fullmatch(r'\d{4,}', legacy):
+                vs = legacy
+        add('varSym', vs, 'fio_vs')
         if doklad.cislo_faktury:
             add('varSym', doklad.cislo_faktury, 'doklad_cislo_as_vs')
             add('cisDosle', doklad.cislo_faktury, 'doklad_cislo')
+        if doklad.vs:
+            add('varSym', doklad.vs, 'doklad_vs')
         return keys
+
+    # Osiřelá FA / OCR VS → Flexi varSym i bez platby
+    if doklad.vs and re.fullmatch(r'\d{4,}', (doklad.vs or '').strip()):
+        add('varSym', doklad.vs.strip(), 'doklad_vs')
 
     if polozka and polozka.zdroj == NakladPolozka.ZDROJ_SYMPLIO_POKLADNA:
         poznamka = _symplio_poznamka_for_flexi(polozka.popis or '')

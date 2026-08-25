@@ -72,10 +72,12 @@ def fetch_transactions(token: str, date_from: date, date_to: date) -> list[dict]
             'fio_id': _col(tx, 'column22') or _col(tx, 'column17'),
             'datum': datum,
             'castka': amount,
-            'protiucet': _col(tx, 'column5'),
-            'vs': _col(tx, 'column10'),
+            # Oficiální mapování Fio JSON (viz API Bankovnictví):
+            # column2 = protiúčet, column5 = VS, column10 = název protiúčtu
+            'protiucet': _col(tx, 'column2'),
+            'vs': _col(tx, 'column5'),
             'zprava': _col(tx, 'column16') or _col(tx, 'column25') or _col(tx, 'column7'),
-            'popis': _col(tx, 'column7'),
+            'popis': _col(tx, 'column7') or _col(tx, 'column10'),
         })
     return [r for r in rows if r['fio_id']]
 

@@ -22,7 +22,11 @@ from .permissions import (
     naklady_qs_for_invoice_user,
     user_can_upload_doklad,
 )
-from .doklady import link_doklad_to_polozka, serialize_doklad
+from .doklady import (
+    create_orphan_doklad,
+    link_doklad_to_polozka,
+    serialize_doklad,
+)
 from .faktura_process import process_doklad_ocr, schvalit_doklad, zamitnout_doklad, odeslat_doklad_do_flexi
 from .services import (
     compute_stav_rozdilu,
@@ -538,15 +542,33 @@ def naklady_ceka_na_fakturu(request):
 @parser_classes([MultiPartParser, FormParser])
 @finance_invoice_view
 def doklad_upload(request):
-    """Nahrání faktury (PDF/foto) k existující položce nákladu."""
+    """Nahrání faktury k položce, nebo bez platby (osiřelá FA → auto VS později)."""
     upload = request.FILES.get('file')
     if not upload:
         return _no_store_response({'error': 'Chybí soubor (file)'}, status.HTTP_400_BAD_REQUEST)
 
+    raw_polozka = request.data.get('naklad_polozka_id')
+    if raw_polozka in (None, '', 'null', 'undefined'):
+        # Admin: FA před platbou. Prodejce: jen ke svým výdejům (musí mít polozka_id).
+        if not is_finance_admin(request.user):
+            return _no_store_response(
+                {'error': 'Chybí naklad_polozka_id'},
+                status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            doklad = create_orphan_doklad(upload, user_id=request.user.id)
+        except ValueError as exc:
+            return _no_store_response({'error': str(exc)}, status.HTTP_400_BAD_REQUEST)
+        log_finance_audit(request, 'doklad_upload_orphan', f'doklad={doklad.id}')
+        return _no_store_response({
+            'doklad': serialize_doklad(doklad, include_polozka=True),
+            'polozka': None,
+        }, status.HTTP_201_CREATED)
+
     try:
-        polozka_id = int(request.data.get('naklad_polozka_id', ''))
+        polozka_id = int(raw_polozka)
     except (TypeError, ValueError):
-        return _no_store_response({'error': 'Chybí naklad_polozka_id'}, status.HTTP_400_BAD_REQUEST)
+        return _no_store_response({'error': 'Neplatné naklad_polozka_id'}, status.HTTP_400_BAD_REQUEST)
 
     try:
         polozka = NakladPolozka.objects.get(pk=polozka_id)
@@ -673,7 +695,7 @@ def doklad_update(request, doklad_id: int):
         return _no_store_response({'error': 'Doklad nenalezen'}, status.HTTP_404_NOT_FOUND)
 
     data = request.data
-    text_fields = ('dodavatel_nazev', 'cislo_faktury', 'dodavatel_ico')
+    text_fields = ('dodavatel_nazev', 'cislo_faktury', 'dodavatel_ico', 'vs')
     for field in text_fields:
         if field in data:
             setattr(doklad, field, str(data[field] or '')[:200])
@@ -703,6 +725,11 @@ def doklad_update(request, doklad_id: int):
     doklad.stav = FinanceDoklad.STAV_KE_KONTROLE
     doklad.upraveno = timezone.now()
     doklad.save()
+
+    if not doklad.naklad_polozka_id:
+        from .doklady import try_auto_link_doklad
+        try_auto_link_doklad(doklad)
+        doklad.refresh_from_db()
 
     log_finance_audit(request, 'doklad_update', f'id={doklad_id}')
     return _no_store_response(serialize_doklad(doklad, include_polozka=True))

@@ -113,6 +113,34 @@ class ApplyRulesTests(TestCase):
         self.assertTrue(cat['zarazeno_automaticky'])
 
     @patch('finance.fio_client.requests.get')
+    def test_fetch_transactions_maps_vs_column5(self, mock_get):
+        from finance.fio_client import fetch_transactions
+
+        mock_get.return_value.json.return_value = {
+            'accountStatement': {
+                'transactionList': {
+                    'transaction': [{
+                        'column0': {'value': '2026-03-01+01:00'},
+                        'column1': {'value': '-1500.00'},
+                        'column2': {'value': '1234567890'},
+                        'column5': {'value': '100042023'},
+                        'column7': {'value': 'Dodavatel FA'},
+                        'column10': {'value': 'Dodavatel s.r.o.'},
+                        'column16': {'value': 'platba faktury'},
+                        'column22': {'value': '999001'},
+                    }],
+                },
+            },
+        }
+        mock_get.return_value.raise_for_status = lambda: None
+        with patch('finance.fio_client.ensure_fio_available'):
+            rows = fetch_transactions('token', date(2026, 3, 1), date(2026, 3, 1))
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]['vs'], '100042023')
+        self.assertEqual(rows[0]['protiucet'], '1234567890')
+        self.assertNotEqual(rows[0]['vs'], 'Dodavatel s.r.o.')
+
+    @patch('finance.fio_client.requests.get')
     def test_fetch_account_balance_parses_closing(self, mock_get):
         from finance.fio_client import fetch_account_balance
 

@@ -26,6 +26,7 @@ def _apply_extracted(doklad: FinanceDoklad, extracted, *, overwrite_empty: bool 
         'dodavatel_nazev': extracted.dodavatel_nazev,
         'dodavatel_ico': extracted.dodavatel_ico,
         'cislo_faktury': extracted.cislo_faktury,
+        'vs': getattr(extracted, 'vs', '') or '',
     }
     for field, value in mapping.items():
         if not value:
@@ -96,7 +97,7 @@ def process_doklad_ocr(doklad_id: int, *, overwrite_empty: bool = True) -> Finan
     doklad.upraveno = timezone.now()
 
     update_fields = [
-        'dodavatel_nazev', 'dodavatel_ico', 'cislo_faktury', 'datum_vystaveni',
+        'dodavatel_nazev', 'dodavatel_ico', 'cislo_faktury', 'vs', 'datum_vystaveni',
         'castka_bez_dph', 'dph_castka', 'castka_celkem', 'dph_sazba',
         'match_stav', 'match_detail', 'ocr_raw', 'stav', 'upraveno',
     ]
@@ -109,6 +110,11 @@ def process_doklad_ocr(doklad_id: int, *, overwrite_empty: bool = True) -> Finan
         if doklad.castka_bez_dph is not None and doklad.dph_castka is not None:
             polozka.dph_stav = NakladPolozka.DPH_STAV_SPAROVANO
         polozka.save(update_fields=['castka_bez_dph', 'dph_castka', 'dph_sazba', 'dph_stav'])
+
+    if not doklad.naklad_polozka_id:
+        from .doklady import try_auto_link_doklad
+        try_auto_link_doklad(doklad)
+        doklad.refresh_from_db()
 
     return doklad
 

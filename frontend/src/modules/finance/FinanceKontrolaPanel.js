@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { financeAPI } from '../../services/api';
+import FinanceDropZone from './FinanceDropZone';
+import FinanceDokladEditForm from './FinanceDokladEditForm';
 import './FinanceKontrolaPanel.css';
 
 const formatCurrency = (value) => {
@@ -24,6 +26,7 @@ const FinanceKontrolaPanel = () => {
     const [error, setError] = useState('');
     const [message, setMessage] = useState('');
     const [busyId, setBusyId] = useState(null);
+    const [uploading, setUploading] = useState(false);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -63,12 +66,62 @@ const FinanceKontrolaPanel = () => {
         }
     };
 
+    const uploadOrphan = async (file) => {
+        if (!file) return;
+        setUploading(true);
+        setMessage('');
+        setError('');
+        try {
+            const result = await financeAPI.uploadDoklad({ file });
+            const d = result?.doklad;
+            if (d?.prirazeno_automaticky) {
+                setMessage(`Nahráno a automaticky přiřazeno (VS ${d.vs || '–'}). Zkontrolujte a schvalte.`);
+            } else if (d?.ceka_na_platbu) {
+                setMessage(`Nahráno. Čeká na platbu (VS ${d.vs || 'zatím nevyčten'}). Zůstává ke kontrole.`);
+            } else {
+                setMessage('Nahráno.');
+            }
+            load();
+        } catch (e) {
+            setError(e.response?.data?.error || e.message || 'Nahrání selhalo');
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    const saveFields = async (id, payload) => {
+        setBusyId(id);
+        setMessage('');
+        try {
+            const d = await financeAPI.updateDoklad(id, payload);
+            if (d?.prirazeno_automaticky) {
+                setMessage(`Údaje uloženy a FA automaticky přiřazena (VS ${d.vs || '–'}).`);
+            } else if (d?.ceka_na_platbu) {
+                setMessage(`Údaje uloženy (VS ${d.vs || '–'}). Čeká na Fio platbu se stejným VS.`);
+            } else {
+                setMessage('Údaje uloženy.');
+            }
+            load();
+        } catch (e) {
+            setMessage(e.response?.data?.error || 'Uložení selhalo');
+        } finally {
+            setBusyId(null);
+        }
+    };
+
     return (
         <section className="finance-panel finance-kontrola">
             <p className="finance-panel__intro">
-                Faktury po OCR – porovnání s pokladnou. Schválením se PDF přiloží k FA ve Flexi
-                (Fio: VS, ruční výdej: poznámka → Flexi popis).
+                Nahrajte PDF i před platbou – OCR vytáhne VS a částky. Když OCR nic nevyčte, doplňte
+                VS ručně. Až přijde Fio se stejným VS, FA se přiřadí automaticky.
             </p>
+            <div className="finance-kontrola-upload">
+                <FinanceDropZone
+                    disabled={uploading}
+                    label={uploading ? 'Nahrávám…' : 'Přetáhněte FA sem (i bez platby) nebo klepněte'}
+                    onFile={uploadOrphan}
+                />
+            </div>
             {loading && <p>Načítám…</p>}
             {error && <p className="finance-error">{error}</p>}
             {message && <p className="finance-message">{message}</p>}
@@ -84,8 +137,15 @@ const FinanceKontrolaPanel = () => {
                         <article key={d.id} className="finance-kontrola-card">
                             <header className="finance-kontrola-card__head">
                                 <span className={`finance-match-badge ${badge.cls}`}>{badge.label}</span>
+                                {d.prirazeno_automaticky && (
+                                    <span className="finance-match-badge finance-match--auto">Přiřazeno automaticky</span>
+                                )}
+                                {d.ceka_na_platbu && (
+                                    <span className="finance-match-badge finance-match--wait">Čeká na platbu</span>
+                                )}
                                 <strong>{d.dodavatel_nazev || '–'}</strong>
                                 <span>FA {d.cislo_faktury || '–'}</span>
+                                <span>VS {d.vs || '–'}</span>
                                 {d.soubor_url && (
                                     <a href={d.soubor_url} target="_blank" rel="noopener noreferrer">
                                         Otevřít soubor
@@ -94,8 +154,10 @@ const FinanceKontrolaPanel = () => {
                             </header>
                             <div className="finance-kontrola-grid">
                                 <div>
-                                    <h4>Z pokladny</h4>
-                                    {hint ? (
+                                    <h4>{d.ceka_na_platbu ? 'Platba' : 'Z pokladny / Fio'}</h4>
+                                    {d.ceka_na_platbu ? (
+                                        <p className="muted">Zatím bez platby – párování podle VS po Fio importu.</p>
+                                    ) : hint ? (
                                         <ul>
                                             <li>{hint.dodavatel_nazev}</li>
                                             <li>FA {hint.cislo_faktury}</li>
@@ -103,25 +165,22 @@ const FinanceKontrolaPanel = () => {
                                             <li className="muted">{p?.popis}</li>
                                         </ul>
                                     ) : (
-                                        <p className="muted">Bez očekávání (Fio / ruční)</p>
+                                        <ul>
+                                            <li>{formatCurrency(p?.castka)}</li>
+                                            <li>VS {p?.vs || '–'}</li>
+                                            <li className="muted">{p?.popis || 'Fio / ruční'}</li>
+                                        </ul>
                                     )}
                                 </div>
                                 <div>
-                                    <h4>Z faktury (OCR)</h4>
-                                    <ul>
-                                        <li>{d.dodavatel_nazev || '–'}</li>
-                                        <li>FA {d.cislo_faktury || '–'}</li>
-                                        <li>
-                                            {d.castka_celkem
-                                                ? formatCurrency(d.castka_celkem)
-                                                : '–'}
-                                        </li>
-                                        <li>
-                                            DPH: {d.castka_bez_dph || '–'} + {d.dph_castka || '–'}
-                                            {d.dph_sazba ? ` (${d.dph_sazba} %)` : ''}
-                                        </li>
-                                        <li className="muted">zdroj: {d.ocr_zdroj || '–'}</li>
-                                    </ul>
+                                    <FinanceDokladEditForm
+                                        doklad={d}
+                                        busy={busyId === d.id}
+                                        onSave={(payload) => saveFields(d.id, payload)}
+                                    />
+                                    <p className="muted" style={{ marginTop: '0.35rem' }}>
+                                        zdroj OCR: {d.ocr_zdroj || d.ocr_method || '–'}
+                                    </p>
                                 </div>
                             </div>
                             {d.match_detail?.checks?.length > 0 && (

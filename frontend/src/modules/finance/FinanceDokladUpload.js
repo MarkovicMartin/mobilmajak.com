@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
 import { financeAPI } from '../../services/api';
 import FinanceDropZone from './FinanceDropZone';
+import FinanceDokladSummary from './FinanceDokladSummary';
 
 const FinanceDokladUpload = ({ polozka, onUploaded, compact = false }) => {
     const [file, setFile] = useState(null);
     const [uploading, setUploading] = useState(false);
     const [error, setError] = useState('');
+    const [uploadedDoklad, setUploadedDoklad] = useState(null);
 
-    if (polozka.doklad_id) {
-        return <span className="finance-badge">FA ✓</span>;
+    const doklad = uploadedDoklad || polozka.doklad;
+    if (polozka.doklad_id || doklad) {
+        return <FinanceDokladSummary doklad={doklad || { id: polozka.doklad_id }} compact={compact} />;
     }
 
     const upload = async (selected) => {
@@ -19,14 +22,17 @@ const FinanceDokladUpload = ({ polozka, onUploaded, compact = false }) => {
         setUploading(true);
         setError('');
         try {
-            await financeAPI.uploadDoklad({
+            const result = await financeAPI.uploadDoklad({
                 file: selected,
                 naklad_polozka_id: polozka.id,
                 cislo_faktury: polozka.faktura_hint?.cislo_faktury || '',
                 dodavatel_nazev: polozka.faktura_hint?.dodavatel_nazev || '',
             });
             setFile(null);
-            onUploaded?.();
+            if (result?.doklad) {
+                setUploadedDoklad(result.doklad);
+            }
+            onUploaded?.(result);
         } catch (e) {
             setError(e.response?.data?.error || 'Nahrání selhalo');
         } finally {
@@ -40,12 +46,13 @@ const FinanceDokladUpload = ({ polozka, onUploaded, compact = false }) => {
                 <FinanceDropZone
                     compact
                     disabled={uploading}
-                    label="FA"
+                    label={uploading ? '…' : 'FA'}
                     onFile={(f) => {
                         setFile(f);
                         upload(f);
                     }}
                 />
+                {uploading && <span className="finance-fa-upload__busy">Nahrávám…</span>}
                 {error && <span className="finance-fa-upload__err">{error}</span>}
             </div>
         );

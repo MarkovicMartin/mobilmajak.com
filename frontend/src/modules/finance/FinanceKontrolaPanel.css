@@ -1,3 +1,17 @@
+.finance-kontrola-upload {
+    margin: 0 0 1rem;
+}
+
+.finance-match--auto {
+    background: #e7f6ed;
+    color: #1b6b3a;
+}
+
+.finance-match--wait {
+    background: #fff4df;
+    color: #8a5a00;
+}
+
 .finance-kontrola-list {
     display: flex;
     flex-direction: column;

@@ -6,9 +6,9 @@ const FinanceFakturyModule = () => (
     <div className="finance-module">
         <PageHeader
             title="Faktury k výdajům"
-            subtitle="Přiložte fakturu k výdeji z pokladny"
+            subtitle="Nahrajte FA i bez výdeje, nebo ji přiložte k výběru z pokladny"
         />
-        <FinanceFakturyPanel intro="U výdeje s nákupem zboží (servis/díly/zboží v popisu) doplníme dodavatele a číslo FA z pokladny. Stačí přiložit PDF nebo foto – DPH doplníme z faktury (OCR)." />
+        <FinanceFakturyPanel intro="Nejdřív nahrajte PDF nahoře (i před platbou) – spáruje se podle VS. U výdeje s nákupem zboží můžete FA přiložit i přímo k řádku." />
     </div>
 );
 

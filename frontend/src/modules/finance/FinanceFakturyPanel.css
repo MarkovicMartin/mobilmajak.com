@@ -2,6 +2,26 @@
     margin-bottom: 0.5rem;
 }
 
+.finance-faktury-orphan {
+    margin-bottom: 1.25rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color, #e5e7eb);
+}
+
+.finance-faktury-orphan-list {
+    margin-top: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.finance-faktury-orphan-card {
+    border: 1px solid var(--border-color, #ddd);
+    border-radius: 8px;
+    padding: 0.75rem;
+    background: #fff;
+}
+
 .finance-faktury-panel__hint {
     color: var(--text-muted, #666);
     font-size: 0.9rem;
@@ -79,4 +99,15 @@
 
 .finance-faktury-empty {
     color: var(--text-muted, #666);
+}
+
+.finance-faktury-section-title {
+    margin: 0 0 0.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.finance-faktury-card--done {
+    border-color: #b7dfc0;
+    background: #f7fbf8;
 }

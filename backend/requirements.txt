@@ -53,6 +53,8 @@ openpyxl==3.1.2
 
 # Finance – extrakce textu z PDF faktur
 pypdf==5.9.0
+# Volitelné OCR skenů (vyžaduje systémový tesseract + poppler/pdftoppm)
+pytesseract==0.3.13
 
 # Packeta auto-fetch (volitelné – app packeta, import_packeta_provize --fetch)
 playwright>=1.40.0

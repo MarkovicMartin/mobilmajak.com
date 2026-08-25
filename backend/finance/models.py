@@ -78,6 +78,7 @@ class FinanceDoklad(models.Model):
     dodavatel_nazev = models.CharField(max_length=200, blank=True, default='')
     dodavatel_ico = models.CharField(max_length=20, blank=True, default='')
     cislo_faktury = models.CharField(max_length=64, blank=True, default='')
+    vs = models.CharField(max_length=32, blank=True, default='')
     datum_vystaveni = models.DateField(null=True, blank=True)
     datum_splatnosti = models.DateField(null=True, blank=True)
     castka_celkem = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
@@ -95,6 +96,7 @@ class FinanceDoklad(models.Model):
     )
     ocr_raw = models.JSONField(null=True, blank=True)
     flexi_id = models.CharField(max_length=32, blank=True, default='', db_index=True)
+    prirazeno_automaticky = models.BooleanField(default=False)
     vytvoreno = SafeDateTimeField(auto_now_add=True)
     upraveno = SafeDateTimeField(null=True, blank=True)
 

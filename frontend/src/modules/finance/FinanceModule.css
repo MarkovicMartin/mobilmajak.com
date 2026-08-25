@@ -248,6 +248,57 @@
     font-size: 0.75rem;
 }
 
+.finance-fa-upload__busy {
+    font-size: 0.75rem;
+    color: var(--mm-text-muted, #5c6570);
+}
+
+.finance-doklad-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.55rem 0.65rem;
+    border-radius: 6px;
+    background: #eef8f0;
+    border: 1px solid #b7dfc0;
+    max-width: 28rem;
+}
+
+.finance-doklad-summary--compact {
+    max-width: 22rem;
+    padding: 0.35rem 0.5rem;
+}
+
+.finance-doklad-summary__head {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+    font-size: 0.85rem;
+}
+
+.finance-doklad-summary__head a {
+    font-weight: 600;
+    word-break: break-all;
+}
+
+.finance-doklad-summary__meta {
+    margin: 0;
+    font-size: 0.8rem;
+    color: #2d3a32;
+    line-height: 1.35;
+}
+
+.finance-doklad-summary__meta.muted,
+.finance-doklad-summary .muted {
+    color: var(--mm-text-muted, #5c6570);
+}
+
+.finance-badge--ok {
+    background: #1e7a3a;
+    color: #fff;
+}
+
 .finance-table-wrap {
     overflow-x: auto;
 }

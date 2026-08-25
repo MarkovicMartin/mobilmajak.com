@@ -495,7 +495,9 @@ export const financeAPI = {
     }) => {
         const form = new FormData();
         form.append('file', file);
-        form.append('naklad_polozka_id', String(naklad_polozka_id));
+        if (naklad_polozka_id != null && naklad_polozka_id !== '') {
+            form.append('naklad_polozka_id', String(naklad_polozka_id));
+        }
         if (cislo_faktury) form.append('cislo_faktury', cislo_faktury);
         if (dodavatel_nazev) form.append('dodavatel_nazev', dodavatel_nazev);
         if (castka_bez_dph) form.append('castka_bez_dph', castka_bez_dph);
@@ -513,6 +515,9 @@ export const financeAPI = {
     ).data,
     reprocessDokladOcr: async (id) => (
         await api.post(`/finance/doklady/${id}/reprocess-ocr/`)
+    ).data,
+    updateDoklad: async (id, payload) => (
+        await api.patch(`/finance/doklady/${id}/`, payload)
     ).data,
 };
 
