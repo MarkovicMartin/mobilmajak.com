@@ -1,6 +1,7 @@
 """Zpracování nahrané faktury – extrakce + porovnání s pokladnou."""
 from __future__ import annotations
 
+import logging
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
@@ -10,6 +11,8 @@ from django.utils import timezone
 from .faktura_extract import extract_faktura_from_file
 from .faktura_match import match_doklad_to_polozka
 from .models import FinanceDoklad, NakladPolozka
+
+logger = logging.getLogger(__name__)
 
 
 def _media_path(rel: str) -> Path:
@@ -124,6 +127,48 @@ def schvalit_doklad(doklad: FinanceDoklad, user_id: int) -> FinanceDoklad:
             polozka.dph_sazba = doklad.dph_sazba
             polozka.dph_stav = NakladPolozka.DPH_STAV_SPAROVANO
             polozka.save(update_fields=['castka_bez_dph', 'dph_castka', 'dph_sazba', 'dph_stav'])
+
+    from .flexi_sync import sync_doklad_to_flexi
+
+    try:
+        flexi_result = sync_doklad_to_flexi(doklad)
+    except Exception as exc:
+        logger.exception('Flexi sync failed doklad=%s', doklad.id)
+        flexi_result = {'ok': False, 'error': str(exc)[:500]}
+
+    detail = dict(doklad.match_detail or {})
+    detail['flexi'] = flexi_result
+    doklad.match_detail = detail
+    update_fields = ['match_detail', 'upraveno']
+    doklad.upraveno = timezone.now()
+    if flexi_result.get('ok') and flexi_result.get('flexi_id') and not flexi_result.get('skipped'):
+        doklad.flexi_id = str(flexi_result['flexi_id'])[:32]
+        doklad.stav = FinanceDoklad.STAV_ODESLANO_FLEXI
+        update_fields.extend(['flexi_id', 'stav'])
+    doklad.save(update_fields=update_fields)
+    return doklad
+
+
+def odeslat_doklad_do_flexi(doklad: FinanceDoklad) -> FinanceDoklad:
+    """Opakovaný pokus o odeslání přílohy (po schválení / chybě)."""
+    from .flexi_sync import sync_doklad_to_flexi
+
+    try:
+        flexi_result = sync_doklad_to_flexi(doklad)
+    except Exception as exc:
+        logger.exception('Flexi sync retry failed doklad=%s', doklad.id)
+        flexi_result = {'ok': False, 'error': str(exc)[:500]}
+
+    detail = dict(doklad.match_detail or {})
+    detail['flexi'] = flexi_result
+    doklad.match_detail = detail
+    doklad.upraveno = timezone.now()
+    update_fields = ['match_detail', 'upraveno']
+    if flexi_result.get('ok') and flexi_result.get('flexi_id'):
+        doklad.flexi_id = str(flexi_result['flexi_id'])[:32]
+        doklad.stav = FinanceDoklad.STAV_ODESLANO_FLEXI
+        update_fields.extend(['flexi_id', 'stav'])
+    doklad.save(update_fields=update_fields)
     return doklad
 
 

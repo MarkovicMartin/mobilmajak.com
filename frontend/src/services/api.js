@@ -507,6 +507,7 @@ export const financeAPI = {
         return response.data;
     },
     schvalitDoklad: async (id) => (await api.post(`/finance/doklady/${id}/schvalit/`)).data,
+    odeslatDokladFlexi: async (id) => (await api.post(`/finance/doklady/${id}/odeslat-flexi/`)).data,
     zamitnoutDoklad: async (id, payload = {}) => (
         await api.post(`/finance/doklady/${id}/zamitnout/`, payload)
     ).data,

@@ -94,6 +94,7 @@ class FinanceDoklad(models.Model):
         related_name='doklady',
     )
     ocr_raw = models.JSONField(null=True, blank=True)
+    flexi_id = models.CharField(max_length=32, blank=True, default='', db_index=True)
     vytvoreno = SafeDateTimeField(auto_now_add=True)
     upraveno = SafeDateTimeField(null=True, blank=True)
 

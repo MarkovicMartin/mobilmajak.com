@@ -18,6 +18,7 @@ urlpatterns = [
     path('doklady/upload/', views.doklad_upload, name='finance-doklad-upload'),
     path('doklady/<int:doklad_id>/', views.doklad_update, name='finance-doklad-update'),
     path('doklady/<int:doklad_id>/schvalit/', views.doklad_schvalit, name='finance-doklad-schvalit'),
+    path('doklady/<int:doklad_id>/odeslat-flexi/', views.doklad_odeslat_flexi, name='finance-doklad-odeslat-flexi'),
     path('doklady/<int:doklad_id>/zamitnout/', views.doklad_zamitnout, name='finance-doklad-zamitnout'),
     path('doklady/<int:doklad_id>/reprocess-ocr/', views.doklad_reprocess_ocr, name='finance-doklad-reprocess'),
 ]

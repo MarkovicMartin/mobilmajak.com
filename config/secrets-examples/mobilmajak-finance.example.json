@@ -20,5 +20,16 @@
         "prodejny_fixni": "Prodejny fixní náklady"
       }
     }
+  },
+
+  "flexi": {
+    "_comment": "ABRA Flexi REST API. Není API klíč – uživatel typu REST API + heslo. Licence: zápis API v předplatném.",
+    "enabled": true,
+    "base_url": "https://VAS.flexibee.eu:5434",
+    "company": "identifikator_firmy",
+    "username": "mobilmajak_api",
+    "password": "HESLO_REST_API_UZIVATELE",
+    "mode": "priloha",
+    "typ_dokl": ""
   }
 }

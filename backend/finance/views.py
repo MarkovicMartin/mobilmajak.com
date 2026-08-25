@@ -23,7 +23,7 @@ from .permissions import (
     user_can_upload_doklad,
 )
 from .doklady import link_doklad_to_polozka, serialize_doklad
-from .faktura_process import process_doklad_ocr, schvalit_doklad, zamitnout_doklad
+from .faktura_process import process_doklad_ocr, schvalit_doklad, zamitnout_doklad, odeslat_doklad_do_flexi
 from .services import (
     compute_stav_rozdilu,
     get_finance_counts,
@@ -607,6 +607,34 @@ def doklad_schvalit(request, doklad_id: int):
     doklad = schvalit_doklad(doklad, request.user.id)
     log_finance_audit(request, 'doklad_schvalit', f'id={doklad_id}')
     return _no_store_response(serialize_doklad(doklad, include_polozka=True))
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@finance_admin_view
+def doklad_odeslat_flexi(request, doklad_id: int):
+    try:
+        doklad = FinanceDoklad.objects.select_related('naklad_polozka').get(pk=doklad_id)
+    except FinanceDoklad.DoesNotExist:
+        return _no_store_response({'error': 'Doklad nenalezen'}, status.HTTP_404_NOT_FOUND)
+    if doklad.stav not in (
+        FinanceDoklad.STAV_SCHVALENO,
+        FinanceDoklad.STAV_ODESLANO_FLEXI,
+    ):
+        return _no_store_response(
+            {'error': 'Nejdřív schvalte doklad'},
+            status.HTTP_400_BAD_REQUEST,
+        )
+    doklad = odeslat_doklad_do_flexi(doklad)
+    log_finance_audit(request, 'doklad_odeslat_flexi', f'id={doklad_id}')
+    payload = serialize_doklad(doklad, include_polozka=True)
+    flexi = payload.get('flexi') or {}
+    if not flexi.get('ok'):
+        return _no_store_response(
+            {**payload, 'error': flexi.get('error') or 'Odeslání do Flexi selhalo'},
+            status.HTTP_502_BAD_GATEWAY,
+        )
+    return _no_store_response(payload)
 
 
 @api_view(['POST'])

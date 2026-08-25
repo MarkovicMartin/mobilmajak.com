@@ -139,6 +139,8 @@ def serialize_doklad(d: FinanceDoklad, *, include_polozka: bool = False) -> dict
         'schvaleno': d.schvaleno.isoformat() if d.schvaleno else None,
         'vytvoreno': d.vytvoreno.isoformat() if d.vytvoreno else None,
         'ocr_zdroj': (d.ocr_raw or {}).get('extracted', {}).get('zdroj') if d.ocr_raw else None,
+        'flexi_id': d.flexi_id or None,
+        'flexi': (d.match_detail or {}).get('flexi'),
     }
     if include_polozka and polozka:
         payload['naklad_polozka'] = {

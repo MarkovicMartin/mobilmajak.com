@@ -46,8 +46,15 @@ const FinanceKontrolaPanel = () => {
         setBusyId(id);
         setMessage('');
         try {
-            await fn();
-            setMessage('Uloženo.');
+            const result = await fn();
+            const flexi = result?.flexi;
+            if (flexi?.ok && !flexi?.skipped) {
+                setMessage(`Uloženo. Flexi FA ${flexi.flexi_kod || flexi.flexi_id} – příloha OK.`);
+            } else if (flexi && !flexi.ok && !flexi.skipped) {
+                setMessage(`Schváleno lokálně, Flexi: ${flexi.error || 'odeslání selhalo'}`);
+            } else {
+                setMessage('Uloženo.');
+            }
             load();
         } catch (e) {
             setMessage(e.response?.data?.error || 'Akce selhala');
@@ -59,7 +66,8 @@ const FinanceKontrolaPanel = () => {
     return (
         <section className="finance-panel finance-kontrola">
             <p className="finance-panel__intro">
-                Faktury po OCR – porovnání s pokladnou. Do Flexi půjdou až po explicitním schválení.
+                Faktury po OCR – porovnání s pokladnou. Schválením se PDF přiloží k FA ve Flexi
+                (Fio: VS, ruční výdej: poznámka → Flexi popis).
             </p>
             {loading && <p>Načítám…</p>}
             {error && <p className="finance-error">{error}</p>}
