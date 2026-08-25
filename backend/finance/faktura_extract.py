@@ -19,7 +19,7 @@ _AMOUNT_RE = re.compile(
 )
 _ICO_RE = re.compile(r'\bI[ČC]O\s*[:.]?\s*(?P<ico>\d{8})\b', re.I)
 _DIC_RE = re.compile(
-    r'\bDI[ČC]\b(?:[^A-Za-z0-9\n]{0,40}?)(?P<dic>CZ\d{8,12})\b',
+    r'\bDI[ČC]\b[^\n]{0,48}?(?P<dic>CZ\d{8,12})\b',
     re.I,
 )
 _FA_NUM_RE = re.compile(
@@ -455,14 +455,22 @@ def _parse_text_fields(text: str) -> FakturaExtracted:
         if len(digits) >= 4:
             result.vs = digits[:32]
 
-    # Dopočet celkem ze základ + DPH
-    if not result.castka_celkem and result.castka_bez_dph and result.dph_castka:
-        try:
-            result.castka_celkem = str(
-                Decimal(result.castka_bez_dph) + Decimal(result.dph_castka),
-            )
-        except InvalidOperation:
-            pass
+    # Dopočet DPH / celkem ze zbylých dvou částek (spolehlivější než OCR u sloupců)
+    try:
+        bez = Decimal(result.castka_bez_dph) if result.castka_bez_dph else None
+        dph = Decimal(result.dph_castka) if result.dph_castka else None
+        celk = Decimal(result.castka_celkem) if result.castka_celkem else None
+        if bez is not None and celk is not None:
+            computed_dph = (celk - bez).quantize(Decimal('0.01'))
+            if computed_dph > 0 and (
+                dph is None or dph == bez or abs(dph - computed_dph) > Decimal('1.00')
+            ):
+                result.dph_castka = str(computed_dph)
+                dph = computed_dph
+        if not result.castka_celkem and bez is not None and dph is not None:
+            result.castka_celkem = str((bez + dph).quantize(Decimal('0.01')))
+    except InvalidOperation:
+        pass
     return result
 
 
@@ -475,20 +483,21 @@ def _find_cislo_faktury(text: str) -> str:
         skip = {
             'faktury', 'faktura', 'invoice', 'doklad', 'č', 'číslo', 'cislo',
             'document', 'rechnung', 'lieferant', 'zahlungsreferenz',
+            'dodavatel', 'odběratel', 'supplier', 'empfänger', 'empfaenger',
         }
         for token in reversed(candidates):
             if token.lower() in skip:
                 continue
             # Preferuj číselné / alfanumerické doklady, ne úryvky slov
-            if re.fullmatch(r'\d{4,}', token) or re.search(r'\d', token):
+            if re.fullmatch(r'\d{4,}', token) or (
+                re.search(r'\d', token) and len(token) >= 4
+            ):
                 return token[:64]
         for j in range(i + 1, min(i + 3, len(lines))):
             nums = re.findall(r'\b(\d{4,16})\b', lines[j])
             if nums:
                 return nums[0][:64]
-            m = re.search(r'\b([A-Za-z0-9][\w./\-]{2,})\b', lines[j])
-            if m and m.group(1).lower() not in skip:
-                return m.group(1)[:64]
+        # Bez čísla na řádku – zkus další výskyt labelu (např. „Faktura / Rechnung“ bez čísla)
     # FA/FV/VF jako samostatný kód (ne začátek slova „Faktura“)
     m = re.search(r'\b(?:FA|FV|VF)[\s\-:/]+([A-Za-z0-9][\w./\-]{2,})', text, re.I)
     return m.group(1)[:64] if m else ''

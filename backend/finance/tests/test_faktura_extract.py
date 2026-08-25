@@ -65,6 +65,14 @@ class FakturaExtractTests(TestCase):
         self.assertEqual(r.castka_celkem, '2856.40')
         self.assertIn('Globus', r.dodavatel_nazev)
 
+    def test_parse_faktura_heading_without_number_then_number(self):
+        text = (
+            'Faktura / Rechnung\nDodavatel / Lieferant\nGlobus ČR, v.o.s.\n'
+            'Faktura / Rechnung 30001940\nVariabilní symbol 30001940\n'
+            'Celkem k úhradě 2 856,40'
+        )
+        self.assertEqual(_parse_text_fields(text).cislo_faktury, '30001940')
+
     def test_parse_amount_thousand_dots(self):
         from finance.faktura_extract import _normalize_amount_str
         self.assertEqual(_normalize_amount_str('1.210,50'), '1210.50')
