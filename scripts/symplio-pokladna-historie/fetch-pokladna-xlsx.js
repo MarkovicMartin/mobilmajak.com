@@ -3,7 +3,7 @@
  * Symplio historie pokladny – stáhne XLSX export úhrad a uloží do reports/.
  * Django import: manage.py import_symplio_pokladna --input-dir reports/
  *
- * Cron: run-symplio-pokladna-safe.sh (22:00)
+ * Cron: run-symplio-pokladna-safe.sh (den 8:30–21 + večer 22:00)
  */
 const fs = require('fs');
 const path = require('path');

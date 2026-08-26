@@ -115,7 +115,7 @@ const FinanceFakturyPanel = ({ intro }) => {
     };
 
     const renderCard = (p, { uploaded = false } = {}) => {
-        const src = zdrojMeta(p.zdroj);
+        const src = zdrojMeta(p.zdroj, p.pokladna_label);
         const form = formFor(p);
         return (
             <article
@@ -205,8 +205,8 @@ const FinanceFakturyPanel = ({ intro }) => {
         <section className="finance-faktury-panel">
             {intro && <p className="finance-faktury-panel__intro">{intro}</p>}
             <p className="finance-faktury-panel__hint">
-                Výdej z pokladny se sem dostane po importu ze Symplio. Prodejna je podle pokladny,
-                kde byl výběr.
+                Výdej z pokladny se sem dostane během dne (import ze Symplio cca každých
+                30&nbsp;min mezi 8:30–21:00). Prodejna je podle pokladny, kde byl výběr.
             </p>
             {loading && <p>Načítám…</p>}
             {error && <p className="finance-faktury-error">{error}</p>}

@@ -11,14 +11,10 @@ class FioKategorizaceTests(TestCase):
             nazev='Mzdy', defaults={'poradi': 100, 'typ_dph': 'bez'},
         )
         NakladKategorie.objects.get_or_create(
-            nazev='Mzdy – zaměstnanci',
-            defaults={'poradi': 101, 'typ_dph': 'bez', 'parent_id': None},
-        )
-        NakladKategorie.objects.get_or_create(
             nazev='Reklama – firma / online', defaults={'poradi': 207, 'typ_dph': 'z_faktury'},
         )
         NakladKategorie.objects.get_or_create(
-            nazev='IT – hosting / domény', defaults={'poradi': 503, 'typ_dph': 'z_faktury'},
+            nazev='IT a e-shop', defaults={'poradi': 500, 'typ_dph': 'z_faktury'},
         )
         NakladKategorie.objects.get_or_create(
             nazev='Účetnictví a právní', defaults={'poradi': 950, 'typ_dph': 'z_faktury'},
@@ -27,7 +23,7 @@ class FioKategorizaceTests(TestCase):
             nazev='Zboží / sklad', defaults={'poradi': 900, 'typ_dph': 'z_faktury'},
         )
         NakladKategorie.objects.get_or_create(
-            nazev='Zboží – nákup sklad',
+            nazev='Nákup zboží / výkup',
             defaults={'poradi': 901, 'typ_dph': 'z_faktury', 'parent': parent},
         )
 

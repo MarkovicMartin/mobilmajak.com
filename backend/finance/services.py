@@ -236,6 +236,8 @@ def serialize_naklad_polozka(p: NakladPolozka, prodejna_map: dict | None = None)
         'stav': p.stav,
         'zdroj': p.zdroj,
         'fio_id': p.fio_id,
+        'pokladna_key': p.pokladna_key or None,
+        'pokladna_label': p.pokladna_label or None,
         'popis': p.popis,
         'protiucet': p.protiucet,
         'vs': p.vs,
@@ -381,6 +383,8 @@ def import_symplio_pokladna_file(
     dry_run: bool = False,
     date_from: date | None = None,
     date_to: date | None = None,
+    pokladna_key: str = '',
+    pokladna_label: str = '',
 ) -> dict:
     """Import jednoho XLSX exportu historie pokladny. Vrací statistiky."""
     from pathlib import Path
@@ -434,6 +438,10 @@ def import_symplio_pokladna_file(
             'typ_platby': NakladPolozka.TYP_PLATBY_ODCHOZI,
             'dph_stav': resolve_dph_stav(cat['kategorie_id'], NakladPolozka.TYP_PLATBY_ODCHOZI),
         }
+        if pokladna_key:
+            payload['pokladna_key'] = pokladna_key[:32]
+        if pokladna_label:
+            payload['pokladna_label'] = pokladna_label[:80]
 
         existing = find_existing_symplio_polozka(prodejna_id, row)
         if existing:

@@ -28,15 +28,25 @@ export const ZDROJ_FILTERS = [
     { id: 'fio', label: 'Účet (Fio)' },
 ];
 
-export const zdrojMeta = (zdroj) => {
+export const zdrojMeta = (zdroj, pokladnaLabel = '') => {
     if (zdroj === 'symplio_pokladna') {
-        return { label: 'Pokladna', short: 'kasa', rowClass: 'finance-row--kasa', badgeClass: 'finance-badge--kasa' };
+        return {
+            label: pokladnaLabel ? `Pokladna ${pokladnaLabel}` : 'Pokladna',
+            short: 'kasa',
+            pokladna: pokladnaLabel || '',
+            rowClass: 'finance-row--kasa',
+            badgeClass: 'finance-badge--kasa',
+        };
     }
     if (zdroj === 'fio') {
-        return { label: 'Účet', short: 'Fio', rowClass: 'finance-row--fio', badgeClass: 'finance-badge--fio' };
+        return { label: 'Účet', short: 'Fio', pokladna: '', rowClass: 'finance-row--fio', badgeClass: 'finance-badge--fio' };
     }
-    return { label: zdroj || '–', short: zdroj || '–', rowClass: '', badgeClass: '' };
+    return { label: zdroj || '–', short: zdroj || '–', pokladna: '', rowClass: '', badgeClass: '' };
 };
+
+export const pokladnaZnacka = (p) => (
+    p?.zdroj === 'symplio_pokladna' ? (p.pokladna_label || '') : ''
+);
 
 export const movementLabel = (p) => {
     if (p.zdroj === 'symplio_pokladna') {

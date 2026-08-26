@@ -19,16 +19,22 @@ _ZASILKOVNA_SUFFIX = {
 }
 
 _NAJEM_KEYWORDS = (
-    ('globus', 1, 'Nájem – Globus (GL)'),
-    ('senimo', 2, 'Nájem – Senimo (SEN)'),
-    ('galerie prerov', 4, 'Nájem – Přerov (PŘE)'),
-    ('prerov', 4, 'Nájem – Přerov (PŘE)'),
-    ('vset', 5, 'Nájem – Vsetín (VSE)'),
-    ('tesco', 3, 'Nájem – Zlín (ZL)'),
-    ('kaufland', 3, 'Nájem – Zlín (ZL)'),
-    ('zlin', 3, 'Nájem – Zlín (ZL)'),
-    ('sternberk', 6, 'Nájem – Šternberk (ŠT)'),
+    ('globus', 1),
+    ('senimo', 2),
+    ('galerie prerov', 4),
+    ('prerov', 4),
+    ('vset', 5),
+    ('tesco', 3),
+    ('kaufland', 3),
+    ('zlin', 3),
+    ('sternberk', 6),
 )
+
+KAT_MZDY = 'Mzdy'
+KAT_NAJMY = 'Nájmy'
+KAT_IT = 'IT a e-shop'
+KAT_ZBOZI_NAKUP = 'Nákup zboží / výkup'
+KAT_ZBOZI_NAKUP_LEGACY = 'Zboží – nákup sklad'
 
 
 @dataclass(frozen=True)
@@ -70,16 +76,16 @@ def _kat(nazev: str) -> int | None:
     return NakladKategorie.objects.filter(nazev=nazev, aktivni=True).values_list('id', flat=True).first()
 
 
-def _ensure_vykup_kategorie() -> int | None:
-    existing = _kat('Výkup')
+def _kat_zbozi_nakup() -> int | None:
+    existing = _kat(KAT_ZBOZI_NAKUP) or _kat(KAT_ZBOZI_NAKUP_LEGACY)
     if existing:
         return existing
     parent = NakladKategorie.objects.filter(nazev='Zboží / sklad').first()
     row, _ = NakladKategorie.objects.get_or_create(
-        nazev='Výkup',
+        nazev=KAT_ZBOZI_NAKUP,
         defaults={
-            'poradi': 903,
-            'typ_dph': NakladKategorie.TYP_DPH_BEZ,
+            'poradi': 901,
+            'typ_dph': NakladKategorie.TYP_DPH_Z_FAKTURY,
             'parent': parent,
             'aktivni': True,
         },
@@ -94,13 +100,13 @@ def _zasilkovna_prodejna(text: str) -> int | None:
     return _ZASILKOVNA_SUFFIX.get(m.group(1).lower()[:4])
 
 
-def _najem_match(text: str) -> tuple[int | None, str | None]:
-    for needle, prodejna_id, kat_nazev in _NAJEM_KEYWORDS:
+def _najem_match(text: str) -> tuple[int | None, bool]:
+    for needle, prodejna_id in _NAJEM_KEYWORDS:
         if needle in text:
-            return prodejna_id, kat_nazev
+            return prodejna_id, True
     if 'najem' in text or 'nájem' in text:
-        return None, 'Nájem – sklad / kancelář'
-    return None, None
+        return None, True
+    return None, False
 
 
 def _mzdy_admin(text: str) -> bool:
@@ -134,7 +140,7 @@ def _apply_fio_builtin(text: str) -> KategorizaceVysledek | None:
             NakladPolozka.STAV_IGNOROVAT, None, None, True, True, 'fio:prevod_vlastni',
         )
     if _is_mzda_vyplata(text):
-        kid = _kat('Mzdy – zaměstnanci')
+        kid = _kat(KAT_MZDY)
         if kid:
             return KategorizaceVysledek(
                 NakladPolozka.STAV_ZARAZENO, kid, None, False, True, 'fio:mzdy_vyplata',
@@ -158,7 +164,7 @@ def _apply_fio_builtin(text: str) -> KategorizaceVysledek | None:
                 NakladPolozka.STAV_ZARAZENO, kid, None, False, True, 'fio:seznam',
             )
     if 'webglobe' in text:
-        kid = _kat('IT – hosting / domény')
+        kid = _kat(KAT_IT)
         if kid:
             return KategorizaceVysledek(
                 NakladPolozka.STAV_ZARAZENO, kid, None, False, True, 'fio:hosting',
@@ -170,7 +176,7 @@ def _apply_fio_builtin(text: str) -> KategorizaceVysledek | None:
                 NakladPolozka.STAV_ZARAZENO, kid, None, False, True, 'fio:porada_kava',
             )
     if 'aswo' in text and 'zbozi' in text:
-        kid = _kat('Zboží – nákup sklad')
+        kid = _kat_zbozi_nakup()
         if kid:
             return KategorizaceVysledek(
                 NakladPolozka.STAV_ZARAZENO, kid, None, False, True, 'fio:aswo',
@@ -245,7 +251,7 @@ def apply_builtin_rules(row: dict, zdroj: str = '', prodejna_id: int | None = No
                 NakladPolozka.STAV_IGNOROVAT, None, prodejna_id, True, True, 'symplio:storno',
             )
         if _is_vykup(text):
-            kid = _ensure_vykup_kategorie()
+            kid = _kat_zbozi_nakup()
             return KategorizaceVysledek(
                 NakladPolozka.STAV_ZARAZENO, kid, prodejna_id, False, True, 'symplio:vykup',
             )
@@ -256,20 +262,20 @@ def apply_builtin_rules(row: dict, zdroj: str = '', prodejna_id: int | None = No
                     NakladPolozka.STAV_ZARAZENO, kid, prodejna_id, False, True, 'symplio:spotreba',
                 )
         if _is_nakup_zbozi(text):
-            kid = _kat('Zboží – nákup sklad')
+            kid = _kat_zbozi_nakup()
             if kid:
                 return KategorizaceVysledek(
                     NakladPolozka.STAV_ZARAZENO, kid, prodejna_id, False, True, 'symplio:zbozi',
                 )
 
     if _is_vykup(text):
-        kid = _ensure_vykup_kategorie()
+        kid = _kat_zbozi_nakup()
         return KategorizaceVysledek(
             NakladPolozka.STAV_ZARAZENO, kid, prodejna_id, False, True, 'vykup',
         )
 
     if 's e t o s' in text or 'setos' in text:
-        kid = _kat('Zboží – nákup sklad')
+        kid = _kat_zbozi_nakup()
         if kid:
             return KategorizaceVysledek(
                 NakladPolozka.STAV_ZARAZENO, kid, None, False, True, 'setos',
@@ -283,21 +289,21 @@ def apply_builtin_rules(row: dict, zdroj: str = '', prodejna_id: int | None = No
             )
 
     if 'ossz' in text or 'socia' in text and 'pojist' in text:
-        kid = _kat('Odvody – sociální')
+        kid = _kat(KAT_MZDY)
         if kid:
             return KategorizaceVysledek(
                 NakladPolozka.STAV_ZARAZENO, kid, None, False, True, 'ossz',
             )
 
     if re.search(r'\bhpp\b', text) or 'zdravotn' in text and 'pojist' in text:
-        kid = _kat('Odvody – zdravotní')
+        kid = _kat(KAT_MZDY)
         if kid:
             return KategorizaceVysledek(
                 NakladPolozka.STAV_ZARAZENO, kid, None, False, True, 'hpp',
             )
 
     if _is_mzda_vyplata(text):
-        kid = _kat('Mzdy – zaměstnanci')
+        kid = _kat(KAT_MZDY)
         if kid:
             return KategorizaceVysledek(
                 NakladPolozka.STAV_ZARAZENO, kid, None, False, True, 'mzdy_vyplata',
@@ -310,9 +316,9 @@ def apply_builtin_rules(row: dict, zdroj: str = '', prodejna_id: int | None = No
                 NakladPolozka.STAV_ZARAZENO, kid, None, False, True, 'codaruina_splatka',
             )
 
-    najem_prodejna, najem_kat = _najem_match(text)
-    if najem_kat:
-        kid = _kat(najem_kat)
+    najem_prodejna, is_najem = _najem_match(text)
+    if is_najem:
+        kid = _kat(KAT_NAJMY)
         if kid:
             return KategorizaceVysledek(
                 NakladPolozka.STAV_ZARAZENO, kid, najem_prodejna, False, True, 'najem',

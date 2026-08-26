@@ -230,7 +230,10 @@ const Naklady = () => {
                                                             <td colSpan={3}>
                                                                 <div className="naklady-detail">
                                                                     <span className="naklady-detail__meta">
-                                                                        {p.datum} · {formatCurrency(p.castka)} · {p.zdroj}
+                                                                        {p.datum} · {formatCurrency(p.castka)}
+                                                                        {p.pokladna_label
+                                                                            ? ` · kasa ${p.pokladna_label}`
+                                                                            : ` · ${p.zdroj}`}
                                                                     </span>
                                                                     <span className="naklady-detail__popis">
                                                                         {movementLabel(p)}

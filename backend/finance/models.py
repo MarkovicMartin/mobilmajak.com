@@ -170,6 +170,8 @@ class NakladPolozka(models.Model):
     zdroj = models.CharField(max_length=20, choices=ZDROJ_CHOICES, default=ZDROJ_MANUAL)
     fio_id = models.CharField(max_length=64, blank=True, null=True, unique=True)
     symplio_doklad = models.CharField(max_length=64, blank=True, default='')
+    pokladna_key = models.CharField(max_length=32, blank=True, default='')
+    pokladna_label = models.CharField(max_length=80, blank=True, default='')
     doklad = models.ForeignKey(
         FinanceDoklad, null=True, blank=True, on_delete=models.SET_NULL,
         related_name='naklady',

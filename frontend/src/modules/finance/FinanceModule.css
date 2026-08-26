@@ -74,6 +74,16 @@
     font-weight: 600;
 }
 
+.finance-badge--pokladna {
+    background: #ccfbf1;
+    color: #115e59;
+    font-weight: 600;
+    max-width: 11rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-left: 0.25rem;
+}
+
 .finance-filters {
     display: flex;
     flex-wrap: wrap;

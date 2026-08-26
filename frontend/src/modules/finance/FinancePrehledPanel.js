@@ -151,7 +151,7 @@ const FinancePrehledPanel = ({ kategorie = [], onMessage }) => {
                         </thead>
                         <tbody>
                             {items.map((p) => {
-                                const src = zdrojMeta(p.zdroj);
+                                const src = zdrojMeta(p.zdroj, p.pokladna_label);
                                 const badge = stavBadge(p);
                                 const current = draftKat[p.id] !== undefined
                                     ? draftKat[p.id]
@@ -163,6 +163,11 @@ const FinancePrehledPanel = ({ kategorie = [], onMessage }) => {
                                         <td>{p.datum}</td>
                                         <td>
                                             <span className={`finance-badge ${src.badgeClass}`}>{src.short}</span>
+                                            {src.pokladna ? (
+                                                <span className="finance-badge finance-badge--pokladna" title={src.label}>
+                                                    {src.pokladna}
+                                                </span>
+                                            ) : null}
                                         </td>
                                         <td>{formatCurrency(p.castka)}</td>
                                         <td>

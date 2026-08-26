@@ -27,10 +27,11 @@ class NakladKategorieAdmin(admin.ModelAdmin):
 @admin.register(NakladPolozka)
 class NakladPolozkaAdmin(admin.ModelAdmin):
     list_display = (
-        'datum', 'castka', 'dph_stav', 'typ_platby', 'stav', 'zdroj', 'kategorie', 'prodejna_id',
+        'datum', 'castka', 'dph_stav', 'typ_platby', 'stav', 'zdroj', 'pokladna_label',
+        'kategorie', 'prodejna_id',
     )
     list_filter = ('stav', 'zdroj', 'dph_stav', 'typ_platby')
-    search_fields = ('popis', 'protiucet', 'zprava', 'fio_id', 'symplio_doklad')
+    search_fields = ('popis', 'protiucet', 'zprava', 'fio_id', 'symplio_doklad', 'pokladna_label')
 
 
 @admin.register(FinanceDoklad)

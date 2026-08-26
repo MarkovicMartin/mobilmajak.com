@@ -65,6 +65,20 @@ class SymplioImportTests(TestCase):
         self.assertEqual(p.dph_stav, NakladPolozka.DPH_STAV_CEKA)
         self.assertEqual(p.typ_platby, NakladPolozka.TYP_PLATBY_ODCHOZI)
         self.assertEqual(p.castka, Decimal('-349'))
+        self.assertEqual(p.pokladna_key, '')
+        self.assertEqual(p.pokladna_label, '')
+
+    def test_import_stores_pokladna_znacka(self):
+        result = import_symplio_pokladna_file(
+            FIXTURE,
+            prodejna_id=STERNBERK_PRODEJNA_ID,
+            pokladna_key='sternberk',
+            pokladna_label='Šternberk',
+        )
+        self.assertEqual(result['created'], 4)
+        p = NakladPolozka.objects.get(symplio_doklad='32607061002')
+        self.assertEqual(p.pokladna_key, 'sternberk')
+        self.assertEqual(p.pokladna_label, 'Šternberk')
 
     def test_vykupka_without_doklad(self):
         import_symplio_pokladna_file(FIXTURE, prodejna_id=STERNBERK_PRODEJNA_ID)

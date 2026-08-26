@@ -340,6 +340,8 @@ def naklady_analytika(request):
             'protiucet': p.protiucet,
             'vs': p.vs,
             'prodejna_id': p.prodejna_id,
+            'pokladna_key': p.pokladna_key or None,
+            'pokladna_label': p.pokladna_label or None,
         }
         for p in polozky_qs[:2000]
     ]

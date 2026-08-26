@@ -1,6 +1,6 @@
 #!/bin/bash
 # Symplio historie pokladny – lock + timeout wrapper.
-# Cron: 22:00 denně – před Fio importem (22:30).
+# Cron: denně 8:30–21:00 (DAYS=1) + full catch-up 22:00 – viz install-finance-cron.sh.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"

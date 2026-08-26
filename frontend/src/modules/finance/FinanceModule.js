@@ -280,9 +280,9 @@ const FinanceModule = () => {
             {!loading && tab === 'k-zarazeni' && (
                 <section className="finance-panel">
                     <p className="finance-panel__intro">
-                        Fronta odchozích plateb (Fio / pokladna). U výdejů z kasy je prodejna
-                        doplněná z pokladny. Zařazení = kategorie + prodejna (u Reklamy/Nájmu stačí
-                        obecná kategorie a prodejna zvlášť).
+                        Fronta odchozích plateb (Fio / pokladna). U výdejů z kasy je značka pokladny
+                        (přední/zadní, Lucka…) a prodejna z importu. Zařazení = kategorie + prodejna
+                        (u Reklamy stačí obecná kategorie a prodejna zvlášť).
                     </p>
                     <label className="finance-checkbox-label finance-filter-row">
                         <input
@@ -318,7 +318,7 @@ const FinanceModule = () => {
                                 </thead>
                                 <tbody>
                                     {zobrazeno.map((p) => {
-                                        const src = zdrojMeta(p.zdroj);
+                                        const src = zdrojMeta(p.zdroj, p.pokladna_label);
                                         return (
                                         <tr key={p.id} className={src.rowClass}>
                                             <td>{p.datum}</td>
@@ -326,6 +326,11 @@ const FinanceModule = () => {
                                                 <span className={`finance-badge ${src.badgeClass}`} title={src.label}>
                                                     {src.short}
                                                 </span>
+                                                {src.pokladna ? (
+                                                    <span className="finance-badge finance-badge--pokladna" title={src.label}>
+                                                        {src.pokladna}
+                                                    </span>
+                                                ) : null}
                                             </td>
                                             <td className="finance-cell-castka">{formatCurrency(p.castka)}</td>
                                             <td>

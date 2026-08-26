@@ -54,11 +54,15 @@ class Command(BaseCommand):
             prodejna_id = options['prodejna_id']
             date_from = self._parse_date(options['date_from'])
             date_to = self._parse_date(options['date_to'])
+            pokladna_key = ''
+            pokladna_label = ''
             meta_path = path.with_suffix('.meta.json')
             if meta_path.is_file():
                 import json
                 meta = json.loads(meta_path.read_text(encoding='utf-8'))
                 prodejna_id = meta.get('prodejna_id', prodejna_id)
+                pokladna_key = (meta.get('key') or '')[:32]
+                pokladna_label = (meta.get('label') or '')[:80]
                 if date_from is None:
                     date_from = self._parse_date(meta.get('date_from', ''))
                 if date_to is None:
@@ -75,6 +79,8 @@ class Command(BaseCommand):
                 dry_run=options['dry_run'],
                 date_from=date_from,
                 date_to=date_to,
+                pokladna_key=pokladna_key,
+                pokladna_label=pokladna_label,
             )
             total_created += result['created']
             total_updated += result['updated']
