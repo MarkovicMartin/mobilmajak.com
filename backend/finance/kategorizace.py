@@ -33,6 +33,8 @@ _NAJEM_KEYWORDS = (
 KAT_MZDY = 'Mzdy'
 KAT_NAJMY = 'Nájmy'
 KAT_IT = 'IT a e-shop'
+KAT_DOPRAVA = 'Doprava'
+KAT_SPOTREBA = 'Spotřeba prodejny'
 KAT_ZBOZI_NAKUP = 'Nákup zboží / výkup'
 KAT_ZBOZI_NAKUP_LEGACY = 'Zboží – nákup sklad'
 
@@ -152,7 +154,7 @@ def _apply_fio_builtin(text: str) -> KategorizaceVysledek | None:
                 NakladPolozka.STAV_ZARAZENO, kid, None, False, True, 'fio:facebook',
             )
     if ('eska posta' in text or 'ceska posta' in text or 'česká pošta' in text) and 'prepravne' in text:
-        kid = _kat('Doprava – Zásilkovna / kurýr')
+        kid = _kat(KAT_DOPRAVA)
         if kid:
             return KategorizaceVysledek(
                 NakladPolozka.STAV_ZARAZENO, kid, None, False, True, 'fio:ceska_posta',
@@ -170,7 +172,7 @@ def _apply_fio_builtin(text: str) -> KategorizaceVysledek | None:
                 NakladPolozka.STAV_ZARAZENO, kid, None, False, True, 'fio:hosting',
             )
     if 'divadelni pikola' in text or ('promo' in text and 'olomouc' in text):
-        kid = _kat('Spotřeba – občerstvení')
+        kid = _kat(KAT_SPOTREBA)
         if kid:
             return KategorizaceVysledek(
                 NakladPolozka.STAV_ZARAZENO, kid, None, False, True, 'fio:porada_kava',
@@ -256,7 +258,7 @@ def apply_builtin_rules(row: dict, zdroj: str = '', prodejna_id: int | None = No
                 NakladPolozka.STAV_ZARAZENO, kid, prodejna_id, False, True, 'symplio:vykup',
             )
         if _is_spotreba_prodejny(text):
-            kid = _kat('Spotřeba prodejny')
+            kid = _kat(KAT_SPOTREBA)
             if kid:
                 return KategorizaceVysledek(
                     NakladPolozka.STAV_ZARAZENO, kid, prodejna_id, False, True, 'symplio:spotreba',
@@ -282,7 +284,7 @@ def apply_builtin_rules(row: dict, zdroj: str = '', prodejna_id: int | None = No
             )
 
     if 'zasilkovna' in text or 'zásilkovna' in text:
-        kid = _kat('Doprava – Zásilkovna / kurýr')
+        kid = _kat(KAT_DOPRAVA)
         if kid:
             return KategorizaceVysledek(
                 NakladPolozka.STAV_ZARAZENO, kid, _zasilkovna_prodejna(text), False, True, 'zasilkovna',

@@ -1,8 +1,7 @@
 """Sloučení podkategorií nákladů – migrace + testy.
 
-Mzdy + oba odvody → Mzdy
-Nájmy per prodejna → Nájmy
-IT podkategorie → IT a e-shop
+Mzdy + odvody → Mzdy
+Nájmy / IT / Energie / Doprava / Spotřeba → jedna kategorie
 Nákup zboží + výkup → Nákup zboží / výkup
 """
 
@@ -37,6 +36,18 @@ MERGE_GROUPS = [
         ],
     },
     {
+        'target': 'Energie',
+        'poradi': 400,
+        'typ_dph': 'z_faktury',
+        'parent': None,
+        'sources': [
+            'Energie – elektřina',
+            'Energie – plyn',
+            'Energie – voda',
+            'Energie – teplo',
+        ],
+    },
+    {
         'target': 'IT a e-shop',
         'poradi': 500,
         'typ_dph': 'z_faktury',
@@ -46,6 +57,28 @@ MERGE_GROUPS = [
             'IT – hardware',
             'IT – hosting / domény',
             'E-shop – provize / služby',
+        ],
+    },
+    {
+        'target': 'Doprava',
+        'poradi': 600,
+        'typ_dph': 'z_faktury',
+        'parent': None,
+        'sources': [
+            'Doprava – Zásilkovna / kurýr',
+            'Doprava – palivo',
+            'Doprava – servis vozidel',
+        ],
+    },
+    {
+        'target': 'Spotřeba prodejny',
+        'poradi': 800,
+        'typ_dph': 'z_faktury',
+        'parent': None,
+        'sources': [
+            'Spotřeba – úklid',
+            'Spotřeba – kancelář',
+            'Spotřeba – občerstvení',
         ],
     },
     {

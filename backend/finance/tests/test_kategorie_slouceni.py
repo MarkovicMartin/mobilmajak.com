@@ -21,8 +21,14 @@ class KategorieSlouceniTests(TestCase):
         soc = _kat('Odvody – sociální', poradi=111, typ_dph='bez')
         najem_gl = _kat('Nájem – Globus (GL)', poradi=301, typ_dph='z_faktury')
         _kat('Nájmy', poradi=300, typ_dph='z_faktury')
+        energie_el = _kat('Energie – elektřina', poradi=401, typ_dph='z_faktury')
+        _kat('Energie', poradi=400, typ_dph='z_faktury')
         hosting = _kat('IT – hosting / domény', poradi=503, typ_dph='z_faktury')
         _kat('IT a e-shop', poradi=500, typ_dph='z_faktury')
+        zasilkovna = _kat('Doprava – Zásilkovna / kurýr', poradi=601, typ_dph='z_faktury')
+        _kat('Doprava', poradi=600, typ_dph='z_faktury')
+        spotreba_uklid = _kat('Spotřeba – úklid', poradi=801, typ_dph='z_faktury')
+        _kat('Spotřeba prodejny', poradi=800, typ_dph='z_faktury')
         parent = _kat('Zboží / sklad', poradi=900, typ_dph='z_faktury')
         nakup = _kat('Zboží – nákup sklad', poradi=901, typ_dph='z_faktury', parent=parent)
         vykup = _kat('Výkup', poradi=903, typ_dph='bez', parent=parent)
@@ -30,7 +36,10 @@ class KategorieSlouceniTests(TestCase):
         self._polozka(zam, 'mzda')
         self._polozka(soc, 'odvod')
         self._polozka(najem_gl, 'najem')
+        self._polozka(energie_el, 'energie')
         self._polozka(hosting, 'hosting')
+        self._polozka(zasilkovna, 'doprava')
+        self._polozka(spotreba_uklid, 'spotreba')
         self._polozka(nakup, 'nakup')
         self._polozka(vykup, 'vykup')
         FioKategorizacniPravidlo.objects.create(
@@ -68,11 +77,28 @@ class KategorieSlouceniTests(TestCase):
             NakladPolozka.objects.get(fio_id='fio:merge-najem').kategorie_id,
             najmy.id,
         )
+        energie = NakladKategorie.objects.get(nazev='Energie')
+        self.assertEqual(
+            NakladPolozka.objects.get(fio_id='fio:merge-energie').kategorie_id,
+            energie.id,
+        )
+        self.assertFalse(NakladKategorie.objects.get(nazev='Energie – elektřina').aktivni)
         it = NakladKategorie.objects.get(nazev='IT a e-shop')
         self.assertEqual(
             NakladPolozka.objects.get(fio_id='fio:merge-hosting').kategorie_id,
             it.id,
         )
+        doprava = NakladKategorie.objects.get(nazev='Doprava')
+        self.assertEqual(
+            NakladPolozka.objects.get(fio_id='fio:merge-doprava').kategorie_id,
+            doprava.id,
+        )
+        spotreba = NakladKategorie.objects.get(nazev='Spotřeba prodejny')
+        self.assertEqual(
+            NakladPolozka.objects.get(fio_id='fio:merge-spotreba').kategorie_id,
+            spotreba.id,
+        )
+        self.assertFalse(NakladKategorie.objects.get(nazev='Spotřeba – úklid').aktivni)
         zbozi = NakladKategorie.objects.get(nazev='Nákup zboží / výkup')
         self.assertEqual(
             NakladPolozka.objects.get(fio_id='fio:merge-nakup').kategorie_id,
