@@ -484,6 +484,8 @@ export const financeAPI = {
     getPravidla: async () => (await api.get('/finance/pravidla/')).data,
     createPravidlo: async (payload) => (await api.post('/finance/pravidla/', payload)).data,
     deletePravidlo: async (id) => (await api.delete(`/finance/pravidla/${id}/`)).data,
+    applyPravidlo: async (id) => (await api.post(`/finance/pravidla/${id}/apply/`)).data,
+    applyVsechnaPravidla: async () => (await api.post('/finance/pravidla/apply-all/')).data,
     uploadDoklad: async ({
         file,
         naklad_polozka_id,

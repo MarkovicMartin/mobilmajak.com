@@ -37,6 +37,7 @@ const FinanceModule = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [message, setMessage] = useState('');
+    const [applying, setApplying] = useState(false);
 
     const [manualForm, setManualForm] = useState({
         datum: new Date().toISOString().slice(0, 10),
@@ -186,6 +187,45 @@ const FinanceModule = () => {
             loadAll();
         } catch (err) {
             setMessage(err.response?.data?.error || 'Smazání selhalo');
+        }
+    };
+
+    const applyMsg = (updated) => (
+        updated
+            ? `Zařazeno ${updated} ${updated === 1 ? 'platba' : updated < 5 ? 'platby' : 'plateb'}.`
+            : 'Žádná nezařazená platba tomuto pravidlu neodpovídá.'
+    );
+
+    const handleApplyPravidlo = async (id) => {
+        if (!window.confirm('Aplikovat toto pravidlo na už importované nezařazené platby?')) return;
+        setMessage('');
+        setApplying(true);
+        try {
+            const res = await financeAPI.applyPravidlo(id);
+            setMessage(applyMsg(res?.updated || 0));
+            loadAll();
+        } catch (err) {
+            setMessage(err.response?.data?.error || 'Aplikace pravidla selhala');
+        } finally {
+            setApplying(false);
+        }
+    };
+
+    const handleApplyVsechnaPravidla = async () => {
+        if (!window.confirm('Aplikovat všechna pravidla na už importované nezařazené platby?')) return;
+        setMessage('');
+        setApplying(true);
+        try {
+            const res = await financeAPI.applyVsechnaPravidla();
+            const n = res?.updated || 0;
+            setMessage(n
+                ? `Zařazeno ${n} ${n === 1 ? 'platba' : n < 5 ? 'platby' : 'plateb'} (všechna pravidla).`
+                : 'Žádná nezařazená platba pravidlům neodpovídá.');
+            loadAll();
+        } catch (err) {
+            setMessage(err.response?.data?.error || 'Aplikace pravidel selhala');
+        } finally {
+            setApplying(false);
         }
     };
 
@@ -555,6 +595,8 @@ const FinanceModule = () => {
                 <section className="finance-panel">
                     <p className="finance-panel__intro">
                         Automatické zařazení Fio plateb podle protistrany, VS nebo textu zprávy.
+                        Nové pravidlo platí u dalších importů. Už importované nezařazené platby
+                        zařadíte tlačítkem Aplikovat.
                     </p>
                     <form className="finance-form finance-form--wide" onSubmit={handlePravidloSubmit}>
                         <label>
@@ -615,6 +657,16 @@ const FinanceModule = () => {
                         </label>
                         <button type="submit" className="finance-btn-primary">Přidat pravidlo</button>
                     </form>
+                    <div className="finance-rule-toolbar">
+                        <button
+                            type="button"
+                            className="finance-btn-secondary"
+                            disabled={applying || pravidla.length === 0}
+                            onClick={handleApplyVsechnaPravidla}
+                        >
+                            {applying ? 'Aplikuji…' : 'Aplikovat všechna pravidla na nezařazené'}
+                        </button>
+                    </div>
 
                     {pravidla.length === 0 ? (
                         <p className="finance-empty">Žádná pravidla.</p>
@@ -640,9 +692,19 @@ const FinanceModule = () => {
                                             <td>{r.kategorie_nazev || '–'}</td>
                                             <td>{r.ignorovat ? 'ano' : 'ne'}</td>
                                             <td>
-                                                <button type="button" onClick={() => handleDeletePravidlo(r.id)}>
-                                                    Smazat
-                                                </button>
+                                                <div className="finance-rule-actions">
+                                                    <button
+                                                        type="button"
+                                                        className="finance-btn-secondary"
+                                                        disabled={applying}
+                                                        onClick={() => handleApplyPravidlo(r.id)}
+                                                    >
+                                                        Aplikovat
+                                                    </button>
+                                                    <button type="button" onClick={() => handleDeletePravidlo(r.id)}>
+                                                        Smazat
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}

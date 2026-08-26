@@ -29,10 +29,13 @@ from .doklady import (
 )
 from .faktura_process import process_doklad_ocr, schvalit_doklad, zamitnout_doklad, odeslat_doklad_do_flexi
 from .services import (
+    apply_all_pravidla_to_nezarazene,
+    apply_pravidlo_to_nezarazene,
     compute_stav_rozdilu,
     get_finance_counts,
     get_last_fio_import_info,
     log_finance_audit,
+    pravidlo_ma_klic,
     resolve_dph_stav,
     serialize_naklad_polozka,
     serialize_naklad_polozky,
@@ -513,6 +516,48 @@ def pravidlo_delete(request, pravidlo_id):
     rule.delete()
     log_finance_audit(request, 'pravidlo_delete', f'id={pravidlo_id}')
     return _no_store_response({'ok': True})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@finance_admin_view
+def pravidlo_apply(request, pravidlo_id):
+    """Zpětně zařadí už importované nezařazené platby podle jednoho pravidla."""
+    try:
+        rule = FioKategorizacniPravidlo.objects.get(pk=pravidlo_id, aktivni=True)
+    except FioKategorizacniPravidlo.DoesNotExist:
+        return _no_store_response({'error': 'Pravidlo nenalezeno'}, status.HTTP_404_NOT_FOUND)
+    if not pravidlo_ma_klic(rule):
+        return _no_store_response(
+            {'error': 'Pravidlo nemá protiúčet, VS, text zprávy ani rozsah částky'},
+            status.HTTP_400_BAD_REQUEST,
+        )
+    if not rule.ignorovat and not rule.kategorie_id:
+        return _no_store_response(
+            {'error': 'Pravidlo nemá kategorii ani příznak ignorovat'},
+            status.HTTP_400_BAD_REQUEST,
+        )
+    result = apply_pravidlo_to_nezarazene(rule)
+    log_finance_audit(
+        request, 'pravidlo_apply',
+        f'id={pravidlo_id} updated={result["updated"]} scanned={result["scanned"]}',
+    )
+    payload = serialize_pravidlo(rule)
+    payload.update(result)
+    return _no_store_response(payload)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@finance_admin_view
+def pravidla_apply_all(request):
+    """Zpětně zařadí nezařazené platby všemi vestavěnými i DB pravidly."""
+    result = apply_all_pravidla_to_nezarazene()
+    log_finance_audit(
+        request, 'pravidla_apply_all',
+        f'updated={result["updated"]} scanned={result["scanned"]}',
+    )
+    return _no_store_response(result)
 
 
 @api_view(['GET'])

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from decimal import Decimal
 
 from django.utils import timezone
@@ -86,11 +87,47 @@ def _normalize_rule_snippet(text: str, max_len: int = 80) -> str:
     return cleaned[:max_len]
 
 
+_FA_TAIL_RE = re.compile(
+    r'[\s\-–]*(?:fa|faktura|fakt\.?)?\s*[A-Z]?\d[\w./\-]{2,}\s*$',
+    re.I,
+)
+_VYDEJ_PREFIX_RE = re.compile(r'^manu[aá]ln[ií]\s+v[yý]de[jj]\s+', re.I)
+
+
+def _learn_snippet_from_symplio_popis(popis: str) -> str:
+    """
+    Stabilní text pro učení z kasy: dodavatel / typ výdeje bez čísla FA a jména admina.
+    """
+    from .symplio_vydej_parse import parse_symplio_vydej_faktura
+
+    raw = (popis or '').strip()
+    if not raw:
+        return ''
+
+    parsed = parse_symplio_vydej_faktura(raw)
+    if parsed and parsed.get('dodavatel_nazev'):
+        return _normalize_rule_snippet(parsed['dodavatel_nazev'], max_len=120)
+
+    text = _VYDEJ_PREFIX_RE.sub('', raw).strip()
+    text = _FA_TAIL_RE.sub('', text).strip(' -–')
+    # Úhrada výkupky V2607… → „Úhrada výkupky“
+    text = re.sub(r'\bV\d{6,}\b', '', text, flags=re.I).strip(' -–')
+    text = ' '.join(text.split())
+    return _normalize_rule_snippet(text, max_len=120)
+
+
 def rule_key_from_polozka(polozka: NakladPolozka) -> dict | None:
     """
-    Preferovaný klíč pravidla: protiucet → vs → úryvek zpravy/popisu.
-    Vrací dict polí pro FioKategorizacniPravidlo, nebo None.
+    Klíč z manuálního zařazení (bez ručního zadávání pravidel):
+    - Fio: protiucet → vs → úryvek zprávy
+    - Symplio pokladna: stabilní úryvek popisu (dodavatel), ne admin ani FA
     """
+    if polozka.zdroj == NakladPolozka.ZDROJ_SYMPLIO_POKLADNA:
+        snippet = _learn_snippet_from_symplio_popis(polozka.popis or '')
+        if snippet:
+            return {'protiucet': '', 'vs': '', 'zprava_obsahuje': snippet[:200]}
+        return None
+
     protiucet = (polozka.protiucet or '').strip()
     if protiucet:
         return {'protiucet': protiucet[:64], 'vs': '', 'zprava_obsahuje': ''}
@@ -173,6 +210,102 @@ def compute_stav_rozdilu(prijmy, naklady) -> str:
     if rozdil > 0:
         return 'plus'
     return 'vyrovnano'
+
+
+def pravidlo_ma_klic(rule: FioKategorizacniPravidlo) -> bool:
+    """Pravidlo musí mít aspoň jeden matchovací klíč, jinak by trefilo vše."""
+    return bool(
+        (rule.protiucet or '').strip()
+        or (rule.vs or '').strip()
+        or (rule.zprava_obsahuje or '').strip()
+        or rule.castka_min is not None
+        or rule.castka_max is not None
+    )
+
+
+def _apply_matched_pravidlo(rule: FioKategorizacniPravidlo, p: NakladPolozka) -> None:
+    if rule.ignorovat:
+        p.stav = NakladPolozka.STAV_IGNOROVAT
+        p.ignorovat = True
+        p.kategorie_id = None
+    else:
+        p.stav = NakladPolozka.STAV_ZARAZENO
+        p.kategorie_id = rule.kategorie_id
+        p.ignorovat = False
+        if rule.prodejna_id:
+            p.prodejna_id = rule.prodejna_id
+    p.zarazeno_automaticky = True
+    p.auto_pravidlo = 'db_pravidlo'
+    p.dph_stav = resolve_dph_stav(p.kategorie_id, p.typ_platby)
+    p.save(update_fields=[
+        'stav', 'kategorie_id', 'prodejna_id', 'ignorovat',
+        'zarazeno_automaticky', 'auto_pravidlo', 'dph_stav',
+    ])
+    if not p.ignorovat:
+        try:
+            from .doklady import try_auto_link_polozka
+            try_auto_link_polozka(p)
+        except Exception:
+            logger.exception('Auto-link doklad failed for polozka_id=%s', p.id)
+
+
+def apply_pravidlo_to_nezarazene(rule: FioKategorizacniPravidlo, dry_run: bool = False) -> dict:
+    """Aplikuje konkrétní DB pravidlo na už importované nezařazené odchozí platby."""
+    from django.db.models import Q
+
+    from .kategorizace import polozka_as_row
+
+    empty = {'updated': 0, 'scanned': 0}
+    if not pravidlo_ma_klic(rule):
+        return empty
+    if not rule.ignorovat and not rule.kategorie_id:
+        return empty
+
+    qs = NakladPolozka.objects.filter(
+        stav=NakladPolozka.STAV_NEZARAZENO,
+        typ_platby=NakladPolozka.TYP_PLATBY_ODCHOZI,
+    )
+    if rule.protiucet:
+        qs = qs.filter(protiucet__contains=rule.protiucet)
+    if rule.vs:
+        qs = qs.filter(vs=rule.vs)
+    if rule.zprava_obsahuje:
+        snippet = rule.zprava_obsahuje
+        qs = qs.filter(Q(zprava__icontains=snippet) | Q(popis__icontains=snippet))
+    qs = qs.order_by('datum', 'id')
+
+    updated = 0
+    scanned = 0
+    for p in qs.iterator():
+        scanned += 1
+        if not _matches_rule(rule, polozka_as_row(p)):
+            continue
+        if dry_run:
+            updated += 1
+            continue
+        _apply_matched_pravidlo(rule, p)
+        updated += 1
+    return {'updated': updated, 'scanned': scanned}
+
+
+def apply_all_pravidla_to_nezarazene(dry_run: bool = False, limit: int = 0) -> dict:
+    """Vestavěná + DB pravidla na nezařazené odchozí položky (jako apply_finance_pravidla)."""
+    from .kategorizace import apply_rules_to_polozka
+
+    qs = NakladPolozka.objects.filter(
+        stav=NakladPolozka.STAV_NEZARAZENO,
+        typ_platby=NakladPolozka.TYP_PLATBY_ODCHOZI,
+    ).order_by('datum', 'id')
+    if limit:
+        qs = qs[:limit]
+
+    updated = 0
+    scanned = 0
+    for p in qs:
+        scanned += 1
+        if apply_rules_to_polozka(p, dry_run=dry_run):
+            updated += 1
+    return {'updated': updated, 'scanned': scanned}
 
 
 def apply_categorization_rules(row: dict) -> dict:

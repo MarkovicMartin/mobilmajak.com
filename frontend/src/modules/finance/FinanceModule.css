@@ -214,6 +214,30 @@
     cursor: pointer;
 }
 
+.finance-btn-secondary {
+    padding: 0.4rem 0.75rem;
+    background: var(--mm-surface, #fff);
+    color: var(--mm-text, #1a1a1a);
+    border: 1px solid var(--mm-border, #dde3ea);
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.finance-btn-secondary:disabled {
+    opacity: 0.6;
+    cursor: wait;
+}
+
+.finance-rule-toolbar {
+    margin: 0.75rem 0 1rem;
+}
+
+.finance-rule-actions {
+    display: flex;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+}
+
 .finance-filter-row {
     margin-bottom: 0.75rem;
 }
