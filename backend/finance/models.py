@@ -227,8 +227,20 @@ class FinanceZustatek(models.Model):
 
 
 class FioKategorizacniPravidlo(models.Model):
+    TEXT_SHODA_OBSAHUJE = 'obsahuje'
+    TEXT_SHODA_PRESNE = 'presne'
+    TEXT_SHODA_CHOICES = [
+        (TEXT_SHODA_OBSAHUJE, 'Obsahuje text'),
+        (TEXT_SHODA_PRESNE, 'Přesně (zpráva i popis)'),
+    ]
+
     protiucet = models.CharField(max_length=64, blank=True, default='')
     zprava_obsahuje = models.CharField(max_length=200, blank=True, default='')
+    text_shoda = models.CharField(
+        max_length=16,
+        choices=TEXT_SHODA_CHOICES,
+        default=TEXT_SHODA_OBSAHUJE,
+    )
     vs = models.CharField(max_length=32, blank=True, default='')
     castka_min = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     castka_max = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)

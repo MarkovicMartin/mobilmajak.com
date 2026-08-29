@@ -483,6 +483,8 @@ export const financeAPI = {
     ).data,
     getPravidla: async () => (await api.get('/finance/pravidla/')).data,
     createPravidlo: async (payload) => (await api.post('/finance/pravidla/', payload)).data,
+    updatePravidlo: async (id, payload) => (await api.patch(`/finance/pravidla/${id}/`, payload)).data,
+    previewPravidlo: async (payload) => (await api.post('/finance/pravidla/preview/', payload)).data,
     deletePravidlo: async (id) => (await api.delete(`/finance/pravidla/${id}/`)).data,
     applyPravidlo: async (id) => (await api.post(`/finance/pravidla/${id}/apply/`)).data,
     applyVsechnaPravidla: async () => (await api.post('/finance/pravidla/apply-all/')).data,

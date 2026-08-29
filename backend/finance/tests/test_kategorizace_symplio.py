@@ -52,5 +52,11 @@ class SymplioKategorizaceTests(TestCase):
     def test_manualni_vydej_vykup(self):
         r = self._apply('Manuální výdej V26070023 Výkup')
         self.assertEqual(r.pravidlo, 'symplio:vykup')
-        self.assertEqual(r.kategorie_id, NakladKategorie.objects.get(nazev='Nákup zboží / výkup').id)
-        self.assertEqual(r.prodejna_id, 6)
+        self.assertTrue(r.ignorovat)
+        self.assertEqual(r.stav, NakladPolozka.STAV_IGNOROVAT)
+        self.assertIsNone(r.kategorie_id)
+
+    def test_uhrada_vykupky_ignore(self):
+        r = self._apply('Úhrada výkupky V26070012')
+        self.assertEqual(r.pravidlo, 'symplio:vykup')
+        self.assertTrue(r.ignorovat)

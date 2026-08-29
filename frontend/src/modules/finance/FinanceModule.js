@@ -51,11 +51,14 @@ const FinanceModule = () => {
     const [pravidloForm, setPravidloForm] = useState({
         protiucet: '',
         zprava_obsahuje: '',
+        text_shoda: 'obsahuje',
         vs: '',
         kategorie_id: '',
         prodejna_id: '',
         ignorovat: false,
     });
+    const [pravidloPreview, setPravidloPreview] = useState(null);
+    const [previewLoading, setPreviewLoading] = useState(false);
 
     const [katForm, setKatForm] = useState({
         nazev: '',
@@ -168,6 +171,7 @@ const FinanceModule = () => {
             setPravidloForm({
                 protiucet: '',
                 zprava_obsahuje: '',
+                text_shoda: 'obsahuje',
                 vs: '',
                 kategorie_id: '',
                 prodejna_id: '',
@@ -196,13 +200,69 @@ const FinanceModule = () => {
             : 'Žádná nezařazená platba tomuto pravidlu neodpovídá.'
     );
 
+    const formatPreviewDate = (iso) => {
+        if (!iso) return '–';
+        const [y, m, d] = iso.split('-');
+        return `${d}.${m}.${y}`;
+    };
+
+    const fetchPravidloPreview = async (payload) => {
+        setPreviewLoading(true);
+        setError('');
+        try {
+            const res = await financeAPI.previewPravidlo({ scope: 'nezarazene', limit: 50, ...payload });
+            setPravidloPreview(res);
+            return res;
+        } catch (err) {
+            setError(err.response?.data?.error || 'Náhled pravidla selhal');
+            return null;
+        } finally {
+            setPreviewLoading(false);
+        }
+    };
+
+    const handlePreviewForm = async () => {
+        await fetchPravidloPreview({
+            ...pravidloForm,
+            kategorie_id: pravidloForm.kategorie_id || null,
+            prodejna_id: pravidloForm.prodejna_id || null,
+        });
+    };
+
+    const handlePreviewRule = async (rule) => {
+        await fetchPravidloPreview({ pravidlo_id: rule.id });
+    };
+
+    const handleUpdatePravidloField = async (rule, field, value) => {
+        try {
+            await financeAPI.updatePravidlo(rule.id, { [field]: value });
+            setMessage('Pravidlo upraveno.');
+            loadAll();
+        } catch (err) {
+            setMessage(err.response?.data?.error || 'Úprava pravidla selhala');
+        }
+    };
+
     const handleApplyPravidlo = async (id) => {
-        if (!window.confirm('Aplikovat toto pravidlo na už importované nezařazené platby?')) return;
         setMessage('');
+        setApplying(true);
+        try {
+            const preview = await fetchPravidloPreview({ pravidlo_id: id });
+            if (!preview) return;
+            setPravidloPreview({ ...preview, applyRuleId: id });
+        } finally {
+            setApplying(false);
+        }
+    };
+
+    const handleConfirmApply = async () => {
+        const id = pravidloPreview?.applyRuleId;
+        if (!id) return;
         setApplying(true);
         try {
             const res = await financeAPI.applyPravidlo(id);
             setMessage(applyMsg(res?.updated || 0));
+            setPravidloPreview(null);
             loadAll();
         } catch (err) {
             setMessage(err.response?.data?.error || 'Aplikace pravidla selhala');
@@ -608,12 +668,22 @@ const FinanceModule = () => {
                             />
                         </label>
                         <label>
-                            Zpráva obsahuje
+                            Text zprávy / popisu
                             <input
                                 type="text"
                                 value={pravidloForm.zprava_obsahuje}
                                 onChange={(e) => setPravidloForm((f) => ({ ...f, zprava_obsahuje: e.target.value }))}
                             />
+                        </label>
+                        <label>
+                            Shoda textu
+                            <select
+                                value={pravidloForm.text_shoda}
+                                onChange={(e) => setPravidloForm((f) => ({ ...f, text_shoda: e.target.value }))}
+                            >
+                                <option value="obsahuje">Obsahuje (kdekoli ve zprávě nebo popisu)</option>
+                                <option value="presne">Přesně (zpráva i popis musí být shodné – převody mezi účty)</option>
+                            </select>
                         </label>
                         <label>
                             VS
@@ -656,6 +726,14 @@ const FinanceModule = () => {
                             Ignorovat (interní převod)
                         </label>
                         <button type="submit" className="finance-btn-primary">Přidat pravidlo</button>
+                        <button
+                            type="button"
+                            className="finance-btn-secondary"
+                            disabled={previewLoading}
+                            onClick={handlePreviewForm}
+                        >
+                            {previewLoading ? 'Načítám…' : 'Náhled shod'}
+                        </button>
                     </form>
                     <div className="finance-rule-toolbar">
                         <button
@@ -668,6 +746,66 @@ const FinanceModule = () => {
                         </button>
                     </div>
 
+                    {pravidloPreview && (
+                        <div className="finance-rule-preview">
+                            <div className="finance-rule-preview__head">
+                                <h3>Náhled pravidla</h3>
+                                <button type="button" onClick={() => setPravidloPreview(null)}>Zavřít</button>
+                            </div>
+                            <p className="finance-rule-preview__stats">
+                                Nezařazených shod: <strong>{pravidloPreview.total ?? 0}</strong>
+                                {' · '}
+                                Celkem odchozích shod: <strong>{pravidloPreview.total_vse_odchozi ?? 0}</strong>
+                                {(pravidloPreview.total ?? 0) > (pravidloPreview.polozky?.length ?? 0) && (
+                                    <> (zobrazeno {pravidloPreview.polozky?.length ?? 0})</>
+                                )}
+                            </p>
+                            {(pravidloPreview.polozky?.length ?? 0) === 0 ? (
+                                <p className="finance-empty">Žádná platba pravidlu neodpovídá.</p>
+                            ) : (
+                                <div className="finance-table-wrap">
+                                    <table className="finance-table finance-table--compact">
+                                        <thead>
+                                            <tr>
+                                                <th>Datum</th>
+                                                <th>Částka</th>
+                                                <th>Popis</th>
+                                                <th>Zpráva</th>
+                                                <th>Stav</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {pravidloPreview.polozky.map((p) => (
+                                                <tr key={p.id}>
+                                                    <td>{formatPreviewDate(p.datum)}</td>
+                                                    <td>{formatCurrency(p.castka)}</td>
+                                                    <td>{p.popis || '–'}</td>
+                                                    <td>{p.zprava || '–'}</td>
+                                                    <td>{p.stav}{p.kategorie_nazev ? ` · ${p.kategorie_nazev}` : ''}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                            {pravidloPreview.applyRuleId && (
+                                <div className="finance-rule-preview__actions">
+                                    <button
+                                        type="button"
+                                        className="finance-btn-primary"
+                                        disabled={applying || !(pravidloPreview.total > 0)}
+                                        onClick={handleConfirmApply}
+                                    >
+                                        {applying ? 'Aplikuji…' : `Potvrdit aplikaci (${pravidloPreview.total})`}
+                                    </button>
+                                    <button type="button" className="finance-btn-secondary" onClick={() => setPravidloPreview(null)}>
+                                        Zrušit
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {pravidla.length === 0 ? (
                         <p className="finance-empty">Žádná pravidla.</p>
                     ) : (
@@ -676,7 +814,8 @@ const FinanceModule = () => {
                                 <thead>
                                     <tr>
                                         <th>Protiúčet</th>
-                                        <th>Zpráva</th>
+                                        <th>Text</th>
+                                        <th>Shoda</th>
                                         <th>VS</th>
                                         <th>Kategorie</th>
                                         <th>Ignorovat</th>
@@ -688,6 +827,16 @@ const FinanceModule = () => {
                                         <tr key={r.id}>
                                             <td>{r.protiucet || '–'}</td>
                                             <td>{r.zprava_obsahuje || '–'}</td>
+                                            <td>
+                                                <select
+                                                    className="finance-inline-select"
+                                                    value={r.text_shoda || 'obsahuje'}
+                                                    onChange={(e) => handleUpdatePravidloField(r, 'text_shoda', e.target.value)}
+                                                >
+                                                    <option value="obsahuje">obsahuje</option>
+                                                    <option value="presne">přesně</option>
+                                                </select>
+                                            </td>
                                             <td>{r.vs || '–'}</td>
                                             <td>{r.kategorie_nazev || '–'}</td>
                                             <td>{r.ignorovat ? 'ano' : 'ne'}</td>
@@ -696,7 +845,15 @@ const FinanceModule = () => {
                                                     <button
                                                         type="button"
                                                         className="finance-btn-secondary"
-                                                        disabled={applying}
+                                                        disabled={previewLoading}
+                                                        onClick={() => handlePreviewRule(r)}
+                                                    >
+                                                        Náhled
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="finance-btn-secondary"
+                                                        disabled={applying || previewLoading}
                                                         onClick={() => handleApplyPravidlo(r.id)}
                                                     >
                                                         Aplikovat

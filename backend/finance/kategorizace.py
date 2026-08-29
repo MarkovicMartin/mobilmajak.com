@@ -253,9 +253,8 @@ def apply_builtin_rules(row: dict, zdroj: str = '', prodejna_id: int | None = No
                 NakladPolozka.STAV_IGNOROVAT, None, prodejna_id, True, True, 'symplio:storno',
             )
         if _is_vykup(text):
-            kid = _kat_zbozi_nakup()
             return KategorizaceVysledek(
-                NakladPolozka.STAV_ZARAZENO, kid, prodejna_id, False, True, 'symplio:vykup',
+                NakladPolozka.STAV_IGNOROVAT, None, prodejna_id, True, True, 'symplio:vykup',
             )
         if _is_spotreba_prodejny(text):
             kid = _kat(KAT_SPOTREBA)

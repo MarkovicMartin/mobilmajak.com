@@ -62,15 +62,34 @@ def typ_platby_from_castka(castka) -> str:
     return NakladPolozka.TYP_PLATBY_INTERNI
 
 
+def _text_field_matches(rule: FioKategorizacniPravidlo, zprava: str, popis: str) -> bool:
+    needle = (rule.zprava_obsahuje or '').strip()
+    if not needle:
+        return True
+    needle_l = needle.lower()
+    z_l = (zprava or '').strip().lower()
+    p_l = (popis or '').strip().lower()
+    mode = rule.text_shoda or FioKategorizacniPravidlo.TEXT_SHODA_OBSAHUJE
+    if mode == FioKategorizacniPravidlo.TEXT_SHODA_PRESNE:
+        if z_l and p_l:
+            return z_l == needle_l and p_l == needle_l
+        if z_l:
+            return z_l == needle_l
+        if p_l:
+            return p_l == needle_l
+        return False
+    text = f"{z_l} {p_l}".strip()
+    return needle_l in text
+
+
 def _matches_rule(rule: FioKategorizacniPravidlo, row: dict) -> bool:
     if rule.protiucet and rule.protiucet not in (row.get('protiucet') or ''):
         return False
     if rule.vs and rule.vs != (row.get('vs') or ''):
         return False
-    # Zpráva + popis – Symplio/manuál často má text jen v popisu
-    text = f"{row.get('zprava') or ''} {row.get('popis') or ''}".lower()
-    if rule.zprava_obsahuje and rule.zprava_obsahuje.lower() not in text:
-        return False
+    if rule.zprava_obsahuje:
+        if not _text_field_matches(rule, row.get('zprava') or '', row.get('popis') or ''):
+            return False
     castka = abs(Decimal(str(row.get('castka') or 0)))
     if rule.castka_min is not None and castka < rule.castka_min:
         return False
@@ -271,7 +290,10 @@ def apply_pravidlo_to_nezarazene(rule: FioKategorizacniPravidlo, dry_run: bool =
         qs = qs.filter(vs=rule.vs)
     if rule.zprava_obsahuje:
         snippet = rule.zprava_obsahuje
-        qs = qs.filter(Q(zprava__icontains=snippet) | Q(popis__icontains=snippet))
+        if rule.text_shoda == FioKategorizacniPravidlo.TEXT_SHODA_PRESNE:
+            qs = qs.filter(Q(zprava__iexact=snippet) | Q(popis__iexact=snippet))
+        else:
+            qs = qs.filter(Q(zprava__icontains=snippet) | Q(popis__icontains=snippet))
     qs = qs.order_by('datum', 'id')
 
     updated = 0
@@ -286,6 +308,106 @@ def apply_pravidlo_to_nezarazene(rule: FioKategorizacniPravidlo, dry_run: bool =
         _apply_matched_pravidlo(rule, p)
         updated += 1
     return {'updated': updated, 'scanned': scanned}
+
+
+def _pravidlo_base_qs(scope: str):
+    qs = NakladPolozka.objects.filter(typ_platby=NakladPolozka.TYP_PLATBY_ODCHOZI)
+    if scope == 'nezarazene':
+        qs = qs.filter(stav=NakladPolozka.STAV_NEZARAZENO)
+    return qs.order_by('-datum', '-id')
+
+
+def _pravidlo_prefilter_qs(qs, rule: FioKategorizacniPravidlo):
+    from django.db.models import Q
+
+    if rule.protiucet:
+        qs = qs.filter(protiucet__contains=rule.protiucet)
+    if rule.vs:
+        qs = qs.filter(vs=rule.vs)
+    if rule.zprava_obsahuje:
+        snippet = rule.zprava_obsahuje
+        if rule.text_shoda == FioKategorizacniPravidlo.TEXT_SHODA_PRESNE:
+            qs = qs.filter(Q(zprava__iexact=snippet) | Q(popis__iexact=snippet))
+        else:
+            qs = qs.filter(Q(zprava__icontains=snippet) | Q(popis__icontains=snippet))
+    return qs
+
+
+def _serialize_pravidlo_preview_polozka(p: NakladPolozka) -> dict:
+    return {
+        'id': p.id,
+        'datum': p.datum.isoformat(),
+        'castka': str(p.castka),
+        'popis': p.popis or '',
+        'zprava': p.zprava or '',
+        'protiucet': p.protiucet or '',
+        'vs': p.vs or '',
+        'stav': p.stav,
+        'kategorie_nazev': p.kategorie.nazev if p.kategorie_id else None,
+    }
+
+
+def rule_from_preview_payload(data: dict, existing: FioKategorizacniPravidlo | None = None) -> FioKategorizacniPravidlo:
+    """Dočasné pravidlo pro náhled – bez uložení do DB."""
+    rule = existing or FioKategorizacniPravidlo()
+    for field in ('protiucet', 'zprava_obsahuje', 'vs', 'text_shoda', 'ignorovat', 'aktivni'):
+        if field in data:
+            setattr(rule, field, data[field])
+    if 'kategorie_id' in data:
+        rule.kategorie_id = data['kategorie_id'] or None
+    if 'prodejna_id' in data:
+        rule.prodejna_id = data['prodejna_id'] or None
+    if not rule.text_shoda:
+        rule.text_shoda = FioKategorizacniPravidlo.TEXT_SHODA_OBSAHUJE
+    return rule
+
+
+def preview_pravidlo(
+    rule: FioKategorizacniPravidlo,
+    *,
+    scope: str = 'nezarazene',
+    limit: int = 50,
+) -> dict:
+    """Náhled plateb odpovídajících pravidlu (bez zápisu)."""
+    from .kategorizace import polozka_as_row
+
+    empty = {
+        'total': 0,
+        'total_nezarazene': 0,
+        'total_vse_odchozi': 0,
+        'polozky': [],
+        'limit': limit,
+        'scope': scope,
+    }
+    if not pravidlo_ma_klic(rule):
+        return empty
+    if not rule.ignorovat and not rule.kategorie_id:
+        return empty
+
+    qs = _pravidlo_prefilter_qs(_pravidlo_base_qs('vse_odchozi'), rule)
+    total_vse = 0
+    total_nezarazene = 0
+    polozky = []
+    for p in qs.iterator():
+        if not _matches_rule(rule, polozka_as_row(p)):
+            continue
+        total_vse += 1
+        if p.stav == NakladPolozka.STAV_NEZARAZENO:
+            total_nezarazene += 1
+        if scope == 'nezarazene' and p.stav != NakladPolozka.STAV_NEZARAZENO:
+            continue
+        if len(polozky) < limit:
+            polozky.append(_serialize_pravidlo_preview_polozka(p))
+
+    total = total_nezarazene if scope == 'nezarazene' else total_vse
+    return {
+        'total': total,
+        'total_nezarazene': total_nezarazene,
+        'total_vse_odchozi': total_vse,
+        'polozky': polozky,
+        'limit': limit,
+        'scope': scope,
+    }
 
 
 def apply_all_pravidla_to_nezarazene(dry_run: bool = False, limit: int = 0) -> dict:
@@ -404,6 +526,8 @@ def serialize_pravidlo(rule: FioKategorizacniPravidlo) -> dict:
         'id': rule.id,
         'protiucet': rule.protiucet,
         'zprava_obsahuje': rule.zprava_obsahuje,
+        'text_shoda': rule.text_shoda,
+        'text_shoda_label': rule.get_text_shoda_display(),
         'vs': rule.vs,
         'castka_min': str(rule.castka_min) if rule.castka_min is not None else None,
         'castka_max': str(rule.castka_max) if rule.castka_max is not None else None,
@@ -569,7 +693,10 @@ def import_symplio_pokladna_file(
             'zarazeno_automaticky': cat['zarazeno_automaticky'],
             'auto_pravidlo': cat.get('auto_pravidlo', ''),
             'typ_platby': NakladPolozka.TYP_PLATBY_ODCHOZI,
-            'dph_stav': resolve_dph_stav(cat['kategorie_id'], NakladPolozka.TYP_PLATBY_ODCHOZI),
+            'dph_stav': (
+                NakladPolozka.DPH_STAV_BEZ if cat['ignorovat']
+                else resolve_dph_stav(cat['kategorie_id'], NakladPolozka.TYP_PLATBY_ODCHOZI)
+            ),
         }
         if pokladna_key:
             payload['pokladna_key'] = pokladna_key[:32]

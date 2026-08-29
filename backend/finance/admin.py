@@ -48,4 +48,4 @@ class FinanceZustatekAdmin(admin.ModelAdmin):
 
 @admin.register(FioKategorizacniPravidlo)
 class FioKategorizacniPravidloAdmin(admin.ModelAdmin):
-    list_display = ('id', 'protiucet', 'zprava_obsahuje', 'kategorie', 'ignorovat', 'aktivni')
+    list_display = ('id', 'protiucet', 'zprava_obsahuje', 'text_shoda', 'kategorie', 'ignorovat', 'aktivni')

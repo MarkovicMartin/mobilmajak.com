@@ -394,3 +394,46 @@
 .finance-kat-edit select {
     max-width: 14rem;
 }
+
+.finance-rule-preview {
+    margin: 1rem 0;
+    padding: 1rem;
+    border: 1px solid var(--mm-border, #dde3ea);
+    border-radius: 8px;
+    background: var(--mm-surface-muted, #f8fafc);
+}
+
+.finance-rule-preview__head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.finance-rule-preview__head h3 {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.finance-rule-preview__stats {
+    margin: 0 0 0.75rem;
+    font-size: 0.9rem;
+}
+
+.finance-rule-preview__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+
+.finance-inline-select {
+    font-size: 0.85rem;
+    max-width: 7rem;
+}
+
+.finance-table--compact td,
+.finance-table--compact th {
+    font-size: 0.85rem;
+}

@@ -62,7 +62,8 @@ class SymplioImportTests(TestCase):
         self.assertEqual(polozky.count(), 4)
         p = polozky.get(symplio_doklad='32607061002')
         self.assertEqual(p.prodejna_id, STERNBERK_PRODEJNA_ID)
-        self.assertEqual(p.dph_stav, NakladPolozka.DPH_STAV_CEKA)
+        self.assertTrue(p.ignorovat)
+        self.assertEqual(p.dph_stav, NakladPolozka.DPH_STAV_BEZ)
         self.assertEqual(p.typ_platby, NakladPolozka.TYP_PLATBY_ODCHOZI)
         self.assertEqual(p.castka, Decimal('-349'))
         self.assertEqual(p.pokladna_key, '')
@@ -86,6 +87,10 @@ class SymplioImportTests(TestCase):
         self.assertEqual(p.symplio_doklad, '')
         self.assertEqual(p.castka, Decimal('-5000'))
         self.assertTrue(p.fio_id.startswith('symplio:'))
+        self.assertTrue(p.ignorovat)
+        self.assertEqual(p.stav, NakladPolozka.STAV_IGNOROVAT)
+        self.assertEqual(p.dph_stav, NakladPolozka.DPH_STAV_BEZ)
+        self.assertEqual(p.auto_pravidlo, 'symplio:vykup')
 
     def test_skip_duplicate_on_reimport(self):
         import_symplio_pokladna_file(FIXTURE, prodejna_id=STERNBERK_PRODEJNA_ID)

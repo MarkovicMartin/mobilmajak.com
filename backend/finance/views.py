@@ -492,9 +492,16 @@ def pravidla_list_create(request):
         return _no_store_response([serialize_pravidlo(r) for r in qs[:200]])
 
     data = request.data
+    text_shoda = data.get('text_shoda') or FioKategorizacniPravidlo.TEXT_SHODA_OBSAHUJE
+    if text_shoda not in (
+        FioKategorizacniPravidlo.TEXT_SHODA_OBSAHUJE,
+        FioKategorizacniPravidlo.TEXT_SHODA_PRESNE,
+    ):
+        text_shoda = FioKategorizacniPravidlo.TEXT_SHODA_OBSAHUJE
     rule = FioKategorizacniPravidlo.objects.create(
         protiucet=(data.get('protiucet') or '')[:64],
         zprava_obsahuje=(data.get('zprava_obsahuje') or '')[:200],
+        text_shoda=text_shoda,
         vs=(data.get('vs') or '')[:32],
         kategorie_id=data.get('kategorie_id') or None,
         prodejna_id=data.get('prodejna_id') or None,
@@ -505,17 +512,69 @@ def pravidla_list_create(request):
     return _no_store_response(serialize_pravidlo(rule), status.HTTP_201_CREATED)
 
 
-@api_view(['DELETE'])
+@api_view(['PATCH', 'DELETE'])
 @permission_classes([IsAuthenticated])
 @finance_admin_view
-def pravidlo_delete(request, pravidlo_id):
+def pravidlo_detail(request, pravidlo_id):
     try:
-        rule = FioKategorizacniPravidlo.objects.get(pk=pravidlo_id)
+        rule = FioKategorizacniPravidlo.objects.select_related('kategorie').get(pk=pravidlo_id)
     except FioKategorizacniPravidlo.DoesNotExist:
         return _no_store_response({'error': 'Pravidlo nenalezeno'}, status.HTTP_404_NOT_FOUND)
-    rule.delete()
-    log_finance_audit(request, 'pravidlo_delete', f'id={pravidlo_id}')
-    return _no_store_response({'ok': True})
+
+    if request.method == 'DELETE':
+        rule.delete()
+        log_finance_audit(request, 'pravidlo_delete', f'id={pravidlo_id}')
+        return _no_store_response({'ok': True})
+
+    data = request.data
+    updatable = (
+        'protiucet', 'zprava_obsahuje', 'vs', 'text_shoda',
+        'kategorie_id', 'prodejna_id', 'ignorovat', 'aktivni',
+    )
+    for field in updatable:
+        if field not in data:
+            continue
+        val = data[field]
+        if field in ('protiucet', 'zprava_obsahuje', 'vs'):
+            val = (val or '')[:64 if field == 'protiucet' else 200 if field == 'zprava_obsahuje' else 32]
+        if field == 'text_shoda' and val not in (
+            FioKategorizacniPravidlo.TEXT_SHODA_OBSAHUJE,
+            FioKategorizacniPravidlo.TEXT_SHODA_PRESNE,
+        ):
+            continue
+        if field in ('kategorie_id', 'prodejna_id'):
+            val = val or None
+        setattr(rule, field, val)
+    rule.save()
+    log_finance_audit(request, 'pravidlo_update', f'id={pravidlo_id}')
+    return _no_store_response(serialize_pravidlo(rule))
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@finance_admin_view
+def pravidlo_preview(request):
+    """Náhled shod pravidla – před uložením nebo aplikací."""
+    data = request.data
+    scope = data.get('scope') or 'nezarazene'
+    if scope not in ('nezarazene', 'vse_odchozi'):
+        scope = 'nezarazene'
+    limit = min(int(data.get('limit') or 50), 100)
+
+    existing = None
+    pravidlo_id = data.get('pravidlo_id')
+    if pravidlo_id:
+        try:
+            existing = FioKategorizacniPravidlo.objects.get(pk=pravidlo_id)
+        except FioKategorizacniPravidlo.DoesNotExist:
+            return _no_store_response({'error': 'Pravidlo nenalezeno'}, status.HTTP_404_NOT_FOUND)
+
+    from .services import preview_pravidlo, rule_from_preview_payload
+
+    rule = rule_from_preview_payload(data, existing)
+    result = preview_pravidlo(rule, scope=scope, limit=limit)
+    log_finance_audit(request, 'pravidlo_preview', f'scope={scope} total={result["total"]}')
+    return _no_store_response(result)
 
 
 @api_view(['POST'])

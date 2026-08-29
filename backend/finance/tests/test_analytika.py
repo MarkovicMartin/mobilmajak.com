@@ -40,6 +40,21 @@ class MatchesRulePopisTests(TestCase):
         self.assertTrue(_matches_rule(rule, {'zprava': '', 'popis': 'Symplio výdej kancelář'}))
         self.assertFalse(_matches_rule(rule, {'zprava': '', 'popis': 'jiný text'}))
 
+    def test_ignore_codaruina_jen_cisty_prevod(self):
+        rule = FioKategorizacniPravidlo(
+            protiucet='',
+            vs='',
+            zprava_obsahuje='Codaruina s.r.o.',
+            text_shoda=FioKategorizacniPravidlo.TEXT_SHODA_PRESNE,
+            ignorovat=True,
+        )
+        row_prevod = {'zprava': 'Codaruina s.r.o.', 'popis': 'Codaruina s.r.o.'}
+        row_najem = {'zprava': 'Codaruina s.r.o.', 'popis': 'Vsetín - nájem'}
+        row_splatka = {'zprava': 'Codaruina s.r.o. - Splátka úvěru', 'popis': 'ČSOB-Splátka úvěru auto'}
+        self.assertTrue(_matches_rule(rule, row_prevod))
+        self.assertFalse(_matches_rule(rule, row_najem))
+        self.assertFalse(_matches_rule(rule, row_splatka))
+
 
 class UpsertPravidloTests(TestCase):
     def setUp(self):
