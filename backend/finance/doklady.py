@@ -145,26 +145,90 @@ def _polozka_vs_candidates(polozka: NakladPolozka) -> set[str]:
     return vals
 
 
+def _norm_fa(value: str) -> str:
+    return re.sub(r'[\s\-_/]', '', (value or '').upper())
+
+
+def _norm_note(value: str) -> str:
+    return re.sub(r'\s+', ' ', (value or '').strip().lower())
+
+
+def _pokladna_matches_doklad(polozka: NakladPolozka, doklad: FinanceDoklad) -> bool:
+    from .symplio_vydej_parse import faktura_hint_from_polozka
+
+    fa = _norm_fa(doklad.cislo_faktury or '')
+    dod = _norm_note(doklad.dodavatel_nazev or '')
+    if not fa and not dod:
+        return False
+    hint = faktura_hint_from_polozka(polozka) or {}
+    hint_fa = _norm_fa(hint.get('cislo_faktury') or '')
+    hint_dod = _norm_note(hint.get('dodavatel_nazev') or '')
+    popis = polozka.popis or ''
+    popis_fa = _norm_fa(popis)
+    popis_note = _norm_note(popis)
+    sym = _norm_fa(polozka.symplio_doklad or '')
+
+    fa_ok = True
+    if fa:
+        fa_ok = (
+            (hint_fa and (fa == hint_fa or fa in hint_fa or hint_fa in fa))
+            or (fa and fa in popis_fa)
+            or (sym and fa == sym)
+        )
+    dod_ok = True
+    if dod:
+        dod_ok = dod in popis_note or (hint_dod and (dod in hint_dod or hint_dod in dod))
+    return bool(fa_ok and dod_ok)
+
+
+def _unmatched_odchozi_qs():
+    return NakladPolozka.objects.filter(
+        typ_platby=NakladPolozka.TYP_PLATBY_ODCHOZI,
+        doklad__isnull=True,
+        ignorovat=False,
+    )
+
+
+def _orphan_doklady_qs():
+    return FinanceDoklad.objects.filter(
+        naklad_polozka__isnull=True,
+        stav__in=(
+            FinanceDoklad.STAV_CEKA_NA_OCR,
+            FinanceDoklad.STAV_KE_KONTROLE,
+            FinanceDoklad.STAV_NOVA,
+        ),
+    )
+
+
 def try_auto_link_doklad(doklad: FinanceDoklad) -> bool:
     """
-    Spojí osiřelý doklad s odchozí položkou podle VS.
-    Zůstane ke_kontrole, nastaví prirazeno_automaticky.
+    Spojí osiřelý doklad s odchozí položkou.
+    Fio = VS, pokladna = číslo dokladu + poznámka výdeje.
     """
     if doklad.naklad_polozka_id:
         return False
+
+    pokladna_hits = [
+        p for p in _unmatched_odchozi_qs().filter(
+            zdroj=NakladPolozka.ZDROJ_SYMPLIO_POKLADNA,
+        ).order_by('-datum', '-id')[:200]
+        if _pokladna_matches_doklad(p, doklad)
+    ]
+    if len(pokladna_hits) == 1:
+        return _attach_doklad_to_polozka(doklad, pokladna_hits[0], automatic=True)
+    if len(pokladna_hits) > 1:
+        return False
+
     vs = (doklad.vs or '').strip()
     if not vs:
-        # fallback: číslo FA jako VS
         digits = re.sub(r'\D', '', doklad.cislo_faktury or '')
         if len(digits) >= 4:
             vs = digits
     if not vs or not re.fullmatch(r'\d{4,}', vs):
         return False
 
-    qs = NakladPolozka.objects.filter(
-        typ_platby=NakladPolozka.TYP_PLATBY_ODCHOZI,
-        doklad__isnull=True,
-        ignorovat=False,
+    qs = _unmatched_odchozi_qs().filter(
+        zdroj=NakladPolozka.ZDROJ_FIO,
     ).filter(
         models_Q_vs(vs),
     ).order_by('-datum', '-id')[:5]
@@ -177,24 +241,22 @@ def try_auto_link_doklad(doklad: FinanceDoklad) -> bool:
 
 
 def try_auto_link_polozka(polozka: NakladPolozka) -> bool:
-    """Po Fio importu: najdi osiřelou FA se stejným VS."""
+    """Po importu: najdi osiřelou FA (Fio VS / kasa číslo+poznámka)."""
     if polozka.doklad_id or polozka.typ_platby != NakladPolozka.TYP_PLATBY_ODCHOZI:
         return False
     if polozka.ignorovat:
         return False
+
+    orphans = list(_orphan_doklady_qs().order_by('-vytvoreno')[:80])
+    if polozka.zdroj == NakladPolozka.ZDROJ_SYMPLIO_POKLADNA:
+        hits = [d for d in orphans if _pokladna_matches_doklad(polozka, d)]
+        if len(hits) != 1:
+            return False
+        return _attach_doklad_to_polozka(hits[0], polozka, automatic=True)
+
     candidates = _polozka_vs_candidates(polozka)
     if not candidates:
         return False
-
-    orphans = FinanceDoklad.objects.filter(
-        naklad_polozka__isnull=True,
-        stav__in=(
-            FinanceDoklad.STAV_CEKA_NA_OCR,
-            FinanceDoklad.STAV_KE_KONTROLE,
-            FinanceDoklad.STAV_NOVA,
-        ),
-    ).exclude(vs='').order_by('-vytvoreno')[:50]
-
     hits = []
     for d in orphans:
         dvs = (d.vs or '').strip()

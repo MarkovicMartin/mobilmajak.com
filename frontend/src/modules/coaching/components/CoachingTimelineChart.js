@@ -37,12 +37,13 @@ const formatValue = (metric, v) => {
     return Number.isInteger(n) ? String(n) : n.toFixed(1);
 };
 
-const fetchTimeline = async (userId, metric, mesic, compare, kanal) => {
+const fetchTimeline = async (userId, metric, mesic, compare, kanal, perHour) => {
     const res = await coachingAPI.getSellerTimeline(userId, {
         ...METRIC_PARAMS(mesic),
         metrics: metric,
         compare: compare || undefined,
         kanal,
+        per_hour: perHour ? '1' : undefined,
     });
     return res.metrics?.[metric] || [];
 };
@@ -86,6 +87,7 @@ const CoachingTimelineChart = ({
     primaryLabel = 'Prodejce',
     peerUserId,
     peerLabel,
+    perHour = false,
 }) => {
     const [primaryPts, setPrimaryPts] = useState([]);
     const [peerPts, setPeerPts] = useState([]);
@@ -98,9 +100,9 @@ const CoachingTimelineChart = ({
             setLoading(true);
             try {
                 const [main, peer] = await Promise.all([
-                    fetchTimeline(userId, metric, mesic, compare, kanal),
+                    fetchTimeline(userId, metric, mesic, compare, kanal, perHour),
                     peerUserId
-                        ? fetchTimeline(peerUserId, metric, mesic, null, kanal)
+                        ? fetchTimeline(peerUserId, metric, mesic, null, kanal, perHour)
                         : Promise.resolve([]),
                 ]);
                 if (!cancelled) {
@@ -118,7 +120,7 @@ const CoachingTimelineChart = ({
         };
         load();
         return () => { cancelled = true; };
-    }, [userId, peerUserId, metric, mesic, compare, kanal]);
+    }, [userId, peerUserId, metric, mesic, compare, kanal, perHour]);
 
     const chart = useMemo(
         () => mergeChartRows(

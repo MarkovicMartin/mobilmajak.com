@@ -71,6 +71,16 @@ class WebUser(models.Model):
         max_digits=10, decimal_places=2, null=True, blank=True,
         verbose_name="Cestovné (body/měsíc)",
     )
+    pozice_od = models.DateField(
+        null=True, blank=True,
+        verbose_name="Aktuální pozice od",
+        help_text="Od tohoto data (včetně) platí aktuální role a odměna. Výplata měsíce podle 1. dne.",
+    )
+    pozice_predchozi = models.JSONField(
+        null=True, blank=True,
+        verbose_name="Předchozí pozice",
+        help_text="Snímek role a odměny před datem pozice_od.",
+    )
     dovolena_fond_extra_h = models.DecimalField(
         max_digits=6, decimal_places=2, null=True, blank=True,
         verbose_name="Dovolená – navýšení fondu (h)",
@@ -173,3 +183,27 @@ class ProfilovyObrazek(models.Model):
     
     def __str__(self):
         return f"Profilový obrázek: {self.uzivatel.jmeno} {self.uzivatel.prijmeni}"
+
+
+class AppActivityLog(models.Model):
+    """Throttled heartbeat aktivity uživatele v API (ne full access log)."""
+
+    user_id = models.IntegerField(db_index=True)
+    vytvoreno = SafeDateTimeField(auto_now_add=True, db_index=True)
+    ip = models.CharField(max_length=64, blank=True, default='')
+    module = models.CharField(max_length=32, blank=True, default='')
+    path = models.CharField(max_length=200, blank=True, default='')
+    method = models.CharField(max_length=8, blank=True, default='')
+    status_code = models.PositiveSmallIntegerField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'app_activity_log'
+        ordering = ['-vytvoreno']
+        verbose_name = 'App activity log'
+        verbose_name_plural = 'App activity logy'
+        indexes = [
+            models.Index(fields=['user_id', 'vytvoreno'], name='app_act_user_cas_idx'),
+        ]
+
+    def __str__(self):
+        return f'{self.user_id} {self.module} {self.vytvoreno}'

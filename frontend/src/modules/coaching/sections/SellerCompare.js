@@ -2,12 +2,15 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { coachingAPI } from '../../../services/api';
 import CoachingTimelineChart from '../components/CoachingTimelineChart';
+import CompareRateToggle from '../components/CompareRateToggle';
+import CompareMetricsTable from '../components/CompareMetricsTable';
 
 const METRICS = [
     { key: 'polozky_nad_100', label: 'Položky nad 100 Kč' },
     { key: 'sluzby_celkem', label: 'Služby' },
     { key: 'celkovy_obrat', label: 'Obrat' },
     { key: 'unikatni_doklady', label: 'Účtenky' },
+    { key: 'odpracovane_hodiny', label: 'Odpracované hodiny' },
 ];
 
 const COMPARE_OPTS = [
@@ -19,8 +22,6 @@ const COMPARE_OPTS = [
     { value: 'store_top', label: 'vs top prodejce' },
 ];
 
-const fmtNum = (v) => Number(v || 0).toLocaleString('cs-CZ');
-
 const sellerName = (u) => (u ? `${u.jmeno || ''} ${u.prijmeni || ''}`.trim() : '');
 
 const SellerCompare = ({ staffUsers = [], mesic }) => {
@@ -29,6 +30,7 @@ const SellerCompare = ({ staffUsers = [], mesic }) => {
     const [peerId, setPeerId] = useState('');
     const [metric, setMetric] = useState('polozky_nad_100');
     const [compare, setCompare] = useState('prev_year');
+    const [rateMode, setRateMode] = useState('total');
     const [compareData, setCompareData] = useState(null);
     const [loading, setLoading] = useState(false);
 
@@ -42,6 +44,7 @@ const SellerCompare = ({ staffUsers = [], mesic }) => {
     );
     const primaryName = sellerName(primary);
     const peerName = sellerName(peer);
+    const chartPerHour = rateMode === 'per_hour' && metric !== 'odpracovane_hodiny';
 
     useEffect(() => {
         if (!primaryId || !peerId || peerId === primaryId) {
@@ -126,6 +129,7 @@ const SellerCompare = ({ staffUsers = [], mesic }) => {
                         <select value={compare} onChange={(e) => setCompare(e.target.value)}>
                             {COMPARE_OPTS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                         </select>
+                        <CompareRateToggle value={rateMode} onChange={setRateMode} />
                     </div>
 
                     <CoachingTimelineChart
@@ -136,53 +140,20 @@ const SellerCompare = ({ staffUsers = [], mesic }) => {
                         metric={metric}
                         mesic={mesic}
                         compare={compare || undefined}
+                        perHour={chartPerHour}
                     />
 
                     {loading && peerId && <p className="coaching-muted">Načítám srovnání…</p>}
 
-                    {compareData?.metriky && (
-                        <table className="coaching-compare-table">
-                            <thead>
-                                <tr>
-                                    <th>Metrika ({mesic})</th>
-                                    <th>{primaryName}</th>
-                                    <th>{peerName}</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {compareData.metriky.map((row) => (
-                                    <tr key={row.metric}>
-                                        <td>{row.label}</td>
-                                        <td>{fmtNum(row.a)}</td>
-                                        <td>{fmtNum(row.b)}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    )}
-
-                    {compareData?.kategorie?.length > 0 && (
-                        <>
-                            <h4>Kategorie v měsíci</h4>
-                            <table className="coaching-compare-table">
-                                <thead>
-                                    <tr>
-                                        <th>Kategorie</th>
-                                        <th>{primaryName}</th>
-                                        <th>{peerName}</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {compareData.kategorie.map((row) => (
-                                        <tr key={row.kategorie_kod}>
-                                            <td>{row.nazev}</td>
-                                            <td>{fmtNum(row.a_kusy)} ks</td>
-                                            <td>{fmtNum(row.b_kusy)} ks</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </>
+                    {compareData && peerId && (
+                        <CompareMetricsTable
+                            metriky={compareData.metriky}
+                            kategorie={compareData.kategorie}
+                            nameA={primaryName}
+                            nameB={peerName}
+                            mesicLabel={mesic}
+                            rateMode={rateMode}
+                        />
                     )}
                 </>
             )}

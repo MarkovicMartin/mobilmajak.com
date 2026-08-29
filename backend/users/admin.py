@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.hashers import make_password
 from django import forms
-from .models import WebUser, ProfilovyObrazek
+from .models import AppActivityLog, WebUser, ProfilovyObrazek
 
 class WebUserAdminForm(forms.ModelForm):
     """Formulář pro správu uživatelů s možností změny hesla"""
@@ -76,3 +76,18 @@ class ProfilovyObrazekAdmin(admin.ModelAdmin):
         return "Žádný obrázek"
     obrazek_preview.short_description = "Náhled"
     obrazek_preview.allow_tags = True
+
+
+@admin.register(AppActivityLog)
+class AppActivityLogAdmin(admin.ModelAdmin):
+    list_display = ('id', 'user_id', 'module', 'method', 'path', 'status_code', 'ip', 'vytvoreno')
+    list_filter = ('module', 'method', 'vytvoreno')
+    search_fields = ('user_id', 'path', 'ip', 'module')
+    readonly_fields = ('user_id', 'vytvoreno', 'ip', 'module', 'path', 'method', 'status_code')
+    ordering = ('-vytvoreno',)
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False

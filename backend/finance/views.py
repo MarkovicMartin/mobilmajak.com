@@ -35,6 +35,7 @@ from .services import (
     get_finance_counts,
     get_last_fio_import_info,
     log_finance_audit,
+    navrh_pravidla_from_polozka,
     pravidlo_ma_klic,
     resolve_dph_stav,
     serialize_naklad_polozka,
@@ -81,6 +82,26 @@ def _serialize_kategorie(k: NakladKategorie) -> dict:
     }
 
 
+def _parse_parent_id(parent_id):
+    if parent_id in (None, ''):
+        return None, None
+    try:
+        parent_id = int(parent_id)
+    except (TypeError, ValueError):
+        return None, 'Neplatný parent_id'
+    if not NakladKategorie.objects.filter(pk=parent_id).exists():
+        return None, 'Nadřazená kategorie neexistuje'
+    return parent_id, None
+
+
+def _truthy(value, default=True) -> bool:
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() not in ('0', 'false', 'no', '')
+
+
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 @finance_admin_view
@@ -96,16 +117,9 @@ def naklad_kategorie_list(request):
                 status.HTTP_400_BAD_REQUEST,
             )
 
-        parent_id = data.get('parent_id')
-        if parent_id in (None, ''):
-            parent_id = None
-        else:
-            try:
-                parent_id = int(parent_id)
-            except (TypeError, ValueError):
-                return _no_store_response({'error': 'Neplatný parent_id'}, status.HTTP_400_BAD_REQUEST)
-            if not NakladKategorie.objects.filter(pk=parent_id).exists():
-                return _no_store_response({'error': 'Nadřazená kategorie neexistuje'}, status.HTTP_400_BAD_REQUEST)
+        parent_id, err = _parse_parent_id(data.get('parent_id'))
+        if err:
+            return _no_store_response({'error': err}, status.HTTP_400_BAD_REQUEST)
 
         typ_dph = (data.get('typ_dph') or NakladKategorie.TYP_DPH_Z_FAKTURY).strip()
         if typ_dph not in dict(NakladKategorie.TYP_DPH_CHOICES):
@@ -133,6 +147,69 @@ def naklad_kategorie_list(request):
     log_finance_audit(request, 'kategorie_list')
     rows = NakladKategorie.objects.filter(aktivni=True).order_by('poradi', 'nazev')
     return _no_store_response([_serialize_kategorie(k) for k in rows])
+
+
+@api_view(['PATCH', 'DELETE'])
+@permission_classes([IsAuthenticated])
+@finance_admin_view
+def naklad_kategorie_detail(request, kategorie_id):
+    try:
+        kat = NakladKategorie.objects.get(pk=kategorie_id)
+    except NakladKategorie.DoesNotExist:
+        return _no_store_response({'error': 'Kategorie nenalezena'}, status.HTTP_404_NOT_FOUND)
+
+    if request.method == 'DELETE':
+        polozky_n = NakladPolozka.objects.filter(kategorie_id=kat.id).count()
+        pravidla_n = FioKategorizacniPravidlo.objects.filter(kategorie_id=kat.id).count()
+        NakladPolozka.objects.filter(kategorie_id=kat.id).exclude(
+            ignorovat=True,
+        ).exclude(stav=NakladPolozka.STAV_IGNOROVAT).update(
+            kategorie_id=None,
+            stav=NakladPolozka.STAV_NEZARAZENO,
+        )
+        NakladPolozka.objects.filter(kategorie_id=kat.id).update(kategorie_id=None)
+        FioKategorizacniPravidlo.objects.filter(kategorie_id=kat.id).update(
+            kategorie_id=None, aktivni=False,
+        )
+        NakladKategorie.objects.filter(parent_id=kat.id).update(parent_id=None)
+        kat.delete()
+        log_finance_audit(request, 'kategorie_delete', f'id={kategorie_id}')
+        return _no_store_response({'ok': True, 'polozky': polozky_n, 'pravidla': pravidla_n})
+
+    data = request.data
+    if 'nazev' in data:
+        nazev = (data.get('nazev') or '').strip()
+        if not nazev:
+            return _no_store_response({'error': 'Chybí název'}, status.HTTP_400_BAD_REQUEST)
+        if NakladKategorie.objects.filter(nazev=nazev).exclude(pk=kat.id).exists():
+            return _no_store_response(
+                {'error': 'Kategorie s tímto názvem už existuje'},
+                status.HTTP_400_BAD_REQUEST,
+            )
+        kat.nazev = nazev[:120]
+    if 'parent_id' in data:
+        parent_id, err = _parse_parent_id(data.get('parent_id'))
+        if err:
+            return _no_store_response({'error': err}, status.HTTP_400_BAD_REQUEST)
+        if parent_id == kat.id:
+            return _no_store_response({'error': 'Kategorie nemůže být nadřazená sama sobě'}, status.HTTP_400_BAD_REQUEST)
+        kat.parent_id = parent_id
+    if 'typ_dph' in data:
+        typ_dph = (data.get('typ_dph') or '').strip()
+        if typ_dph not in dict(NakladKategorie.TYP_DPH_CHOICES):
+            return _no_store_response(
+                {'error': 'typ_dph musí být z_faktury nebo bez'},
+                status.HTTP_400_BAD_REQUEST,
+            )
+        kat.typ_dph = typ_dph
+    if 'poradi' in data:
+        try:
+            kat.poradi = int(data.get('poradi') or 0)
+        except (TypeError, ValueError):
+            return _no_store_response({'error': 'Neplatné pořadí'}, status.HTTP_400_BAD_REQUEST)
+    kat.save()
+    log_finance_audit(request, 'kategorie_update', f'id={kat.id}')
+    return _no_store_response(_serialize_kategorie(kat))
 
 
 @api_view(['GET'])
@@ -414,12 +491,10 @@ def naklad_manual_create(request):
         upravil_user_id=request.user.id,
         upraveno=timezone.now(),
     )
-    pravidlo_meta = {}
-    if kategorie_id:
-        pravidlo_meta = upsert_pravidlo_from_polozka(polozka, user_id=request.user.id)
     log_finance_audit(request, 'naklad_manual_create', f'id={polozka.id}')
     payload = serialize_naklad_polozka(polozka)
-    payload.update(pravidlo_meta)
+    if kategorie_id:
+        payload['pravidlo_navrh'] = navrh_pravidla_from_polozka(polozka)
     return _no_store_response(payload, status.HTTP_201_CREATED)
 
 
@@ -445,6 +520,12 @@ def naklad_update(request, polozka_id):
         polozka.ignorovat = bool(data['ignorovat'])
         if polozka.ignorovat:
             polozka.stav = NakladPolozka.STAV_IGNOROVAT
+            if not _truthy(data.get('zachovat_kategorii'), default=True):
+                polozka.kategorie_id = None
+        elif polozka.kategorie_id:
+            polozka.stav = NakladPolozka.STAV_RUCNE
+        else:
+            polozka.stav = NakladPolozka.STAV_NEZARAZENO
     if 'poznamka_admin' in data:
         polozka.poznamka_admin = (data.get('poznamka_admin') or '')[:2000]
     if 'dph_stav' in data:
@@ -467,18 +548,18 @@ def naklad_update(request, polozka_id):
         polozka.dph_stav = resolve_dph_stav(polozka.kategorie_id, polozka.typ_platby)
 
     kategorie_touched = 'kategorie_id' in data or bool(data.get('zaradit'))
+    ignorovat_on = bool(data.get('ignorovat')) if 'ignorovat' in data else False
 
     polozka.upravil_user_id = request.user.id
     polozka.upraveno = timezone.now()
     polozka.save()
 
-    pravidlo_meta = {}
-    if kategorie_touched and polozka.kategorie_id and not polozka.ignorovat:
-        pravidlo_meta = upsert_pravidlo_from_polozka(polozka, user_id=request.user.id)
-
     log_finance_audit(request, 'naklad_update', f'id={polozka.id}')
     payload = serialize_naklad_polozka(polozka)
-    payload.update(pravidlo_meta)
+    if (kategorie_touched and polozka.kategorie_id and not polozka.ignorovat) or ignorovat_on:
+        payload['pravidlo_navrh'] = navrh_pravidla_from_polozka(
+            polozka, ignorovat=polozka.ignorovat,
+        )
     return _no_store_response(payload)
 
 
@@ -510,6 +591,36 @@ def pravidla_list_create(request):
     )
     log_finance_audit(request, 'pravidlo_create', f'id={rule.id}')
     return _no_store_response(serialize_pravidlo(rule), status.HTTP_201_CREATED)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@finance_admin_view
+def pravidlo_from_polozka(request):
+    """Upsert pravidla z položky po potvrzení v UI."""
+    data = request.data or {}
+    try:
+        polozka_id = int(data.get('polozka_id'))
+    except (TypeError, ValueError):
+        return _no_store_response({'error': 'Chybí polozka_id'}, status.HTTP_400_BAD_REQUEST)
+    try:
+        polozka = NakladPolozka.objects.get(pk=polozka_id)
+    except NakladPolozka.DoesNotExist:
+        return _no_store_response({'error': 'Položka nenalezena'}, status.HTTP_404_NOT_FOUND)
+
+    meta = upsert_pravidlo_from_polozka(
+        polozka, user_id=request.user.id, overrides=data,
+    )
+    if not meta.get('pravidlo_id'):
+        return _no_store_response(
+            {'error': 'Pravidlo nemá protiúčet ani text zprávy'},
+            status.HTTP_400_BAD_REQUEST,
+        )
+    log_finance_audit(request, 'pravidlo_from_polozka', f'id={meta["pravidlo_id"]} polozka={polozka_id}')
+    rule = FioKategorizacniPravidlo.objects.select_related('kategorie').get(pk=meta['pravidlo_id'])
+    payload = serialize_pravidlo(rule)
+    payload.update(meta)
+    return _no_store_response(payload)
 
 
 @api_view(['PATCH', 'DELETE'])
@@ -804,7 +915,8 @@ def doklad_update(request, doklad_id: int):
     text_fields = ('dodavatel_nazev', 'cislo_faktury', 'dodavatel_ico', 'vs')
     for field in text_fields:
         if field in data:
-            setattr(doklad, field, str(data[field] or '')[:200])
+            maxlen = FinanceDoklad._meta.get_field(field).max_length or 200
+            setattr(doklad, field, str(data[field] or '')[:maxlen])
 
     from decimal import Decimal, InvalidOperation
     for field in ('castka_bez_dph', 'dph_castka', 'castka_celkem'):

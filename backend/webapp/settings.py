@@ -86,6 +86,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'users.middleware.ApiCsrfMiddleware',  # Vlastní CSRF middleware pro API
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'users.middleware.ActivityHeartbeatMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -245,6 +246,10 @@ SESSION_COOKIE_AGE = 86400  # 24 hodin
 # Sliding přes SlidingSessionTouchMiddleware (ne při každém requestu)
 SESSION_SAVE_EVERY_REQUEST = False
 SESSION_TOUCH_INTERVAL = 900
+
+# Globální activity heartbeat (throttled, ne full access log)
+ACTIVITY_HEARTBEAT_ENABLED = True
+ACTIVITY_HEARTBEAT_INTERVAL = 600  # sekund; nebo dřív při změně modulu
 
 # CSRF settings
 CSRF_COOKIE_SECURE = False  # Pro development

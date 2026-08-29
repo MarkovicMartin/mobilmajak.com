@@ -123,3 +123,71 @@ class BrigadnikPayrollTests(TestCase):
         )
         self.assertEqual(row['zaklad_body'], 1600.0)  # 16 × 100
         self.assertEqual(row['svatek_h'], 8)
+
+
+class PoziceZmenaPayrollTests(TestCase):
+    """Brigádník do 31.8., zaměstnanec od 1.9. – výplata podle měsíce."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.prodejna = Prodejna.objects.create(
+            id=9102, nazev='Test2', nazev_kratkiy='TS2', aktivni=True,
+        )
+        cls.user = WebUser.objects.create(
+            id=9102,
+            uzivatelske_jmeno='pozice_pay',
+            jmeno='Eva',
+            prijmeni='Pay',
+            heslo='x',
+            role='PRODEJCE',
+            aktivni=True,
+            prodejna_id=cls.prodejna.id,
+            mzda_zaklad=Decimal('14000'),
+            mzda_doplnky=[],
+            pozice_od=date(2026, 9, 1),
+            pozice_predchozi={
+                'role': 'BRIGADNIK',
+                'mzda_zaklad': 100,
+                'mzda_doplnky': [],
+                'mzda_cestovne': None,
+            },
+        )
+
+    def _shift(self, datum, hours=8):
+        return Smena.objects.create(
+            user=self.user,
+            prodejna=self.prodejna,
+            datum=datum,
+            cas_od=time(8, 0),
+            cas_do=time(8 + hours, 0),
+            typ_smeny='prace',
+            brigadnik_rezim='prodejce',
+        )
+
+    def test_srpen_as_brigadnik_hourly(self):
+        self._shift(date(2026, 8, 4))
+        hours_map = aggregate_hours_by_user(2026, 8)
+        uid = self.user.id
+        self.assertEqual(hours_map[uid]['prodejce_h'], 8)
+        row = build_payroll_row(
+            self.user, 2026, 8, hours_map, date(2026, 8, 1), {}, 160,
+            {uid: {'polozky_nad_100': 2}}, {uid: (0, None)}, {},
+        )
+        self.assertTrue(row['is_brigadnik'])
+        self.assertEqual(row['zaklad_body'], 800.0)
+        self.assertEqual(row['body_za_hodinu'], 100.0)
+
+    def test_zari_as_prodejce_monthly(self):
+        self._shift(date(2026, 9, 2))
+        hours_map = aggregate_hours_by_user(2026, 9)
+        uid = self.user.id
+        self.assertEqual(hours_map[uid]['prodejce_h'], 0)
+        row = build_payroll_row(
+            self.user, 2026, 9, hours_map, date(2026, 9, 1), {}, 160,
+            {uid: {'polozky_nad_100': 2}}, {uid: (0, None)}, {},
+            prumer_cache={},
+        )
+        self.assertFalse(row['is_brigadnik'])
+        self.assertEqual(row['zaklad_body'], 14000.0)
+        self.assertIsNone(row['body_za_hodinu'])
+

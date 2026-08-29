@@ -6,6 +6,7 @@ import {
     formatFiltersPeriodLabel,
 } from './celkovaPeriodUtils';
 import { movementLabel } from '../../finance/financeUtils';
+import FinancePravidloDialog from '../../finance/FinancePravidloDialog';
 import './Naklady.css';
 
 const formatCurrency = (value) => {
@@ -36,6 +37,7 @@ const Naklady = () => {
     const [expanded, setExpanded] = useState({});
     const [draftKat, setDraftKat] = useState({});
     const [savingId, setSavingId] = useState(null);
+    const [pravidloDialog, setPravidloDialog] = useState(null);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -100,11 +102,12 @@ const Naklady = () => {
                 kategorie_id: Number(nextId),
                 zaradit: true,
             });
-            if (res?.pravidlo_created || res?.pravidlo_updated) {
-                setToast('Pravidlo uloženo pro další podobné náklady');
-            } else {
-                setToast('Kategorie uložena.');
-            }
+            setToast('Kategorie uložena.');
+            setPravidloDialog({
+                mode: 'zaradit',
+                polozka: { ...polozka, kategorie_id: Number(nextId) },
+                navrh: res?.pravidlo_navrh,
+            });
             await load();
         } catch (err) {
             setToast(err.response?.data?.error || 'Uložení selhalo');
@@ -261,6 +264,18 @@ const Naklady = () => {
                                                                         >
                                                                             Uložit
                                                                         </button>
+                                                                        <button
+                                                                            type="button"
+                                                                            disabled={savingId === p.id}
+                                                                            onClick={() => setPravidloDialog({
+                                                                                mode: 'ignorovat',
+                                                                                polozka: p,
+                                                                                keepKatDefault: Boolean(current),
+                                                                                kategorieId: current || p.kategorie_id,
+                                                                            })}
+                                                                        >
+                                                                            Ignorovat
+                                                                        </button>
                                                                     </div>
                                                                 </div>
                                                             </td>
@@ -282,6 +297,31 @@ const Naklady = () => {
                     </>
                 )}
             </div>
+            <FinancePravidloDialog
+                open={Boolean(pravidloDialog)}
+                mode={pravidloDialog?.mode || 'zaradit'}
+                polozka={pravidloDialog?.polozka}
+                navrhPayload={pravidloDialog?.navrh}
+                kategorie={kategorieList}
+                keepKatDefault={pravidloDialog?.keepKatDefault !== false}
+                onSkip={() => {
+                    setPravidloDialog(null);
+                    load();
+                }}
+                onConfirmIgnore={async ({ keepKat }) => {
+                    const p = pravidloDialog?.polozka;
+                    const kid = pravidloDialog?.kategorieId;
+                    const payload = {
+                        ignorovat: true,
+                        zachovat_kategorii: keepKat,
+                    };
+                    if (keepKat && kid) payload.kategorie_id = Number(kid);
+                    const res = await financeAPI.updateNaklad(p.id, payload);
+                    setToast(`Položka #${p.id} ignorována.`);
+                    await load();
+                    return res;
+                }}
+            />
         </AnalyticsSectionWrapper>
     );
 };

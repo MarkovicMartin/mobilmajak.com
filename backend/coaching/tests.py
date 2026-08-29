@@ -1,11 +1,17 @@
 from django.test import TestCase
 from rest_framework.test import APIClient
 
+from unittest.mock import patch
+
+from django.test import TestCase
+from rest_framework.test import APIClient
+
 from coaching.aggregate import (
     COACHING_KATEGORIE_KODY,
     _build_kategorie_rows,
     _compute_benchmark,
     _compute_signaly,
+    compare_sellers,
 )
 from coaching.models import CoachingGoal, CoachingNote
 from stores.models import Prodejna
@@ -156,3 +162,56 @@ class CoachingApiTests(TestCase):
         )
         self.assertEqual(res.status_code, 201)
         self.assertEqual(CoachingGoal.objects.filter(prodejce_id=self.prodejce.id).count(), 1)
+
+
+class CoachingCompareHoursTests(TestCase):
+    def setUp(self):
+        self.store = Prodejna.objects.create(
+            id=301, nazev='Cmp', nazev_kratkiy='C', aktivni=True,
+        )
+        self.a = _make_user(9201, 'PRODEJCE', prodejna_id=self.store.id)
+        self.b = _make_user(9202, 'PRODEJCE', prodejna_id=self.store.id)
+
+    @patch('coaching.aggregate._batch_plan_map', return_value={})
+    @patch('coaching.aggregate._batch_plneni_map_months', return_value={})
+    @patch('coaching.aggregate.aggregate_polozky_by_salesperson')
+    def test_compare_includes_hours_and_per_hour(self, mock_sales, _skut, _plan):
+        mock_sales.return_value = [
+            {
+                'id_prodejce': self.a.id,
+                'polozky_nad_100': 16,
+                'sluzby_celkem': 8,
+                'celkovy_obrat': 8000,
+                'unikatni_doklady': 4,
+                'odpracovane_hodiny': 8.0,
+                'polozky_nad_100_za_hodinu': 2.0,
+                'sluzby_celkem_za_hodinu': 1.0,
+                'celkovy_obrat_za_hodinu': 1000.0,
+                'unikatni_doklady_za_hodinu': 0.5,
+            },
+            {
+                'id_prodejce': self.b.id,
+                'polozky_nad_100': 10,
+                'sluzby_celkem': 5,
+                'celkovy_obrat': 4000,
+                'unikatni_doklady': 2,
+                'odpracovane_hodiny': 5.0,
+                'polozky_nad_100_za_hodinu': 2.0,
+                'sluzby_celkem_za_hodinu': 1.0,
+                'celkovy_obrat_za_hodinu': 800.0,
+                'unikatni_doklady_za_hodinu': 0.4,
+            },
+        ]
+        data = compare_sellers(self.a.id, self.b.id, 2026, 5)
+        hours_row = next(r for r in data['metriky'] if r['metric'] == 'odpracovane_hodiny')
+        self.assertTrue(hours_row['is_hours'])
+        self.assertEqual(hours_row['a'], 8.0)
+        self.assertEqual(hours_row['b'], 5.0)
+        pol = next(r for r in data['metriky'] if r['metric'] == 'polozky_nad_100')
+        self.assertEqual(pol['a'], 16)
+        self.assertEqual(pol['a_za_hodinu'], 2.0)
+        self.assertEqual(data['hodiny_a'], 8.0)
+        # include_hours must be requested from aggregate
+        self.assertTrue(mock_sales.call_args.kwargs.get('limit') == 2 or mock_sales.call_args[1].get('limit') == 2)
+        params = mock_sales.call_args.args[0]
+        self.assertTrue(params.include_hours)

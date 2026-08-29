@@ -12,6 +12,8 @@ from decimal import Decimal, InvalidOperation
 from io import BytesIO
 from pathlib import Path
 
+from .ocr_deps import configure_pytesseract, which_ocr_bin
+
 logger = logging.getLogger(__name__)
 
 _AMOUNT_RE = re.compile(
@@ -155,7 +157,7 @@ def _extract_image(path: Path) -> tuple[FakturaExtracted, str, dict]:
         )
         return result, '', {'method': 'image_ocr_unavailable'}
 
-    if not shutil.which('tesseract'):
+    if not configure_pytesseract():
         result = FakturaExtracted(
             zdroj='image_ocr',
             chyby=['Na serveru chybí tesseract – spusťte scripts/install-finance-ocr.sh'],
@@ -201,19 +203,20 @@ def _try_pdf_page_ocr(path: Path) -> tuple[str, dict]:
     except ImportError:
         return '', {'ocr': 'pytesseract_unavailable'}
 
-    if not shutil.which('tesseract'):
+    if not configure_pytesseract():
         return '', {'ocr': 'tesseract_unavailable'}
 
     images: list = []
     meta: dict = {}
 
-    if shutil.which('pdftoppm'):
+    pdftoppm = which_ocr_bin('pdftoppm')
+    if pdftoppm:
         try:
             with tempfile.TemporaryDirectory() as tmp:
                 prefix = Path(tmp) / 'page'
                 subprocess.run(
                     [
-                        'pdftoppm', '-png', '-r', '300',
+                        pdftoppm, '-png', '-r', '300',
                         '-f', '1', '-l', '2',
                         str(path), str(prefix),
                     ],

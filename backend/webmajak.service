@@ -7,12 +7,12 @@ Type=simple
 User=webmajak
 Group=webmajak
 WorkingDirectory=/home/webmajak/webapp
-Environment="PATH=/home/webmajak/webapp/venv/bin"
+Environment="PATH=/home/webmajak/webapp/venv/bin:/usr/local/bin:/usr/bin:/bin"
 Environment="DJANGO_SETTINGS_MODULE=webapp.settings_production"
 # 2 CPU / ~4 GB RAM: 5 sync workers; recycle against memory creep
 ExecStart=/home/webmajak/webapp/venv/bin/gunicorn \
   --workers 5 \
-  --timeout 30 \
+  --timeout 90 \
   --max-requests 500 \
   --max-requests-jitter 50 \
   --bind 127.0.0.1:8000 \

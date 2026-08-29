@@ -313,7 +313,15 @@ def build_polozky_queryset(params: PolozkyParams):
     return qs
 
 
-def _shift_hours_for_range(user_ids: Iterable[int], sd: date, ed: date, prodejna_id=None) -> dict[int, float]:
+def _smena_hours(smena) -> float:
+    cas_od_dt = datetime.combine(smena.datum, smena.cas_od)
+    cas_do_dt = datetime.combine(smena.datum, smena.cas_do)
+    if cas_do_dt < cas_od_dt:
+        cas_do_dt += timedelta(days=1)
+    return round((cas_do_dt - cas_od_dt).total_seconds() / 3600, 2)
+
+
+def _shift_hours_qs(user_ids: Iterable[int], sd: date, ed: date, prodejna_id=None):
     smeny = Smena.objects.filter(
         user_id__in=user_ids,
         datum__gte=sd,
@@ -326,15 +334,30 @@ def _shift_hours_for_range(user_ids: Iterable[int], sd: date, ed: date, prodejna
             smeny = smeny.filter(prodejna_id=int(prodejna_id))
         except (TypeError, ValueError):
             pass
+    return smeny
+
+
+def _shift_hours_for_range(user_ids: Iterable[int], sd: date, ed: date, prodejna_id=None) -> dict[int, float]:
     hours = {}
-    for smena in smeny:
-        cas_od_dt = datetime.combine(smena.datum, smena.cas_od)
-        cas_do_dt = datetime.combine(smena.datum, smena.cas_do)
-        if cas_do_dt < cas_od_dt:
-            cas_do_dt += timedelta(days=1)
-        h = round((cas_do_dt - cas_od_dt).total_seconds() / 3600, 2)
-        hours[smena.user_id] = hours.get(smena.user_id, 0) + h
+    for smena in _shift_hours_qs(user_ids, sd, ed, prodejna_id):
+        hours[smena.user_id] = hours.get(smena.user_id, 0) + _smena_hours(smena)
     return {k: round(v, 2) for k, v in hours.items()}
+
+
+def _shift_hours_by_month(user_id: int, sd: date, ed: date, prodejna_id=None) -> dict[str, float]:
+    hours = {}
+    for smena in _shift_hours_qs([user_id], sd, ed, prodejna_id):
+        ym = smena.datum.strftime('%Y-%m')
+        hours[ym] = hours.get(ym, 0) + _smena_hours(smena)
+    return {k: round(v, 2) for k, v in hours.items()}
+
+
+PER_HOUR_METRIC_KEYS = (
+    'polozky_nad_100',
+    'sluzby_celkem',
+    'celkovy_obrat',
+    'unikatni_doklady',
+)
 
 
 def _wanted_metrics(params: PolozkyParams) -> set[str]:
@@ -492,11 +515,11 @@ def aggregate_polozky_by_salesperson(
             hod = hours_map.get(prodejce_id)
             row['odpracovane_hodiny'] = hod if hod else None
             if hod and hod > 0:
-                for key in ('polozky_nad_100', 'celkovy_obrat', 'unikatni_doklady'):
+                for key in PER_HOUR_METRIC_KEYS:
                     if key in row and row[key] is not None:
                         row[f'{key}_za_hodinu'] = round(float(row[key]) / hod, 2)
             else:
-                for key in ('polozky_nad_100', 'celkovy_obrat', 'unikatni_doklady'):
+                for key in PER_HOUR_METRIC_KEYS:
                     row[f'{key}_za_hodinu'] = None
 
         if params.metrics:
@@ -567,6 +590,16 @@ def _timeline_month_value(month_qs, metric: str):
     return month_qs.filter(kod__iexact=metric).count() if metric else 0
 
 
+def _timeline_value_with_hours(raw_value, hours: float | None, *, per_hour: bool, metric: str):
+    if metric == 'odpracovane_hodiny':
+        return hours if hours else 0
+    if not per_hour:
+        return raw_value
+    if hours and hours > 0 and raw_value is not None:
+        return round(float(raw_value) / hours, 2)
+    return None
+
+
 def aggregate_polozky_timeline(
     user_id: int,
     metric: str,
@@ -578,6 +611,7 @@ def aggregate_polozky_timeline(
     prodejna_id: Optional[str] = None,
     segment: str = 'vse',
     compare_period: Optional[str] = None,
+    per_hour: bool = False,
 ) -> list[dict]:
     """Měsíční body pro jednoho prodejce; volitelně compare_value pro srovnávací období."""
     if rok:
@@ -622,12 +656,21 @@ def aggregate_polozky_timeline(
         else:
             m += 1
 
+    need_hours = per_hour or metric == 'odpracovane_hodiny'
+    hours_by_month = (
+        _shift_hours_by_month(user_id, query_start, query_end, prodejna_id)
+        if need_hours else {}
+    )
+
     points = []
     for ym in months:
         month_qs = qs.filter(typ__startswith=ym)
+        raw = 0 if metric == 'odpracovane_hodiny' else _timeline_month_value(month_qs, metric)
         points.append({
             'month': ym,
-            'value': _timeline_month_value(month_qs, metric),
+            'value': _timeline_value_with_hours(
+                raw, hours_by_month.get(ym), per_hour=per_hour, metric=metric,
+            ),
         })
 
     if compare_period in _COMPARE_MONTH_SHIFT:
@@ -636,9 +679,12 @@ def aggregate_polozky_timeline(
         for p in points:
             cm = shift_month_ym(p['month'], -shift)
             if cm not in compare_cache:
-                compare_cache[cm] = _timeline_month_value(
-                    qs.filter(typ__startswith=cm),
-                    metric,
+                raw = (
+                    0 if metric == 'odpracovane_hodiny'
+                    else _timeline_month_value(qs.filter(typ__startswith=cm), metric)
+                )
+                compare_cache[cm] = _timeline_value_with_hours(
+                    raw, hours_by_month.get(cm), per_hour=per_hour, metric=metric,
                 )
             p['compare_month'] = cm
             p['compare_value'] = compare_cache[cm]

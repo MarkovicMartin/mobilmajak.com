@@ -7,6 +7,7 @@ import FinancePrehledPanel from './FinancePrehledPanel';
 import FinanceKontrolaPanel from './FinanceKontrolaPanel';
 import FinanceDokladUpload from './FinanceDokladUpload';
 import FinanceZdrojFilter from './FinanceZdrojFilter';
+import FinancePravidloDialog from './FinancePravidloDialog';
 import { kategorieProZarazeni, movementLabel, parseStoreChoices, storeLabel, zdrojMeta } from './financeUtils';
 
 const formatCurrency = (value) => {
@@ -59,6 +60,8 @@ const FinanceModule = () => {
     });
     const [pravidloPreview, setPravidloPreview] = useState(null);
     const [previewLoading, setPreviewLoading] = useState(false);
+    const [pravidloDialog, setPravidloDialog] = useState(null);
+    const [katEditId, setKatEditId] = useState(null);
 
     const [katForm, setKatForm] = useState({
         nazev: '',
@@ -98,13 +101,20 @@ const FinanceModule = () => {
         e.preventDefault();
         setMessage('');
         try {
-            await financeAPI.createManualNaklad({
+            const res = await financeAPI.createManualNaklad({
                 ...manualForm,
                 castka: manualForm.castka.replace(',', '.'),
                 kategorie_id: manualForm.kategorie_id || null,
                 prodejna_id: manualForm.prodejna_id || null,
             });
             setMessage('Ruční náklad uložen.');
+            if (res?.pravidlo_navrh) {
+                setPravidloDialog({
+                    mode: 'zaradit',
+                    polozka: res,
+                    navrh: res.pravidlo_navrh,
+                });
+            }
             setManualForm((f) => ({ ...f, castka: '', popis: '', poznamka_admin: '' }));
             loadAll();
         } catch (err) {
@@ -129,32 +139,77 @@ const FinanceModule = () => {
                 zaradit: true,
                 poznamka_admin: document.getElementById(`note-${polozka.id}`)?.value || '',
             });
-            let msg = `Položka #${polozka.id} zařazena.`;
-            if (res?.pravidlo_created || res?.pravidlo_updated) {
-                msg += ' Pravidlo uloženo pro další podobné náklady.';
-            }
-            setMessage(msg);
+            setMessage(`Položka #${polozka.id} zařazena.`);
+            setPravidloDialog({
+                mode: 'zaradit',
+                polozka: { ...polozka, kategorie_id: Number(kategorieId) },
+                navrh: res?.pravidlo_navrh,
+            });
             loadAll();
         } catch (err) {
             setMessage(err.response?.data?.error || 'Zařazení selhalo');
         }
     };
 
+    const handleIgnore = (polozka) => {
+        const kategorieId = document.getElementById(`kat-${polozka.id}`)?.value;
+        setPravidloDialog({
+            mode: 'ignorovat',
+            polozka,
+            keepKatDefault: Boolean(kategorieId || polozka.kategorie_id),
+            kategorieId: kategorieId || polozka.kategorie_id || null,
+        });
+    };
+
     const handleKategorieSubmit = async (e) => {
         e.preventDefault();
         setMessage('');
         try {
-            await financeAPI.createKategorie({
+            const payload = {
                 nazev: katForm.nazev.trim(),
                 parent_id: katForm.parent_id || null,
                 typ_dph: katForm.typ_dph,
                 poradi: Number(katForm.poradi) || 0,
-            });
-            setMessage('Kategorie vytvořena.');
+            };
+            if (katEditId) {
+                await financeAPI.updateKategorie(katEditId, payload);
+                setMessage('Kategorie upravena.');
+            } else {
+                await financeAPI.createKategorie(payload);
+                setMessage('Kategorie vytvořena.');
+            }
             setKatForm({ nazev: '', parent_id: '', typ_dph: 'z_faktury', poradi: '0' });
+            setKatEditId(null);
             loadAll();
         } catch (err) {
-            setMessage(err.response?.data?.error || 'Vytvoření kategorie selhalo');
+            setMessage(err.response?.data?.error || (katEditId ? 'Úprava kategorie selhala' : 'Vytvoření kategorie selhalo'));
+        }
+    };
+
+    const handleEditKategorie = (k) => {
+        setKatEditId(k.id);
+        setKatForm({
+            nazev: k.nazev || '',
+            parent_id: k.parent_id ? String(k.parent_id) : '',
+            typ_dph: k.typ_dph || 'z_faktury',
+            poradi: String(k.poradi ?? 0),
+        });
+        setTab('kategorie');
+    };
+
+    const handleDeleteKategorie = async (k) => {
+        if (!window.confirm(`Smazat kategorii „${k.nazev}“? Platby a pravidla se odvážou.`)) return;
+        setMessage('');
+        try {
+            const res = await financeAPI.deleteKategorie(k.id);
+            setMessage(`Kategorie smazána (plateb ${res?.polozky ?? 0}, pravidel ${res?.pravidla ?? 0}).`);
+            if (katEditId === k.id) {
+                setKatEditId(null);
+                setKatForm({ nazev: '', parent_id: '', typ_dph: 'z_faktury', poradi: '0' });
+            }
+            loadAll();
+        } catch (err) {
+            setMessage(err.response?.data?.error || 'Smazání kategorie selhalo');
         }
     };
 
@@ -377,6 +432,33 @@ const FinanceModule = () => {
             {error && <p className="finance-error">{error}</p>}
             {message && <p className="finance-message">{message}</p>}
 
+            <FinancePravidloDialog
+                open={Boolean(pravidloDialog)}
+                mode={pravidloDialog?.mode || 'zaradit'}
+                polozka={pravidloDialog?.polozka}
+                navrhPayload={pravidloDialog?.navrh}
+                kategorie={kategorieVyber}
+                stores={stores}
+                keepKatDefault={pravidloDialog?.keepKatDefault !== false}
+                onSkip={() => {
+                    setPravidloDialog(null);
+                    loadAll();
+                }}
+                onConfirmIgnore={async ({ keepKat }) => {
+                    const p = pravidloDialog?.polozka;
+                    const kid = pravidloDialog?.kategorieId;
+                    const payload = {
+                        ignorovat: true,
+                        zachovat_kategorii: keepKat,
+                    };
+                    if (keepKat && kid) payload.kategorie_id = Number(kid);
+                    const res = await financeAPI.updateNaklad(p.id, payload);
+                    setMessage(`Položka #${p.id} ignorována.`);
+                    loadAll();
+                    return res;
+                }}
+            />
+
             {!loading && tab === 'k-zarazeni' && (
                 <section className="finance-panel">
                     <p className="finance-panel__intro">
@@ -483,15 +565,20 @@ const FinanceModule = () => {
                                                 />
                                             </td>
                                             <td>
-                                                <input
-                                                    id={`note-${p.id}`}
-                                                    type="text"
-                                                    placeholder="Poznámka"
-                                                    className="finance-note-input"
-                                                />
-                                                <button type="button" onClick={() => handleCategorize(p)}>
-                                                    Zařadit
-                                                </button>
+                                                <div className="finance-row-actions">
+                                                    <input
+                                                        id={`note-${p.id}`}
+                                                        type="text"
+                                                        placeholder="Poznámka"
+                                                        className="finance-note-input"
+                                                    />
+                                                    <button type="button" onClick={() => handleCategorize(p)}>
+                                                        Zařadit
+                                                    </button>
+                                                    <button type="button" className="finance-btn-secondary" onClick={() => handleIgnore(p)}>
+                                                        Ignorovat
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                         );
@@ -506,6 +593,7 @@ const FinanceModule = () => {
             {tab === 'prehled' && (
                 <FinancePrehledPanel
                     kategorie={kategorieVyber}
+                    stores={stores}
                     onMessage={setMessage}
                 />
             )}
@@ -578,7 +666,7 @@ const FinanceModule = () => {
             {!loading && tab === 'kategorie' && (
                 <section className="finance-panel">
                     <p className="finance-panel__intro">
-                        Nová kategorie nákladů – po uložení se objeví ve všech výběrech.
+                        {katEditId ? 'Úprava kategorie.' : 'Nová kategorie nákladů – po uložení se objeví ve všech výběrech.'}
                     </p>
                     <form className="finance-form" onSubmit={handleKategorieSubmit}>
                         <label>
@@ -620,7 +708,21 @@ const FinanceModule = () => {
                                 onChange={(e) => setKatForm((f) => ({ ...f, poradi: e.target.value }))}
                             />
                         </label>
-                        <button type="submit" className="finance-btn-primary">Vytvořit kategorii</button>
+                        <button type="submit" className="finance-btn-primary">
+                            {katEditId ? 'Uložit kategorii' : 'Vytvořit kategorii'}
+                        </button>
+                        {katEditId && (
+                            <button
+                                type="button"
+                                className="finance-btn-secondary"
+                                onClick={() => {
+                                    setKatEditId(null);
+                                    setKatForm({ nazev: '', parent_id: '', typ_dph: 'z_faktury', poradi: '0' });
+                                }}
+                            >
+                                Zrušit úpravu
+                            </button>
+                        )}
                     </form>
                     <div className="finance-table-wrap finance-table-wrap--top">
                         <table className="finance-table">
@@ -630,6 +732,7 @@ const FinanceModule = () => {
                                     <th>Parent</th>
                                     <th>DPH</th>
                                     <th>Pořadí</th>
+                                    <th></th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -643,6 +746,16 @@ const FinanceModule = () => {
                                         </td>
                                         <td>{k.typ_dph === 'bez' ? 'bez DPH' : 'z faktury'}</td>
                                         <td>{k.poradi}</td>
+                                        <td>
+                                            <div className="finance-row-actions">
+                                                <button type="button" className="finance-btn-secondary" onClick={() => handleEditKategorie(k)}>
+                                                    Upravit
+                                                </button>
+                                                <button type="button" onClick={() => handleDeleteKategorie(k)}>
+                                                    Smazat
+                                                </button>
+                                            </div>
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>

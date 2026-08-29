@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { financeAPI } from '../../services/api';
 import FinanceZdrojFilter from './FinanceZdrojFilter';
+import FinancePravidloDialog from './FinancePravidloDialog';
 import { movementLabel, zdrojMeta } from './financeUtils';
 
 const formatCurrency = (value) => {
@@ -31,7 +32,7 @@ const stavBadge = (p) => {
     return { cls: '', text: p.stav };
 };
 
-const FinancePrehledPanel = ({ kategorie = [], onMessage }) => {
+const FinancePrehledPanel = ({ kategorie = [], stores = [], onMessage }) => {
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -39,6 +40,7 @@ const FinancePrehledPanel = ({ kategorie = [], onMessage }) => {
     const [filterZdroj, setFilterZdroj] = useState('');
     const [draftKat, setDraftKat] = useState({});
     const [savingId, setSavingId] = useState(null);
+    const [pravidloDialog, setPravidloDialog] = useState(null);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -86,14 +88,28 @@ const FinancePrehledPanel = ({ kategorie = [], onMessage }) => {
                 kategorie_id: Number(nextId),
                 zaradit: true,
             });
-            let msg = `Kategorie u #${polozka.id} uložena.`;
-            if (res?.pravidlo_created || res?.pravidlo_updated) {
-                msg += ' Pravidlo uloženo pro další podobné náklady.';
-            }
-            onMessage?.(msg);
+            onMessage?.(`Kategorie u #${polozka.id} uložena.`);
+            setPravidloDialog({
+                mode: 'zaradit',
+                polozka: { ...polozka, kategorie_id: Number(nextId) },
+                navrh: res?.pravidlo_navrh,
+            });
             await load();
         } catch (err) {
             onMessage?.(err.response?.data?.error || 'Uložení kategorie selhalo');
+        } finally {
+            setSavingId(null);
+        }
+    };
+
+    const handleUnignore = async (polozka) => {
+        setSavingId(polozka.id);
+        try {
+            await financeAPI.updateNaklad(polozka.id, { ignorovat: false });
+            onMessage?.(`Ignorování u #${polozka.id} zrušeno.`);
+            await load();
+        } catch (err) {
+            onMessage?.(err.response?.data?.error || 'Změna selhala');
         } finally {
             setSavingId(null);
         }
@@ -104,7 +120,7 @@ const FinancePrehledPanel = ({ kategorie = [], onMessage }) => {
             <p className="finance-panel__intro">
                 Přehled zařazení: <strong>Auto ✓</strong> = pravidlo + kategorie,
                 <strong> chybí</strong> = bez kategorie, <strong>ignorovat</strong> = převody / vklad na účet.
-                Kategorii lze změnit i zpětně – uložením se aktualizuje i auto-pravidlo.
+                Kategorii lze změnit i zpětně. Ignorovaná platba se do nákladů nepočítá.
             </p>
             <div className="finance-filters" role="group" aria-label="Filtr stavu">
                 {STAV_FILTERS.map((f) => (
@@ -147,6 +163,7 @@ const FinancePrehledPanel = ({ kategorie = [], onMessage }) => {
                                 <th>Kategorie</th>
                                 <th>Prodejna</th>
                                 <th>Popis</th>
+                                <th></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -158,6 +175,7 @@ const FinancePrehledPanel = ({ kategorie = [], onMessage }) => {
                                     : (p.kategorie_id ? String(p.kategorie_id) : '');
                                 const dirty = draftKat[p.id] !== undefined
                                     && String(draftKat[p.id]) !== String(p.kategorie_id || '');
+                                const ignored = p.stav === 'ignorovat' || p.ignorovat;
                                 return (
                                     <tr key={p.id} className={src.rowClass}>
                                         <td>{p.datum}</td>
@@ -183,7 +201,7 @@ const FinancePrehledPanel = ({ kategorie = [], onMessage }) => {
                                                             ...d,
                                                             [p.id]: e.target.value,
                                                         }))}
-                                                        disabled={p.stav === 'ignorovat' || savingId === p.id}
+                                                        disabled={savingId === p.id}
                                                     >
                                                         <option value="">— vyberte —</option>
                                                         {kategorie.map((k) => (
@@ -206,6 +224,34 @@ const FinancePrehledPanel = ({ kategorie = [], onMessage }) => {
                                         </td>
                                         <td>{p.prodejna_nazev || '–'}</td>
                                         <td className="finance-cell-zprava">{movementLabel(p)}</td>
+                                        <td>
+                                            <div className="finance-row-actions">
+                                                {ignored ? (
+                                                    <button
+                                                        type="button"
+                                                        className="finance-btn-secondary"
+                                                        disabled={savingId === p.id}
+                                                        onClick={() => handleUnignore(p)}
+                                                    >
+                                                        Zrušit ignorování
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        type="button"
+                                                        className="finance-btn-secondary"
+                                                        disabled={savingId === p.id}
+                                                        onClick={() => setPravidloDialog({
+                                                            mode: 'ignorovat',
+                                                            polozka: p,
+                                                            keepKatDefault: Boolean(current),
+                                                            kategorieId: current || p.kategorie_id,
+                                                        })}
+                                                    >
+                                                        Ignorovat
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </td>
                                     </tr>
                                 );
                             })}
@@ -213,6 +259,32 @@ const FinancePrehledPanel = ({ kategorie = [], onMessage }) => {
                     </table>
                 </div>
             )}
+            <FinancePravidloDialog
+                open={Boolean(pravidloDialog)}
+                mode={pravidloDialog?.mode || 'zaradit'}
+                polozka={pravidloDialog?.polozka}
+                navrhPayload={pravidloDialog?.navrh}
+                kategorie={kategorie}
+                stores={stores}
+                keepKatDefault={pravidloDialog?.keepKatDefault !== false}
+                onSkip={() => {
+                    setPravidloDialog(null);
+                    load();
+                }}
+                onConfirmIgnore={async ({ keepKat }) => {
+                    const p = pravidloDialog?.polozka;
+                    const kid = pravidloDialog?.kategorieId;
+                    const payload = {
+                        ignorovat: true,
+                        zachovat_kategorii: keepKat,
+                    };
+                    if (keepKat && kid) payload.kategorie_id = Number(kid);
+                    const res = await financeAPI.updateNaklad(p.id, payload);
+                    onMessage?.(`Položka #${p.id} ignorována.`);
+                    await load();
+                    return res;
+                }}
+            />
         </section>
     );
 };

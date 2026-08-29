@@ -56,7 +56,7 @@ const FinanceDokladEditForm = ({ doklad, busy = false, onSave }) => {
             )}
             {ocrEmpty && chyby.length === 0 && (
                 <p className="finance-doklad-edit__warn">
-                    OCR nevyčetlo údaje. Pro párování s Fio stačí doplnit aspoň VS.
+                    OCR nevyčetlo údaje. Pro Fio doplňte VS, pro kasu číslo FA (a dodavatele z poznámky výdeje).
                 </p>
             )}
             <div className="finance-doklad-edit__grid">
@@ -85,8 +85,7 @@ const FinanceDokladEditForm = ({ doklad, busy = false, onSave }) => {
                         value={form.vs}
                         onChange={(e) => setField('vs', e.target.value)}
                         disabled={busy}
-                        required={doklad?.ceka_na_platbu}
-                        placeholder="nutné pro auto-přiřazení"
+                        placeholder="Fio – auto-přiřazení"
                     />
                 </label>
                 <label>

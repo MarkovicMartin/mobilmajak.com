@@ -582,6 +582,7 @@ def build_timeline(
     compare=None,
     prodejna_id=None,
     kanal='all',
+    per_hour=False,
 ) -> dict:
     end_m = date(rok, mesic, 1)
     start_m = date(end_m.year - 1, end_m.month, 1)
@@ -607,6 +608,7 @@ def build_timeline(
                 prodejna_id=str(prodejna_id) if prodejna_id else None,
                 segment='vse',
                 compare_period=compare_period,
+                per_hour=per_hour and metric != 'odpracovane_hodiny',
             )
             series[metric] = points
 
@@ -622,18 +624,35 @@ def build_timeline(
                 segment='vse',
                 period_start=start_m,
                 period_end=range_end,
+                include_hours=per_hour,
             )
             peers = aggregate_polozky_by_salesperson(peer_params, limit=500)
             for metric in metrics:
-                vals = [float(p.get(metric, 0) or 0) for p in peers if p.get('id_prodejce') != user_id]
+                key = f'{metric}_za_hodinu' if per_hour and metric != 'odpracovane_hodiny' else metric
+                vals = [
+                    float(p.get(key) or 0)
+                    for p in peers
+                    if p.get('id_prodejce') != user_id and p.get(key) is not None
+                ]
                 if not vals:
                     continue
                 bench_val = sum(vals) / len(vals) if compare == 'store_avg' else max(vals)
                 for pt in series.get(metric, []):
-                    pt['compare_value'] = bench_val
+                    pt['compare_value'] = round(bench_val, 2)
                     pt['compare_month'] = 'prumer_prodejny' if compare == 'store_avg' else 'top_prodejce'
 
-    return {'metrics': series, 'start_date': start_m.isoformat(), 'end_date': range_end.isoformat()}
+    return {
+        'metrics': series,
+        'start_date': start_m.isoformat(),
+        'end_date': range_end.isoformat(),
+        'per_hour': per_hour,
+    }
+
+
+def _per_hour_value(total, hours):
+    if hours and hours > 0 and total is not None:
+        return round(float(total) / float(hours), 2)
+    return None
 
 
 def compare_sellers(user_a: int, user_b: int, rok: int, mesic: int, *, kanal='all') -> dict:
@@ -643,6 +662,7 @@ def compare_sellers(user_a: int, user_b: int, rok: int, mesic: int, *, kanal='al
 
     params = _polozky_params_for_month(rok, mesic, None, kanal)
     params.user_ids = [user_a, user_b]
+    params.include_hours = True
     sales_rows = aggregate_polozky_by_salesperson(params, limit=2)
     sales_by_id = {r['id_prodejce']: r for r in sales_rows}
 
@@ -672,33 +692,50 @@ def compare_sellers(user_a: int, user_b: int, rok: int, mesic: int, *, kanal='al
     pa = _light_profile(user_a)
     pb = _light_profile(user_b)
 
+    hours_a = pa['prodej'].get('odpracovane_hodiny')
+    hours_b = pb['prodej'].get('odpracovane_hodiny')
+
     metrics = [
         {'key': 'polozky_nad_100', 'label': 'Položky nad 100 Kč'},
         {'key': 'sluzby_celkem', 'label': 'Služby'},
         {'key': 'celkovy_obrat', 'label': 'Obrat'},
         {'key': 'unikatni_doklady', 'label': 'Účtenky'},
     ]
-    rows = []
+    rows = [{
+        'metric': 'odpracovane_hodiny',
+        'label': 'Odpracované hodiny',
+        'a': hours_a,
+        'b': hours_b,
+        'a_za_hodinu': None,
+        'b_za_hodinu': None,
+        'is_hours': True,
+    }]
     for m in metrics:
         key = m['key']
+        a_val = pa['prodej'].get(key, 0)
+        b_val = pb['prodej'].get(key, 0)
         rows.append({
             'metric': key,
             'label': m['label'],
-            'a': pa['prodej'].get(key, 0),
-            'b': pb['prodej'].get(key, 0),
+            'a': a_val,
+            'b': b_val,
+            'a_za_hodinu': pa['prodej'].get(f'{key}_za_hodinu') or _per_hour_value(a_val, hours_a),
+            'b_za_hodinu': pb['prodej'].get(f'{key}_za_hodinu') or _per_hour_value(b_val, hours_b),
         })
 
     kat_rows = []
-    kat_a = {k['kategorie_kod']: k for k in pa.get('kategorie', [])}
-    kat_b = {k['kategorie_kod']: k for k in pb.get('kategorie', [])}
     for row in pa.get('kategorie', []):
         kod = row['kategorie_kod']
-        kb = kat_b.get(kod, {})
+        kb = next((k for k in pb.get('kategorie', []) if k['kategorie_kod'] == kod), {})
+        a_kusy = row.get('skutecne_kusy', 0)
+        b_kusy = kb.get('skutecne_kusy', 0)
         kat_rows.append({
             'kategorie_kod': kod,
             'nazev': row['nazev'],
-            'a_kusy': row.get('skutecne_kusy', 0),
-            'b_kusy': kb.get('skutecne_kusy', 0),
+            'a_kusy': a_kusy,
+            'b_kusy': b_kusy,
+            'a_kusy_za_hodinu': _per_hour_value(a_kusy, hours_a),
+            'b_kusy_za_hodinu': _per_hour_value(b_kusy, hours_b),
         })
 
     return {
@@ -708,4 +745,6 @@ def compare_sellers(user_a: int, user_b: int, rok: int, mesic: int, *, kanal='al
         'kategorie': kat_rows,
         'plneni_a': pa.get('plneni'),
         'plneni_b': pb.get('plneni'),
+        'hodiny_a': hours_a,
+        'hodiny_b': hours_b,
     }

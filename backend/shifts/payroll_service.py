@@ -12,6 +12,7 @@ from users.mzda_utils import (
     mzda_fixni_bez_cestovneho,
     mzda_fixni_body,
     mzda_fixni_mesicni_body,
+    mzda_user_as_of,
     mzda_z_hodin_body_brigadnik,
     mzda_zaklad_pro_vicepraci,
     mzda_zaklad_raw,
@@ -196,6 +197,7 @@ def _odmena_mesic_pro_prumer(user, rok, mesic_cislo, prumer_cache=None):
 
 def _pol_dok_odmena_mesic(user, rok, mesic_cislo, prumer_cache=None):
     """Bonus/penalizace za průměr položek/účtenku – stejně jako ve výplatě."""
+    user = mzda_user_as_of(user, date(rok, mesic_cislo, 1))
     if is_brigadnik(user):
         return Decimal('0')
     if prumer_cache is not None:
@@ -210,6 +212,8 @@ def _pol_dok_odmena_mesic(user, rok, mesic_cislo, prumer_cache=None):
 
 def _zaklad_pro_prumer_dovolene(user, h, override_row=None, rok=None, mesic_cislo=None):
     """Základ + doplňky poměrně za odpracované hodiny (bez cestovného)."""
+    if rok and mesic_cislo:
+        user = mzda_user_as_of(user, date(rok, mesic_cislo, 1))
     return _fixni_pro_prumer_mesic(user, h, override_row, rok=rok, mesic_cislo=mesic_cislo)
 
 
@@ -288,7 +292,7 @@ def build_prumer_mzdy_cache_for_prumer(user_ids, rok, ref_mesic):
             )
             odmena_mesic, _ = _sum_odmeny_from_map(odmeny_map.get(uid))
             pol_info = pol_dok_map.get(uid) or {'pol_dok': 0.0, 'unikatni_doklady': 0}
-            if is_brigadnik(user):
+            if is_brigadnik(user, on_date=mesic_date):
                 pol_dok_odmena = Decimal('0')
             else:
                 pol_dok_odmena = pol_dok_odmena_body(
@@ -309,6 +313,8 @@ def _fixni_pro_prumer_mesic(user, h, override_row=None, rok=None, mesic_cislo=No
     """Fixní část pro průměr – poměrně za odpracované hodiny do fondu."""
     if override_row is not None and override_row.get('fixni_body') is not None:
         return Decimal(str(override_row['fixni_body']))
+    if rok and mesic_cislo:
+        user = mzda_user_as_of(user, date(rok, mesic_cislo, 1))
     if not is_brigadnik(user) and rok and mesic_cislo:
         fond = fondu_hodin_mesic(rok, mesic_cislo)
         return zaklad_pomerovy_body(user, h, fond)
@@ -602,6 +608,7 @@ def aggregate_hours_by_user(rok, mesic_cislo, prodejna_id=None):
     hodin počítají 2×. Sloupec svatek_h drží reálné hodiny na svátku (1×).
     """
     svatky_v_mesici = svatky_v_mesici_set(rok, mesic_cislo)
+    month_start = date(rok, mesic_cislo, 1)
 
     smeny_qs = Smena.objects.filter(
         datum__year=rok,
@@ -636,7 +643,7 @@ def aggregate_hours_by_user(rok, mesic_cislo, prodejna_id=None):
             je_svatek = smena.datum in svatky_v_mesici
             hodiny_ucetni = hodiny * 2 if je_svatek else hodiny
             result[uid]['odpracovano_h'] += hodiny_ucetni
-            if is_brigadnik(smena.user):
+            if is_brigadnik(smena.user, on_date=month_start):
                 rezim = (smena.brigadnik_rezim or 'prodejce').strip()
                 if rezim == 'vypomoc':
                     result[uid]['vypomoc_h'] += hodiny_ucetni
@@ -654,6 +661,7 @@ def build_payroll_row(user, rok, mesic_cislo, hours_map, mesic_date, prodejny_ca
                       fondu_h, metrics_map, servis_map, odmeny_map, dyska_map=None,
                       penalizace_map=None, hours_cache=None, pol_dok_map=None,
                       provize_cache=None, prumer_cache=None):
+    user = mzda_user_as_of(user, date(rok, mesic_cislo, 1))
     uid = user.id
     hours = hours_map.get(uid, {
         'odpracovano_h': 0,

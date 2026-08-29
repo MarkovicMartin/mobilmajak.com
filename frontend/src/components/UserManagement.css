@@ -492,6 +492,35 @@
     color: #495057;
 }
 
+.pozice-zmena-fieldset {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 1rem;
+    margin: 0 0 1rem;
+}
+
+.pozice-zmena-fieldset legend {
+    font-weight: 600;
+    padding: 0 0.5rem;
+}
+
+.pozice-zmena-current {
+    margin: 0 0 0.75rem;
+    font-size: 0.85rem;
+    color: #495057;
+    line-height: 1.4;
+}
+
+.pozice-zmena-check {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.pozice-zmena-fieldset input[type="date"] {
+    margin-top: 0.5rem;
+}
+
 .inactive-users-section {
     margin-top: 0;
     border-top: 2px solid #e9ecef;

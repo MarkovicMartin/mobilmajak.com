@@ -6,7 +6,7 @@ from pathlib import Path
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 
-from finance.doklady import create_orphan_doklad, try_auto_link_polozka
+from finance.doklady import create_orphan_doklad, try_auto_link_doklad, try_auto_link_polozka
 from finance.faktura_extract import _parse_text_fields
 from finance.models import FinanceDoklad, NakladPolozka
 from finance.services import upsert_fio_row
@@ -79,3 +79,47 @@ class OrphanDokladTests(TestCase):
             FinanceDoklad.STAV_CEKA_NA_OCR,
             FinanceDoklad.STAV_KE_KONTROLE,
         ))
+
+    def test_pokladna_links_by_fa_and_popis(self):
+        doklad = FinanceDoklad.objects.create(
+            soubor='finance/doklady/kasa.pdf',
+            cislo_faktury='202601234',
+            dodavatel_nazev='PANFICO',
+            stav=FinanceDoklad.STAV_KE_KONTROLE,
+        )
+        polozka = NakladPolozka.objects.create(
+            datum=date(2026, 8, 3),
+            rok=2026,
+            mesic=8,
+            castka=Decimal('-500'),
+            typ_platby=NakladPolozka.TYP_PLATBY_ODCHOZI,
+            dph_stav=NakladPolozka.DPH_STAV_CEKA,
+            zdroj=NakladPolozka.ZDROJ_SYMPLIO_POKLADNA,
+            popis='Manuální výdej PANFICO - servis 202601234',
+            vs='',
+            protiucet='',
+            fio_id='symplio:orphan-kasa',
+        )
+        self.assertTrue(try_auto_link_doklad(doklad))
+        doklad.refresh_from_db()
+        self.assertEqual(doklad.naklad_polozka_id, polozka.id)
+
+    def test_pokladna_no_vs_does_not_use_fio_vs(self):
+        doklad = FinanceDoklad.objects.create(
+            soubor='finance/doklady/kasa2.pdf',
+            cislo_faktury='FA-99',
+            stav=FinanceDoklad.STAV_KE_KONTROLE,
+        )
+        NakladPolozka.objects.create(
+            datum=date(2026, 8, 4),
+            rok=2026,
+            mesic=8,
+            castka=Decimal('-99'),
+            typ_platby=NakladPolozka.TYP_PLATBY_ODCHOZI,
+            zdroj=NakladPolozka.ZDROJ_FIO,
+            vs='99',
+            fio_id='fio:not-kasa',
+        )
+        self.assertFalse(try_auto_link_doklad(doklad))
+        doklad.refresh_from_db()
+        self.assertIsNone(doklad.naklad_polozka_id)

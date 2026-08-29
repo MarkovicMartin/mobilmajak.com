@@ -9,6 +9,8 @@ param(
 
 $ErrorActionPreference = "Stop"
 $SourceDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+if (-not $SourceDir) { $SourceDir = $PSScriptRoot }
+if (-not $SourceDir) { $SourceDir = (Get-Location).Path }
 $GwDir = Join-Path $SourceDir "..\camera-gateway"
 $GwInstall = Join-Path $GwDir "install-camera-gateway.ps1"
 
@@ -28,14 +30,13 @@ if (-not (Test-Path $configLocal)) {
 }
 
 Copy-Item $configLocal (Join-Path $GwDir "config.json") -Force
+Unblock-File -LiteralPath $GwInstall -ErrorAction SilentlyContinue
 
-$installArgs = @(
-    "-NoProfile", "-ExecutionPolicy", "Bypass",
-    "-File", $GwInstall,
-    "-ProdejnaId", "4",
-    "-ProdejnaNazev", "Prerov",
-    "-InstallDir", $InstallDir
-)
-if ($SkipTest) { $installArgs += "-SkipTest" }
+$installArgs = @{
+    ProdejnaId = 4
+    ProdejnaNazev = "Prerov"
+    InstallDir = $InstallDir
+}
+if ($SkipTest) { $installArgs.SkipTest = $true }
 
-& powershell.exe @installArgs
+& $GwInstall @installArgs

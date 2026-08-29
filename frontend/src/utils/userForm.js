@@ -1,5 +1,31 @@
 import { BRIGADNIK_DEFAULT_BODY_ZA_HODINU, defaultMzdaZakladForRole } from '../constants/mzdaDefaults';
 
+export function firstDayOfCurrentMonthIso() {
+    const d = new Date();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    return `${d.getFullYear()}-${month}-01`;
+}
+
+export function formatIsoDateCs(iso) {
+    if (!iso) return '';
+    const part = String(iso).slice(0, 10);
+    const [y, m, d] = part.split('-');
+    if (!y || !m || !d) return part;
+    return `${Number(d)}. ${Number(m)}. ${y}`;
+}
+
+export function applyRoleChangeDefaults(prev, role) {
+    const next = { ...prev, role };
+    const def = defaultMzdaZakladForRole(role, prev.prijmeni);
+    if (def != null) {
+        next.mzda_zaklad = String(def);
+    }
+    if (role === 'BRIGADNIK') {
+        next.mzda_cestovne = '';
+    }
+    return next;
+}
+
 /**
  * Připraví data z formuláře pro API (create / update).
  */
@@ -7,6 +33,15 @@ export function prepareUserSubmitData(formData, editingUser) {
     const submitData = { ...formData };
 
     delete submitData.id;
+
+    if (submitData.zmena_pozice) {
+        if (!submitData.zmena_pozice_od) {
+            return { error: 'Zadejte datum změny pozice (od).' };
+        }
+    } else {
+        delete submitData.zmena_pozice_od;
+    }
+    delete submitData.zmena_pozice;
 
     if (submitData.prodejna) {
         const pid = parseInt(submitData.prodejna, 10);

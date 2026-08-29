@@ -135,41 +135,149 @@ def _learn_snippet_from_symplio_popis(popis: str) -> str:
     return _normalize_rule_snippet(text, max_len=120)
 
 
+_VS_MONTH_RE = re.compile(r'^20\d{2}00\d{2}$')
+
+
+def is_fio_account_number(value: str) -> bool:
+    """Číslo protiúčtu, ne VS typu 20260008 a ne krátké číslice."""
+    s = (value or '').strip()
+    if not s:
+        return False
+    if _VS_MONTH_RE.fullmatch(s):
+        return False
+    if re.fullmatch(r'[A-Z]{2}\d+', s, re.I):
+        return True
+    if '-' in s:
+        return True
+    digits = re.sub(r'\D', '', s)
+    return len(digits) >= 6
+
+
 def rule_key_from_polozka(polozka: NakladPolozka) -> dict | None:
     """
-    Klíč z manuálního zařazení (bez ručního zadávání pravidel):
-    - Fio: protiucet → vs → úryvek zprávy
-    - Symplio pokladna: stabilní úryvek popisu (dodavatel), ne admin ani FA
+    Klíč z manuálního zařazení:
+    - Fio: jen číslo protiúčtu (ne VS, ne zpráva)
+    - Pokladna / ruční: úryvek popisu
     """
-    if polozka.zdroj == NakladPolozka.ZDROJ_SYMPLIO_POKLADNA:
-        snippet = _learn_snippet_from_symplio_popis(polozka.popis or '')
-        if snippet:
-            return {'protiucet': '', 'vs': '', 'zprava_obsahuje': snippet[:200]}
+    if polozka.zdroj == NakladPolozka.ZDROJ_FIO:
+        protiucet = (polozka.protiucet or '').strip()
+        if is_fio_account_number(protiucet):
+            return {'protiucet': protiucet[:64], 'vs': '', 'zprava_obsahuje': ''}
         return None
 
-    protiucet = (polozka.protiucet or '').strip()
-    if protiucet:
-        return {'protiucet': protiucet[:64], 'vs': '', 'zprava_obsahuje': ''}
-    vs = (polozka.vs or '').strip()
-    if vs:
-        return {'protiucet': '', 'vs': vs[:32], 'zprava_obsahuje': ''}
-    snippet = _normalize_rule_snippet(polozka.zprava or '') or _normalize_rule_snippet(polozka.popis or '')
+    snippet = _learn_snippet_from_symplio_popis(polozka.popis or '')
+    if not snippet:
+        snippet = (
+            _normalize_rule_snippet(polozka.popis or '')
+            or _normalize_rule_snippet(polozka.zprava or '')
+        )
     if snippet:
         return {'protiucet': '', 'vs': '', 'zprava_obsahuje': snippet[:200]}
     return None
 
 
-def upsert_pravidlo_from_polozka(polozka: NakladPolozka, user_id: int | None = None) -> dict:
+def navrh_pravidla_from_polozka(polozka: NakladPolozka, *, ignorovat: bool = False) -> dict:
+    """Návrh formuláře pravidla – bez uložení."""
+    is_fio = polozka.zdroj == NakladPolozka.ZDROJ_FIO
+    key = rule_key_from_polozka(polozka)
+    varovani = None
+    if is_fio:
+        zdroj_logika = 'fio'
+        protiucet = (key or {}).get('protiucet') or ''
+        zprava = ''
+        vs = ''
+        if not protiucet:
+            varovani = 'fio_bez_uctu'
+    else:
+        zdroj_logika = 'pokladna'
+        protiucet = ''
+        vs = ''
+        zprava = (key or {}).get('zprava_obsahuje') or ''
+        if not zprava:
+            varovani = 'chybi_popis'
+
+    existing_id = None
+    if key and (key.get('protiucet') or key.get('vs') or key.get('zprava_obsahuje')):
+        existing = (
+            FioKategorizacniPravidlo.objects.filter(
+                aktivni=True,
+                protiucet=key['protiucet'],
+                vs=key['vs'],
+                zprava_obsahuje=key['zprava_obsahuje'],
+            )
+            .order_by('id')
+            .first()
+        )
+        if existing:
+            existing_id = existing.id
+
+    return {
+        'zdroj_logika': zdroj_logika,
+        'varovani': varovani,
+        'existing_pravidlo_id': existing_id,
+        'navrh': {
+            'protiucet': protiucet,
+            'vs': vs,
+            'zprava_obsahuje': zprava,
+            'text_shoda': FioKategorizacniPravidlo.TEXT_SHODA_OBSAHUJE,
+            'kategorie_id': polozka.kategorie_id,
+            'prodejna_id': polozka.prodejna_id,
+            'ignorovat': bool(ignorovat),
+        },
+    }
+
+
+def _int_or_none(value):
+    if value in (None, ''):
+        return None
+    return int(value)
+
+
+def upsert_pravidlo_from_polozka(
+    polozka: NakladPolozka,
+    user_id: int | None = None,
+    overrides: dict | None = None,
+) -> dict:
     """
-    Po ručním zařazení/změně kategorie: upsert aktivního Fio pravidla.
-    Vrací {pravidlo_created, pravidlo_updated, pravidlo_id}.
+    Upsert aktivního pravidla. Volat jen po potvrzení v UI.
+    overrides může přepsat protiucet / text / kategorii / ignorovat.
     """
     empty = {'pravidlo_created': False, 'pravidlo_updated': False, 'pravidlo_id': None}
-    if not polozka.kategorie_id:
+    overrides = overrides or {}
+
+    ignorovat = bool(overrides.get('ignorovat')) if 'ignorovat' in overrides else False
+    if 'kategorie_id' in overrides:
+        kategorie_id = _int_or_none(overrides.get('kategorie_id'))
+    else:
+        kategorie_id = polozka.kategorie_id
+    if not ignorovat and not kategorie_id:
         return empty
-    key = rule_key_from_polozka(polozka)
-    if not key:
+
+    if any(k in overrides for k in ('protiucet', 'vs', 'zprava_obsahuje')):
+        key = {
+            'protiucet': (overrides.get('protiucet') or '').strip()[:64],
+            'vs': (overrides.get('vs') or '').strip()[:32],
+            'zprava_obsahuje': (overrides.get('zprava_obsahuje') or '').strip()[:200],
+        }
+    else:
+        key = rule_key_from_polozka(polozka)
+        if not key:
+            return empty
+
+    if not (key.get('protiucet') or key.get('vs') or key.get('zprava_obsahuje')):
         return empty
+
+    if 'prodejna_id' in overrides:
+        prodejna_id = _int_or_none(overrides.get('prodejna_id'))
+    else:
+        prodejna_id = polozka.prodejna_id
+
+    text_shoda = overrides.get('text_shoda') or FioKategorizacniPravidlo.TEXT_SHODA_OBSAHUJE
+    if text_shoda not in (
+        FioKategorizacniPravidlo.TEXT_SHODA_OBSAHUJE,
+        FioKategorizacniPravidlo.TEXT_SHODA_PRESNE,
+    ):
+        text_shoda = FioKategorizacniPravidlo.TEXT_SHODA_OBSAHUJE
 
     existing = (
         FioKategorizacniPravidlo.objects.filter(
@@ -183,14 +291,17 @@ def upsert_pravidlo_from_polozka(polozka: NakladPolozka, user_id: int | None = N
     )
     if existing:
         changed = False
-        if existing.kategorie_id != polozka.kategorie_id:
-            existing.kategorie_id = polozka.kategorie_id
+        if existing.kategorie_id != kategorie_id:
+            existing.kategorie_id = kategorie_id
             changed = True
-        if polozka.prodejna_id and existing.prodejna_id != polozka.prodejna_id:
-            existing.prodejna_id = polozka.prodejna_id
+        if prodejna_id and existing.prodejna_id != prodejna_id:
+            existing.prodejna_id = prodejna_id
             changed = True
-        if existing.ignorovat:
-            existing.ignorovat = False
+        if existing.ignorovat != ignorovat:
+            existing.ignorovat = ignorovat
+            changed = True
+        if existing.text_shoda != text_shoda:
+            existing.text_shoda = text_shoda
             changed = True
         if changed:
             existing.save()
@@ -204,9 +315,10 @@ def upsert_pravidlo_from_polozka(polozka: NakladPolozka, user_id: int | None = N
         protiucet=key['protiucet'],
         vs=key['vs'],
         zprava_obsahuje=key['zprava_obsahuje'],
-        kategorie_id=polozka.kategorie_id,
-        prodejna_id=polozka.prodejna_id,
-        ignorovat=False,
+        text_shoda=text_shoda,
+        kategorie_id=kategorie_id,
+        prodejna_id=prodejna_id,
+        ignorovat=ignorovat,
         aktivni=True,
         vytvoril_user_id=user_id,
     )
@@ -246,7 +358,8 @@ def _apply_matched_pravidlo(rule: FioKategorizacniPravidlo, p: NakladPolozka) ->
     if rule.ignorovat:
         p.stav = NakladPolozka.STAV_IGNOROVAT
         p.ignorovat = True
-        p.kategorie_id = None
+        if rule.kategorie_id:
+            p.kategorie_id = rule.kategorie_id
     else:
         p.stav = NakladPolozka.STAV_ZARAZENO
         p.kategorie_id = rule.kategorie_id
@@ -439,7 +552,7 @@ def apply_categorization_rules(row: dict) -> dict:
         if rule.ignorovat:
             return {
                 'stav': NakladPolozka.STAV_IGNOROVAT,
-                'kategorie_id': None,
+                'kategorie_id': rule.kategorie_id,
                 'prodejna_id': rule.prodejna_id,
                 'ignorovat': True,
                 'zarazeno_automaticky': True,

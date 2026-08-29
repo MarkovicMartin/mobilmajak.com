@@ -7,10 +7,13 @@ from rest_framework.test import APIRequestFactory, force_authenticate
 
 from analytics.models import WebProdejeAll
 from finance import views
-from finance.models import FioKategorizacniPravidlo, NakladKategorie, NakladPolozka
+from finance.models import FinanceDoklad, FioKategorizacniPravidlo, NakladKategorie, NakladPolozka
 from finance.services import (
     _matches_rule,
     compute_stav_rozdilu,
+    is_fio_account_number,
+    navrh_pravidla_from_polozka,
+    rule_key_from_polozka,
     upsert_pravidlo_from_polozka,
 )
 from users.models import WebUser
@@ -81,7 +84,7 @@ class UpsertPravidloTests(TestCase):
 
     def test_update_existing(self):
         FioKategorizacniPravidlo.objects.create(
-            protiucet='999',
+            protiucet='2540180968',
             kategorie=self.kat,
             aktivni=True,
         )
@@ -91,7 +94,7 @@ class UpsertPravidloTests(TestCase):
             mesic=8,
             castka=Decimal('-50'),
             kategorie=self.kat2,
-            protiucet='999',
+            protiucet='2540180968',
             typ_platby=NakladPolozka.TYP_PLATBY_ODCHOZI,
             zdroj=NakladPolozka.ZDROJ_FIO,
             fio_id='fio:upsert2',
@@ -99,9 +102,48 @@ class UpsertPravidloTests(TestCase):
         meta = upsert_pravidlo_from_polozka(p)
         self.assertTrue(meta['pravidlo_updated'])
         self.assertEqual(
-            FioKategorizacniPravidlo.objects.get(protiucet='999').kategorie_id,
+            FioKategorizacniPravidlo.objects.get(protiucet='2540180968').kategorie_id,
             self.kat2.id,
         )
+
+    def test_fio_rejects_vs_as_account(self):
+        self.assertFalse(is_fio_account_number('20260008'))
+        self.assertTrue(is_fio_account_number('270640235'))
+        p = NakladPolozka.objects.create(
+            datum=date(2026, 8, 17),
+            rok=2026,
+            mesic=8,
+            castka=Decimal('-5000'),
+            kategorie=self.kat,
+            protiucet='20260008',
+            zprava='Ing. Lucie Polednova - administrati',
+            typ_platby=NakladPolozka.TYP_PLATBY_ODCHOZI,
+            zdroj=NakladPolozka.ZDROJ_FIO,
+            fio_id='fio:lucie',
+        )
+        self.assertIsNone(rule_key_from_polozka(p))
+        navrh = navrh_pravidla_from_polozka(p)
+        self.assertEqual(navrh['varovani'], 'fio_bez_uctu')
+        self.assertEqual(navrh['navrh']['protiucet'], '')
+        self.assertFalse(upsert_pravidlo_from_polozka(p)['pravidlo_created'])
+
+    def test_pokladna_uses_popis(self):
+        p = NakladPolozka.objects.create(
+            datum=date(2026, 8, 3),
+            rok=2026,
+            mesic=8,
+            castka=Decimal('-200'),
+            kategorie=self.kat,
+            popis='Manuální výdej PANFICO - servis 202601234',
+            typ_platby=NakladPolozka.TYP_PLATBY_ODCHOZI,
+            zdroj=NakladPolozka.ZDROJ_SYMPLIO_POKLADNA,
+            fio_id='symplio:upsert-kasa',
+        )
+        key = rule_key_from_polozka(p)
+        self.assertEqual(key['protiucet'], '')
+        self.assertIn('PANFICO', key['zprava_obsahuje'])
+        meta = upsert_pravidlo_from_polozka(p)
+        self.assertTrue(meta['pravidlo_created'])
 
 
 class FinanceAnalytikaApiTests(TestCase):
@@ -210,7 +252,7 @@ class FinanceAnalytikaApiTests(TestCase):
         resp = views.naklad_kategorie_list(request)
         self.assertEqual(resp.status_code, 400)
 
-    def test_patch_creates_pravidlo(self):
+    def test_patch_returns_navrh_without_creating_pravidlo(self):
         p = NakladPolozka.objects.get(fio_id='fio:an1')
         request = self._auth(self.factory.patch(
             f'/finance/naklady/{p.id}/',
@@ -219,8 +261,71 @@ class FinanceAnalytikaApiTests(TestCase):
         ))
         resp = views.naklad_update(request, polozka_id=p.id)
         self.assertEqual(resp.status_code, 200)
-        body = resp.data
-        self.assertTrue(body.get('pravidlo_created') or body.get('pravidlo_updated'))
-        self.assertTrue(
+        self.assertFalse(resp.data.get('pravidlo_created'))
+        self.assertIn('pravidlo_navrh', resp.data)
+        self.assertFalse(
             FioKategorizacniPravidlo.objects.filter(protiucet='111', kategorie=self.kat).exists()
         )
+
+    def test_from_polozka_creates_pravidlo(self):
+        p = NakladPolozka.objects.get(fio_id='fio:an1')
+        p.protiucet = '270640235'
+        p.save(update_fields=['protiucet'])
+        request = self._auth(self.factory.post(
+            '/finance/pravidla/from-polozka/',
+            {'polozka_id': p.id, 'protiucet': '270640235', 'kategorie_id': self.kat.id},
+            format='json',
+        ))
+        resp = views.pravidlo_from_polozka(request)
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.data.get('pravidlo_created'))
+        self.assertTrue(
+            FioKategorizacniPravidlo.objects.filter(protiucet='270640235', kategorie=self.kat).exists()
+        )
+
+    def test_ignore_keeps_kategorie(self):
+        p = NakladPolozka.objects.get(fio_id='fio:an1')
+        request = self._auth(self.factory.patch(
+            f'/finance/naklady/{p.id}/',
+            {'ignorovat': True, 'zachovat_kategorii': True, 'kategorie_id': self.kat.id},
+            format='json',
+        ))
+        resp = views.naklad_update(request, polozka_id=p.id)
+        self.assertEqual(resp.status_code, 200)
+        p.refresh_from_db()
+        self.assertTrue(p.ignorovat)
+        self.assertEqual(p.stav, NakladPolozka.STAV_IGNOROVAT)
+        self.assertEqual(p.kategorie_id, self.kat.id)
+        self.assertTrue(resp.data.get('pravidlo_navrh', {}).get('navrh', {}).get('ignorovat'))
+
+    def test_patch_kategorie_and_delete(self):
+        request = self._auth(self.factory.patch(
+            f'/finance/kategorie/{self.kat.id}/',
+            {'nazev': 'Reklama upravena', 'poradi': 3},
+            format='json',
+        ))
+        resp = views.naklad_kategorie_detail(request, kategorie_id=self.kat.id)
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data['nazev'], 'Reklama upravena')
+        del_req = self._auth(self.factory.delete(f'/finance/kategorie/{self.kat.id}/'))
+        del_resp = views.naklad_kategorie_detail(del_req, kategorie_id=self.kat.id)
+        self.assertEqual(del_resp.status_code, 200)
+        p = NakladPolozka.objects.get(fio_id='fio:an1')
+        self.assertIsNone(p.kategorie_id)
+        self.assertEqual(p.stav, NakladPolozka.STAV_NEZARAZENO)
+
+    def test_doklad_patch_keeps_cislo_faktury(self):
+        d = FinanceDoklad.objects.create(stav=FinanceDoklad.STAV_KE_KONTROLE)
+        request = self._auth(self.factory.patch(
+            f'/finance/doklady/{d.id}/',
+            {'cislo_faktury': 'FA2026/001'},
+            format='json',
+        ))
+        resp = views.doklad_update(request, doklad_id=d.id)
+        self.assertEqual(resp.status_code, 200)
+        d.refresh_from_db()
+        self.assertEqual(d.cislo_faktury, 'FA2026/001')
+        get_req = self._auth(self.factory.get('/finance/doklady/ke-kontrole/'))
+        get_resp = views.doklady_ke_kontrole(get_req)
+        found = next(x for x in get_resp.data if x['id'] == d.id)
+        self.assertEqual(found['cislo_faktury'], 'FA2026/001')

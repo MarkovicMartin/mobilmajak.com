@@ -5,6 +5,7 @@ from . import views
 urlpatterns = [
     path('status/', views.finance_status, name='finance-status'),
     path('kategorie/', views.naklad_kategorie_list, name='finance-kategorie'),
+    path('kategorie/<int:kategorie_id>/', views.naklad_kategorie_detail, name='finance-kategorie-detail'),
     path('naklady/nezarazene/', views.naklady_nezarazene, name='finance-naklady-nezarazene'),
     path('naklady/prehled/', views.naklady_prehled, name='finance-naklady-prehled'),
     path('naklady/ceka-na-fakturu/', views.naklady_ceka_na_fakturu, name='finance-naklady-ceka-fakturu'),
@@ -12,6 +13,7 @@ urlpatterns = [
     path('naklady/manual/', views.naklad_manual_create, name='finance-naklad-manual'),
     path('naklady/<int:polozka_id>/', views.naklad_update, name='finance-naklad-update'),
     path('pravidla/', views.pravidla_list_create, name='finance-pravidla'),
+    path('pravidla/from-polozka/', views.pravidlo_from_polozka, name='finance-pravidlo-from-polozka'),
     path('pravidla/preview/', views.pravidlo_preview, name='finance-pravidlo-preview'),
     path('pravidla/apply-all/', views.pravidla_apply_all, name='finance-pravidla-apply-all'),
     path('pravidla/<int:pravidlo_id>/apply/', views.pravidlo_apply, name='finance-pravidlo-apply'),

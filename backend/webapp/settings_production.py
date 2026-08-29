@@ -72,6 +72,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'users.middleware.ApiCsrfMiddleware',  # Vlastní CSRF middleware pro API
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'users.middleware.ActivityHeartbeatMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -180,6 +181,10 @@ SESSION_COOKIE_AGE = 86400  # 24 hodin
 SESSION_SAVE_EVERY_REQUEST = False
 # Max 1 session UPDATE / user / interval (při otevřeném tabu)
 SESSION_TOUCH_INTERVAL = 900
+
+# Globální activity heartbeat (throttled, ne full access log)
+ACTIVITY_HEARTBEAT_ENABLED = True
+ACTIVITY_HEARTBEAT_INTERVAL = 600  # sekund; nebo dřív při změně modulu
 
 # Per-worker cache (gzip/dashboard TTL); bez Redis stačí LocMem
 CACHES = {

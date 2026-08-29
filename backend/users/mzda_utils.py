@@ -1,4 +1,5 @@
 """Pomocné funkce pro mzdové údaje uživatele (vše v bodech)."""
+from datetime import date, datetime
 from decimal import Decimal, ROUND_HALF_UP
 
 BRIGADNIK_DEFAULT_BODY_ZA_HODINU = Decimal('100')
@@ -27,6 +28,94 @@ def default_mzda_zaklad_body(role, user=None, *, jmeno=None, prijmeni=None, tech
             return VYCHODIL_ZAKLAD_BODY
         return PRODEJCE_ZAKLAD_BODY
     return None
+
+
+_STAFF_MONTHLY_DEFAULTS = frozenset({PRODEJCE_ZAKLAD_BODY, VYCHODIL_ZAKLAD_BODY})
+
+
+def coerce_mzda_zaklad_for_role(role, mzda_zaklad, user=None, *, jmeno=None, prijmeni=None, technik_id=None):
+    """Doplní prázdný základ a nahradí default z jiné role (14000 vs 100)."""
+    default = default_mzda_zaklad_body(
+        role, user, jmeno=jmeno, prijmeni=prijmeni, technik_id=technik_id,
+    )
+    if default is None:
+        return mzda_zaklad
+    if mzda_zaklad is None or mzda_zaklad == '':
+        return default
+    try:
+        z = Decimal(str(mzda_zaklad))
+    except Exception:
+        return default
+    if role == 'BRIGADNIK' and z in _STAFF_MONTHLY_DEFAULTS:
+        return default
+    if role in ('PRODEJCE', 'VEDOUCI') and z == BRIGADNIK_DEFAULT_BODY_ZA_HODINU:
+        return default
+    return z
+
+
+def snapshot_pozice(user):
+    """Uložitelný snímek role a odměny (JSON)."""
+    zaklad = getattr(user, 'mzda_zaklad', None)
+    cestovne = getattr(user, 'mzda_cestovne', None)
+    return {
+        'role': getattr(user, 'role', None),
+        'mzda_zaklad': float(zaklad) if zaklad is not None else None,
+        'mzda_doplnky': list(getattr(user, 'mzda_doplnky', None) or []),
+        'mzda_cestovne': float(cestovne) if cestovne is not None else None,
+    }
+
+
+def _pozice_source_user(user):
+    return getattr(user, '_mzda_source_user', user)
+
+
+def _as_date(value):
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, date):
+        return value
+    if isinstance(value, str) and len(value) >= 10:
+        try:
+            return date.fromisoformat(value[:10])
+        except ValueError:
+            return None
+    return None
+
+
+class MzdaUserAsOf:
+    """Uživatel s rolí a mzdou platnou k datu (před pozice_od = předchozí snímek)."""
+
+    def __init__(self, user, snapshot):
+        self._mzda_source_user = _pozice_source_user(user)
+        self.role = snapshot.get('role') or getattr(self._mzda_source_user, 'role', None)
+        zaklad = snapshot.get('mzda_zaklad')
+        self.mzda_zaklad = Decimal(str(zaklad)) if zaklad is not None else None
+        self.mzda_doplnky = list(snapshot.get('mzda_doplnky') or [])
+        cestovne = snapshot.get('mzda_cestovne')
+        self.mzda_cestovne = Decimal(str(cestovne)) if cestovne is not None else None
+
+    def __getattr__(self, name):
+        return getattr(self._mzda_source_user, name)
+
+
+def mzda_user_as_of(user, on_date=None):
+    """Role a mzda k datu. Výplata měsíce používá 1. den měsíce."""
+    if user is None:
+        return None
+    source = _pozice_source_user(user)
+    if on_date is None:
+        return source
+    od = getattr(source, 'pozice_od', None)
+    pred = getattr(source, 'pozice_predchozi', None) or {}
+    if not od or not pred.get('role'):
+        return source
+    on_date = _as_date(on_date)
+    od = _as_date(od)
+    if on_date is None or od is None or on_date >= od:
+        return source
+    return MzdaUserAsOf(source, pred)
 
 
 def normalize_mzda_doplnky(raw):
@@ -65,8 +154,9 @@ def sum_mzda_doplnky(user):
     return total, doplnky
 
 
-def is_brigadnik(user):
-    return getattr(user, 'role', None) == 'BRIGADNIK'
+def is_brigadnik(user, on_date=None):
+    viewed = mzda_user_as_of(user, on_date) if on_date is not None else user
+    return getattr(viewed, 'role', None) == 'BRIGADNIK'
 
 
 def mzda_zaklad_raw(user):

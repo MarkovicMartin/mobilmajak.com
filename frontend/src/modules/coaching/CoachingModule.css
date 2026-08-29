@@ -199,12 +199,47 @@
     flex-wrap: wrap;
     gap: 12px;
     margin-bottom: 12px;
+    align-items: center;
 }
 
 .coaching-chart-controls select {
     padding: 6px 10px;
     border-radius: 8px;
     border: 1px solid var(--border-color, rgba(0, 0, 0, 0.12));
+}
+
+.coaching-rate-toggle {
+    display: inline-flex;
+    gap: 2px;
+    padding: 3px;
+    border-radius: 8px;
+    background: var(--page-bg, #f1f5f9);
+    border: 1px solid var(--border-color, rgba(0, 0, 0, 0.08));
+}
+
+.coaching-rate-toggle__btn {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-muted, #64748b);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.coaching-rate-toggle__btn:hover {
+    background: color-mix(in srgb, var(--accent, #2563eb) 8%, transparent);
+}
+
+.coaching-rate-toggle__btn.is-active {
+    background: var(--accent, #2563eb);
+    color: #fff;
+}
+
+.coaching-compare-row--hours td {
+    font-weight: 600;
+    background: color-mix(in srgb, var(--accent, #2563eb) 4%, transparent);
 }
 
 .coaching-kat-grid {

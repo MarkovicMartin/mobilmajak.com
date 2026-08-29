@@ -95,9 +95,9 @@ const FinanceKontrolaPanel = () => {
         try {
             const d = await financeAPI.updateDoklad(id, payload);
             if (d?.prirazeno_automaticky) {
-                setMessage(`Údaje uloženy a FA automaticky přiřazena (VS ${d.vs || '–'}).`);
+                setMessage(`Údaje uloženy a FA automaticky přiřazena.`);
             } else if (d?.ceka_na_platbu) {
-                setMessage(`Údaje uloženy (VS ${d.vs || '–'}). Čeká na Fio platbu se stejným VS.`);
+                setMessage('Údaje uloženy. Čeká na spárování s platbou (Fio VS / kasa číslo dokladu + poznámka).');
             } else {
                 setMessage('Údaje uloženy.');
             }
@@ -112,8 +112,8 @@ const FinanceKontrolaPanel = () => {
     return (
         <section className="finance-panel finance-kontrola">
             <p className="finance-panel__intro">
-                Nahrajte PDF i před platbou – OCR vytáhne VS a částky. Když OCR nic nevyčte, doplňte
-                VS ručně. Až přijde Fio se stejným VS, FA se přiřadí automaticky.
+                Nahrajte PDF i před platbou. OCR vytáhne údaje. Když nic nevyčte, doplňte číslo FA
+                (kasa) nebo VS (Fio). Kasa se páruje podle čísla dokladu a poznámky výdeje, Fio podle VS.
             </p>
             <div className="finance-kontrola-upload">
                 <FinanceDropZone
@@ -156,7 +156,7 @@ const FinanceKontrolaPanel = () => {
                                 <div>
                                     <h4>{d.ceka_na_platbu ? 'Platba' : 'Z pokladny / Fio'}</h4>
                                     {d.ceka_na_platbu ? (
-                                        <p className="muted">Zatím bez platby – párování podle VS po Fio importu.</p>
+                                        <p className="muted">Zatím bez platby – Fio podle VS, kasa podle čísla dokladu a poznámky výdeje.</p>
                                     ) : hint ? (
                                         <ul>
                                             <li>{hint.dodavatel_nazev}</li>

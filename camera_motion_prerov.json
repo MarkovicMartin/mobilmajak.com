@@ -1,0 +1,11 @@
+{
+  "mobilmajak_api": "https://mobilmajak.com",
+  "prodejna_id": 4,
+  "prodejna_nazev": "Prerov",
+  "motion_secret": "3f0a407d13f3ec95032e51490d5a2e43db53a76772b69903c528d34d31c9e7cb",
+  "autodiscover_nvr": true,
+  "nvr_host": "10.0.0.90",
+  "nvr_user": "admin",
+  "nvr_pass": "MajakCam2021",
+  "camera_host": "10.0.0.3"
+}

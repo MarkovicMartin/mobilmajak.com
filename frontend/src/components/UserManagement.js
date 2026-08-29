@@ -3,7 +3,7 @@ import Modal from './Modal';
 import { PageHeader } from './ui';
 import { useAuth } from '../context/AuthContext';
 import { userAPI, storeAPI } from '../services/api';
-import { prepareUserSubmitData, formatUserApiError, estimateNextUserId } from '../utils/userForm';
+import { prepareUserSubmitData, formatUserApiError, estimateNextUserId, applyRoleChangeDefaults, firstDayOfCurrentMonthIso, formatIsoDateCs } from '../utils/userForm';
 import {
     MZDA_DOPLNEK_TEMPLATES,
     createDoplnekFromTemplate,
@@ -17,7 +17,7 @@ import {
     roleLabel,
     isBrigadnikRole,
 } from '../constants/userRoles';
-import { defaultMzdaZakladForRole, PRODEJCE_ZAKLAD_BODY } from '../constants/mzdaDefaults';
+import { PRODEJCE_ZAKLAD_BODY } from '../constants/mzdaDefaults';
 import './UserManagement.css';
 
 const UserManagement = () => {
@@ -51,6 +51,8 @@ const UserManagement = () => {
         mzda_doplnky: [],
         mzda_cestovne: '',
         vedouci_prodejna_id: '',
+        zmena_pozice: false,
+        zmena_pozice_od: '',
     });
 
     const nextUserIdPreview = estimateNextUserId(users);
@@ -103,17 +105,29 @@ const UserManagement = () => {
         const { name, value, type, checked } = e.target;
         if (name === 'role') {
             setFormData((prev) => {
-                const next = { ...prev, role: value };
-                if (prev.mzda_zaklad === '' || prev.mzda_zaklad == null) {
-                    const def = defaultMzdaZakladForRole(value, prev.prijmeni);
-                    if (def != null) {
-                        next.mzda_zaklad = String(def);
-                    } else if (value === 'BRIGADNIK') {
-                        next.mzda_zaklad = String(BRIGADNIK_DEFAULT_BODY_ZA_HODINU);
+                const next = applyRoleChangeDefaults(prev, value);
+                if (editingUser) {
+                    if (value !== editingUser.role) {
+                        next.zmena_pozice = true;
+                        if (!prev.zmena_pozice_od) {
+                            next.zmena_pozice_od = firstDayOfCurrentMonthIso();
+                        }
+                    } else {
+                        next.zmena_pozice = false;
                     }
                 }
                 return next;
             });
+            return;
+        }
+        if (name === 'zmena_pozice') {
+            setFormData((prev) => ({
+                ...prev,
+                zmena_pozice: checked,
+                zmena_pozice_od: checked && !prev.zmena_pozice_od
+                    ? firstDayOfCurrentMonthIso()
+                    : prev.zmena_pozice_od,
+            }));
             return;
         }
         setFormData((prev) => ({
@@ -151,6 +165,8 @@ const UserManagement = () => {
             mzda_doplnky: [],
             mzda_cestovne: '',
             vedouci_prodejna_id: '',
+            zmena_pozice: false,
+            zmena_pozice_od: '',
         });
         setEditingUser(null);
         setShowAddForm(false);
@@ -215,6 +231,8 @@ const UserManagement = () => {
             mzda_doplnky: Array.isArray(user.mzda_doplnky) ? [...user.mzda_doplnky] : [],
             mzda_cestovne: user.mzda_cestovne != null ? String(user.mzda_cestovne) : '',
             vedouci_prodejna_id: user.vedouci_prodejna_id != null ? String(user.vedouci_prodejna_id) : '',
+            zmena_pozice: false,
+            zmena_pozice_od: '',
         });
         setShowAddForm(true);
     };
@@ -682,6 +700,42 @@ const UserManagement = () => {
                                     ))}
                                 </div>
                             </div>
+
+                            <fieldset className="form-fieldset pozice-zmena-fieldset">
+                                <legend>Změna pozice</legend>
+                                {editingUser && editingUser.pozice_od && (
+                                    <p className="pozice-zmena-current">
+                                        Aktuální pozice platí od <strong>{formatIsoDateCs(editingUser.pozice_od)}</strong>
+                                        {editingUser.pozice_predchozi?.role
+                                            ? ` (předtím ${roleLabel(editingUser.pozice_predchozi.role)})`
+                                            : ''}
+                                        . Výplata a náklady do tohoto data se počítají podle předchozí role.
+                                    </p>
+                                )}
+                                <div className="form-group">
+                                    <label className="pozice-zmena-check">
+                                        <input
+                                            type="checkbox"
+                                            name="zmena_pozice"
+                                            checked={formData.zmena_pozice}
+                                            onChange={handleInputChange}
+                                        />
+                                        Změna pozice od
+                                    </label>
+                                    {formData.zmena_pozice && (
+                                        <input
+                                            type="date"
+                                            name="zmena_pozice_od"
+                                            value={formData.zmena_pozice_od}
+                                            onChange={handleInputChange}
+                                            required
+                                        />
+                                    )}
+                                    <small className="field-hint">
+                                        Zaškrtněte při přechodu brigádník ↔ zaměstnanec. Výplata měsíce se bere podle role k 1. dni – zadejte ideálně 1. den měsíce, od kterého platí nová pozice a odměna.
+                                    </small>
+                                </div>
+                            </fieldset>
 
                 </Modal>
             )}

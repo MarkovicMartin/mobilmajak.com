@@ -2,9 +2,9 @@ from rest_framework import serializers
 from .models import WebUser, ProfilovyObrazek
 from .utils import create_web_user_with_auto_id
 from .mzda_utils import (
-    BRIGADNIK_DEFAULT_BODY_ZA_HODINU,
-    default_mzda_zaklad_body,
+    coerce_mzda_zaklad_for_role,
     normalize_mzda_doplnky,
+    snapshot_pozice,
 )
 from stores.models import Prodejna
 from tickets.permissions import can_manage_tickets
@@ -38,8 +38,9 @@ class WebUserSerializer(serializers.ModelSerializer):
         model = WebUser
         fields = ['id', 'uzivatelske_jmeno', 'jmeno', 'prijmeni', 'role', 'aktivni', 'moduly', 'datum_vytvoreni',
                  'telefon', 'email', 'adresa', 'poznamka', 'prodejna_id', 'prodejna', 'technik_id', 'servis_uroven',
-                 'mzda_zaklad', 'mzda_doplnky', 'mzda_cestovne', 'vedouci_prodejna_id', 'can_manage_tickets', 'can_manage_tasks']
-        read_only_fields = ['datum_vytvoreni']
+                 'mzda_zaklad', 'mzda_doplnky', 'mzda_cestovne', 'pozice_od', 'pozice_predchozi',
+                 'vedouci_prodejna_id', 'can_manage_tickets', 'can_manage_tasks']
+        read_only_fields = ['datum_vytvoreni', 'pozice_od', 'pozice_predchozi']
     
     def to_representation(self, instance):
         ret = super().to_representation(instance)
@@ -49,6 +50,8 @@ class WebUserSerializer(serializers.ModelSerializer):
             ret.pop('mzda_zaklad', None)
             ret.pop('mzda_doplnky', None)
             ret.pop('mzda_cestovne', None)
+            ret.pop('pozice_od', None)
+            ret.pop('pozice_predchozi', None)
         return ret
     
     def get_prodejna(self, obj):
@@ -142,28 +145,29 @@ class WebUserCreateSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(read_only=True)
     heslo = serializers.CharField(write_only=True, min_length=6)
     technik_id = serializers.IntegerField(required=True, min_value=0)
+    zmena_pozice_od = serializers.DateField(required=False, allow_null=True, write_only=True)
     
     class Meta:
         model = WebUser
         fields = ['id', 'uzivatelske_jmeno', 'jmeno', 'prijmeni', 'heslo', 'role', 'aktivni', 'moduly',
                  'telefon', 'email', 'adresa', 'poznamka', 'prodejna_id', 'technik_id', 'servis_uroven',
-                 'mzda_zaklad', 'mzda_doplnky', 'mzda_cestovne']
+                 'mzda_zaklad', 'mzda_doplnky', 'mzda_cestovne', 'zmena_pozice_od']
     
     def validate_mzda_doplnky(self, value):
         return normalize_mzda_doplnky(value)
 
     def validate(self, attrs):
         role = attrs.get('role', 'PRODEJCE')
-        z = attrs.get('mzda_zaklad')
-        if z is None or z == '':
-            default = default_mzda_zaklad_body(
-                role,
-                jmeno=attrs.get('jmeno'),
-                prijmeni=attrs.get('prijmeni'),
-                technik_id=attrs.get('technik_id'),
-            )
-            if default is not None:
-                attrs['mzda_zaklad'] = default
+        attrs['mzda_zaklad'] = coerce_mzda_zaklad_for_role(
+            role,
+            attrs.get('mzda_zaklad'),
+            jmeno=attrs.get('jmeno'),
+            prijmeni=attrs.get('prijmeni'),
+            technik_id=attrs.get('technik_id'),
+        )
+        zmena_od = attrs.pop('zmena_pozice_od', None)
+        if zmena_od:
+            attrs['pozice_od'] = zmena_od
         return attrs
     
     def create(self, validated_data):
@@ -178,12 +182,13 @@ class WebUserUpdateSerializer(serializers.ModelSerializer):
     # Alias pro zpětnou kompatibilitu s frontendem
     heslo = serializers.CharField(write_only=True, required=False, min_length=6)
     technik_id = serializers.IntegerField(required=False, min_value=0)
+    zmena_pozice_od = serializers.DateField(required=False, allow_null=True, write_only=True)
     
     class Meta:
         model = WebUser
         fields = ['id', 'uzivatelske_jmeno', 'jmeno', 'prijmeni', 'role', 'aktivni', 'moduly',
                  'telefon', 'email', 'adresa', 'poznamka', 'nove_heslo', 'heslo', 'prodejna_id', 'technik_id',
-                 'servis_uroven', 'mzda_zaklad', 'mzda_doplnky', 'mzda_cestovne']
+                 'servis_uroven', 'mzda_zaklad', 'mzda_doplnky', 'mzda_cestovne', 'zmena_pozice_od']
         read_only_fields = ['id']
     
     def validate_mzda_doplnky(self, value):
@@ -193,20 +198,31 @@ class WebUserUpdateSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         role = attrs.get('role', getattr(self.instance, 'role', None))
-        if role == 'BRIGADNIK' and 'mzda_zaklad' in attrs:
-            z = attrs.get('mzda_zaklad')
-            if z is None or z == '':
-                attrs['mzda_zaklad'] = BRIGADNIK_DEFAULT_BODY_ZA_HODINU
-        elif role == 'BRIGADNIK' and self.instance and getattr(self.instance, 'mzda_zaklad', None) is None:
-            if 'mzda_zaklad' not in attrs:
-                attrs['mzda_zaklad'] = BRIGADNIK_DEFAULT_BODY_ZA_HODINU
+        mzda_in = attrs['mzda_zaklad'] if 'mzda_zaklad' in attrs else getattr(self.instance, 'mzda_zaklad', None)
+        coerced = coerce_mzda_zaklad_for_role(
+            role,
+            mzda_in,
+            user=self.instance,
+            jmeno=attrs.get('jmeno', getattr(self.instance, 'jmeno', None)),
+            prijmeni=attrs.get('prijmeni', getattr(self.instance, 'prijmeni', None)),
+            technik_id=attrs.get('technik_id', getattr(self.instance, 'technik_id', None)),
+        )
+        if coerced != mzda_in or 'mzda_zaklad' in attrs:
+            attrs['mzda_zaklad'] = coerced
         return attrs
     
     def update(self, instance, validated_data):
+        zmena_od = validated_data.pop('zmena_pozice_od', None)
         # Přijmeme buď 'nove_heslo' nebo alias 'heslo'
         nove_heslo = validated_data.pop('nove_heslo', None) or validated_data.pop('heslo', None)
         if nove_heslo:
             instance.set_heslo(nove_heslo)
+
+        if zmena_od:
+            new_role = validated_data.get('role', instance.role)
+            if new_role != instance.role:
+                instance.pozice_predchozi = snapshot_pozice(instance)
+            instance.pozice_od = zmena_od
         
         for attr, value in validated_data.items():
             setattr(instance, attr, value)

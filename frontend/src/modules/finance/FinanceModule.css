@@ -437,3 +437,48 @@
 .finance-table--compact th {
     font-size: 0.85rem;
 }
+
+.finance-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    z-index: 80;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 8vh 1rem 2rem;
+    overflow: auto;
+}
+
+.finance-modal {
+    background: var(--mm-surface, #fff);
+    border-radius: 10px;
+    padding: 1.1rem 1.25rem 1.25rem;
+    max-width: 640px;
+    width: 100%;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+}
+
+.finance-modal h3 {
+    margin: 0 0 0.75rem;
+}
+
+.finance-modal__hint,
+.finance-modal p {
+    margin: 0 0 0.75rem;
+    font-size: 0.95rem;
+}
+
+.finance-modal__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.85rem;
+}
+
+.finance-row-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    align-items: center;
+}

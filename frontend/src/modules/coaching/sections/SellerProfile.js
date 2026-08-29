@@ -7,6 +7,8 @@ import SignalsChips from '../components/SignalsChips';
 import CoachingTimelineChart from '../components/CoachingTimelineChart';
 import CategoryChart from '../components/CategoryChart';
 import CoachingNotesPanel from '../components/CoachingNotesPanel';
+import CompareRateToggle from '../components/CompareRateToggle';
+import CompareMetricsTable from '../components/CompareMetricsTable';
 
 const TABS = [
     { id: 'vykon', label: 'Výkon' },
@@ -21,6 +23,7 @@ const METRIC_OPTIONS = [
     { value: 'sluzby_celkem', label: 'Služby' },
     { value: 'celkovy_obrat', label: 'Obrat' },
     { value: 'unikatni_doklady', label: 'Účtenky' },
+    { value: 'odpracovane_hodiny', label: 'Odpracované hodiny' },
 ];
 
 const COMPARE_OPTS = [
@@ -50,6 +53,7 @@ const SellerProfile = ({ staffUsers = [], mesic, onMesicChange }) => {
     const [loading, setLoading] = useState(true);
     const [chartMetric, setChartMetric] = useState('polozky_nad_100');
     const [compare, setCompare] = useState('prev_year');
+    const [rateMode, setRateMode] = useState('total');
     const [selectedKat, setSelectedKat] = useState(null);
     const [comparePeer, setComparePeer] = useState('');
     const [compareData, setCompareData] = useState(null);
@@ -125,6 +129,8 @@ const SellerProfile = ({ staffUsers = [], mesic, onMesicChange }) => {
         ];
     }, [peers, profile?.prodejce]);
 
+    const chartPerHour = rateMode === 'per_hour' && chartMetric !== 'odpracovane_hodiny';
+
     if (loading && !profile) return <p className="coaching-muted">Načítám profil…</p>;
     if (!profile) return <p className="coaching-muted">Prodejce nenalezen</p>;
 
@@ -177,6 +183,7 @@ const SellerProfile = ({ staffUsers = [], mesic, onMesicChange }) => {
                             onChange={setCompare}
                             aria-label="Srovnání období"
                         />
+                        <CompareRateToggle value={rateMode} onChange={setRateMode} />
                     </div>
                     <CoachingTimelineChart
                         userId={userId}
@@ -184,6 +191,7 @@ const SellerProfile = ({ staffUsers = [], mesic, onMesicChange }) => {
                         mesic={effectiveMesic}
                         compare={compare || undefined}
                         primaryLabel={`${p.jmeno} ${p.prijmeni}`.trim()}
+                        perHour={chartPerHour}
                     />
                 </section>
             )}
@@ -275,6 +283,7 @@ const SellerProfile = ({ staffUsers = [], mesic, onMesicChange }) => {
                             onChange={setCompare}
                             aria-label="Srovnání období"
                         />
+                        <CompareRateToggle value={rateMode} onChange={setRateMode} />
                     </div>
                     <CoachingTimelineChart
                         userId={userId}
@@ -284,26 +293,17 @@ const SellerProfile = ({ staffUsers = [], mesic, onMesicChange }) => {
                         metric={chartMetric}
                         mesic={effectiveMesic}
                         compare={compare || undefined}
+                        perHour={chartPerHour}
                     />
                     {compareData?.metriky && comparePeer && (
-                        <table className="coaching-compare-table">
-                            <thead>
-                                <tr>
-                                    <th>Metrika</th>
-                                    <th>{compareData.prodejce_a?.jmeno} {compareData.prodejce_a?.prijmeni}</th>
-                                    <th>{compareData.prodejce_b?.jmeno} {compareData.prodejce_b?.prijmeni}</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {compareData.metriky.map((row) => (
-                                    <tr key={row.metric}>
-                                        <td>{row.label}</td>
-                                        <td>{fmtNum(row.a)}</td>
-                                        <td>{fmtNum(row.b)}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                        <CompareMetricsTable
+                            metriky={compareData.metriky}
+                            kategorie={compareData.kategorie}
+                            nameA={`${compareData.prodejce_a?.jmeno || ''} ${compareData.prodejce_a?.prijmeni || ''}`.trim()}
+                            nameB={`${compareData.prodejce_b?.jmeno || ''} ${compareData.prodejce_b?.prijmeni || ''}`.trim()}
+                            mesicLabel={effectiveMesic}
+                            rateMode={rateMode}
+                        />
                     )}
                 </section>
             )}

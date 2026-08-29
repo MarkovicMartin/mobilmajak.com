@@ -116,10 +116,12 @@ def seller_timeline(request, user_id):
     raw_metrics = request.GET.get('metrics', 'polozky_nad_100')
     metrics = [m.strip() for m in raw_metrics.split(',') if m.strip()]
     compare = request.GET.get('compare')
+    per_hour = request.GET.get('per_hour') in ('1', 'true', 'True')
     data = build_timeline(
         user_id, metrics, rok, mesic,
         compare=compare,
         kanal=request.GET.get('kanal', 'all'),
+        per_hour=per_hour,
     )
     return Response({'success': True, **data})
 
