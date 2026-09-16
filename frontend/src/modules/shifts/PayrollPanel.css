@@ -146,6 +146,14 @@
     font-weight: 600;
 }
 
+.payroll-hpp-warning {
+    color: #b45309;
+}
+
+.payroll-breakdown .breakdown-line-muted {
+    color: #64748b;
+}
+
 .payroll-breakdown-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));

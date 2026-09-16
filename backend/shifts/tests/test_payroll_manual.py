@@ -61,6 +61,8 @@ class PayrollManualMergeTests(TestCase):
         self.assertEqual(row['provize_body'], 8000.0)
         self.assertEqual(row['penalizace'][0]['srazka_body'], 2000.0)
         self.assertEqual(row['celkem_body'], 24000.0)
+        self.assertIsNotNone(row['hpp_dpp'])
+        self.assertEqual(row['hpp_dpp']['soucet_cista'], 24000)
 
     def test_apply_manual_odmena(self):
         from shifts.models import MzdovaOdmenaMesic
@@ -76,6 +78,7 @@ class PayrollManualMergeTests(TestCase):
         self.assertEqual(len(row['odmeny']), 1)
         self.assertEqual(row['odmeny'][0]['poznamka'], 'bonus')
         self.assertEqual(row['celkem_body'], 26500.0)
+        self.assertEqual(row['hpp_dpp']['soucet_cista'], 26500)
 
 
 class PayrollPenalizaceApiTests(TestCase):

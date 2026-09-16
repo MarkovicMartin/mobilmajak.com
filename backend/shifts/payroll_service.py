@@ -20,6 +20,7 @@ from users.mzda_utils import (
 )
 
 from .labor_hours import fondu_hodin_mesic, prescas_hodin, svatky_v_mesici_set
+from .hpp_dpp import attach_hpp_dpp_to_row
 
 POL_DOK_HRANI = Decimal('2')
 POL_DOK_ODMENA_KC = Decimal('1000')
@@ -633,6 +634,7 @@ def aggregate_hours_by_user(rok, mesic_cislo, prodejna_id=None):
                 'dovolena_h': 0,
                 'nemoc_h': 0,
                 'svatek_h': 0,
+                'vikend_h': 0,
             }
         hodiny = _shift_hours(smena)
         if smena.typ_smeny == 'dovolena':
@@ -651,6 +653,8 @@ def aggregate_hours_by_user(rok, mesic_cislo, prodejna_id=None):
                     result[uid]['prodejce_h'] += hodiny_ucetni
             if je_svatek:
                 result[uid]['svatek_h'] += hodiny
+            if smena.datum.weekday() >= 5:
+                result[uid]['vikend_h'] += hodiny
     for uid in result:
         for key in result[uid]:
             result[uid][key] = round(result[uid][key], 2)
@@ -670,6 +674,7 @@ def build_payroll_row(user, rok, mesic_cislo, hours_map, mesic_date, prodejny_ca
         'dovolena_h': 0,
         'nemoc_h': 0,
         'svatek_h': 0,
+        'vikend_h': 0,
     })
     odpracovano = hours.get('odpracovano_h', 0)
     vypomoc_h = hours.get('vypomoc_h', 0)
@@ -754,7 +759,7 @@ def build_payroll_row(user, rok, mesic_cislo, hours_map, mesic_date, prodejny_ca
     if user.prodejna_id:
         stredisko = prodejny_cache.get(user.prodejna_id, '')
 
-    return {
+    row = {
         'user_id': uid,
         'jmeno': f'{user.jmeno} {user.prijmeni}'.strip(),
         'stredisko': stredisko,
@@ -829,6 +834,7 @@ def build_payroll_row(user, rok, mesic_cislo, hours_map, mesic_date, prodejny_ca
         ],
         'celkem_body': _body_float(celkem_body),
     }
+    return attach_hpp_dpp_to_row(row)
 
 
 def build_payroll_preview(mesic_str, prodejna_id=None, base_only=False):

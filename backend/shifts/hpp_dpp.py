@@ -1,9 +1,9 @@
 """Rozpad čisté výplaty na HPP a DPP (doporučení pro admina).
 
 Cílová částka (`celkem_body`) je to, co má zaměstnanec dostat čistého.
-HPP drží minimální mzdu + zákonný příplatek 10 % za víkend, zbytek jde na DPP
-do stropu 11 999 Kč hrubého. Nad cca 30 tis. čistého se DPP nechá na maximu
-a navyšuje se HPP.
+HPP drží minimální mzdu + zákonné příplatky (víkend 10 %, svátek 100 %),
+zbytek jde na DPP do stropu 11 999 Kč hrubého. Nad stropem se DPP nechá
+na maximu a navyšuje se HPP. Bodový výpočet výplaty se nemění.
 """
 from decimal import Decimal, ROUND_HALF_UP
 
@@ -15,6 +15,7 @@ DPP_TAX_RATE = Decimal('0.15')
 DPP_GROSS_MAX = Decimal('11999')
 HPP_GROSS_MIN = Decimal('22400')
 WEEKEND_SURCHARGE_RATE = Decimal('0.10')
+HOLIDAY_SURCHARGE_RATE = Decimal('1.00')
 
 REZIM_POD_MINIMEM = 'pod_minimem'
 REZIM_MIN_HPP = 'min_hpp'
@@ -114,30 +115,57 @@ def dpp_hruba_z_ciste(cista):
     return min(max(Decimal('0'), g), DPP_GROSS_MAX)
 
 
-def vikend_priplatek_hruba(hpp_zaklad_hruba, odpracovano_h, vikend_h):
-    """10 % průměrné hodinové mzdy HPP za hodiny so/ne."""
-    hours = _dec(odpracovano_h)
-    weekend = _dec(vikend_h)
+def hodiny_sazba_hpp(odpracovano_h, svatek_h=0):
+    """Kalendářní odpracované hodiny (svátek je ve výplatě v odpracovano_h 2×)."""
+    odprac = _dec(odpracovano_h)
+    svatek = _dec(svatek_h)
+    kalendar = odprac - svatek
+    if kalendar > 0:
+        return kalendar
+    return odprac
+
+
+def _sazba_h(hpp_zaklad_hruba, hodiny_sazba):
+    hours = _dec(hodiny_sazba)
     base = _kc(hpp_zaklad_hruba)
-    if hours <= 0 or weekend <= 0 or base <= 0:
+    if hours <= 0 or base <= 0:
         return Decimal('0')
-    return _kc(base / hours * weekend * WEEKEND_SURCHARGE_RATE)
+    return base / hours
 
 
-def hpp_minimum_hruba(odpracovano_h, vikend_h):
-    """Minimální hrubá HPP: 22 400 + příplatek za víkend."""
-    priplatek = vikend_priplatek_hruba(HPP_GROSS_MIN, odpracovano_h, vikend_h)
-    return HPP_GROSS_MIN + priplatek, priplatek
+def vikend_priplatek_hruba(hpp_zaklad_hruba, odpracovano_h, vikend_h, svatek_h=0):
+    """10 % průměrné hodinové mzdy HPP za hodiny so/ne."""
+    sazba = _sazba_h(hpp_zaklad_hruba, hodiny_sazba_hpp(odpracovano_h, svatek_h))
+    if sazba <= 0 or _dec(vikend_h) <= 0:
+        return Decimal('0')
+    return _kc(sazba * _dec(vikend_h) * WEEKEND_SURCHARGE_RATE)
 
 
-def _split_dict(hpp, dpp, priplatek, vikend_h, rezim, target, warnings=None):
+def svatek_priplatek_hruba(hpp_zaklad_hruba, odpracovano_h, svatek_h):
+    """100 % průměrné hodinové mzdy HPP za odpracovaný svátek."""
+    sazba = _sazba_h(hpp_zaklad_hruba, hodiny_sazba_hpp(odpracovano_h, svatek_h))
+    if sazba <= 0 or _dec(svatek_h) <= 0:
+        return Decimal('0')
+    return _kc(sazba * _dec(svatek_h) * HOLIDAY_SURCHARGE_RATE)
+
+
+def hpp_minimum_hruba(odpracovano_h, vikend_h, svatek_h=0):
+    """Minimální hrubá HPP: 22 400 + příplatky za víkend a svátek."""
+    vikend = vikend_priplatek_hruba(HPP_GROSS_MIN, odpracovano_h, vikend_h, svatek_h)
+    svatek = svatek_priplatek_hruba(HPP_GROSS_MIN, odpracovano_h, svatek_h)
+    return HPP_GROSS_MIN + vikend + svatek, vikend, svatek
+
+
+def _split_dict(hpp, dpp, vikend_priplatek, svatek_priplatek, vikend_h, svatek_h, rezim, target, warnings=None):
     hpp_cista = hpp['cista']
     dpp_cista = dpp['cista']
     return {
         'rezim': rezim,
         'cil_cista': int(target),
         'vikend_h': float(vikend_h or 0),
-        'vikend_priplatek_hruba': int(priplatek),
+        'svatek_h': float(svatek_h or 0),
+        'vikend_priplatek_hruba': int(vikend_priplatek),
+        'svatek_priplatek_hruba': int(svatek_priplatek),
         'hpp_hruba_min': int(HPP_GROSS_MIN),
         'dpp_hruba_max': int(DPP_GROSS_MAX),
         'hpp_hruba': int(hpp['hruba']),
@@ -156,17 +184,25 @@ def _split_dict(hpp, dpp, priplatek, vikend_h, rezim, target, warnings=None):
     }
 
 
-def recommend_hpp_dpp(target_net, odpracovano_h=0, vikend_h=0):
+def _priplatky(hpp_hruba, odpracovano_h, vikend_h, svatek_h):
+    return (
+        vikend_priplatek_hruba(hpp_hruba, odpracovano_h, vikend_h, svatek_h),
+        svatek_priplatek_hruba(hpp_hruba, odpracovano_h, svatek_h),
+    )
+
+
+def recommend_hpp_dpp(target_net, odpracovano_h=0, vikend_h=0, svatek_h=0):
     """Nejefektivnější rozpad cílové čisté na HPP + DPP."""
     target = _kc(target_net)
     if target <= 0:
         empty_hpp = hpp_odvody(0)
         empty_dpp = dpp_odvody(0)
         return _split_dict(
-            empty_hpp, empty_dpp, Decimal('0'), vikend_h, REZIM_POD_MINIMEM, target,
+            empty_hpp, empty_dpp, Decimal('0'), Decimal('0'),
+            vikend_h, svatek_h, REZIM_POD_MINIMEM, target,
         )
 
-    hpp_min_hruba, priplatek = hpp_minimum_hruba(odpracovano_h, vikend_h)
+    hpp_min_hruba, vikend_p, svatek_p = hpp_minimum_hruba(odpracovano_h, vikend_h, svatek_h)
     hpp_min = hpp_odvody(hpp_min_hruba)
     dpp_max = dpp_odvody(DPP_GROSS_MAX)
     hpp_min_cista = hpp_min['cista']
@@ -175,13 +211,14 @@ def recommend_hpp_dpp(target_net, odpracovano_h=0, vikend_h=0):
     if target <= hpp_min_cista:
         hpp = hpp_odvody(hpp_hruba_z_ciste(target))
         dpp = dpp_odvody(0)
-        priplatek_out = (
-            vikend_priplatek_hruba(hpp['hruba'], odpracovano_h, vikend_h)
-            if hpp['hruba'] > 0 else Decimal('0')
+        vikend_out, svatek_out = (
+            _priplatky(hpp['hruba'], odpracovano_h, vikend_h, svatek_h)
+            if hpp['hruba'] > 0 else (Decimal('0'), Decimal('0'))
         )
         warnings = ['Čistá je pod minimální HPP – vše na hlavní pracovní poměr.']
         return _split_dict(
-            hpp, dpp, priplatek_out, vikend_h, REZIM_POD_MINIMEM, target, warnings,
+            hpp, dpp, vikend_out, svatek_out, vikend_h, svatek_h,
+            REZIM_POD_MINIMEM, target, warnings,
         )
 
     if target <= hpp_min_cista + dpp_max_cista:
@@ -194,7 +231,9 @@ def recommend_hpp_dpp(target_net, odpracovano_h=0, vikend_h=0):
                 dpp = dpp_try
             else:
                 hpp = hpp_odvody(hpp_hruba_z_ciste(hpp['cista'] + delta))
-        return _split_dict(hpp, dpp, priplatek, vikend_h, REZIM_MIN_HPP, target)
+        return _split_dict(
+            hpp, dpp, vikend_p, svatek_p, vikend_h, svatek_h, REZIM_MIN_HPP, target,
+        )
 
     dpp = dpp_max
     hpp = hpp_odvody(hpp_hruba_z_ciste(target - dpp_max_cista))
@@ -205,11 +244,12 @@ def recommend_hpp_dpp(target_net, odpracovano_h=0, vikend_h=0):
         hpp = hpp_odvody(hpp_min_hruba)
         rest = target - hpp['cista']
         dpp = dpp_odvody(dpp_hruba_z_ciste(max(Decimal('0'), rest)))
-    priplatek_out = vikend_priplatek_hruba(hpp['hruba'], odpracovano_h, vikend_h)
-    return _split_dict(hpp, dpp, priplatek_out, vikend_h, REZIM_MAX_DPP, target)
+    return _split_dict(
+        hpp, dpp, vikend_p, svatek_p, vikend_h, svatek_h, REZIM_MAX_DPP, target,
+    )
 
 
-def split_from_hpp_cista(target_net, hpp_cista, odpracovano_h=0, vikend_h=0):
+def split_from_hpp_cista(target_net, hpp_cista, odpracovano_h=0, vikend_h=0, svatek_h=0):
     """Vzoreček: zadaná čistá HPP → dopočti DPP (strop 11 999 hrubého)."""
     target = _kc(target_net)
     hpp_n = _kc(hpp_cista)
@@ -233,19 +273,24 @@ def split_from_hpp_cista(target_net, hpp_cista, odpracovano_h=0, vikend_h=0):
     delta = target - (hpp['cista'] + dpp['cista'])
     if delta != 0:
         hpp = hpp_odvody(hpp_hruba_z_ciste(hpp['cista'] + delta))
-    hpp_min_hruba, priplatek = hpp_minimum_hruba(odpracovano_h, vikend_h)
+    hpp_min_hruba, vikend_p, svatek_p = hpp_minimum_hruba(odpracovano_h, vikend_h, svatek_h)
     if hpp['hruba'] < hpp_min_hruba:
         warnings.append(
-            f'HPP hrubá je pod minimem {int(hpp_min_hruba)} Kč (min. mzda + víkend).'
+            f'HPP hrubá je pod minimem {int(hpp_min_hruba)} Kč (min. mzda + příplatky).'
         )
     rezim = REZIM_MAX_DPP if dpp['hruba'] >= DPP_GROSS_MAX else REZIM_MIN_HPP
-    priplatek_out = vikend_priplatek_hruba(
-        max(hpp['hruba'], HPP_GROSS_MIN), odpracovano_h, vikend_h,
+    if hpp['hruba'] > 0:
+        vikend_out, svatek_out = _priplatky(
+            max(hpp['hruba'], HPP_GROSS_MIN), odpracovano_h, vikend_h, svatek_h,
+        )
+    else:
+        vikend_out, svatek_out = vikend_p, svatek_p
+    return _split_dict(
+        hpp, dpp, vikend_out, svatek_out, vikend_h, svatek_h, rezim, target, warnings,
     )
-    return _split_dict(hpp, dpp, priplatek_out, vikend_h, rezim, target, warnings)
 
 
-def split_from_dpp_cista(target_net, dpp_cista, odpracovano_h=0, vikend_h=0):
+def split_from_dpp_cista(target_net, dpp_cista, odpracovano_h=0, vikend_h=0, svatek_h=0):
     """Vzoreček: zadaná čistá DPP → dopočti HPP."""
     dpp_n = _kc(dpp_cista)
     dpp_max_cista = dpp_odvody(DPP_GROSS_MAX)['cista']
@@ -256,7 +301,7 @@ def split_from_dpp_cista(target_net, dpp_cista, odpracovano_h=0, vikend_h=0):
     if dpp_n < 0:
         dpp_n = Decimal('0')
     hpp_n = _kc(target_net) - dpp_n
-    result = split_from_hpp_cista(target_net, hpp_n, odpracovano_h, vikend_h)
+    result = split_from_hpp_cista(target_net, hpp_n, odpracovano_h, vikend_h, svatek_h)
     if extra:
         result['warnings'] = extra + list(result.get('warnings') or [])
         result['warning'] = result['warnings'][0]
@@ -272,5 +317,6 @@ def attach_hpp_dpp_to_row(row):
         row.get('celkem_body') or 0,
         odpracovano_h=row.get('odpracovano_h') or 0,
         vikend_h=row.get('vikend_h') or 0,
+        svatek_h=row.get('svatek_h') or 0,
     )
     return row

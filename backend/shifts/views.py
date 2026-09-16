@@ -1179,7 +1179,7 @@ def export_smeny(request):
 
         headers = [
             'Měsíc', 'Jméno', 'Středisko',
-            'Odpracováno h', 'Dovolená h', 'Nemoc h', 'Svátek h',
+            'Odpracováno h', 'Dovolená h', 'Nemoc h', 'Svátek h', 'Víkend h',
             'Fond h', 'Přesčas h',
             'Základ', 'Doplňky', 'Cestovné', 'Dovolená výplata', 'Přesčas body', 'Dýška',
             'Prům. pol./účt.', 'Bonus pol./účt.',
@@ -1189,6 +1189,7 @@ def export_smeny(request):
         headers += [
             'Provize celkem', 'Srážka provize %', 'Srážka provize body', 'Popis srážek',
             'Odměna měsíc', 'Celkem',
+            'HPP hrubá', 'HPP čistá', 'DPP hrubá', 'DPP čistá', 'HPP/DPP režim',
         ]
 
         def row_values(data):
@@ -1202,6 +1203,7 @@ def export_smeny(request):
                 data.get('dovolena_h', 0),
                 data.get('nemoc_h', 0),
                 data.get('svatek_h', 0),
+                data.get('vikend_h', 0),
                 data.get('fondu_h', 0),
                 data.get('prescas_h', 0),
                 data.get('zaklad_body', 0),
@@ -1225,6 +1227,14 @@ def export_smeny(request):
                 data.get('penalizace_popis', '') or '',
                 data.get('odmena_mesic_body', 0),
                 data.get('celkem_body', 0),
+            ])
+            split = data.get('hpp_dpp') or {}
+            out.extend([
+                split.get('hpp_hruba', ''),
+                split.get('hpp_cista', ''),
+                split.get('dpp_hruba', ''),
+                split.get('dpp_cista', ''),
+                split.get('rezim', ''),
             ])
             return out
 

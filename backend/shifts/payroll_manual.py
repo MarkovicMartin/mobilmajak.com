@@ -3,6 +3,7 @@ from datetime import date
 from decimal import Decimal
 from types import SimpleNamespace
 
+from .hpp_dpp import attach_hpp_dpp_to_row
 from .models import MzdovaOdmenaMesic, MzdovaPenalizaceMesic
 from .payroll_service import _body_float, _body_whole, provize_po_penalizaci
 
@@ -127,7 +128,7 @@ def apply_manual_adjustments_to_row(row, odmeny_rows=None, penalizace_rows=None)
         for p, d in zip(penalizace_rows, penalizace_detail)
     ]
     row['celkem_body'] = _body_float(_celkem_from_parts(row, provize_body, odmena_mesic))
-    return row
+    return attach_hpp_dpp_to_row(row)
 
 
 def strip_manual_adjustments_from_row(row):
@@ -148,7 +149,7 @@ def strip_manual_adjustments_from_row(row):
     row['celkem_body'] = _body_float(
         _celkem_from_parts(row, provize_brutto, Decimal('0')),
     )
-    return row
+    return attach_hpp_dpp_to_row(row)
 
 
 def load_manual_maps(mesic_date, user_ids=None):

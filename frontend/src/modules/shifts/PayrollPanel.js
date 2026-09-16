@@ -12,11 +12,27 @@ import SymplioDocLink from '../../components/SymplioDocLink';
 import { ADMIN_ADJUSTMENT_EVENT } from './adminAdjustmentSync';
 import './PayrollPanel.css';
 
-const CACHE_PREFIX = 'payroll-overview-v3';
+const CACHE_PREFIX = 'payroll-overview-v4';
 const CURRENT_MONTH_STALE_MS = 5 * 60 * 1000;
 const RETURNS_CACHE_PREFIX = 'payroll-returns-v1';
 const RETURNS_STALE_MS = 10 * 60 * 1000;
 const EMPTY_PENALIZACE_POLOZKA = { typ: 'procenta', hodnota: '10', duvod: '' };
+const HPP_DPP_REZIM_LABEL = {
+    pod_minimem: 'pod min. HPP',
+    min_hpp: 'min. HPP + DPP',
+    max_dpp: 'max. DPP',
+};
+
+function formatKc(value) {
+    if (value == null || value === '') return '—';
+    const n = Number(value);
+    if (Number.isNaN(n)) return '—';
+    return `${Math.round(n).toLocaleString('cs-CZ')} Kč`;
+}
+
+function hppDppRezimLabel(rezim) {
+    return HPP_DPP_REZIM_LABEL[rezim] || rezim || '—';
+}
 const memoryCache = new Map();
 const returnsMemoryCache = new Map();
 
@@ -294,6 +310,14 @@ function PayrollPanel({ month, onExport }) {
 
     const soucetBodu = useMemo(
         () => rows.reduce((s, r) => s + (Number(r.celkem_body) || 0), 0),
+        [rows],
+    );
+    const soucetHppHruba = useMemo(
+        () => rows.reduce((s, r) => s + (Number(r.hpp_dpp?.hpp_hruba) || 0), 0),
+        [rows],
+    );
+    const soucetDppHruba = useMemo(
+        () => rows.reduce((s, r) => s + (Number(r.hpp_dpp?.dpp_hruba) || 0), 0),
         [rows],
     );
 
@@ -1028,6 +1052,82 @@ function PayrollPanel({ month, onExport }) {
         );
     };
 
+    const renderHppDpp = (row) => {
+        if (row.is_brigadnik) {
+            return (
+                <div className="payroll-detail-section">
+                    <h4>Rozpad HPP / DPP</h4>
+                    <p className="payroll-detail-hint">Brigádník – bez rozdělení na HPP a DPP.</p>
+                </div>
+            );
+        }
+        const split = row.hpp_dpp;
+        if (!split) return null;
+        const lines = [
+            ['Cíl (čistá z výplaty)', formatKc(split.cil_cista)],
+            ['HPP hrubá', formatKc(split.hpp_hruba)],
+            ['HPP čistá', formatKc(split.hpp_cista)],
+            ['DPP hrubá', formatKc(split.dpp_hruba)],
+            ['DPP čistá', formatKc(split.dpp_cista)],
+            ['Součet čisté', formatKc(split.soucet_cista)],
+        ];
+        if (Number(split.vikend_h) > 0) {
+            lines.push([
+                `Příplatek víkend 10 % (${formatNumber(split.vikend_h)} h)`,
+                formatKc(split.vikend_priplatek_hruba),
+            ]);
+        }
+        if (Number(split.svatek_h) > 0) {
+            lines.push([
+                `Příplatek svátek 100 % (${formatNumber(split.svatek_h)} h)`,
+                formatKc(split.svatek_priplatek_hruba),
+            ]);
+        }
+        lines.push(['Režim', hppDppRezimLabel(split.rezim)]);
+        return (
+            <div className="payroll-detail-section">
+                <h4>Rozpad HPP / DPP</h4>
+                <p className="payroll-detail-hint">
+                    Bodový výpočet se nemění. Čistá z výplaty se rozdělí na min. HPP
+                    (22 400 Kč hrubého + příplatky) a DPP do 11 999 Kč hrubého.
+                </p>
+                <div className="payroll-breakdown payroll-breakdown-souhrn">
+                    {lines.map(([label, value]) => (
+                        <div key={label} className="breakdown-line">
+                            <span className="breakdown-label">{label}</span>
+                            <span className="breakdown-value">{value}</span>
+                        </div>
+                    ))}
+                    {split.hpp_hruba > 0 && (
+                        <div className="breakdown-line breakdown-line-muted">
+                            <span className="breakdown-label">
+                                HPP odvody (SP {formatKc(split.hpp_socialni)}
+                                {' + '}ZP {formatKc(split.hpp_zdravotni)}
+                                {' + '}daň {formatKc(split.hpp_dan)})
+                            </span>
+                            <span className="breakdown-value">
+                                {formatKc(
+                                    (Number(split.hpp_socialni) || 0)
+                                    + (Number(split.hpp_zdravotni) || 0)
+                                    + (Number(split.hpp_dan) || 0),
+                                )}
+                            </span>
+                        </div>
+                    )}
+                    {split.dpp_dan > 0 && (
+                        <div className="breakdown-line breakdown-line-muted">
+                            <span className="breakdown-label">DPP daň 15 %</span>
+                            <span className="breakdown-value">{formatKc(split.dpp_dan)}</span>
+                        </div>
+                    )}
+                </div>
+                {(split.warnings || []).map((w) => (
+                    <p key={w} className="payroll-detail-hint payroll-hpp-warning">{w}</p>
+                ))}
+            </div>
+        );
+    };
+
     const renderMzdaSouhrn = (row) => {
         if (row.is_brigadnik) return null;
         const zaklad = Number(row.zaklad_body) || 0;
@@ -1261,6 +1361,18 @@ function PayrollPanel({ month, onExport }) {
                             <div className="stat-label">Měsíční fond</div>
                         </div>
                     </div>
+                    <div className="stat-card">
+                        <div className="stat-content">
+                            <div className="stat-value">{formatKc(soucetHppHruba)}</div>
+                            <div className="stat-label">HPP hrubá (kmen)</div>
+                        </div>
+                    </div>
+                    <div className="stat-card">
+                        <div className="stat-content">
+                            <div className="stat-value">{formatKc(soucetDppHruba)}</div>
+                            <div className="stat-label">DPP hrubá (kmen)</div>
+                        </div>
+                    </div>
                 </div>
 
                 <div className="payroll-actions action-buttons">
@@ -1293,6 +1405,7 @@ function PayrollPanel({ month, onExport }) {
                 Základ = (základ + doplňky z profilu) × odpracované hodiny do fondu / fond.
                 Přesčas = stejná sazba × hodiny nad fondem. Dýška = obrat P63615 (1 bod = 1 Kč).
                 Cestovné a manuální bonus se do sazby přesčasu nepřičítají.
+                HPP/DPP je jen rozpad čisté na výplatnici (min. mzda + příplatky / DPP do 11 999 Kč).
             </p>
 
             {error && <div className="error-message">{error}</div>}
@@ -1685,6 +1798,8 @@ function PayrollPanel({ month, onExport }) {
                             <th>Fixní</th>
                             <th>Provize</th>
                             <th>Celkem</th>
+                            <th>HPP hrubá</th>
+                            <th>DPP hrubá</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1732,13 +1847,26 @@ function PayrollPanel({ month, onExport }) {
                                             )}
                                         </td>
                                         <td className="col-celkem"><strong>{formatPoints(row.celkem_body)}</strong></td>
+                                        <td
+                                            className="col-celkem"
+                                            title={row.is_brigadnik ? undefined : `čistá ${formatKc(row.hpp_dpp?.hpp_cista)}`}
+                                        >
+                                            {row.is_brigadnik ? '—' : formatKc(row.hpp_dpp?.hpp_hruba)}
+                                        </td>
+                                        <td
+                                            className="col-celkem"
+                                            title={row.is_brigadnik ? undefined : `čistá ${formatKc(row.hpp_dpp?.dpp_cista)}`}
+                                        >
+                                            {row.is_brigadnik ? '—' : formatKc(row.hpp_dpp?.dpp_hruba)}
+                                        </td>
                                     </tr>
                                     {isOpen && (
                                         <tr className="detail-row">
-                                            <td colSpan={6}>
+                                            <td colSpan={8}>
                                                 <div className="payroll-detail-full">
                                     {renderBrigadnikSouhrn(row)}
                                     {renderMzdaSouhrn(row)}
+                                    {renderHppDpp(row)}
                                     {row.dovolena_smeny_h > 0 && row.dovolena_smeny_h !== row.dovolena_h && (
                                         <p className="payroll-detail-hint">
                                             Směny dovolené ve výpisu: {formatNumber(row.dovolena_smeny_h)} h
@@ -1763,6 +1891,8 @@ function PayrollPanel({ month, onExport }) {
                             <tr className="payroll-tfoot">
                                 <td colSpan={5} className="tfoot-label">Součet bodů</td>
                                 <td className="col-celkem"><strong>{formatPoints(soucetBodu)}</strong></td>
+                                <td className="col-celkem">{formatKc(soucetHppHruba)}</td>
+                                <td className="col-celkem">{formatKc(soucetDppHruba)}</td>
                             </tr>
                         </tfoot>
                     )}
