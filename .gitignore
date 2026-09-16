@@ -63,6 +63,10 @@ frontend/coverage/
 .ssh/
 secrets/
 scripts/*-gateway/config.json
+/camera_motion_*.json
+
+# USB camera packs (config.json + secrets) – never commit
+/dist/
 
 # Environment variables
 .env
