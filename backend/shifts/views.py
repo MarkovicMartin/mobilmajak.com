@@ -776,21 +776,35 @@ def kalendar_data(request):
     try:
         rok, mesic_cislo = map(int, mesic.split('-'))
         from stores.models import Prodejna
+        from users.models import WebUser
 
         mine_scope = str(request.GET.get('scope', '')).lower() == 'mine'
+        person_user = None
+        user_id_raw = request.GET.get('user_id')
+        if user_id_raw and request.user.role == 'ADMIN' and not mine_scope:
+            try:
+                person_user = WebUser.objects.get(pk=int(user_id_raw))
+            except (WebUser.DoesNotExist, ValueError, TypeError):
+                return Response(
+                    {'error': 'Uživatel nenalezen.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        person_scope = mine_scope or person_user is not None
+
         all_stores = str(prodejna_id or '').lower() in ('vse', 'all', '0')
-        backoffice_calendar = is_backoffice_calendar_key(prodejna_id)
+        if person_scope:
+            all_stores = True
+        backoffice_calendar = (
+            (not person_scope) and is_backoffice_calendar_key(prodejna_id)
+        )
         shifts_team_calendar = getattr(settings, 'SHIFTS_CALENDAR_SEE_ALL_EMPLOYEES', False)
         see_all_employees = False
         show_store_colleagues = False
         prodejna = None
         if not all_stores:
             if not prodejna_id:
-                if mine_scope:
-                    all_stores = True
-                else:
-                    return Response({'error': 'Chybí parametr prodejna.'},
-                                  status=status.HTTP_400_BAD_REQUEST)
+                return Response({'error': 'Chybí parametr prodejna.'},
+                              status=status.HTTP_400_BAD_REQUEST)
             elif backoffice_calendar:
                 pass
             else:
@@ -807,12 +821,15 @@ def kalendar_data(request):
             datum__month=mesic_cislo,
             aktivni=True,
         ).select_related('user', 'prodejna')
-        if backoffice_calendar:
+        if person_scope:
+            smeny = smeny.filter(user=person_user or request.user)
+        elif backoffice_calendar:
             smeny = apply_backoffice_calendar_filter(smeny)
         elif prodejna is not None:
             smeny = apply_calendar_prodejna_filter(smeny, prodejna)
-        if mine_scope:
-            smeny = smeny.filter(user=request.user)
+        if person_scope:
+            see_all_employees = False
+            show_store_colleagues = False
         elif shifts_team_calendar:
             see_all_employees = True
             if (prodejna is not None or backoffice_calendar) and request.user.role in ('PRODEJCE', 'VEDOUCI'):
@@ -865,7 +882,8 @@ def kalendar_data(request):
             'see_all_employees': see_all_employees,
             'show_store_colleagues': show_store_colleagues,
             'shifts_see_all_employees': shifts_team_calendar,
-            'mine_only': all_stores and not see_all_employees,
+            'mine_only': person_scope or (all_stores and not see_all_employees),
+            'person_user_id': (person_user or request.user).id if person_scope else None,
         }
         
         return Response(response_data)

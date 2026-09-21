@@ -61,6 +61,7 @@
 }
 
 .ui-select__menu {
+    position: fixed;
     background: var(--bg-dropdown);
     border: 1px solid var(--border-primary);
     border-radius: var(--radius-lg);

@@ -23,7 +23,12 @@ const Select = ({
 }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
-    const [menuStyle, setMenuStyle] = useState({});
+    const [menuStyle, setMenuStyle] = useState({
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        visibility: 'hidden',
+    });
     const rootRef = useRef(null);
     const triggerRef = useRef(null);
     const menuRef = useRef(null);
@@ -85,6 +90,7 @@ const Select = ({
             left: rect.left,
             width: rect.width,
             zIndex,
+            visibility: 'visible',
         });
     }, [usePortal, rootRef]);
 
@@ -116,7 +122,7 @@ const Select = ({
 
     useEffect(() => {
         if (isOpen && showSearch && searchRef.current) {
-            searchRef.current.focus();
+            searchRef.current.focus({ preventScroll: true });
         }
     }, [isOpen, showSearch]);
 
@@ -130,6 +136,7 @@ const Select = ({
         onChange(option.value);
         setIsOpen(false);
         setSearchTerm('');
+        triggerRef.current?.focus({ preventScroll: true });
     };
 
     const handleKeyDown = (e) => {
@@ -176,6 +183,7 @@ const Select = ({
                             role="option"
                             aria-selected={option.value === value}
                             className={optionClass(option.value === value)}
+                            onMouseDown={(e) => e.preventDefault()}
                             onClick={() => handleSelect(option)}
                         >
                             <span className={labelClass}>{option.label}</span>

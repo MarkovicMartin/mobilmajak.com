@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { storeAPI } from '../../services/api';
+import { storeAPI, userAPI } from '../../services/api';
 import { PageHeader, Select } from '../../components/ui';
 import ShiftCalendar from './ShiftCalendar';
 import ShiftForm from './ShiftForm';
@@ -17,6 +17,8 @@ import { BACKOFFICE_LOCATION } from './shiftBackoffice';
 import './ShiftsModule.css';
 
 const ALL_PRODEJNY = 'vse';
+const MINE_FILTER = 'mine';
+const USER_FILTER = 'user';
 
 /** Výchozí filtr kalendáře: admin + brigádník = všechny (prodejny / vlastní směny), prodejce = domácí prodejna. */
 function defaultCalendarProdejna(user) {
@@ -47,7 +49,10 @@ function ShiftsModule() {
     const [editShift, setEditShift] = useState(null);
     const [refreshTrigger, setRefreshTrigger] = useState(0);
     const [shiftsSeeAllEmployees, setShiftsSeeAllEmployees] = useState(false);
+    const [calendarUserId, setCalendarUserId] = useState('');
+    const [staffUsers, setStaffUsers] = useState([]);
     const adminDefaultStoresSet = useRef(false);
+    const controlsRef = useRef(null);
 
     useEffect(() => {
         (async () => {
@@ -63,12 +68,50 @@ function ShiftsModule() {
     }, []);
 
     useEffect(() => {
+        if (user?.role !== 'ADMIN') return;
+        let cancelled = false;
+        (async () => {
+            try {
+                const data = await userAPI.getUsers({ aktivni: true });
+                if (cancelled || !data?.success) return;
+                const list = (data.users || [])
+                    .filter((u) => u.aktivni && u.id !== 0)
+                    .sort((a, b) => {
+                        const ap = `${a.prijmeni || ''} ${a.jmeno || ''}`.trim();
+                        const bp = `${b.prijmeni || ''} ${b.jmeno || ''}`.trim();
+                        return ap.localeCompare(bp, 'cs');
+                    });
+                setStaffUsers(list);
+            } catch (_e) {
+                /* výběr uživatele je doplňkový */
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [user?.role]);
+
+    useEffect(() => {
         if (!user || adminDefaultStoresSet.current) return;
         setSelectedProdejna(defaultCalendarProdejna(user));
         adminDefaultStoresSet.current = true;
     }, [user]);
 
     const isAdmin = user?.role === 'ADMIN';
+    const personView = selectedProdejna === MINE_FILTER || selectedProdejna === USER_FILTER;
+    const personUserId = selectedProdejna === USER_FILTER ? calendarUserId : '';
+    const waitingForCalendarUser = isAdmin && selectedProdejna === USER_FILTER && !calendarUserId;
+
+    useLayoutEffect(() => {
+        if (!waitingForCalendarUser) return;
+        controlsRef.current?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    }, [waitingForCalendarUser]);
+
+    const staffUserOptions = useMemo(() => [
+        { value: '', label: 'Vyberte uživatele' },
+        ...staffUsers.map((u) => ({
+            value: String(u.id),
+            label: `${u.prijmeni || ''} ${u.jmeno || ''}`.trim() || String(u.id),
+        })),
+    ], [staffUsers]);
 
     useEffect(() => {
         const st = location.state;
@@ -162,22 +205,28 @@ function ShiftsModule() {
         return name;
     };
 
-    const storeSelectOptions = useMemo(() => [
-        {
-            value: ALL_PRODEJNY,
-            label: shiftsSeeAllEmployees || user?.role === 'ADMIN'
-                ? 'Všechny prodejny'
-                : 'Moje směny (všechny prodejny)',
-        },
-        ...stores.map((store) => ({
-            value: String(store.id),
-            label: storeLabel(store),
-        })),
-        {
-            value: BACKOFFICE_LOCATION,
-            label: 'Backoffice',
-        },
-    ], [stores, user?.prodejna_id, user?.role, shiftsSeeAllEmployees]);
+    const storeSelectOptions = useMemo(() => {
+        const personOption = user?.role === 'ADMIN'
+            ? { value: USER_FILTER, label: 'Zobraz směny' }
+            : { value: MINE_FILTER, label: 'Mé směny' };
+        return [
+            personOption,
+            {
+                value: ALL_PRODEJNY,
+                label: shiftsSeeAllEmployees || user?.role === 'ADMIN'
+                    ? 'Všechny prodejny'
+                    : 'Moje směny (všechny prodejny)',
+            },
+            ...stores.map((store) => ({
+                value: String(store.id),
+                label: storeLabel(store),
+            })),
+            {
+                value: BACKOFFICE_LOCATION,
+                label: 'Backoffice',
+            },
+        ];
+    }, [stores, user?.prodejna_id, user?.role, shiftsSeeAllEmployees]);
 
     const showMonthControls = activeView === 'calendar' || activeView === 'overview' || activeView === 'payroll';
 
@@ -192,79 +241,105 @@ function ShiftsModule() {
             />
 
             {showMonthControls && (
-                <div className="shifts-controls">
+                <div className="shifts-controls" ref={controlsRef}>
                     <div className="shifts-controls__calendar-row">
                         {activeView === 'calendar' && (
-                            <div className="prodejna-selector">
-                                <label htmlFor="shifts-prodejna-select">Prodejna</label>
-                                <Select
-                                    id="shifts-prodejna-select"
-                                    options={storeSelectOptions}
-                                    value={selectedProdejna}
-                                    onChange={setSelectedProdejna}
-                                    aria-label="Filtr prodejny"
-                                />
-                            </div>
-                        )}
-
-                        <div className="month-navigation">
-                            <button type="button" onClick={() => handleMonthChange('prev')}>
-                                ◀ Předchozí
-                            </button>
-                            <span className="current-month">
-                                {formatMonthName(currentMonth)}
-                            </span>
-                            <button type="button" onClick={() => handleMonthChange('next')}>
-                                Následující ▶
-                            </button>
-                        </div>
-
-                        {activeView === 'calendar' && (
-                            <div className="action-buttons">
-                                <button
-                                    type="button"
-                                    className="btn-primary"
-                                    onClick={() => {
-                                        setFormInitialDatum('');
-                                        setEditShift(null);
-                                        setShowForm(true);
-                                    }}
-                                >
-                                    ➕ Přidat směnu
-                                </button>
-                                <button
-                                    type="button"
-                                    className="btn-secondary"
-                                    onClick={() => {
-                                        setBulkInitialDates([]);
-                                        setShowBulkForm(true);
-                                    }}
-                                >
-                                    📝 Hromadně
-                                </button>
-                                {user?.role === 'ADMIN' && (
-                                    <button
-                                        type="button"
-                                        className="btn-export"
-                                        onClick={handleExport}
-                                    >
-                                        📊 Export
-                                    </button>
+                            <div className="shifts-filters">
+                                <div className="shifts-filter">
+                                    <label htmlFor="shifts-prodejna-select">Zobrazení</label>
+                                    <Select
+                                        id="shifts-prodejna-select"
+                                        className="shifts-filter-select"
+                                        options={storeSelectOptions}
+                                        value={selectedProdejna}
+                                        onChange={setSelectedProdejna}
+                                        aria-label="Filtr zobrazení směn"
+                                    />
+                                </div>
+                                {isAdmin && selectedProdejna === USER_FILTER && (
+                                    <div className="shifts-filter">
+                                        <label htmlFor="shifts-user-select">Uživatel</label>
+                                        <Select
+                                            id="shifts-user-select"
+                                            className="shifts-filter-select shifts-filter-select--user"
+                                            options={staffUserOptions}
+                                            value={calendarUserId}
+                                            onChange={setCalendarUserId}
+                                            placeholder="Vyberte uživatele"
+                                            searchable
+                                            aria-label="Zobrazit směny uživatele"
+                                        />
+                                    </div>
                                 )}
                             </div>
                         )}
+
+                        <div className="shifts-controls__toolbar">
+                            <div className="month-navigation">
+                                <button type="button" onClick={() => handleMonthChange('prev')}>
+                                    ◀ Předchozí
+                                </button>
+                                <span className="current-month">
+                                    {formatMonthName(currentMonth)}
+                                </span>
+                                <button type="button" onClick={() => handleMonthChange('next')}>
+                                    Následující ▶
+                                </button>
+                            </div>
+
+                            {activeView === 'calendar' && (
+                                <div className="action-buttons">
+                                    <button
+                                        type="button"
+                                        className="btn-primary"
+                                        onClick={() => {
+                                            setFormInitialDatum('');
+                                            setEditShift(null);
+                                            setShowForm(true);
+                                        }}
+                                    >
+                                        ➕ Přidat směnu
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="btn-secondary"
+                                        onClick={() => {
+                                            setBulkInitialDates([]);
+                                            setShowBulkForm(true);
+                                        }}
+                                    >
+                                        📝 Hromadně
+                                    </button>
+                                    {user?.role === 'ADMIN' && (
+                                        <button
+                                            type="button"
+                                            className="btn-export"
+                                            onClick={handleExport}
+                                        >
+                                            📊 Export
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             )}
 
             <div className="shifts-content">
-                {activeView === 'calendar' && selectedProdejna && (
+                {activeView === 'calendar' && waitingForCalendarUser && (
+                    <p className="shifts-user-hint">Vyberte uživatele, jehož směny chcete vidět na všech prodejnách.</p>
+                )}
+                {activeView === 'calendar' && selectedProdejna && !waitingForCalendarUser && (
                     <ShiftCalendar
-                        prodejna={selectedProdejna}
+                        prodejna={personView ? ALL_PRODEJNY : selectedProdejna}
                         month={currentMonth}
                         user={user}
-                        allStores={selectedProdejna === ALL_PRODEJNY}
+                        allStores={selectedProdejna === ALL_PRODEJNY || personView}
                         stores={stores}
+                        calendarScope={selectedProdejna === MINE_FILTER ? 'mine' : ''}
+                        calendarUserId={personUserId}
+                        personView={personView}
                         refreshTrigger={refreshTrigger}
                         onRefresh={() => setRefreshTrigger((prev) => prev + 1)}
                         onRequestBulkAdd={(dates) => {

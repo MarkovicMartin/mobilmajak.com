@@ -448,6 +448,36 @@
     gap: 1px;
 }
 
+.shift-content--person {
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+}
+
+.shift-item--person {
+    min-height: 0;
+    padding: 2px 5px;
+}
+
+.shift-item--person .shift-store {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.shift-item--person .shift-time {
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+
+.shift-item--person .shift-role-badge,
+.shift-item--person .shift-servis-badge {
+    flex: 0 0 auto;
+}
+
+.shift-calendar--person .shifts-store-legend {
+    display: none;
+}
+
 .shift-name {
     font-weight: 600;
     display: flex;

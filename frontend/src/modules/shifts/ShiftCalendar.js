@@ -80,6 +80,9 @@ function ShiftCalendar({
     allStores = false,
     stores = [],
     onFeatureFlagsChange,
+    calendarScope = '',
+    calendarUserId = '',
+    personView = false,
 }) {
     const [kalendarData, setKalendarData] = useState({});
     const [seeAllEmployees, setSeeAllEmployees] = useState(false);
@@ -92,14 +95,14 @@ function ShiftCalendar({
     const [dragPreviewDates, setDragPreviewDates] = useState(() => new Set());
 
     useEffect(() => {
-        if (prodejna && month) {
+        if (month) {
             fetchKalendarData();
         }
-    }, [prodejna, month]);
+    }, [prodejna, month, calendarScope, calendarUserId]);
 
     // Efekt pro refresh trigger
     useEffect(() => {
-        if (refreshTrigger > 0 && prodejna && month) {
+        if (refreshTrigger > 0 && month) {
             fetchKalendarData();
         }
     }, [refreshTrigger]);
@@ -108,8 +111,16 @@ function ShiftCalendar({
         try {
             setLoading(true);
             setError('');
-            
-            const url = `/api/shifts/calendar/?mesic=${month}&prodejna=${encodeURIComponent(prodejna)}`;
+
+            const params = new URLSearchParams({ mesic: month, prodejna: prodejna || 'vse' });
+            if (calendarScope === 'mine') {
+                params.set('scope', 'mine');
+                params.set('prodejna', 'vse');
+            } else if (calendarUserId) {
+                params.set('user_id', calendarUserId);
+                params.set('prodejna', 'vse');
+            }
+            const url = `/api/shifts/calendar/?${params.toString()}`;
             const response = await fetch(url, {
                     credentials: 'include'
             });
@@ -140,7 +151,7 @@ function ShiftCalendar({
 
     const getShiftsForDate = (dateStr) => kalendarData[dateStr] || [];
 
-    const showStaffingGaps = seeAllEmployees && !isBackofficeCalendarFilter(prodejna);
+    const showStaffingGaps = seeAllEmployees && !personView && !isBackofficeCalendarFilter(prodejna);
 
     const monthCoverage = useMemo(() => {
         if (!showStaffingGaps) {
@@ -309,6 +320,7 @@ function ShiftCalendar({
             isOwnShift ? 'mine' : 'other',
             useStoreColors ? 'shift-item--store-colored' : '',
             hideStoreName ? 'shift-item--in-store-group' : '',
+            personView ? 'shift-item--person' : '',
             !useStoreColors && !shift.je_domaci_prodejna && isOwnShift ? 'foreign-store' : '',
         ].filter(Boolean).join(' ');
         const roleLabel = shiftRoleLabel(shift, { short: true });
@@ -330,31 +342,38 @@ function ShiftCalendar({
                 onClick={(e) => handleShiftClick(shift, dateStr, e)}
                 title={titleParts.join(' · ')}
             >
-                <div className="shift-content">
+                <div className={`shift-content${personView ? ' shift-content--person' : ''}`}>
                     {!hideStoreName && useStoreColors && shift.prodejna_nazev && (
                         <div className="shift-store">{shift.prodejna_nazev}</div>
                     )}
-                    <div className="shift-name">
-                        <span className="shift-name__text">{shift.user_jmeno}</span>
-                        {noteText ? (
-                            <span className="shift-note-icon" aria-label="Má poznámku" title={noteText}>
-                                💬
-                            </span>
-                        ) : null}
-                    </div>
+                    {!personView && (
+                        <div className="shift-name">
+                            <span className="shift-name__text">{shift.user_jmeno}</span>
+                            {noteText ? (
+                                <span className="shift-note-icon" aria-label="Má poznámku" title={noteText}>
+                                    💬
+                                </span>
+                            ) : null}
+                        </div>
+                    )}
                     <div className="shift-time">
                         {formatTime(shift.cas_od)}-{formatTime(shift.cas_do)}
                     </div>
                     {roleLabel && (
                         <div className="shift-servis-badge shift-role-badge">{roleLabel}</div>
                     )}
+                    {personView && noteText ? (
+                        <span className="shift-note-icon" aria-label="Má poznámku" title={noteText}>
+                            💬
+                        </span>
+                    ) : null}
                 </div>
             </div>
         );
     };
 
     const isSellerView = (user?.role === 'PRODEJCE' || user?.role === 'VEDOUCI') && !isBackofficeView;
-    const isAdminAllStores = user?.role === 'ADMIN' && allStores && seeAllEmployees;
+    const isAdminAllStores = user?.role === 'ADMIN' && allStores && seeAllEmployees && !personView;
 
     const renderWorkShifts = (workShifts, dateStr) => {
         if (isAdminAllStores) {
@@ -383,7 +402,7 @@ function ShiftCalendar({
     }
 
     return (
-        <div className="shift-calendar">
+        <div className={`shift-calendar${personView ? ' shift-calendar--person' : ''}`}>
             {/* CHYBOVÁ HLÁŠKA JAKO BANNER */}
             {error && (
                 <div className="error-banner">
@@ -430,7 +449,7 @@ function ShiftCalendar({
                 </div>
             )}
 
-            {allStores && stores.length > 0 && (
+            {allStores && !personView && stores.length > 0 && (
                 <div className="shifts-store-legend" aria-label="Legenda prodejen">
                     {stores.map((store) => (
                         <span key={store.id} className="legend-item">
@@ -551,7 +570,9 @@ function ShiftCalendar({
                                                         <span className="shift-absence-icon" aria-hidden="true">
                                                             {isVacation ? '🏖️' : '🏥'}
                                                         </span>
-                                                        <span className="shift-absence-name">{shift.user_jmeno}</span>
+                                                        <span className="shift-absence-name">
+                                                            {personView ? label : shift.user_jmeno}
+                                                        </span>
                                                     </div>
                                                 );
                                             })}
