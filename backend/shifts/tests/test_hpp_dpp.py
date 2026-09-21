@@ -15,6 +15,7 @@ from shifts.hpp_dpp import (
     dpp_odvody,
     hpp_minimum_hruba,
     hpp_odvody,
+    odvody_kombinovane,
     prescas_priplatek_hruba,
     recommend_hpp_dpp,
     svatek_priplatek_hruba,
@@ -28,8 +29,8 @@ from users.models import WebUser
 
 class HppDppCalcTests(SimpleTestCase):
     def test_min_hpp_cista_without_surcharge(self):
-        self.assertEqual(hpp_odvody(HPP_GROSS_MIN)['cista'], Decimal('19012'))
-        self.assertEqual(dpp_odvody(DPP_GROSS_MAX)['cista'], Decimal('10199'))
+        self.assertEqual(hpp_odvody(HPP_GROSS_MIN)['cista'], Decimal('19011'))
+        self.assertEqual(dpp_odvody(DPP_GROSS_MAX)['cista'], Decimal('11999'))
 
     def test_zero_target(self):
         split = recommend_hpp_dpp(0)
@@ -55,36 +56,55 @@ class HppDppCalcTests(SimpleTestCase):
         split = recommend_hpp_dpp(33102, odpracovano_h=168, vikend_h=84)
         self.assertEqual(split['rezim'], REZIM_MAX_DPP)
         self.assertEqual(split['dpp_hruba'], 11999)
-        self.assertEqual(split['dpp_cista'], 10199)
-        self.assertEqual(split['hpp_hruba'], 27702)
-        self.assertEqual(split['hpp_cista'], 22903)
+        self.assertEqual(split['dpp_cista'], 11999)
+        self.assertEqual(split['hpp_hruba'], 27720)
+        self.assertEqual(split['hpp_cista'], 21103)
         self.assertEqual(split['soucet_cista'], 33102)
         self.assertEqual(split['vikend_priplatek_hruba'], 1129)
 
     def test_surcharges_from_fixed_hourly_rate(self):
         self.assertEqual(PRIPLATEK_SAZBA_H, Decimal('134.4'))
         self.assertEqual(vikend_priplatek_hruba(84), Decimal('1129'))
-        self.assertEqual(svatek_priplatek_hruba(8), Decimal('1075'))
+        self.assertEqual(svatek_priplatek_hruba(8), Decimal('1076'))
         self.assertEqual(prescas_priplatek_hruba(8), Decimal('269'))
+        self.assertEqual(vikend_priplatek_hruba(48), Decimal('646'))
+        self.assertEqual(prescas_priplatek_hruba(12), Decimal('404'))
 
     def test_holiday_surcharge_raises_min_hpp(self):
         self.assertEqual(vikend_priplatek_hruba(0), Decimal('0'))
-        self.assertEqual(svatek_priplatek_hruba(8), Decimal('1075'))
+        self.assertEqual(svatek_priplatek_hruba(8), Decimal('1076'))
         hpp_min, _, svatek_p, _ = hpp_minimum_hruba(0, 8, 0)
-        self.assertEqual(svatek_p, Decimal('1075'))
-        self.assertEqual(hpp_min, Decimal('23475'))
+        self.assertEqual(svatek_p, Decimal('1076'))
+        self.assertEqual(hpp_min, Decimal('23476'))
 
         split = recommend_hpp_dpp(30000, odpracovano_h=176, svatek_h=8)
-        self.assertGreaterEqual(split['hpp_hruba'], 23475)
+        self.assertGreaterEqual(split['hpp_hruba'], 23476)
         self.assertEqual(split['svatek_h'], 8.0)
         self.assertEqual(split['soucet_cista'], 30000)
 
     def test_weekend_holiday_and_overtime(self):
         hpp_min, vikend_p, svatek_p, prescas_p = hpp_minimum_hruba(8, 8, 8)
         self.assertEqual(vikend_p, Decimal('108'))
-        self.assertEqual(svatek_p, Decimal('1075'))
+        self.assertEqual(svatek_p, Decimal('1076'))
         self.assertEqual(prescas_p, Decimal('269'))
-        self.assertEqual(hpp_min, Decimal('23852'))
+        self.assertEqual(hpp_min, Decimal('23853'))
+
+    def test_payslip_combined_tax_and_ceil_rounding(self):
+        """Výplatní lístek: HPP 26 607 + DPP 11 999 → čistá 32 283."""
+        combo = odvody_kombinovane(26607, 11999)
+        self.assertEqual(combo['socialni'], Decimal('1890'))
+        self.assertEqual(combo['zdravotni'], Decimal('1198'))
+        self.assertEqual(combo['zaklad_dane'], Decimal('38700'))
+        self.assertEqual(combo['dan_pred_slevou'], Decimal('5805'))
+        self.assertEqual(combo['dan'], Decimal('3235'))
+        self.assertEqual(combo['cista'], Decimal('32283'))
+
+        split = recommend_hpp_dpp(32283, odpracovano_h=168, vikend_h=48, prescas_h=12)
+        self.assertEqual(split['vikend_priplatek_hruba'], 646)
+        self.assertEqual(split['prescas_priplatek_hruba'], 404)
+        self.assertEqual(split['dpp_hruba'], 11999)
+        self.assertEqual(split['soucet_cista'], 32283)
+        self.assertEqual(split['rezim'], REZIM_MAX_DPP)
 
     def test_attach_skips_brigadnik(self):
         row = attach_hpp_dpp_to_row({

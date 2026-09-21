@@ -12,7 +12,7 @@ import SymplioDocLink from '../../components/SymplioDocLink';
 import { ADMIN_ADJUSTMENT_EVENT } from './adminAdjustmentSync';
 import './PayrollPanel.css';
 
-const CACHE_PREFIX = 'payroll-overview-v5';
+const CACHE_PREFIX = 'payroll-overview-v6';
 const CURRENT_MONTH_STALE_MS = 5 * 60 * 1000;
 const RETURNS_CACHE_PREFIX = 'payroll-returns-v1';
 const RETURNS_STALE_MS = 10 * 60 * 1000;
@@ -1094,9 +1094,11 @@ function PayrollPanel({ month, onExport }) {
             <div className="payroll-detail-section">
                 <h4>Rozpad HPP / DPP</h4>
                 <p className="payroll-detail-hint">
-                    Bodový výpočet se nemění. Čistá z výplaty se rozdělí na min. HPP
-                    (22 400 Kč hrubého + příplatky z 134,40 Kč/h: víkend 10 %,
+                    Bodový výpočet se nemění. Čistá se rozdělí na min. HPP
+                    (22 400 Kč + příplatky 134,40 Kč/h nahoru: víkend 10 %,
                     svátek 100 %, přesčas 25 %) a DPP do 11 999 Kč hrubého.
+                    Zálohová daň z úhrnu HPP+DPP, základ na celé 100 Kč nahoru,
+                    sleva 2 570 jednou. SP/ZP jen z HPP, na celé Kč nahoru.
                 </p>
                 <div className="payroll-breakdown payroll-breakdown-souhrn">
                     {lines.map(([label, value]) => (
@@ -1108,9 +1110,13 @@ function PayrollPanel({ month, onExport }) {
                     {split.hpp_hruba > 0 && (
                         <div className="breakdown-line breakdown-line-muted">
                             <span className="breakdown-label">
-                                HPP odvody (SP {formatKc(split.hpp_socialni)}
+                                Odvody (SP {formatKc(split.hpp_socialni)}
                                 {' + '}ZP {formatKc(split.hpp_zdravotni)}
-                                {' + '}daň {formatKc(split.hpp_dan)})
+                                {' + '}daň z úhrnu {formatKc(split.hpp_dan)}
+                                {split.zaklad_dane
+                                    ? `, základ ${formatKc(split.zaklad_dane)}`
+                                    : ''}
+                                )
                             </span>
                             <span className="breakdown-value">
                                 {formatKc(
@@ -1119,12 +1125,6 @@ function PayrollPanel({ month, onExport }) {
                                     + (Number(split.hpp_dan) || 0),
                                 )}
                             </span>
-                        </div>
-                    )}
-                    {split.dpp_dan > 0 && (
-                        <div className="breakdown-line breakdown-line-muted">
-                            <span className="breakdown-label">DPP daň 15 %</span>
-                            <span className="breakdown-value">{formatKc(split.dpp_dan)}</span>
                         </div>
                     )}
                 </div>
@@ -1413,7 +1413,7 @@ function PayrollPanel({ month, onExport }) {
                 Přesčas = stejná sazba × hodiny nad fondem. Dýška = obrat P63615 (1 bod = 1 Kč).
                 Cestovné a manuální bonus se do sazby přesčasu nepřičítají.
                 HPP/DPP je jen rozpad čisté na výplatnici (min. mzda + příplatky
-                z 134,40 Kč/h / DPP do 11 999 Kč).
+                134,40 Kč/h nahoru / DPP do 11 999 Kč; daň z úhrnu na 100 Kč nahoru).
             </p>
 
             {error && <div className="error-message">{error}</div>}
