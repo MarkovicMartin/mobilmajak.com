@@ -1189,7 +1189,8 @@ def export_smeny(request):
         headers += [
             'Provize celkem', 'Srážka provize %', 'Srážka provize body', 'Popis srážek',
             'Odměna měsíc', 'Celkem',
-            'HPP hrubá', 'HPP čistá', 'DPP hrubá', 'DPP čistá', 'HPP/DPP režim',
+            'HPP hrubá', 'HPP čistá', 'DPP hodiny', 'DPP sazba',
+            'DPP hrubá', 'DPP čistá', 'HPP/DPP režim',
         ]
 
         def row_values(data):
@@ -1232,6 +1233,8 @@ def export_smeny(request):
             out.extend([
                 split.get('hpp_hruba', ''),
                 split.get('hpp_cista', ''),
+                split.get('dpp_hodiny', ''),
+                split.get('dpp_sazba_h', ''),
                 split.get('dpp_hruba', ''),
                 split.get('dpp_cista', ''),
                 split.get('rezim', ''),

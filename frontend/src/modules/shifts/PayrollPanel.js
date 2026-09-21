@@ -1063,10 +1063,20 @@ function PayrollPanel({ month, onExport }) {
         }
         const split = row.hpp_dpp;
         if (!split) return null;
+        const zaokrLabel = {
+            presne: 'přesně 15 min',
+            dolu: 'dolů, zbytek na HPP',
+            nahoru: 'nahoru (odvod > mezera)',
+            max: 'strop 25,00 h',
+            nula: 'bez DPP',
+        }[split.dpp_zaokrouhleni];
         const lines = [
             ['Cíl (čistá z výplaty)', formatKc(split.cil_cista)],
             ['HPP hrubá', formatKc(split.hpp_hruba)],
             ['HPP čistá', formatKc(split.hpp_cista)],
+            ['DPP hodiny', split.dpp_hodiny != null
+                ? `${Number(split.dpp_hodiny).toLocaleString('cs-CZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} h × ${Number(split.dpp_sazba_h || 479.96).toLocaleString('cs-CZ', { minimumFractionDigits: 2 })} Kč`
+                : '—'],
             ['DPP hrubá', formatKc(split.dpp_hruba)],
             ['DPP čistá', formatKc(split.dpp_cista)],
             ['Součet čisté', formatKc(split.soucet_cista)],
@@ -1090,13 +1100,18 @@ function PayrollPanel({ month, onExport }) {
             ]);
         }
         lines.push(['Režim', hppDppRezimLabel(split.rezim)]);
+        if (zaokrLabel) {
+            lines.push(['DPP zaokrouhlení', zaokrLabel]);
+        }
         return (
             <div className="payroll-detail-section">
                 <h4>Rozpad HPP / DPP</h4>
                 <p className="payroll-detail-hint">
                     Bodový výpočet se nemění. Čistá se rozdělí na min. HPP
                     (22 400 Kč + příplatky 134,40 Kč/h nahoru: víkend 10 %,
-                    svátek 100 %, přesčas 25 %) a DPP do 11 999 Kč hrubého.
+                    svátek 100 %, přesčas 25 %) a DPP do 11 999 Kč hrubého
+                    (hodiny × 479,96 Kč/h po 15 min; zbytek na HPP, nahoru
+                    jen když odvod ze zbytku je větší než mezera do čtvrthodiny).
                     Zálohová daň z úhrnu HPP+DPP, základ na celé 100 Kč nahoru,
                     sleva 2 570 jednou. SP/ZP jen z HPP, na celé Kč nahoru.
                 </p>
@@ -1865,7 +1880,11 @@ function PayrollPanel({ month, onExport }) {
                                             className="col-celkem"
                                             title={row.is_brigadnik ? undefined : `čistá ${formatKc(row.hpp_dpp?.dpp_cista)}`}
                                         >
-                                            {row.is_brigadnik ? '—' : formatKc(row.hpp_dpp?.dpp_hruba)}
+                                                                            {row.is_brigadnik ? '—' : (
+                                                row.hpp_dpp?.dpp_hodiny != null
+                                                    ? `${formatKc(row.hpp_dpp?.dpp_hruba)} (${Number(row.hpp_dpp.dpp_hodiny).toLocaleString('cs-CZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} h)`
+                                                    : formatKc(row.hpp_dpp?.dpp_hruba)
+                                            )}
                                         </td>
                                     </tr>
                                     {isOpen && (

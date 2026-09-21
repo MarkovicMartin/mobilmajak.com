@@ -2,19 +2,23 @@
 
 Cílová částka (`celkem_body`) je to, co má zaměstnanec dostat čistého.
 HPP drží minimální mzdu + příplatky z 134,40 Kč/h (víkend 10 %, svátek 100 %,
-přesčas 25 %, zaokrouhlení nahoru). Zbytek na DPP do 11 999 Kč hrubého.
+přesčas 25 %, zaokrouhlení nahoru). Zbytek na DPP do 11 999 Kč hrubého (hodiny × 479,96 Kč/h po 15 min;
+zbytek na HPP, nahoru jen když odvod ze zbytku > mezera do čtvrthodiny).
 
 Odvody podle výplatního lístku: SP/ZP jen z HPP (na celé Kč nahoru),
 zálohová daň z úhrnu HPP+DPP (základ na celé 100 Kč nahoru) − sleva 2 570.
 Bodový výpočet výplaty se nemění.
 """
-from decimal import Decimal, ROUND_CEILING, ROUND_HALF_UP
+from decimal import Decimal, ROUND_CEILING, ROUND_FLOOR, ROUND_HALF_UP
 
 HPP_SOC_RATE = Decimal('0.071')
 HPP_HEALTH_RATE = Decimal('0.045')
 HPP_TAX_RATE = Decimal('0.15')
 TAX_CREDIT = Decimal('2570')
 DPP_GROSS_MAX = Decimal('11999')
+DPP_SAZBA_H = Decimal('479.96')
+DPP_KROK_H = Decimal('0.25')
+DPP_HODINY_MAX = Decimal('25')
 HPP_GROSS_MIN = Decimal('22400')
 PRIPLATEK_SAZBA_H = Decimal('134.4')
 WEEKEND_SURCHARGE_RATE = Decimal('0.10')
@@ -109,6 +113,82 @@ def dpp_hruba_z_ciste(cista):
     return min(n, DPP_GROSS_MAX)
 
 
+def dpp_kc_z_hodin(hodiny):
+    """Hrubá DPP v celých Kč: hodiny × 479,96 (25,00 h = 11 999)."""
+    h = _dec(hodiny)
+    if h <= 0:
+        return Decimal('0')
+    return min(_kc(DPP_SAZBA_H * h), DPP_GROSS_MAX)
+
+
+def odvod_zamestnance_z_hpp(castka):
+    """SP 7,1 % + ZP 4,5 %, každé na celé Kč nahoru."""
+    r = _kc(castka)
+    if r <= 0:
+        return Decimal('0')
+    return _ceil_kc(r * HPP_SOC_RATE) + _ceil_kc(r * HPP_HEALTH_RATE)
+
+
+def quantize_dpp_hours(ideal_kc):
+    """DPP na 0,25 h. Zbytek na HPP, nahoru jen když odvod ze zbytku > mezera do 15 min."""
+    ideal = max(_kc(ideal_kc), Decimal('0'))
+    empty = {
+        'hodiny': Decimal('0'),
+        'dpp_kc': Decimal('0'),
+        'ideal_kc': ideal,
+        'smer': 'nula',
+        'zbytek_kc': Decimal('0'),
+        'mezera_kc': Decimal('0'),
+        'odvod_kc': Decimal('0'),
+    }
+    if ideal <= 0:
+        return empty
+    if ideal >= DPP_GROSS_MAX:
+        return {
+            'hodiny': DPP_HODINY_MAX,
+            'dpp_kc': DPP_GROSS_MAX,
+            'ideal_kc': ideal,
+            'smer': 'max',
+            'zbytek_kc': Decimal('0'),
+            'mezera_kc': Decimal('0'),
+            'odvod_kc': Decimal('0'),
+        }
+
+    hours_exact = _dec(ideal) / DPP_SAZBA_H
+    steps = (hours_exact / DPP_KROK_H).to_integral_value(rounding=ROUND_FLOOR)
+    floor_h = steps * DPP_KROK_H
+    ceil_h = min(floor_h + DPP_KROK_H, DPP_HODINY_MAX)
+    floor_kc = dpp_kc_z_hodin(floor_h)
+    ceil_kc = dpp_kc_z_hodin(ceil_h)
+
+    if floor_kc >= ideal or floor_h == ceil_h:
+        return {
+            'hodiny': floor_h,
+            'dpp_kc': floor_kc,
+            'ideal_kc': ideal,
+            'smer': 'presne' if floor_kc == ideal else 'dolu',
+            'zbytek_kc': max(ideal - floor_kc, Decimal('0')),
+            'mezera_kc': Decimal('0'),
+            'odvod_kc': Decimal('0'),
+        }
+
+    zbytek = ideal - floor_kc
+    mezera = ceil_kc - ideal
+    if mezera < 0:
+        mezera = Decimal('0')
+    odvod = odvod_zamestnance_z_hpp(zbytek)
+    nahoru = odvod > mezera and ceil_kc <= DPP_GROSS_MAX
+    return {
+        'hodiny': ceil_h if nahoru else floor_h,
+        'dpp_kc': ceil_kc if nahoru else floor_kc,
+        'ideal_kc': ideal,
+        'smer': 'nahoru' if nahoru else 'dolu',
+        'zbytek_kc': zbytek,
+        'mezera_kc': mezera,
+        'odvod_kc': odvod,
+    }
+
+
 def priplatek_kc(hours, rate):
     """Příplatek v celých Kč nahoru: 134,40 Kč/h × hodiny × sazba."""
     if _dec(hours) <= 0:
@@ -180,9 +260,30 @@ def _find_dpp_for_net(target, hpp):
     return Decimal(best)
 
 
+def _dpp_hour_fields(q=None):
+    q = q or {
+        'hodiny': Decimal('0'),
+        'dpp_kc': Decimal('0'),
+        'ideal_kc': Decimal('0'),
+        'smer': 'nula',
+        'zbytek_kc': Decimal('0'),
+        'mezera_kc': Decimal('0'),
+        'odvod_kc': Decimal('0'),
+    }
+    return {
+        'dpp_hodiny': float(q['hodiny']),
+        'dpp_sazba_h': float(DPP_SAZBA_H),
+        'dpp_ideal_hruba': int(q['ideal_kc']),
+        'dpp_zaokrouhleni': q['smer'],
+        'dpp_zbytek_kc': int(q['zbytek_kc']),
+        'dpp_mezera_kc': int(q['mezera_kc']),
+        'dpp_odvod_zbytek': int(q['odvod_kc']),
+    }
+
+
 def _split_dict(
     combo, vikend_priplatek, svatek_priplatek, prescas_priplatek,
-    vikend_h, svatek_h, prescas_h, rezim, target, warnings=None,
+    vikend_h, svatek_h, prescas_h, rezim, target, warnings=None, dpp_q=None,
 ):
     return {
         'rezim': rezim,
@@ -207,6 +308,7 @@ def _split_dict(
         'dpp_hruba': int(combo['dpp_hruba']),
         'dpp_cista': int(combo['dpp_cista']),
         'dpp_dan': int(combo['dpp_dan']),
+        **_dpp_hour_fields(dpp_q),
         'soucet_cista': int(combo['cista']),
         'warning': (warnings or [])[0] if warnings else None,
         'warnings': warnings or [],
@@ -229,6 +331,7 @@ def recommend_hpp_dpp(target_net, odpracovano_h=0, vikend_h=0, svatek_h=0, presc
         return _split_dict(
             odvody_kombinovane(0, 0), Decimal('0'), Decimal('0'), Decimal('0'),
             vikend_h, svatek_h, prescas_h, REZIM_POD_MINIMEM, target,
+            dpp_q=quantize_dpp_hours(0),
         )
 
     hpp_min_hruba, vikend_p, svatek_p, prescas_p = hpp_minimum_hruba(
@@ -243,25 +346,28 @@ def recommend_hpp_dpp(target_net, odpracovano_h=0, vikend_h=0, svatek_h=0, presc
         warnings = ['Čistá je pod minimální HPP – vše na hlavní pracovní poměr.']
         return _split_dict(
             combo, vikend_p, svatek_p, prescas_p, vikend_h, svatek_h, prescas_h,
-            REZIM_POD_MINIMEM, target, warnings,
+            REZIM_POD_MINIMEM, target, warnings, dpp_q=quantize_dpp_hours(0),
         )
 
     if target <= net_min_max_dpp:
-        dpp_g = _find_dpp_for_net(target, hpp_min_hruba)
+        dpp_ideal = _find_dpp_for_net(target, hpp_min_hruba)
+        q = quantize_dpp_hours(dpp_ideal)
+        dpp_g = q['dpp_kc']
         combo = odvody_kombinovane(hpp_min_hruba, dpp_g)
-        if combo['cista'] != target:
+        if q['smer'] != 'nahoru' and combo['cista'] != target:
             hpp_g = _find_hpp_for_net(target, dpp_g, hpp_min_hruba)
             combo = odvody_kombinovane(hpp_g, dpp_g)
         return _split_dict(
             combo, vikend_p, svatek_p, prescas_p, vikend_h, svatek_h, prescas_h,
-            REZIM_MIN_HPP, target,
+            REZIM_MIN_HPP, target, dpp_q=q,
         )
 
+    q = quantize_dpp_hours(DPP_GROSS_MAX)
     hpp_g = _find_hpp_for_net(target, DPP_GROSS_MAX, hpp_min_hruba)
     combo = odvody_kombinovane(max(hpp_g, hpp_min_hruba), DPP_GROSS_MAX)
     return _split_dict(
         combo, vikend_p, svatek_p, prescas_p, vikend_h, svatek_h, prescas_h,
-        REZIM_MAX_DPP, target,
+        REZIM_MAX_DPP, target, dpp_q=q,
     )
 
 
@@ -284,6 +390,8 @@ def split_from_hpp_cista(target_net, hpp_cista, odpracovano_h=0, vikend_h=0, sva
     hpp_min_hruba, vikend_p, svatek_p, prescas_p = hpp_minimum_hruba(
         vikend_h, svatek_h, prescas_h,
     )
+    q = quantize_dpp_hours(dpp_n)
+    dpp_n = q['dpp_kc']
     hpp_g = _find_hpp_for_net(target, dpp_n, 0)
     combo = odvody_kombinovane(hpp_g, dpp_n)
     if combo['hpp_hruba'] < hpp_min_hruba:
@@ -293,7 +401,7 @@ def split_from_hpp_cista(target_net, hpp_cista, odpracovano_h=0, vikend_h=0, sva
     rezim = REZIM_MAX_DPP if combo['dpp_hruba'] >= DPP_GROSS_MAX else REZIM_MIN_HPP
     return _split_dict(
         combo, vikend_p, svatek_p, prescas_p, vikend_h, svatek_h, prescas_h,
-        rezim, target, warnings,
+        rezim, target, warnings, dpp_q=q,
     )
 
 

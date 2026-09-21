@@ -6,17 +6,22 @@ from django.test import SimpleTestCase, TestCase
 
 from shifts.hpp_dpp import (
     DPP_GROSS_MAX,
+    DPP_HODINY_MAX,
+    DPP_SAZBA_H,
     HPP_GROSS_MIN,
     PRIPLATEK_SAZBA_H,
     REZIM_MAX_DPP,
     REZIM_MIN_HPP,
     REZIM_POD_MINIMEM,
     attach_hpp_dpp_to_row,
+    dpp_kc_z_hodin,
     dpp_odvody,
     hpp_minimum_hruba,
     hpp_odvody,
+    odvod_zamestnance_z_hpp,
     odvody_kombinovane,
     prescas_priplatek_hruba,
+    quantize_dpp_hours,
     recommend_hpp_dpp,
     svatek_priplatek_hruba,
     vikend_priplatek_hruba,
@@ -48,9 +53,40 @@ class HppDppCalcTests(SimpleTestCase):
     def test_mid_range_keeps_min_hpp(self):
         split = recommend_hpp_dpp(25000, odpracovano_h=168)
         self.assertEqual(split['rezim'], REZIM_MIN_HPP)
-        self.assertEqual(split['hpp_hruba'], 22400)
-        self.assertEqual(split['soucet_cista'], 25000)
+        self.assertGreaterEqual(split['hpp_hruba'], 22400)
         self.assertLess(split['dpp_hruba'], 11999)
+        self.assertAlmostEqual(split['dpp_hodiny'] % 0.25, 0.0, places=6)
+        if split['dpp_zaokrouhleni'] == 'nahoru':
+            self.assertGreaterEqual(split['soucet_cista'], 25000)
+        else:
+            self.assertEqual(split['soucet_cista'], 25000)
+
+    def test_dpp_hours_rate_and_cap(self):
+        self.assertEqual(DPP_SAZBA_H, Decimal('479.96'))
+        self.assertEqual(dpp_kc_z_hodin(25), DPP_GROSS_MAX)
+        self.assertEqual(dpp_kc_z_hodin(DPP_HODINY_MAX), Decimal('11999'))
+        q_max = quantize_dpp_hours(11999)
+        self.assertEqual(q_max['hodiny'], Decimal('25'))
+        self.assertEqual(q_max['smer'], 'max')
+
+    def test_quantize_rounds_up_when_odvod_exceeds_gap(self):
+        # 12,25 h = 5 880 Kč. Ideál 5 989: zbytek 109, mezera 11, odvod 13 > 11 → nahoru.
+        q = quantize_dpp_hours(5989)
+        self.assertEqual(q['smer'], 'nahoru')
+        self.assertEqual(q['hodiny'], Decimal('12.50'))
+        self.assertGreater(q['odvod_kc'], q['mezera_kc'])
+
+    def test_quantize_rounds_down_when_odvod_below_gap(self):
+        # Zbytek 20 Kč, mezera 100, odvod 3 < 100 → dolů.
+        q = quantize_dpp_hours(5900)
+        self.assertEqual(q['smer'], 'dolu')
+        self.assertEqual(q['hodiny'], Decimal('12.25'))
+        self.assertEqual(dpp_kc_z_hodin(12.25), q['dpp_kc'])
+        self.assertLess(q['odvod_kc'], q['mezera_kc'])
+
+    def test_odvod_zamestnance_ceil(self):
+        self.assertEqual(odvod_zamestnance_z_hpp(119), Decimal('15'))
+        self.assertEqual(odvod_zamestnance_z_hpp(20), Decimal('3'))
 
     def test_gabriel_max_dpp_with_weekend(self):
         split = recommend_hpp_dpp(33102, odpracovano_h=168, vikend_h=84)
@@ -123,8 +159,9 @@ class HppDppCalcTests(SimpleTestCase):
             'svatek_h': 0,
             'prescas_h': 0,
         })
-        self.assertEqual(row['hpp_dpp']['soucet_cista'], 25000)
-        self.assertEqual(row['hpp_dpp']['hpp_hruba'], 22400)
+        self.assertEqual(row['hpp_dpp']['soucet_cista'] >= 25000, True)
+        self.assertGreaterEqual(row['hpp_dpp']['hpp_hruba'], 22400)
+        self.assertEqual(row['hpp_dpp']['dpp_sazba_h'], 479.96)
 
 
 class HppDppHoursTests(TestCase):
@@ -194,8 +231,13 @@ class HppDppHoursTests(TestCase):
         )
         self.assertFalse(row['is_brigadnik'])
         self.assertIsNotNone(row['hpp_dpp'])
-        self.assertEqual(row['hpp_dpp']['soucet_cista'], int(row['celkem_body']))
-        self.assertEqual(row['hpp_dpp']['priplatek_sazba_h'], 134.4)
+        split = row['hpp_dpp']
+        if split.get('dpp_zaokrouhleni') == 'nahoru':
+            self.assertGreaterEqual(split['soucet_cista'], int(row['celkem_body']))
+        else:
+            self.assertEqual(split['soucet_cista'], int(row['celkem_body']))
+        self.assertEqual(split['priplatek_sazba_h'], 134.4)
+        self.assertEqual(split['dpp_sazba_h'], 479.96)
 
     def test_payroll_row_skips_split_for_brigadnik(self):
         self._shift(self.brigadnik, date(2026, 8, 3))
