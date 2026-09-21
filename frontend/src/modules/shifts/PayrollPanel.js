@@ -12,7 +12,7 @@ import SymplioDocLink from '../../components/SymplioDocLink';
 import { ADMIN_ADJUSTMENT_EVENT } from './adminAdjustmentSync';
 import './PayrollPanel.css';
 
-const CACHE_PREFIX = 'payroll-overview-v4';
+const CACHE_PREFIX = 'payroll-overview-v5';
 const CURRENT_MONTH_STALE_MS = 5 * 60 * 1000;
 const RETURNS_CACHE_PREFIX = 'payroll-returns-v1';
 const RETURNS_STALE_MS = 10 * 60 * 1000;
@@ -1073,14 +1073,20 @@ function PayrollPanel({ month, onExport }) {
         ];
         if (Number(split.vikend_h) > 0) {
             lines.push([
-                `Příplatek víkend 10 % (${formatNumber(split.vikend_h)} h)`,
+                `Příplatek víkend 10 % × 134,40 Kč/h (${formatNumber(split.vikend_h)} h)`,
                 formatKc(split.vikend_priplatek_hruba),
             ]);
         }
         if (Number(split.svatek_h) > 0) {
             lines.push([
-                `Příplatek svátek 100 % (${formatNumber(split.svatek_h)} h)`,
+                `Příplatek svátek 100 % × 134,40 Kč/h (${formatNumber(split.svatek_h)} h)`,
                 formatKc(split.svatek_priplatek_hruba),
+            ]);
+        }
+        if (Number(split.prescas_h) > 0) {
+            lines.push([
+                `Příplatek přesčas 25 % × 134,40 Kč/h (${formatNumber(split.prescas_h)} h)`,
+                formatKc(split.prescas_priplatek_hruba),
             ]);
         }
         lines.push(['Režim', hppDppRezimLabel(split.rezim)]);
@@ -1089,7 +1095,8 @@ function PayrollPanel({ month, onExport }) {
                 <h4>Rozpad HPP / DPP</h4>
                 <p className="payroll-detail-hint">
                     Bodový výpočet se nemění. Čistá z výplaty se rozdělí na min. HPP
-                    (22 400 Kč hrubého + příplatky) a DPP do 11 999 Kč hrubého.
+                    (22 400 Kč hrubého + příplatky z 134,40 Kč/h: víkend 10 %,
+                    svátek 100 %, přesčas 25 %) a DPP do 11 999 Kč hrubého.
                 </p>
                 <div className="payroll-breakdown payroll-breakdown-souhrn">
                     {lines.map(([label, value]) => (
@@ -1405,7 +1412,8 @@ function PayrollPanel({ month, onExport }) {
                 Základ = (základ + doplňky z profilu) × odpracované hodiny do fondu / fond.
                 Přesčas = stejná sazba × hodiny nad fondem. Dýška = obrat P63615 (1 bod = 1 Kč).
                 Cestovné a manuální bonus se do sazby přesčasu nepřičítají.
-                HPP/DPP je jen rozpad čisté na výplatnici (min. mzda + příplatky / DPP do 11 999 Kč).
+                HPP/DPP je jen rozpad čisté na výplatnici (min. mzda + příplatky
+                z 134,40 Kč/h / DPP do 11 999 Kč).
             </p>
 
             {error && <div className="error-message">{error}</div>}

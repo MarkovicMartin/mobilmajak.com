@@ -7,6 +7,7 @@ from django.test import SimpleTestCase, TestCase
 from shifts.hpp_dpp import (
     DPP_GROSS_MAX,
     HPP_GROSS_MIN,
+    PRIPLATEK_SAZBA_H,
     REZIM_MAX_DPP,
     REZIM_MIN_HPP,
     REZIM_POD_MINIMEM,
@@ -14,6 +15,7 @@ from shifts.hpp_dpp import (
     dpp_odvody,
     hpp_minimum_hruba,
     hpp_odvody,
+    prescas_priplatek_hruba,
     recommend_hpp_dpp,
     svatek_priplatek_hruba,
     vikend_priplatek_hruba,
@@ -57,29 +59,32 @@ class HppDppCalcTests(SimpleTestCase):
         self.assertEqual(split['hpp_hruba'], 27702)
         self.assertEqual(split['hpp_cista'], 22903)
         self.assertEqual(split['soucet_cista'], 33102)
-        self.assertEqual(split['vikend_priplatek_hruba'], 1120)
+        self.assertEqual(split['vikend_priplatek_hruba'], 1129)
+
+    def test_surcharges_from_fixed_hourly_rate(self):
+        self.assertEqual(PRIPLATEK_SAZBA_H, Decimal('134.4'))
+        self.assertEqual(vikend_priplatek_hruba(84), Decimal('1129'))
+        self.assertEqual(svatek_priplatek_hruba(8), Decimal('1075'))
+        self.assertEqual(prescas_priplatek_hruba(8), Decimal('269'))
 
     def test_holiday_surcharge_raises_min_hpp(self):
-        vikend, svatek = (
-            vikend_priplatek_hruba(HPP_GROSS_MIN, 176, 0, 8),
-            svatek_priplatek_hruba(HPP_GROSS_MIN, 176, 8),
-        )
-        self.assertEqual(vikend, Decimal('0'))
-        self.assertEqual(svatek, Decimal('1067'))
-        hpp_min, _, svatek_p = hpp_minimum_hruba(176, 0, 8)
-        self.assertEqual(svatek_p, Decimal('1067'))
-        self.assertEqual(hpp_min, Decimal('23467'))
+        self.assertEqual(vikend_priplatek_hruba(0), Decimal('0'))
+        self.assertEqual(svatek_priplatek_hruba(8), Decimal('1075'))
+        hpp_min, _, svatek_p, _ = hpp_minimum_hruba(0, 8, 0)
+        self.assertEqual(svatek_p, Decimal('1075'))
+        self.assertEqual(hpp_min, Decimal('23475'))
 
         split = recommend_hpp_dpp(30000, odpracovano_h=176, svatek_h=8)
-        self.assertGreaterEqual(split['hpp_hruba'], 23467)
+        self.assertGreaterEqual(split['hpp_hruba'], 23475)
         self.assertEqual(split['svatek_h'], 8.0)
         self.assertEqual(split['soucet_cista'], 30000)
 
-    def test_weekend_holiday_adds_110_percent(self):
-        hpp_min, vikend_p, svatek_p = hpp_minimum_hruba(176, 8, 8)
-        self.assertEqual(vikend_p, Decimal('107'))
-        self.assertEqual(svatek_p, Decimal('1067'))
-        self.assertEqual(hpp_min, Decimal('23574'))
+    def test_weekend_holiday_and_overtime(self):
+        hpp_min, vikend_p, svatek_p, prescas_p = hpp_minimum_hruba(8, 8, 8)
+        self.assertEqual(vikend_p, Decimal('108'))
+        self.assertEqual(svatek_p, Decimal('1075'))
+        self.assertEqual(prescas_p, Decimal('269'))
+        self.assertEqual(hpp_min, Decimal('23852'))
 
     def test_attach_skips_brigadnik(self):
         row = attach_hpp_dpp_to_row({
@@ -96,6 +101,7 @@ class HppDppCalcTests(SimpleTestCase):
             'odpracovano_h': 168,
             'vikend_h': 0,
             'svatek_h': 0,
+            'prescas_h': 0,
         })
         self.assertEqual(row['hpp_dpp']['soucet_cista'], 25000)
         self.assertEqual(row['hpp_dpp']['hpp_hruba'], 22400)
@@ -169,6 +175,7 @@ class HppDppHoursTests(TestCase):
         self.assertFalse(row['is_brigadnik'])
         self.assertIsNotNone(row['hpp_dpp'])
         self.assertEqual(row['hpp_dpp']['soucet_cista'], int(row['celkem_body']))
+        self.assertEqual(row['hpp_dpp']['priplatek_sazba_h'], 134.4)
 
     def test_payroll_row_skips_split_for_brigadnik(self):
         self._shift(self.brigadnik, date(2026, 8, 3))
