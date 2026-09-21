@@ -158,6 +158,13 @@ export default function SellerDashboard({ user }) {
             <button
               type="button"
               className="btn btn--secondary"
+              onClick={() => navigate('/vykon')}
+            >
+              Porovnat výkon
+            </button>
+            <button
+              type="button"
+              className="btn btn--secondary"
               onClick={() => navigate('/tasks')}
             >
               Úkoly

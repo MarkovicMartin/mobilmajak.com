@@ -202,6 +202,14 @@
     align-items: center;
 }
 
+.coaching-chart-controls .ui-select {
+    min-width: 13.5rem;
+}
+
+.coaching-chart-controls .coaching-compare-peer-select {
+    min-width: 16rem;
+}
+
 .coaching-chart-controls select {
     padding: 6px 10px;
     border-radius: 8px;

@@ -1,6 +1,3 @@
-from django.test import TestCase
-from rest_framework.test import APIClient
-
 from unittest.mock import patch
 
 from django.test import TestCase
@@ -12,6 +9,7 @@ from coaching.aggregate import (
     _compute_benchmark,
     _compute_signaly,
     compare_sellers,
+    sanitize_compare_for_user,
 )
 from coaching.models import CoachingGoal, CoachingNote
 from stores.models import Prodejna
@@ -93,6 +91,7 @@ class CoachingApiTests(TestCase):
         self.vedouci_a = _make_user(9102, 'VEDOUCI')
         self.vedouci_b = _make_user(9103, 'VEDOUCI')
         self.prodejce = _make_user(9104, 'PRODEJCE', prodejna_id=201)
+        self.prodejce_b = _make_user(9106, 'PRODEJCE', prodejna_id=202)
 
         self.store_a = Prodejna.objects.create(
             id=201,
@@ -115,6 +114,90 @@ class CoachingApiTests(TestCase):
     def test_prodejce_denied(self):
         self._auth(self.prodejce)
         res = self.client.get('/api/coaching/roster/')
+        self.assertEqual(res.status_code, 403)
+
+    def test_prodejce_filters_all_staff(self):
+        self._auth(self.prodejce)
+        res = self.client.get('/api/coaching/filters/options/')
+        self.assertEqual(res.status_code, 200)
+        ids = {p['id'] for p in res.data['prodejci']}
+        self.assertIn(self.prodejce.id, ids)
+        self.assertIn(self.prodejce_b.id, ids)
+
+    @patch('coaching.views.compare_sellers')
+    def test_prodejce_compare_self_vs_other_store_sanitized(self, mock_cmp):
+        mock_cmp.return_value = {
+            'prodejce_a': {'id': self.prodejce.id, 'jmeno': 'A', 'prijmeni': 'A'},
+            'prodejce_b': {'id': self.prodejce_b.id, 'jmeno': 'B', 'prijmeni': 'B'},
+            'metriky': [
+                {'metric': 'odpracovane_hodiny', 'a': 8, 'b': 5, 'is_hours': True},
+                {
+                    'metric': 'celkovy_obrat', 'a': 1000, 'b': 2000,
+                    'a_za_hodinu': 100, 'b_za_hodinu': 200,
+                },
+                {
+                    'metric': 'polozky_nad_100', 'a': 10, 'b': 12,
+                    'a_za_hodinu': 1.2, 'b_za_hodinu': 2.4,
+                },
+                {'metric': 'sluzby_celkem', 'a': 3, 'b': 4},
+                {'metric': 'unikatni_doklady', 'a': 2, 'b': 3},
+            ],
+            'kategorie': [{
+                'kategorie_kod': 'NOVE_TELEFONY',
+                'nazev': 'Nové telefony',
+                'a_kusy': 1,
+                'b_kusy': 2,
+                'a_kusy_za_hodinu': 0.1,
+                'b_kusy_za_hodinu': 0.2,
+            }],
+            'plneni_a': {'plan_kusy': 10, 'skutecne_kusy': 4, 'plneni_procent_kusy': 40},
+            'plneni_b': {'plan_kusy': 20, 'skutecne_kusy': 8, 'plneni_procent_kusy': 40},
+            'hodiny_a': 8,
+            'hodiny_b': 5,
+        }
+        self._auth(self.prodejce)
+        res = self.client.get('/api/coaching/sellers/compare/', {
+            'user_a': self.prodejce.id,
+            'user_b': self.prodejce_b.id,
+        })
+        self.assertEqual(res.status_code, 200)
+        keys = {row['metric'] for row in res.data['metriky']}
+        self.assertEqual(keys, {'polozky_nad_100', 'sluzby_celkem', 'unikatni_doklady'})
+        self.assertNotIn('plneni_a', res.data)
+        self.assertNotIn('plneni_b', res.data)
+        self.assertNotIn('hodiny_a', res.data)
+        self.assertNotIn('hodiny_b', res.data)
+        pol = next(r for r in res.data['metriky'] if r['metric'] == 'polozky_nad_100')
+        self.assertIsNone(pol['a_za_hodinu'])
+        self.assertIsNone(pol['b_za_hodinu'])
+        kat = res.data['kategorie'][0]
+        self.assertIsNone(kat['a_kusy_za_hodinu'])
+        self.assertEqual(kat['a_kusy'], 1)
+
+    def test_prodejce_compare_two_others_forbidden(self):
+        stranger = _make_user(9107, 'PRODEJCE', prodejna_id=201)
+        self._auth(self.prodejce)
+        res = self.client.get('/api/coaching/sellers/compare/', {
+            'user_a': self.prodejce_b.id,
+            'user_b': stranger.id,
+        })
+        self.assertEqual(res.status_code, 403)
+
+    @patch('coaching.views.build_timeline', return_value={'metrics': {'polozky_nad_100': []}})
+    def test_prodejce_timeline_self_ok(self, mock_tl):
+        self._auth(self.prodejce)
+        res = self.client.get(
+            f'/api/coaching/sellers/{self.prodejce.id}/timeline/',
+            {'metrics': 'celkovy_obrat,polozky_nad_100', 'per_hour': '1'},
+        )
+        self.assertEqual(res.status_code, 200)
+        kwargs = mock_tl.call_args.kwargs
+        self.assertEqual(kwargs.get('per_hour'), False)
+        self.assertEqual(mock_tl.call_args.args[1], ['polozky_nad_100'])
+
+    def test_prodejce_timeline_other_forbidden(self):
+        self._auth(self.prodejce)
+        res = self.client.get(f'/api/coaching/sellers/{self.prodejce_b.id}/timeline/')
         self.assertEqual(res.status_code, 403)
 
     def test_vedouci_roster_ok(self):
@@ -215,3 +298,32 @@ class CoachingCompareHoursTests(TestCase):
         self.assertTrue(mock_sales.call_args.kwargs.get('limit') == 2 or mock_sales.call_args[1].get('limit') == 2)
         params = mock_sales.call_args.args[0]
         self.assertTrue(params.include_hours)
+
+    @patch('coaching.aggregate._batch_plan_map', return_value={})
+    @patch('coaching.aggregate._batch_plneni_map_months', return_value={})
+    @patch('coaching.aggregate.aggregate_polozky_by_salesperson')
+    def test_sanitize_compare_drops_admin_fields(self, mock_sales, _skut, _plan):
+        mock_sales.return_value = [
+            {
+                'id_prodejce': self.a.id,
+                'polozky_nad_100': 16,
+                'sluzby_celkem': 8,
+                'celkovy_obrat': 8000,
+                'unikatni_doklady': 4,
+                'odpracovane_hodiny': 8.0,
+            },
+            {
+                'id_prodejce': self.b.id,
+                'polozky_nad_100': 10,
+                'sluzby_celkem': 5,
+                'celkovy_obrat': 4000,
+                'unikatni_doklady': 2,
+                'odpracovane_hodiny': 5.0,
+            },
+        ]
+        raw = compare_sellers(self.a.id, self.b.id, 2026, 5)
+        data = sanitize_compare_for_user(raw)
+        keys = {row['metric'] for row in data['metriky']}
+        self.assertEqual(keys, {'polozky_nad_100', 'sluzby_celkem', 'unikatni_doklady'})
+        self.assertNotIn('plneni_a', data)
+        self.assertNotIn('hodiny_a', data)

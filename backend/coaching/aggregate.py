@@ -39,6 +39,14 @@ PRISLUSENSTVI_PODKATEGORIE = (
     'PRISLUSENSTVI_SKLA', 'PRISLUSENSTVI_OBALY', 'PRISLUSENSTVI_OSTATNI',
 )
 CORE_BENCHMARK_METRICS = ('polozky_nad_100', 'sluzby_celkem', 'celkovy_obrat', 'unikatni_doklady')
+USER_SAFE_COMPARE_METRICS = frozenset({
+    'polozky_nad_100',
+    'sluzby_celkem',
+    'unikatni_doklady',
+})
+USER_SAFE_TIMELINE_METRICS = USER_SAFE_COMPARE_METRICS | set(COACHING_KATEGORIE_KODY) | {
+    'PRISLUSENSTVI_SOUBR',
+}
 
 
 def _parse_month(rok_mesic: str | None) -> tuple[int, int]:
@@ -748,3 +756,40 @@ def compare_sellers(user_a: int, user_b: int, rok: int, mesic: int, *, kanal='al
         'hodiny_a': hours_a,
         'hodiny_b': hours_b,
     }
+
+
+def sanitize_compare_for_user(data: dict) -> dict:
+    """Ořeže compare payload na provozní objemy – bez obratu, hodin, plnění a per-hour."""
+    if not data:
+        return data
+    metriky = []
+    for row in data.get('metriky') or []:
+        key = row.get('metric')
+        if key not in USER_SAFE_COMPARE_METRICS:
+            continue
+        metriky.append({
+            **row,
+            'a_za_hodinu': None,
+            'b_za_hodinu': None,
+        })
+    kategorie = []
+    for row in data.get('kategorie') or []:
+        kategorie.append({
+            'kategorie_kod': row.get('kategorie_kod'),
+            'nazev': row.get('nazev'),
+            'a_kusy': row.get('a_kusy'),
+            'b_kusy': row.get('b_kusy'),
+            'a_kusy_za_hodinu': None,
+            'b_kusy_za_hodinu': None,
+        })
+    return {
+        'prodejce_a': data.get('prodejce_a'),
+        'prodejce_b': data.get('prodejce_b'),
+        'metriky': metriky,
+        'kategorie': kategorie,
+    }
+
+
+def filter_user_timeline_metrics(metrics: list[str]) -> list[str]:
+    allowed = [m for m in metrics if m in USER_SAFE_TIMELINE_METRICS]
+    return allowed or ['polozky_nad_100']

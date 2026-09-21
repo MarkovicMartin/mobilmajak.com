@@ -1,6 +1,7 @@
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from coaching.aggregate import (
@@ -11,13 +12,18 @@ from coaching.aggregate import (
     build_seller_workload,
     build_timeline,
     compare_sellers,
+    filter_user_timeline_metrics,
+    sanitize_compare_for_user,
 )
 from coaching.models import CoachingGoal, CoachingNote
 from coaching.permissions import (
     CoachingAccessPermission,
     allowed_store_ids,
+    can_access_coaching,
     filter_prodejna_id_param,
+    user_can_access_own_timeline,
     user_can_access_seller,
+    user_can_compare_sellers,
 )
 from coaching.serializers import CoachingGoalSerializer, CoachingNoteSerializer
 from stores.models import Prodejna
@@ -39,15 +45,15 @@ def _month_params(request):
 
 
 @api_view(['GET'])
-@permission_classes([CoachingAccessPermission])
+@permission_classes([IsAuthenticated])
 def filters_options(request):
     stores = allowed_store_ids(request.user)
     qs = Prodejna.objects.filter(aktivni=True).order_by('nazev')
-    if stores is not None:
+    staff_qs = real_sales_staff_queryset().order_by('jmeno', 'prijmeni')
+    if can_access_coaching(request.user) and stores is not None:
         qs = qs.filter(id__in=stores)
-    staff_qs = real_sales_staff_queryset()
-    if stores is not None:
         staff_qs = staff_qs.filter(prodejna_id__in=stores)
+    prodejny_map = {p.id: p.nazev for p in Prodejna.objects.filter(aktivni=True)}
     return Response({
         'success': True,
         'prodejny': [{'id': p.id, 'nazev': p.nazev} for p in qs],
@@ -57,6 +63,7 @@ def filters_options(request):
                 'jmeno': u.jmeno,
                 'prijmeni': u.prijmeni,
                 'prodejna_id': u.prodejna_id,
+                'prodejna': prodejny_map.get(u.prodejna_id, ''),
             }
             for u in staff_qs
         ],
@@ -104,19 +111,24 @@ def seller_profile(request, user_id):
 
 
 @api_view(['GET'])
-@permission_classes([CoachingAccessPermission])
+@permission_classes([IsAuthenticated])
 def seller_timeline(request, user_id):
     try:
         seller = WebUser.objects.get(pk=user_id)
     except WebUser.DoesNotExist:
         return Response({'success': False, 'error': 'Prodejce nenalezen'}, status=404)
-    if not user_can_access_seller(request.user, seller):
+    if not user_can_access_own_timeline(request.user, seller):
         return Response({'success': False, 'error': 'Nemáte oprávnění'}, status=403)
     rok, mesic = _month_params(request)
     raw_metrics = request.GET.get('metrics', 'polozky_nad_100')
     metrics = [m.strip() for m in raw_metrics.split(',') if m.strip()]
     compare = request.GET.get('compare')
-    per_hour = request.GET.get('per_hour') in ('1', 'true', 'True')
+    manager = can_access_coaching(request.user)
+    if not manager:
+        metrics = filter_user_timeline_metrics(metrics)
+        per_hour = False
+    else:
+        per_hour = request.GET.get('per_hour') in ('1', 'true', 'True')
     data = build_timeline(
         user_id, metrics, rok, mesic,
         compare=compare,
@@ -143,21 +155,25 @@ def seller_tasks(request, user_id):
 
 
 @api_view(['GET'])
-@permission_classes([CoachingAccessPermission])
+@permission_classes([IsAuthenticated])
 def sellers_compare(request):
     user_a = request.GET.get('user_a')
     user_b = request.GET.get('user_b')
     if not user_a or not user_b:
         return Response({'success': False, 'error': 'Chybí user_a nebo user_b'}, status=400)
+    sellers = []
     for uid in (user_a, user_b):
         try:
             seller = WebUser.objects.get(pk=int(uid))
         except (WebUser.DoesNotExist, ValueError):
             return Response({'success': False, 'error': 'Prodejce nenalezen'}, status=404)
-        if not user_can_access_seller(request.user, seller):
-            return Response({'success': False, 'error': 'Nemáte oprávnění'}, status=403)
+        sellers.append(seller)
+    if not user_can_compare_sellers(request.user, sellers[0], sellers[1]):
+        return Response({'success': False, 'error': 'Nemáte oprávnění'}, status=403)
     rok, mesic = _month_params(request)
     data = compare_sellers(int(user_a), int(user_b), rok, mesic, kanal=request.GET.get('kanal', 'all'))
+    if not can_access_coaching(request.user):
+        data = sanitize_compare_for_user(data)
     return Response({'success': True, **data})
 
 

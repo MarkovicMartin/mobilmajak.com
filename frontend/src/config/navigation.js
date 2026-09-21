@@ -38,6 +38,7 @@ export const NAV_GROUPS = [
             { sectionKey: 'reklamace', label: 'Reklamace', path: '/reklamace', icon: 'fa-undo-alt' },
             { sectionKey: 'wreck-parts', label: 'Díly z vraků', path: '/wreck-parts', icon: 'fa-mobile-alt' },
             { sectionKey: 'leaderboard', label: 'Žebříček', path: '/leaderboard', icon: 'fa-trophy' },
+            { sectionKey: 'vykon', label: 'Porovnání', path: '/vykon', icon: 'fa-chart-line' },
         ],
     },
     {

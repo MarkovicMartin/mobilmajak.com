@@ -18,6 +18,7 @@ const AnalyticsModule = lazy(() => import('../modules/analytics/AnalyticsModule'
 const ShiftsModule = lazy(() => import('../modules/shifts/ShiftsModule'));
 const AccessModule = lazy(() => import('../modules/access/AccessModule'));
 const LeaderboardModule = lazy(() => import('../modules/leaderboard/LeaderboardModule'));
+const VykonModule = lazy(() => import('../modules/vykon/VykonModule'));
 const OrdersModule = lazy(() => import('../modules/orders/OrdersModule'));
 const PlansModule = lazy(() => import('../modules/plans/PlansModule'));
 const TicketsModule = lazy(() => import('../modules/tickets/TicketsModule'));
@@ -90,6 +91,7 @@ const Dashboard = () => {
                             <Route path="/finance/*" element={isAdmin() ? <FinanceModule /> : <Navigate to="/finance/faktury" />} />
                         )}
                         <Route path="/leaderboard" element={<LeaderboardModule />} />
+                        <Route path="/vykon" element={<VykonModule />} />
                         <Route path="/profile" element={<ProfileModule />} />
                         <Route path="/tasks/*" element={<TasksModule />} />
                         <Route path="/my-tasks" element={<LegacyMyTasksRedirect />} />

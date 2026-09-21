@@ -1,5 +1,6 @@
 from rest_framework.permissions import BasePermission
 
+from users.exclusions import STAFF_ROLES, is_excluded_report_user
 from users.vedouci_utils import is_task_manager, vedouci_store_ids
 
 
@@ -30,6 +31,35 @@ def user_can_access_seller(user, seller) -> bool:
         return False
     sid = getattr(seller, 'prodejna_id', None)
     return sid in stores
+
+
+def _is_comparable_staff(seller) -> bool:
+    if not seller or not getattr(seller, 'aktivni', False):
+        return False
+    if getattr(seller, 'role', None) not in STAFF_ROLES:
+        return False
+    return not is_excluded_report_user(user=seller)
+
+
+def user_can_compare_sellers(viewer, seller_a, seller_b) -> bool:
+    if can_access_coaching(viewer):
+        return user_can_access_seller(viewer, seller_a) and user_can_access_seller(viewer, seller_b)
+    if not viewer or not getattr(viewer, 'is_authenticated', False):
+        return False
+    if viewer.id not in (getattr(seller_a, 'id', None), getattr(seller_b, 'id', None)):
+        return False
+    return _is_comparable_staff(seller_a) and _is_comparable_staff(seller_b)
+
+
+def user_can_access_own_timeline(viewer, seller) -> bool:
+    if can_access_coaching(viewer) and user_can_access_seller(viewer, seller):
+        return True
+    return bool(
+        viewer
+        and getattr(viewer, 'is_authenticated', False)
+        and seller
+        and viewer.id == seller.id
+    )
 
 
 def filter_prodejna_id_param(user, prodejna_id):

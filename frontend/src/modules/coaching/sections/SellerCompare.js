@@ -1,17 +1,21 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Select } from '../../../components/ui';
 import { coachingAPI } from '../../../services/api';
 import CoachingTimelineChart from '../components/CoachingTimelineChart';
 import CompareRateToggle from '../components/CompareRateToggle';
 import CompareMetricsTable from '../components/CompareMetricsTable';
 
-const METRICS = [
-    { key: 'polozky_nad_100', label: 'Položky nad 100 Kč' },
-    { key: 'sluzby_celkem', label: 'Služby' },
-    { key: 'celkovy_obrat', label: 'Obrat' },
-    { key: 'unikatni_doklady', label: 'Účtenky' },
-    { key: 'odpracovane_hodiny', label: 'Odpracované hodiny' },
+const ALL_METRICS = [
+    { value: 'polozky_nad_100', label: 'Položky nad 100 Kč' },
+    { value: 'sluzby_celkem', label: 'Služby' },
+    { value: 'celkovy_obrat', label: 'Obrat' },
+    { value: 'unikatni_doklady', label: 'Účtenky' },
+    { value: 'odpracovane_hodiny', label: 'Odpracované hodiny' },
 ];
+
+const USER_SAFE_METRIC_KEYS = new Set(['polozky_nad_100', 'sluzby_celkem', 'unikatni_doklady']);
+const USER_SAFE_METRICS = ALL_METRICS.filter((m) => USER_SAFE_METRIC_KEYS.has(m.value));
 
 const COMPARE_OPTS = [
     { value: '', label: 'Bez srovnání období' },
@@ -24,15 +28,33 @@ const COMPARE_OPTS = [
 
 const sellerName = (u) => (u ? `${u.jmeno || ''} ${u.prijmeni || ''}`.trim() : '');
 
-const SellerCompare = ({ staffUsers = [], mesic }) => {
+const optionLabel = (u) => {
+    const name = sellerName(u);
+    return u?.prodejna ? `${name} (${u.prodejna})` : name;
+};
+
+const SellerCompare = ({
+    staffUsers = [],
+    mesic,
+    monthOptions = [],
+    onMesicChange,
+    lockedPrimaryId = '',
+    lockedPrimaryName = '',
+    userSafe = false,
+}) => {
     const navigate = useNavigate();
-    const [primaryId, setPrimaryId] = useState('');
+    const metrics = userSafe ? USER_SAFE_METRICS : ALL_METRICS;
+    const [primaryId, setPrimaryId] = useState(lockedPrimaryId ? String(lockedPrimaryId) : '');
     const [peerId, setPeerId] = useState('');
     const [metric, setMetric] = useState('polozky_nad_100');
     const [compare, setCompare] = useState('prev_year');
     const [rateMode, setRateMode] = useState('total');
     const [compareData, setCompareData] = useState(null);
     const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        if (lockedPrimaryId) setPrimaryId(String(lockedPrimaryId));
+    }, [lockedPrimaryId]);
 
     const primary = useMemo(
         () => staffUsers.find((u) => String(u.id) === String(primaryId)),
@@ -42,9 +64,11 @@ const SellerCompare = ({ staffUsers = [], mesic }) => {
         () => staffUsers.find((u) => String(u.id) === String(peerId)),
         [staffUsers, peerId],
     );
-    const primaryName = sellerName(primary);
+    const primaryName = sellerName(primary) || lockedPrimaryName;
     const peerName = sellerName(peer);
-    const chartPerHour = rateMode === 'per_hour' && metric !== 'odpracovane_hodiny';
+    const chartPerHour = !userSafe && rateMode === 'per_hour' && metric !== 'odpracovane_hodiny';
+    const tableRateMode = userSafe ? 'total' : rateMode;
+    const showMonth = typeof onMesicChange === 'function' && monthOptions.length > 0;
 
     useEffect(() => {
         if (!primaryId || !peerId || peerId === primaryId) {
@@ -72,32 +96,88 @@ const SellerCompare = ({ staffUsers = [], mesic }) => {
         return () => { cancelled = true; };
     }, [primaryId, peerId, mesic]);
 
-    const peerOptions = staffUsers.filter((u) => String(u.id) !== String(primaryId));
+    const primarySelectOptions = useMemo(
+        () => [
+            { value: '', label: 'Vyberte prodejce…' },
+            ...staffUsers.map((u) => ({ value: String(u.id), label: optionLabel(u) })),
+        ],
+        [staffUsers],
+    );
+    const peerSelectOptions = useMemo(
+        () => [
+            { value: '', label: 'Jen jeden prodejce' },
+            ...staffUsers
+                .filter((u) => String(u.id) !== String(primaryId))
+                .map((u) => ({ value: String(u.id), label: optionLabel(u) })),
+        ],
+        [staffUsers, primaryId],
+    );
+    const visibleMetriky = userSafe
+        ? (compareData?.metriky || []).filter((row) => USER_SAFE_METRIC_KEYS.has(row.metric))
+        : compareData?.metriky;
 
     return (
         <section className="coaching-panel coaching-analysis">
-            <p className="coaching-analysis-hint">
-                Vyberte prodejce pro vývoj v čase. Druhého prodejce můžete přidat pro srovnání v grafu i tabulce.
-            </p>
-            <div className="coaching-compare-pickers">
+            {!userSafe && (
+                <p className="coaching-analysis-hint">
+                    Vyberte prodejce pro vývoj v čase. Druhého prodejce můžete přidat pro srovnání v grafu i tabulce.
+                </p>
+            )}
+
+            <div className="coaching-chart-controls">
+                {showMonth && (
+                    <label className="coaching-nav-filter">
+                        <span className="coaching-nav-filter-label">Měsíc</span>
+                        <Select
+                            options={monthOptions}
+                            value={mesic}
+                            onChange={onMesicChange}
+                            aria-label="Měsíc"
+                        />
+                    </label>
+                )}
+                {!lockedPrimaryId && (
+                    <label className="coaching-nav-filter">
+                        <span className="coaching-nav-filter-label">Prodejce</span>
+                        <Select
+                            options={primarySelectOptions}
+                            value={primaryId}
+                            onChange={setPrimaryId}
+                            aria-label="Prodejce"
+                        />
+                    </label>
+                )}
                 <label className="coaching-nav-filter">
-                    <span>Prodejce</span>
-                    <select value={primaryId} onChange={(e) => setPrimaryId(e.target.value)}>
-                        <option value="">Vyberte prodejce…</option>
-                        {staffUsers.map((u) => (
-                            <option key={u.id} value={u.id}>{sellerName(u)}</option>
-                        ))}
-                    </select>
+                    <span className="coaching-nav-filter-label">Porovnat s</span>
+                    <Select
+                        options={peerSelectOptions}
+                        value={peerId}
+                        onChange={setPeerId}
+                        aria-label="Porovnat s prodejcem"
+                        className="coaching-compare-peer-select"
+                    />
                 </label>
                 <label className="coaching-nav-filter">
-                    <span>Porovnat s (volitelně)</span>
-                    <select value={peerId} onChange={(e) => setPeerId(e.target.value)}>
-                        <option value="">Jen jeden prodejce</option>
-                        {peerOptions.map((u) => (
-                            <option key={u.id} value={u.id}>{sellerName(u)}</option>
-                        ))}
-                    </select>
+                    <span className="coaching-nav-filter-label">Metrika</span>
+                    <Select
+                        options={metrics}
+                        value={metric}
+                        onChange={setMetric}
+                        aria-label="Metrika grafu"
+                    />
                 </label>
+                <label className="coaching-nav-filter">
+                    <span className="coaching-nav-filter-label">Období</span>
+                    <Select
+                        options={COMPARE_OPTS}
+                        value={compare}
+                        onChange={setCompare}
+                        aria-label="Srovnání období"
+                    />
+                </label>
+                {!userSafe && (
+                    <CompareRateToggle value={rateMode} onChange={setRateMode} />
+                )}
             </div>
 
             {!primaryId && (
@@ -113,28 +193,20 @@ const SellerCompare = ({ staffUsers = [], mesic }) => {
                                 <p className="coaching-muted">Srovnání s {peerName}</p>
                             )}
                         </div>
-                        <button
-                            type="button"
-                            className="coaching-link-btn"
-                            onClick={() => navigate(`/coaching/seller/${primaryId}?mesic=${mesic}`)}
-                        >
-                            Otevřít detail →
-                        </button>
-                    </div>
-
-                    <div className="coaching-chart-controls">
-                        <select value={metric} onChange={(e) => setMetric(e.target.value)}>
-                            {METRICS.map((m) => <option key={m.key} value={m.key}>{m.label}</option>)}
-                        </select>
-                        <select value={compare} onChange={(e) => setCompare(e.target.value)}>
-                            {COMPARE_OPTS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                        </select>
-                        <CompareRateToggle value={rateMode} onChange={setRateMode} />
+                        {!userSafe && (
+                            <button
+                                type="button"
+                                className="coaching-link-btn"
+                                onClick={() => navigate(`/coaching/seller/${primaryId}?mesic=${mesic}`)}
+                            >
+                                Otevřít detail →
+                            </button>
+                        )}
                     </div>
 
                     <CoachingTimelineChart
                         userId={primaryId}
-                        peerUserId={peerId || undefined}
+                        peerUserId={userSafe ? undefined : (peerId || undefined)}
                         primaryLabel={primaryName}
                         peerLabel={peerName}
                         metric={metric}
@@ -147,12 +219,12 @@ const SellerCompare = ({ staffUsers = [], mesic }) => {
 
                     {compareData && peerId && (
                         <CompareMetricsTable
-                            metriky={compareData.metriky}
+                            metriky={visibleMetriky}
                             kategorie={compareData.kategorie}
                             nameA={primaryName}
                             nameB={peerName}
                             mesicLabel={mesic}
-                            rateMode={rateMode}
+                            rateMode={tableRateMode}
                         />
                     )}
                 </>
