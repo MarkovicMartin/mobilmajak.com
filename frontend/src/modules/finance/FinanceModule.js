@@ -26,6 +26,16 @@ const DPH_BADGE_LABELS = {
     bez_dph: 'bez DPH',
 };
 
+const emptyPravidloForm = () => ({
+    protiucet: '',
+    zprava_obsahuje: '',
+    text_shoda: 'obsahuje',
+    vs: '',
+    kategorie_id: '',
+    prodejna_id: '',
+    ignorovat: false,
+});
+
 const FinanceModule = () => {
     const [tab, setTab] = useState('k-zarazeni');
     const [status, setStatus] = useState(null);
@@ -49,15 +59,8 @@ const FinanceModule = () => {
         poznamka_admin: '',
     });
 
-    const [pravidloForm, setPravidloForm] = useState({
-        protiucet: '',
-        zprava_obsahuje: '',
-        text_shoda: 'obsahuje',
-        vs: '',
-        kategorie_id: '',
-        prodejna_id: '',
-        ignorovat: false,
-    });
+    const [pravidloForm, setPravidloForm] = useState(emptyPravidloForm);
+    const [pravidloEditId, setPravidloEditId] = useState(null);
     const [pravidloPreview, setPravidloPreview] = useState(null);
     const [previewLoading, setPreviewLoading] = useState(false);
     const [pravidloDialog, setPravidloDialog] = useState(null);
@@ -195,6 +198,10 @@ const FinanceModule = () => {
             poradi: String(k.poradi ?? 0),
         });
         setTab('kategorie');
+        window.requestAnimationFrame(() => {
+            document.getElementById('finance-kategorie-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            document.getElementById('finance-kategorie-nazev')?.focus();
+        });
     };
 
     const handleDeleteKategorie = async (k) => {
@@ -213,35 +220,55 @@ const FinanceModule = () => {
         }
     };
 
+    const pravidloPayload = () => ({
+        ...pravidloForm,
+        kategorie_id: pravidloForm.kategorie_id || null,
+        prodejna_id: pravidloForm.prodejna_id || null,
+    });
+
+    const resetPravidloForm = () => {
+        setPravidloEditId(null);
+        setPravidloForm(emptyPravidloForm());
+    };
+
     const handlePravidloSubmit = async (e) => {
         e.preventDefault();
         setMessage('');
         try {
-            await financeAPI.createPravidlo({
-                ...pravidloForm,
-                kategorie_id: pravidloForm.kategorie_id || null,
-                prodejna_id: pravidloForm.prodejna_id || null,
-            });
-            setMessage('Pravidlo uloženo.');
-            setPravidloForm({
-                protiucet: '',
-                zprava_obsahuje: '',
-                text_shoda: 'obsahuje',
-                vs: '',
-                kategorie_id: '',
-                prodejna_id: '',
-                ignorovat: false,
-            });
+            if (pravidloEditId) {
+                await financeAPI.updatePravidlo(pravidloEditId, pravidloPayload());
+                setMessage('Pravidlo upraveno.');
+            } else {
+                await financeAPI.createPravidlo(pravidloPayload());
+                setMessage('Pravidlo uloženo.');
+            }
+            resetPravidloForm();
             loadAll();
         } catch (err) {
-            setMessage(err.response?.data?.error || 'Uložení pravidla selhalo');
+            setMessage(err.response?.data?.error || (pravidloEditId ? 'Úprava pravidla selhala' : 'Uložení pravidla selhalo'));
         }
+    };
+
+    const handleEditPravidlo = (rule) => {
+        setPravidloEditId(rule.id);
+        setPravidloForm({
+            protiucet: rule.protiucet || '',
+            zprava_obsahuje: rule.zprava_obsahuje || '',
+            text_shoda: rule.text_shoda || 'obsahuje',
+            vs: rule.vs || '',
+            kategorie_id: rule.kategorie_id ? String(rule.kategorie_id) : '',
+            prodejna_id: rule.prodejna_id ? String(rule.prodejna_id) : '',
+            ignorovat: !!rule.ignorovat,
+        });
+        setTab('pravidla');
+        document.getElementById('finance-pravidlo-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
 
     const handleDeletePravidlo = async (id) => {
         if (!window.confirm('Smazat toto pravidlo?')) return;
         try {
             await financeAPI.deletePravidlo(id);
+            if (pravidloEditId === id) resetPravidloForm();
             setMessage('Pravidlo smazáno.');
             loadAll();
         } catch (err) {
@@ -666,12 +693,15 @@ const FinanceModule = () => {
             {!loading && tab === 'kategorie' && (
                 <section className="finance-panel">
                     <p className="finance-panel__intro">
-                        {katEditId ? 'Úprava kategorie.' : 'Nová kategorie nákladů – po uložení se objeví ve všech výběrech.'}
+                        {katEditId
+                            ? `Úprava: ${kategorie.find((k) => k.id === katEditId)?.nazev || 'kategorie'}`
+                            : 'Nová kategorie nákladů – po uložení se objeví ve všech výběrech.'}
                     </p>
-                    <form className="finance-form" onSubmit={handleKategorieSubmit}>
+                    <form id="finance-kategorie-form" className="finance-form" onSubmit={handleKategorieSubmit}>
                         <label>
                             Název
                             <input
+                                id="finance-kategorie-nazev"
                                 type="text"
                                 value={katForm.nazev}
                                 onChange={(e) => setKatForm((f) => ({ ...f, nazev: e.target.value }))}
@@ -737,7 +767,7 @@ const FinanceModule = () => {
                             </thead>
                             <tbody>
                                 {kategorie.map((k) => (
-                                    <tr key={k.id}>
+                                    <tr key={k.id} className={katEditId === k.id ? 'finance-row--editing' : undefined}>
                                         <td>{k.nazev}</td>
                                         <td>
                                             {k.parent_id
@@ -771,7 +801,7 @@ const FinanceModule = () => {
                         Nové pravidlo platí u dalších importů. Už importované nezařazené platby
                         zařadíte tlačítkem Aplikovat.
                     </p>
-                    <form className="finance-form finance-form--wide" onSubmit={handlePravidloSubmit}>
+                    <form id="finance-pravidlo-form" className="finance-form finance-form--wide" onSubmit={handlePravidloSubmit}>
                         <label>
                             Protiúčet (obsahuje)
                             <input
@@ -838,7 +868,14 @@ const FinanceModule = () => {
                             />
                             Ignorovat (interní převod)
                         </label>
-                        <button type="submit" className="finance-btn-primary">Přidat pravidlo</button>
+                        <button type="submit" className="finance-btn-primary">
+                            {pravidloEditId ? 'Uložit pravidlo' : 'Přidat pravidlo'}
+                        </button>
+                        {pravidloEditId && (
+                            <button type="button" className="finance-btn-secondary" onClick={resetPravidloForm}>
+                                Zrušit úpravu
+                            </button>
+                        )}
                         <button
                             type="button"
                             className="finance-btn-secondary"
@@ -955,6 +992,13 @@ const FinanceModule = () => {
                                             <td>{r.ignorovat ? 'ano' : 'ne'}</td>
                                             <td>
                                                 <div className="finance-rule-actions">
+                                                    <button
+                                                        type="button"
+                                                        className="finance-btn-secondary"
+                                                        onClick={() => handleEditPravidlo(r)}
+                                                    >
+                                                        Upravit
+                                                    </button>
                                                     <button
                                                         type="button"
                                                         className="finance-btn-secondary"

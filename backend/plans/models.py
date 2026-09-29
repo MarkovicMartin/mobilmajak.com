@@ -191,3 +191,49 @@ class PlanProdejceKategorie(models.Model):
 
     def __str__(self):
         return f"{self.plan_prodejce} – {self.kategorie_kod}"
+
+
+class KategorieZboziClaim(models.Model):
+    """Odškrtnutí, že uživatel upravil kategorii produktu v Sympliu."""
+
+    STAV_CEKA = 'ceka'
+    STAV_POTVRZENO = 'potvrzeno'
+    STAV_NEPOTVRZENO = 'nepotvrzeno'
+    STAV_CHOICES = [
+        (STAV_CEKA, 'Čeká na ověření'),
+        (STAV_POTVRZENO, 'Potvrzeno'),
+        (STAV_NEPOTVRZENO, 'Nepotvrzeno'),
+    ]
+
+    kod = models.CharField(max_length=100, db_index=True, verbose_name='P kód')
+    nazev = models.CharField(max_length=255, blank=True, default='', verbose_name='Název')
+    rok = models.IntegerField(verbose_name='Rok prodeje')
+    mesic = models.IntegerField(verbose_name='Měsíc prodeje')
+    user = models.ForeignKey(
+        WebUser, on_delete=models.CASCADE, related_name='kategorie_zbozi_claimy',
+    )
+    stav = models.CharField(max_length=16, choices=STAV_CHOICES, default=STAV_CEKA)
+    kategorie_pred = models.CharField(max_length=255, blank=True, default='')
+    kategorie_1_pred = models.CharField(max_length=255, blank=True, default='')
+    kategorie_po = models.CharField(max_length=255, blank=True, default='')
+    kategorie_1_po = models.CharField(max_length=255, blank=True, default='')
+    body = models.DecimalField(max_digits=6, decimal_places=0, default=0)
+    poznamka = models.TextField(blank=True, default='')
+    vytvoreno = models.DateTimeField(auto_now_add=True)
+    overeno = models.DateTimeField(null=True, blank=True)
+    odmena = models.ForeignKey(
+        'shifts.MzdovaOdmenaMesic',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='kategorie_zbozi_claimy',
+    )
+
+    class Meta:
+        db_table = 'WEB_KATEGORIE_ZBOZI_CLAIM'
+        verbose_name = 'Zařazení kategorie zboží'
+        verbose_name_plural = 'Zařazení kategorií zboží'
+        ordering = ['-vytvoreno']
+
+    def __str__(self):
+        return f'{self.kod} {self.stav}'

@@ -418,14 +418,14 @@ const ProdejnyPolozkyView = ({
                                             {item.vynos_firmy != null && item.vynos_firmy !== undefined ? (
                                                 <div
                                                     className="metric-item"
-                                                    title={`Marže − výplata (${item.vyplata_body ?? 0} bodů)`}
+                                                    title={`Marže − hrubá výplata ${formatCurrency(item.vyplata_hruba ?? item.vyplata_body ?? 0)} (HPP + DPP včetně SP, ZP a daně; body ${Number(item.vyplata_body ?? 0).toLocaleString('cs-CZ')})`}
                                                 >
                                                     <span className="metric-label">Výnos pro firmu</span>
                                                     <span className={`metric-value${item.vynos_firmy < 0 ? ' highlight-negative' : ' highlight-profit'}`}>
                                                         {formatCurrency(item.vynos_firmy)}
                                                     </span>
                                                     <span className="metric-sublabel">
-                                                        výplata {Number(item.vyplata_body ?? 0).toLocaleString('cs-CZ')} bodů
+                                                        hrubá výplata {formatCurrency(item.vyplata_hruba ?? item.vyplata_body ?? 0)}
                                                     </span>
                                                 </div>
                                             ) : (

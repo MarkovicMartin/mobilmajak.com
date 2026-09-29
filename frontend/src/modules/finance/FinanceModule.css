@@ -482,3 +482,7 @@
     gap: 0.35rem;
     align-items: center;
 }
+
+.finance-row--editing td {
+    background: #eef4ff;
+}

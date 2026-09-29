@@ -37,6 +37,7 @@ export const NAV_GROUPS = [
             { sectionKey: 'orders', label: 'Objednávky', path: '/orders', icon: 'fa-shopping-cart' },
             { sectionKey: 'reklamace', label: 'Reklamace', path: '/reklamace', icon: 'fa-undo-alt' },
             { sectionKey: 'wreck-parts', label: 'Díly z vraků', path: '/wreck-parts', icon: 'fa-mobile-alt' },
+            { sectionKey: 'kategorie-zbozi', label: 'Kategorie zboží', path: '/kategorie-zbozi', icon: 'fa-tags' },
             { sectionKey: 'leaderboard', label: 'Žebříček', path: '/leaderboard', icon: 'fa-trophy' },
             { sectionKey: 'vykon', label: 'Porovnání', path: '/vykon', icon: 'fa-chart-line' },
         ],
@@ -164,6 +165,9 @@ export const getRouteLabel = (pathname) => {
     }
     if (pathname.startsWith('/wreck-parts')) {
         return 'Díly z vraků';
+    }
+    if (pathname.startsWith('/kategorie-zbozi')) {
+        return 'Kategorie zboží';
     }
     if (pathname.startsWith('/daily-duties')) {
         return 'Denní povinnosti';

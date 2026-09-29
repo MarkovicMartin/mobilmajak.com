@@ -39,6 +39,7 @@ function parseArgs(argv) {
     else if (a === '--to') out.to = argv[++i];
     else if (a === '--file') out.file = argv[++i];
     else if (a === '--out') out.out = argv[++i];
+    else if (a === '--json-categories') out.jsonCategories = argv[++i];
   }
   if (!out.from || !out.to) throw new Error('Chybí --from a --to (YYYY-MM-DD)');
   return out;
@@ -162,6 +163,7 @@ function parseXlsx(filePath) {
       kod: (g('Kód') || '').toString(),
       doklad: (g('Doklad') || '').toString(),
       nazev: (g('Název') || '').toString(),
+      kategorie: (g('Kategorie') || '').toString(),
       pocet: parseInt(g('Počet kusů'), 10) || 0,
       cena: parseFloat(g('Cena ks vč. DPH')) || 0,
     });
@@ -275,6 +277,34 @@ async function main() {
   const { rows: symplioRows } = parseXlsx(xlsxPath);
   const inRange = symplioRows.filter((r) => r.date >= args.from && r.date <= args.to);
   console.log(`Symplio řádků v období: ${inRange.length}`);
+
+  if (args.jsonCategories) {
+    const kody = {};
+    const konflikty = [];
+    for (const row of inRange) {
+      const kod = (row.kod || '').trim();
+      if (!kod) continue;
+      const parts = (row.kategorie || '').split(' / ').map((p) => p.trim()).filter(Boolean);
+      const entry = {
+        kategorie: parts[0] || '',
+        kategorie_1: parts[1] || '',
+        kategorie_2: parts[2] || '',
+        nazev: row.nazev || '',
+      };
+      const prev = kody[kod];
+      if (!prev) {
+        kody[kod] = entry;
+        continue;
+      }
+      if (prev.kategorie !== entry.kategorie || prev.kategorie_1 !== entry.kategorie_1) {
+        if (!konflikty.includes(kod)) konflikty.push(kod);
+      }
+    }
+    const payload = { from: args.from, to: args.to, kody, konflikty };
+    fs.writeFileSync(args.jsonCategories, JSON.stringify(payload), 'utf8');
+    console.log(`Kategorie: ${args.jsonCategories} (${Object.keys(kody).length} kódů)`);
+    return;
+  }
 
   const sim = simulateActorSkip(inRange);
 

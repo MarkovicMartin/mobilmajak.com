@@ -101,18 +101,41 @@ def batch_servis_margin_by_technik(queryset) -> dict[int, float]:
     return dict(result)
 
 
-def batch_payroll_body_for_month(mesic_str: str) -> dict[int, float]:
-    """Celková měsíční výplata (body) – stejný zdroj jako modul Výplata."""
-    return dict(_batch_payroll_body_for_month_cached(mesic_str))
+def hruba_vyplata_z_radku(row: dict) -> float:
+    """Náklad výplaty pro firmu: hrubá HPP + DPP (včetně SP, ZP a daně).
+
+    Brigádník bez rozpadu HPP/DPP zůstává na bodech.
+    """
+    split = row.get('hpp_dpp')
+    if isinstance(split, dict):
+        hruba = float(split.get('hpp_hruba') or 0) + float(split.get('dpp_hruba') or 0)
+        if hruba > 0:
+            return hruba
+    return float(row.get('celkem_body') or 0)
+
+
+def batch_payroll_body_for_month(mesic_str: str) -> dict[int, dict]:
+    """Měsíční výplata ze stejného zdroje jako modul Výplata.
+
+    `body` = čistá (získané body), `hruba` = HPP + DPP včetně odvedených daní.
+    """
+    return {
+        uid: {'body': body, 'hruba': hruba}
+        for uid, body, hruba in _batch_payroll_body_for_month_cached(mesic_str)
+    }
 
 
 @lru_cache(maxsize=8)
-def _batch_payroll_body_for_month_cached(mesic_str: str) -> tuple[tuple[int, float], ...]:
+def _batch_payroll_body_for_month_cached(mesic_str: str) -> tuple[tuple[int, float, float], ...]:
     from shifts.payroll_service import build_payroll_preview
 
     preview = build_payroll_preview(mesic_str)
     return tuple(
-        (int(r['user_id']), float(r.get('celkem_body') or 0))
+        (
+            int(r['user_id']),
+            float(r.get('celkem_body') or 0),
+            hruba_vyplata_z_radku(r),
+        )
         for r in preview.get('rows') or []
     )
 
@@ -172,12 +195,16 @@ def attach_profit_fields(
         row['marze_vytvorena'] = marze_celkem
 
         if payroll_month:
-            vyplata = round(payroll_map.get(uid, 0.0), 2)
-            row['vyplata_body'] = vyplata
-            row['vynos_firmy'] = round(marze_celkem - vyplata, 2)
+            pay = payroll_map.get(uid) or {}
+            body = round(float(pay.get('body') or 0), 2)
+            hruba = round(float(pay.get('hruba') or 0), 2)
+            row['vyplata_body'] = body
+            row['vyplata_hruba'] = hruba
+            row['vynos_firmy'] = round(marze_celkem - hruba, 2)
             row['profit_payroll_month'] = payroll_month
         else:
             row['vyplata_body'] = None
+            row['vyplata_hruba'] = None
             row['vynos_firmy'] = None
             row['profit_payroll_month'] = None
 

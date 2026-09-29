@@ -330,6 +330,7 @@ const PointsLeaderboard = ({
                                     <th className="col-seller">{sellerColumnLabel}</th>
                                     {!hideStoreColumn && <th className="col-store">Prodejna</th>}
                                     {renderSortableHeader(METRIC_KEYS.TOTAL_POINTS, 'Body')}
+                                    {renderSortableHeader(METRIC_KEYS.KATEGORIE, 'Kategorie')}
                                     {renderSortableHeader(METRIC_KEYS.SERVIS, 'Servis')}
                                     {showVykupy && renderSortableHeader(METRIC_KEYS.VYKUPY, 'Výkupy')}
                                     {renderSortableHeader(METRIC_KEYS.VICEPRACE, VICEPRACE_LABEL)}
@@ -366,6 +367,9 @@ const PointsLeaderboard = ({
                                             <span className="score-highlight">
                                                 {(seller.total_points ?? 0).toLocaleString('cs-CZ')}
                                             </span>
+                                        </td>
+                                        <td className={`col-num ${rankMetric === METRIC_KEYS.KATEGORIE ? 'cell-active' : ''}`}>
+                                            {(seller.kategorie_body ?? 0).toLocaleString('cs-CZ')}
                                         </td>
                                         <td className={`col-num ${rankMetric === METRIC_KEYS.SERVIS ? 'cell-active' : ''}`}>
                                             <span className="servis-value">
@@ -412,6 +416,7 @@ const PointsLeaderboard = ({
                         <span className="points">
                             {formatMetricValue(currentUserRow, rankMetric, isDay)}
                             {(rankMetric === METRIC_KEYS.TOTAL_POINTS
+                                || rankMetric === METRIC_KEYS.KATEGORIE
                                 || rankMetric === METRIC_KEYS.SERVIS
                                 || rankMetric === METRIC_KEYS.LAST_PERIOD) ? ' bodů' : ''}
                             {rankMetric === METRIC_KEYS.VYKUPY ? ' ks' : ''}

@@ -6524,6 +6524,59 @@ def _leaderboard_best_from_points_map(points_map, excluded_ids):
     return {'id': best_id, 'prodejce': name, 'points': candidates[best_id]}
 
 
+def _dopln_kategorie_body(
+    leaderboard,
+    body_map,
+    excluded_ids,
+    seen_ids,
+    *,
+    last_month_points_map=None,
+    last_shift_points_map=None,
+):
+    """Přičte body za kategorii do total_points a doplní lidi, kteří jinak v žebříčku nejsou."""
+    for row in leaderboard:
+        pts = int(body_map.get(int(row['id']), 0))
+        row['kategorie_body'] = pts
+        row['total_points'] = int(row.get('total_points') or 0) + pts
+        seen_ids.add(int(row['id']))
+
+    missing = [
+        int(uid) for uid, pts in body_map.items()
+        if pts and int(uid) not in seen_ids and int(uid) not in excluded_ids
+    ]
+    if not missing:
+        return
+    users = {u.id: u for u in _leaderboard_webuser_queryset().filter(id__in=missing)}
+    home = _leaderboard_home_store_map(users)
+    for uid in missing:
+        user = users.get(uid)
+        if not user:
+            continue
+        row = {
+            'id': uid,
+            'prodejce': f"{user.jmeno} {user.prijmeni}".strip(),
+            'prodejna': str(home.get(uid, 'Neznámá')),
+            'total_points': int(body_map[uid]),
+            'kategorie_body': int(body_map[uid]),
+            'polozky_nad_100': 0,
+            'viceprace_obrat': 0.0,
+            'sluzby_celkem': 0,
+            'servis_provize': 0,
+            'vykupy': 0,
+            'prumer_polozek_uctu': 0.0,
+            'prumer_hodnota_uctenky': 0.0,
+            'zasilkovna_baliku': 0,
+            'zasilkovna_prodeje': 0,
+            'zasilkovna_konverze_pct': None,
+        }
+        if last_month_points_map is not None:
+            row['last_month_points'] = _leaderboard_prev_month_points_for_user(user, last_month_points_map)
+        if last_shift_points_map is not None:
+            row['last_shift_points'] = last_shift_points_map.get(uid, 0)
+        leaderboard.append(row)
+        seen_ids.add(uid)
+
+
 def _compute_day_total_points_map(day):
     """Celkové body za jeden den – produkty + servis."""
     from .vykupy_config import vykupy_counts_map
@@ -6537,6 +6590,9 @@ def _compute_day_total_points_map(day):
         prodejce_id = int(item['id_prodejce'])
         product_points, _ = _leaderboard_product_points(item, vykupy_map, prodejce_id)
         points_map[prodejce_id] = product_points + servis_map.get(prodejce_id, 0)
+    from plans.kategorie_zbozi import body_podle_uzivatele
+    for uid, pts in body_podle_uzivatele(day, day).items():
+        points_map[uid] = points_map.get(uid, 0) + pts
     return points_map
 
 
@@ -6553,6 +6609,16 @@ def _compute_month_total_points_map(month_ym):
         prodejce_id = int(item['id_prodejce'])
         product_points, _ = _leaderboard_product_points(item, vykupy_map, prodejce_id)
         points_map[prodejce_id] = product_points + servis_map.get(prodejce_id, 0)
+    year_s, month_s = month_ym.split('-')
+    year_i, month_i = int(year_s), int(month_s)
+    kat_od = date(year_i, month_i, 1)
+    if month_i == 12:
+        kat_do = date(year_i + 1, 1, 1) - timedelta(days=1)
+    else:
+        kat_do = date(year_i, month_i + 1, 1) - timedelta(days=1)
+    from plans.kategorie_zbozi import body_podle_uzivatele
+    for uid, pts in body_podle_uzivatele(kat_od, kat_do).items():
+        points_map[uid] = points_map.get(uid, 0) + pts
     return points_map
 
 
@@ -6875,6 +6941,13 @@ def web_prodeje_leaderboard_points(request):
             ))
             seen_ids.add(staff_user.id)
 
+        from plans.kategorie_zbozi import body_podle_uzivatele
+        kat_map = body_podle_uzivatele(today.replace(day=1), today)
+        _dopln_kategorie_body(
+            leaderboard, kat_map, excluded_ids, seen_ids,
+            last_month_points_map=prev_month_points_map,
+        )
+
         # Seřadit desc podle bodů a přidat pozice
         leaderboard.sort(key=lambda x: x['total_points'], reverse=True)
         for idx, item in enumerate(leaderboard):
@@ -7014,6 +7087,13 @@ def web_prodeje_leaderboard_points_today(request):
             home_store_map,
         ))
 
+        from plans.kategorie_zbozi import body_podle_uzivatele
+        kat_map = body_podle_uzivatele(today, today)
+        _dopln_kategorie_body(
+            leaderboard, kat_map, excluded_ids, {int(row['id']) for row in leaderboard},
+            last_shift_points_map=last_shift_points_map,
+        )
+
         leaderboard.sort(key=lambda x: x['total_points'], reverse=True)
         for idx, item in enumerate(leaderboard):
             item['position'] = idx + 1
@@ -7142,6 +7222,9 @@ def web_prodeje_leaderboard_stores(request):
             if p.nazev_kratkiy:
                 stredisko_to_nazev[p.nazev_kratkiy.strip()] = p.nazev
 
+        from plans.kategorie_zbozi import body_podle_prodejny
+        kategorie_store_map = body_podle_prodejny(month_start, month_end)
+
         leaderboard = []
         for item in aggregation:
             stredisko = (item.get('stredisko') or '').strip()
@@ -7155,6 +7238,7 @@ def web_prodeje_leaderboard_stores(request):
 
             product_points = calculate_points_for_data(_leaderboard_item_points_data(item))
             servis_points = servis_map.get(stredisko, 0)
+            kat_body = int(kategorie_store_map.get(int(pid), 0)) if pid else 0
             row_id = int(pid) if pid else abs(hash(stredisko)) % (10 ** 9)
             z_stats = zasilkovna_store_map.get(int(pid), {}) if pid else {}
 
@@ -7162,7 +7246,8 @@ def web_prodeje_leaderboard_stores(request):
                 'id': row_id,
                 'prodejna': str(prodejna_nazev),
                 'stredisko': stredisko,
-                'total_points': product_points + servis_points,
+                'total_points': product_points + servis_points + kat_body,
+                'kategorie_body': kat_body,
                 'polozky_nad_100': item['polozky_nad_100'] or 0,
                 'viceprace_obrat': round(float(item.get('viceprace_obrat') or 0), 2),
                 'sluzby_celkem': _leaderboard_sluzby_celkem(item),

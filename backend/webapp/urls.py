@@ -77,6 +77,7 @@ urlpatterns = [
     path('api/orders/', include('orders.urls')),
     path('api/tasks/', include('tasks.urls')),
     path('api/plans/', include('plans.urls')),
+    path('api/kategorie-zbozi/', include('plans.kategorie_zbozi_urls')),
     path('api/coaching/', include('coaching.urls')),
     path('api/tickets/', include('tickets.urls')),
     path('api/wreck-parts/', include('wreck_parts.urls')),

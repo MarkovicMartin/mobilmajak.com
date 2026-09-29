@@ -32,6 +32,7 @@ const FinanceFakturyModule = FINANCE_MODULE_ENABLED
     ? lazy(() => import('../modules/finance/FinanceFakturyModule'))
     : null;
 const WreckPartsModule = lazy(() => import('../modules/wreckParts/WreckPartsModule'));
+const KategorieZboziModule = lazy(() => import('../modules/kategorieZbozi/KategorieZboziModule'));
 const ReklamaceModule = lazy(() => import('../modules/reklamace/ReklamaceModule'));
 const DailyDutiesModule = DAILY_DUTIES_MODULE_ENABLED
     ? lazy(() => import('../modules/dailyDuties/DailyDutiesModule'))
@@ -80,6 +81,7 @@ const Dashboard = () => {
                         <Route path="/orders" element={<OrdersModule />} />
                         <Route path="/reklamace" element={<ReklamaceModule />} />
                         <Route path="/wreck-parts" element={<WreckPartsModule />} />
+                        <Route path="/kategorie-zbozi" element={<KategorieZboziModule />} />
                         {DAILY_DUTIES_MODULE_ENABLED && (
                             <Route path="/daily-duties" element={<DailyDutiesModule />} />
                         )}
