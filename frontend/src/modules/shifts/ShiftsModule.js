@@ -12,6 +12,7 @@ import PayrollPanel from './PayrollPanel';
 import AttendanceLogPanel from './AttendanceLogPanel';
 import AbsentStoresPanel from './AbsentStoresPanel';
 import VacationPanel from './VacationPanel';
+import VyjezdPanel from './VyjezdPanel';
 import ShiftsNav from './ShiftsNav';
 import { BACKOFFICE_LOCATION } from './shiftBackoffice';
 import './ShiftsModule.css';
@@ -96,6 +97,7 @@ function ShiftsModule() {
     }, [user]);
 
     const isAdmin = user?.role === 'ADMIN';
+    const canManageShifts = user?.role === 'ADMIN' || user?.role === 'VEDOUCI';
     const personView = selectedProdejna === MINE_FILTER || selectedProdejna === USER_FILTER;
     const personUserId = selectedProdejna === USER_FILTER ? calendarUserId : '';
     const waitingForCalendarUser = isAdmin && selectedProdejna === USER_FILTER && !calendarUserId;
@@ -120,6 +122,8 @@ function ShiftsModule() {
             const adminOnlyViews = new Set(['vacation', 'payroll', 'absent-stores', 'attendance-log']);
             if (adminOnlyViews.has(st.view) && !isAdmin) {
                 setActiveView('calendar');
+            } else if (st.view === 'vyjezdy' && user?.role !== 'ADMIN' && user?.role !== 'VEDOUCI') {
+                setActiveView('calendar');
             } else {
                 setActiveView(st.view);
             }
@@ -132,7 +136,15 @@ function ShiftsModule() {
                 setShowForm(true);
             }
         }
-    }, [location.key, location.state?.view, isAdmin]);
+    }, [location.key, location.state?.view, isAdmin, user?.role]);
+
+    useEffect(() => {
+        const mesic = new URLSearchParams(location.search).get('mesic');
+        if (mesic && /^\d{4}-\d{2}$/.test(mesic)) {
+            setCurrentMonth(mesic);
+            setActiveView('calendar');
+        }
+    }, [location.search]);
 
     const handleMonthChange = (direction) => {
         const [year, month] = currentMonth.split('-').map(Number);
@@ -228,7 +240,7 @@ function ShiftsModule() {
         ];
     }, [stores, user?.prodejna_id, user?.role, shiftsSeeAllEmployees]);
 
-    const showMonthControls = activeView === 'calendar' || activeView === 'overview' || activeView === 'payroll';
+    const showMonthControls = activeView === 'calendar' || activeView === 'overview' || activeView === 'payroll' || activeView === 'vyjezdy';
 
     return (
         <div className="shifts-module">
@@ -238,6 +250,7 @@ function ShiftsModule() {
                 activeView={activeView}
                 onViewChange={setActiveView}
                 isAdmin={isAdmin}
+                canManageShifts={canManageShifts}
             />
 
             {showMonthControls && (
@@ -359,7 +372,13 @@ function ShiftsModule() {
                         onFeatureFlagsChange={({ shiftsSeeAllEmployees: enabled }) => {
                             setShiftsSeeAllEmployees(Boolean(enabled));
                         }}
+                        onJumpToMonth={setCurrentMonth}
+                        onOpenVyjezdy={canManageShifts ? () => setActiveView('vyjezdy') : null}
                     />
+                )}
+
+                {activeView === 'vyjezdy' && canManageShifts && (
+                    <VyjezdPanel month={currentMonth} stores={stores} />
                 )}
 
                 {activeView === 'overview' && (

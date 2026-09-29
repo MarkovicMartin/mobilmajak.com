@@ -76,6 +76,7 @@ INSTALLED_APPS = [
     'wreck_parts',
     'reklamace',
     'daily_duties',
+    'knowledge',
 ]
 
 MIDDLEWARE = [
@@ -178,6 +179,7 @@ if _use_sqlite_for_tests:
             'vallora',
             'reklamace',
             'daily_duties',
+            'knowledge',
             'wreck_parts',
         )
     }

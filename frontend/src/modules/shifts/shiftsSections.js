@@ -1,5 +1,6 @@
 export const SHIFTS_SECTIONS = [
     { id: 'calendar', tabLabel: 'Kalendář', icon: '📅' },
+    { id: 'vyjezdy', tabLabel: 'Výjezdy', icon: '🚌', manageOnly: true },
     { id: 'overview', tabLabel: 'Přehled hodin', icon: '📊' },
     { id: 'vacation', tabLabel: 'Dovolená', icon: '🏖️', adminOnly: true },
     { id: 'attendance', tabLabel: 'Docházka', icon: '⏰' },

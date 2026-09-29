@@ -6,9 +6,9 @@ Přehled – co je provozní, co plánované rozšíření. Nepřidávejte jedno
 
 | Skript | Účel |
 |--------|------|
-| `deploy-staging.sh` | Staging deploy + smoke (krok 1); po deployi staging běží default 2h |
+| `deploy-staging.sh` | Staging deploy + smoke (krok 1); po deployi platí uložené `STAGING_IDLE_TTL` (výchozí 2h, `off` = bez limitu) |
 | `deploy-staging.ps1` | Totéž pro Windows |
-| `staging-app.sh` | Zapnout/vypnout/prodloužit staging workery na VPS (`start\|stop\|extend\|status`) |
+| `staging-app.sh` | Zapnout/vypnout/prodloužit staging workery na VPS (`start\|stop\|extend\|status`); `STAGING_IDLE_TTL=off` bez auto-stop, `STAGING_IDLE_TTL=2h` zase 2 hodiny |
 | `staging-app-control.sh` | Stejné ovládání přímo na VPS (`/opt/scripts/…`) |
 | `frontend-build-vps.sh` | `npm ci` + aktualizace browserslist + build (volá deploy) |
 | `post-deploy-smoke.sh` | Health + `manage.py check` + shifts import (volá deploy) |
@@ -31,6 +31,7 @@ Přehled – co je provozní, co plánované rozšíření. Nepřidávejte jedno
 | `install-daily-report-cron.sh` | Cron denního Slack reportu |
 | `install-orders-sla-cron.sh` | Cron SLA připomínek objednávek |
 | `install-reklamace-reminders-cron.sh` | Cron připomínek reklamací |
+| `install-vyjezd-navrh-cron.sh` | Cron návrhů výjezdů na jinou prodejnu (denně 6:10); `STAGING=1` pro staging |
 
 Detaily a ruční řádky crontab: [`docs/secrets-setup.md`](../docs/secrets-setup.md).
 

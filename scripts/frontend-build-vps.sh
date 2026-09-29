@@ -21,6 +21,17 @@ done
 if [ -f "$FRONTEND_DIR/.env.production" ]; then
   cp -a "$FRONTEND_DIR/.env.production" .
 fi
+# Staging build: zapnout Denní povinnosti jen v dočasném adresáři buildu.
+# Uložené .env.production na serveru (a produkční build) se nemění.
+if [[ "$FRONTEND_DIR" == *"/staging/"* ]]; then
+  touch .env.production
+  if grep -q '^REACT_APP_DAILY_DUTIES_ENABLED=' .env.production; then
+    sed -i 's/^REACT_APP_DAILY_DUTIES_ENABLED=.*/REACT_APP_DAILY_DUTIES_ENABLED=1/' .env.production
+  else
+    echo 'REACT_APP_DAILY_DUTIES_ENABLED=1' >> .env.production
+  fi
+  echo "OK: staging build REACT_APP_DAILY_DUTIES_ENABLED=1"
+fi
 
 npm ci --no-audit
 npx --yes update-browserslist-db@latest || true

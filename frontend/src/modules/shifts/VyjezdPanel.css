@@ -1,0 +1,90 @@
+.vyjezd-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-width: 880px;
+}
+
+.vyjezd-panel__lead,
+.vyjezd-panel__status,
+.vyjezd-panel__info,
+.vyjezd-panel__missing {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.45;
+}
+
+.vyjezd-panel__missing {
+    color: #92400e;
+}
+
+.vyjezd-panel__error {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #991b1b;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 14px;
+}
+
+.vyjezd-panel__actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.vyjezd-card {
+    border: 1px solid var(--border-subtle, #e5e7eb);
+    border-radius: 10px;
+    padding: 12px 14px;
+    background: var(--bg-card, #fff);
+}
+
+.vyjezd-card__head {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.vyjezd-card__head span {
+    color: var(--brand-navy-muted, #64748b);
+    font-size: 13px;
+}
+
+.vyjezd-row {
+    display: grid;
+    grid-template-columns: 160px minmax(180px, 1fr) auto;
+    gap: 8px;
+    align-items: center;
+    margin-top: 8px;
+}
+
+.vyjezd-row input[type="date"] {
+    height: 38px;
+    border: 1px solid var(--border-subtle, #e5e7eb);
+    border-radius: 8px;
+    padding: 0 8px;
+    background: var(--bg-card, #fff);
+    color: inherit;
+}
+
+.vyjezd-row__tag {
+    font-size: 12px;
+    color: #166534;
+    white-space: nowrap;
+}
+
+.vyjezd-row__tag--busy {
+    color: #92400e;
+}
+
+.vyjezd-row__tag--done {
+    color: var(--brand-navy-muted, #64748b);
+}
+
+@media (max-width: 720px) {
+    .vyjezd-row {
+        grid-template-columns: 1fr;
+    }
+}

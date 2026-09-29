@@ -72,12 +72,17 @@ if [ ! -f "\$DASH" ]; then
   echo "FAIL finance – chybí Dashboard.js" >&2
   exit 1
 fi
-if ! grep -q 'const FinanceFakturyModule' "\$DASH"; then
-  echo "FAIL finance – Dashboard.js nemá const FinanceFakturyModule" >&2
-  exit 1
-fi
 if ! grep -q 'const FinanceModule' "\$DASH"; then
   echo "FAIL finance – Dashboard.js nemá const FinanceModule" >&2
+  exit 1
+fi
+if ! grep -q 'path="/finance' "\$DASH"; then
+  echo "FAIL finance – Dashboard.js nemá route /finance" >&2
+  exit 1
+fi
+FIN="\$APP/frontend/src/modules/finance/FinanceModule.js"
+if [ ! -f "\$FIN" ] || ! grep -q '/finance/faktury' "\$FIN"; then
+  echo "FAIL finance – FinanceModule.js nemá záložku /finance/faktury" >&2
   exit 1
 fi
 if ! grep -rq 'FinanceFaktury' "\$BUILD_JS" 2>/dev/null; then

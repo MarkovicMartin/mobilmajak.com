@@ -45,6 +45,14 @@ if [ -f "$ENV_FILE" ]; then
     chmod 600 "$ENV_FILE"
     echo "OK: doplněn SHIFTS_CALENDAR_SEE_ALL_EMPLOYEES do staging .env"
   fi
+  # Denní povinnosti jen na stagingu, dokud modul neprojde ověřením.
+  # Přidá se jedna řádka; hesla a ostatní klíče se nepřepisují.
+  if grep -q '^DAILY_DUTIES_MODULE_ENABLED=' "$ENV_FILE" 2>/dev/null; then
+    sed -i 's/^DAILY_DUTIES_MODULE_ENABLED=.*/DAILY_DUTIES_MODULE_ENABLED=1/' "$ENV_FILE"
+  else
+    echo 'DAILY_DUTIES_MODULE_ENABLED=1' >> "$ENV_FILE"
+  fi
+  echo "OK: staging DAILY_DUTIES_MODULE_ENABLED=1"
   # Staging vždy test Slack → Markovič (i když .env vznikne z produkce)
   if grep -q '^ORDERS_SLACK_TEST_MODE=' "$ENV_FILE" 2>/dev/null; then
     sed -i 's/^ORDERS_SLACK_TEST_MODE=.*/ORDERS_SLACK_TEST_MODE=1/' "$ENV_FILE"
@@ -64,15 +72,20 @@ fi
 rm -f "$STAGING/finance/packeta_fetch.py" "$STAGING/finance/packeta_parser.py" "$STAGING/finance/packeta_shift_assign.py" \
   "$STAGING/finance/management/commands/import_packeta_provize.py"
 
+# pypdf je v requirements (extrakce PDF ve znalostní bázi). Na VPS ho doinstalovat, pokud ve venv chybí.
+sudo -u webmajak bash -lc "cd $STAGING && source venv/bin/activate && python -c 'import pypdf' || pip install -q 'pypdf==5.9.0'" \
+  || echo "WARN: pypdf install skipped"
+
 cd "$STAGING"
 sudo -u webmajak bash -lc 'set -e; source venv/bin/activate; export DJANGO_SETTINGS_MODULE=webapp.settings_production; python manage.py migrate --noinput || echo "WARN: migrate skipped"; python manage.py normalize_packeta_zasilka || echo "WARN: normalize_packeta_zasilka skipped"; python manage.py collectstatic --noinput; python manage.py check --deploy || python manage.py check'
 systemctl restart webmajak-staging
 sleep 2
 systemctl is-active webmajak-staging
-# Staging není na bootu: po deployi běží jen do auto-stop (default 2h) / ručního stopu
+# Staging není na bootu. Auto-stop bere uložené TTL (/opt/scripts/staging-idle-ttl),
+# jinak 2h. Explicitní STAGING_IDLE_TTL=… (včetně off) se uloží a přepíše předchozí volbu.
 if [ -x /opt/scripts/staging-app-control.sh ]; then
-  STAGING_IDLE_TTL="${STAGING_IDLE_TTL:-2h}" /opt/scripts/staging-app-control.sh schedule-stop
+  /opt/scripts/staging-app-control.sh schedule-stop
 else
   echo "WARN: chybí /opt/scripts/staging-app-control.sh – staging poběží bez auto-stop"
 fi
-echo "post-deploy OK (staging auto-stop TTL=${STAGING_IDLE_TTL:-2h})"
+echo "post-deploy OK (staging auto-stop: uložené TTL, jinak 2h; off = bez limitu)"

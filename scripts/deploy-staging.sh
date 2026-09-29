@@ -69,4 +69,4 @@ echo "[5/5] Smoke test..."
 "$REPO_ROOT/scripts/post-deploy-smoke.sh" staging
 echo ""
 echo "Done. https://staging.mobilmajak.com/"
-echo "Staging workery: auto-stop za ${STAGING_IDLE_TTL:-2h}. Ručně: ./scripts/staging-app.sh stop|extend|status"
+echo "Staging workery: auto-stop dle uloženého TTL (výchozí 2h, off = bez limitu). Ručně: STAGING_IDLE_TTL=off|2h ./scripts/staging-app.sh extend"

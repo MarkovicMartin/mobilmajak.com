@@ -82,6 +82,7 @@ urlpatterns = [
     path('api/tickets/', include('tickets.urls')),
     path('api/wreck-parts/', include('wreck_parts.urls')),
     path('api/reklamace/', include('reklamace.urls')),
+    path('api/knowledge/', include('knowledge.urls')),
     path('', include('web_pristupy.urls')),
 ]
 

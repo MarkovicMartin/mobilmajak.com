@@ -1,7 +1,7 @@
 #!/bin/bash
 # Lokální ovládání staging app na VPS.
 # Usage: ./scripts/staging-app.sh start|stop|extend|status
-# Env: STAGING_IDLE_TTL (default 2h na VPS)
+# Env: STAGING_IDLE_TTL (na VPS výchozí 2h, nebo poslední uložená hodnota; off = bez limitu)
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -15,9 +15,11 @@ case "$CMD" in
   start|stop|extend|status) ;;
   *)
     echo "Usage: $0 start|stop|extend|status"
-    echo "  start/extend – zapne staging a naplánuje auto-stop (default 2h)"
+    echo "  start/extend – zapne staging a naplánuje auto-stop (uložené TTL, jinak 2h)"
     echo "  stop         – vypne staging i timer"
     echo "  STAGING_IDLE_TTL=4h $0 extend"
+    echo "  STAGING_IDLE_TTL=off $0 extend   # bez časového limitu"
+    echo "  STAGING_IDLE_TTL=2h $0 extend    # zase auto-stop za 2 hodiny"
     exit 1
     ;;
 esac

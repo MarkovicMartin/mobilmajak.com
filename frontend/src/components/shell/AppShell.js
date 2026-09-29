@@ -4,7 +4,7 @@ import AppSidebar from './AppSidebar';
 import AppMobileDrawer from './AppMobileDrawer';
 import AppTopBar from './AppTopBar';
 import { showAppToast } from '../AppToast';
-import { reklamaceAPI, taskAPI, newsAPI } from '../../services/api';
+import { reklamaceAPI, taskAPI, newsAPI, shiftsAPI } from '../../services/api';
 import { useUnreadPoll } from '../../hooks/useUnreadPoll';
 import './AppShell.css';
 
@@ -101,6 +101,23 @@ const AppShell = ({
         fetchCount: fetchNewsUnread,
         onNotify: notifyNews,
         refreshEventName: 'news-unread-refresh',
+    });
+
+    const fetchVyjezdNotifications = useCallback(async () => {
+        if (!user) return 0;
+        const items = await shiftsAPI.listVyjezdNotifications({ unread: true });
+        return Array.isArray(items) ? items.length : 0;
+    }, [user]);
+
+    const notifyVyjezd = useCallback(() => {
+        showAppToast('📅 Směny: máš návrh směn na jiné prodejně');
+    }, []);
+
+    useUnreadPoll({
+        enabled: !!user,
+        fetchCount: fetchVyjezdNotifications,
+        onNotify: notifyVyjezd,
+        refreshEventName: 'notifications-refresh',
     });
 
     useEffect(() => {

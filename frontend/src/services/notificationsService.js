@@ -1,4 +1,4 @@
-import { reklamaceAPI, taskAPI, newsAPI } from './api';
+import { reklamaceAPI, taskAPI, newsAPI, shiftsAPI } from './api';
 import { TASKS_MINE_PATH } from '../utils/taskNavigation';
 
 const REKLAMACE_PATH = '/reklamace';
@@ -70,6 +70,24 @@ function normalizeTaskRead(task) {
     };
 }
 
+function normalizeVyjezd(row) {
+    const read = Boolean(row.read_at);
+    const mesic = (row.mesic || '').slice(0, 7);
+    return {
+        id: `vyjezd:${row.id}`,
+        source: 'vyjezdy',
+        sourceLabel: 'Směny',
+        title: 'Směna na jiné prodejně',
+        message: row.message,
+        createdAt: row.created_at,
+        read,
+        link: mesic ? `/shifts?mesic=${mesic}` : '/shifts',
+        markRead: read ? null : async () => {
+            await shiftsAPI.markVyjezdNotificationsRead([row.id]);
+        },
+    };
+}
+
 function normalizeNewsUnread(row) {
     return {
         id: `news-unread:${row.id}`,
@@ -95,11 +113,12 @@ function sortByDateDesc(items) {
 }
 
 export async function fetchUnreadNotifications() {
-    const [reklamaceRows, tasks, summary, newsSummary] = await Promise.all([
+    const [reklamaceRows, tasks, summary, newsSummary, vyjezdRows] = await Promise.all([
         reklamaceAPI.listUnreadNotifications(),
         taskAPI.list({ scope: 'mine', stav: 'vse', limit: 200 }),
         taskAPI.getNotificationsSummary(),
         newsAPI.getUnreadSummary(),
+        shiftsAPI.listVyjezdNotifications({ unread: true }),
     ]);
 
     const items = [];
@@ -129,13 +148,18 @@ export async function fetchUnreadNotifications() {
         newsSummary.items.forEach((row) => items.push(normalizeNewsUnread(row)));
     }
 
+    if (Array.isArray(vyjezdRows)) {
+        vyjezdRows.forEach((row) => items.push(normalizeVyjezd(row)));
+    }
+
     return sortByDateDesc(items);
 }
 
 export async function fetchReadNotifications() {
-    const [reklamaceRows, tasks] = await Promise.all([
+    const [reklamaceRows, tasks, vyjezdRows] = await Promise.all([
         reklamaceAPI.listNotifications({ unread: false }),
         taskAPI.list({ scope: 'mine', stav: 'vse', limit: 100 }),
+        shiftsAPI.listVyjezdNotifications({ unread: false }),
     ]);
 
     const items = [];
@@ -152,14 +176,19 @@ export async function fetchReadNotifications() {
         });
     }
 
+    if (Array.isArray(vyjezdRows)) {
+        vyjezdRows.forEach((row) => items.push(normalizeVyjezd(row)));
+    }
+
     return sortByDateDesc(items);
 }
 
 export async function fetchUnreadCount() {
-    const [reklamaceRows, summary, newsSummary] = await Promise.all([
+    const [reklamaceRows, summary, newsSummary, vyjezdRows] = await Promise.all([
         reklamaceAPI.listUnreadNotifications(),
         taskAPI.getNotificationsSummary(),
         newsAPI.getUnreadSummary(),
+        shiftsAPI.listVyjezdNotifications({ unread: true }),
     ]);
     const reklamaceCount = Array.isArray(reklamaceRows) ? reklamaceRows.length : 0;
     let taskCount = 0;
@@ -167,7 +196,8 @@ export async function fetchUnreadCount() {
         taskCount = (summary.tasks_unread || 0) + (summary.overdue_count || 0);
     }
     const newsCount = newsSummary?.unread_count || 0;
-    return reklamaceCount + taskCount + newsCount;
+    const vyjezdCount = Array.isArray(vyjezdRows) ? vyjezdRows.length : 0;
+    return reklamaceCount + taskCount + newsCount + vyjezdCount;
 }
 
 export function dispatchNotificationsRefresh() {

@@ -62,6 +62,7 @@ INSTALLED_APPS = [
     'wreck_parts',
     'reklamace',
     'daily_duties',
+    'knowledge',
 ]
 
 MIDDLEWARE = [

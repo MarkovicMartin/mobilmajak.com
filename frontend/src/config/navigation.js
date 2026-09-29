@@ -54,6 +54,7 @@ export const NAV_GROUPS = [
         label: 'Nástroje',
         items: [
             { sectionKey: 'access', label: 'Přístupy', path: '/access', icon: 'fa-key' },
+            { sectionKey: 'knowledge', label: 'Znalostní báze', path: '/knowledge', icon: 'fa-book' },
             ...(DAILY_DUTIES_MODULE_ENABLED
                 ? [{ sectionKey: 'daily-duties', label: 'Denní povinnosti', path: '/daily-duties', icon: 'fa-clipboard-check' }]
                 : []),
@@ -179,6 +180,9 @@ export const getRouteLabel = (pathname) => {
     }
     if (pathname.startsWith('/kategorie-zbozi')) {
         return 'Kategorie zboží';
+    }
+    if (pathname.startsWith('/knowledge')) {
+        return 'Znalostní báze';
     }
     if (pathname.startsWith('/daily-duties')) {
         return 'Denní povinnosti';
