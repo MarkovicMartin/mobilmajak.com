@@ -390,8 +390,10 @@ def aplikuj_vysledek(claim, nova_k, nova_k1, nova_k2='', *, konflikt=False, chyb
         return stav
 
     zmena = not _stejne(claim.kategorie_pred, nova_k) or not _stejne(claim.kategorie_1_pred, nova_k1)
+    prepsano = False
     if not chybi and not konflikt and (nova_k or '').strip() and zmena:
         aktualizuj_kategorii_kodu(claim.kod, nova_k, nova_k1, nova_k2)
+        prepsano = True
 
     claim.stav = (
         KategorieZboziClaim.STAV_POTVRZENO if stav == 'potvrzeno'
@@ -399,6 +401,7 @@ def aplikuj_vysledek(claim, nova_k, nova_k1, nova_k2='', *, konflikt=False, chyb
     )
     claim.kategorie_po = nova_k or ''
     claim.kategorie_1_po = nova_k1 or ''
+    claim.prepsano = prepsano
     claim.poznamka = poznamka
     claim.overeno = timezone.now()
     if stav == 'potvrzeno':
@@ -443,6 +446,42 @@ def body_podle_prodejny(od: date, do: date) -> dict[int, int]:
         int(row['user__prodejna_id']): int(row['pocet']) * BODY_ZA_KATEGORII
         for row in rows
     }
+
+
+def _kat_text(kat: str, kat1: str) -> str:
+    kat = (kat or '').strip()
+    kat1 = (kat1 or '').strip()
+    if kat and kat1:
+        return f'{kat} · {kat1}'
+    return kat or kat1
+
+
+def audit_radky(rok: int, mesic: int) -> list[dict]:
+    """Všechna odškrtnutí v měsíci pro admin kontrolu zařazení."""
+    from .models import KategorieZboziClaim
+
+    claims = (
+        KategorieZboziClaim.objects.filter(rok=rok, mesic=mesic)
+        .select_related('user')
+        .order_by('-vytvoreno')
+    )
+    radky = []
+    for claim in claims:
+        radky.append({
+            'id': claim.id,
+            'kod': claim.kod,
+            'nazev': claim.nazev,
+            'prodejce': _jmeno(claim.user),
+            'stav': claim.stav,
+            'kategorie_pred': _kat_text(claim.kategorie_pred, claim.kategorie_1_pred),
+            'kategorie_po': _kat_text(claim.kategorie_po, claim.kategorie_1_po),
+            'prepsano': bool(claim.prepsano),
+            'body': int(claim.body or 0),
+            'poznamka': claim.poznamka,
+            'vytvoreno': claim.vytvoreno.isoformat() if claim.vytvoreno else '',
+            'overeno': claim.overeno.isoformat() if claim.overeno else '',
+        })
+    return radky
 
 
 def cekajici_claimy():

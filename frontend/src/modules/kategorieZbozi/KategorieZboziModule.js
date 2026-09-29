@@ -1,7 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { Navigate, useLocation } from 'react-router-dom';
 import api from '../../services/api';
 import Modal from '../../components/Modal';
-import { PageHeader } from '../../components/ui';
+import { PageHeader, Tabs } from '../../components/ui';
+import { useAuth } from '../../context/AuthContext';
+import KategorieZboziAudit from './KategorieZboziAudit';
 import './KategorieZboziModule.css';
 
 const SYMPLIO_ORDER_URL = (orderId) =>
@@ -83,6 +86,9 @@ function ProductTable({ rows, busyKod, onToggle, onOpen }) {
 }
 
 export default function KategorieZboziModule() {
+    const { isAdmin } = useAuth();
+    const location = useLocation();
+    const audit = location.pathname.endsWith('/audit');
     const today = new Date();
     const [rok, setRok] = useState(today.getFullYear());
     const [mesic, setMesic] = useState(today.getMonth() + 1);
@@ -108,7 +114,9 @@ export default function KategorieZboziModule() {
         }
     }, [rok, mesic]);
 
-    useEffect(() => { load(); }, [load]);
+    useEffect(() => {
+        if (!audit) load();
+    }, [audit, load]);
 
     const toggle = async (row) => {
         setBusyKod(row.kod);
@@ -153,11 +161,17 @@ export default function KategorieZboziModule() {
     const cizi = radky.filter(jeCizi);
     const moje = radky.filter((row) => !jeCizi(row));
 
+    if (audit && !isAdmin()) {
+        return <Navigate to="/kategorie-zbozi" replace />;
+    }
+
     return (
         <div className="kz-page">
             <PageHeader
                 title="Kategorie zboží"
-                subtitle="Odškrtni kód, až kategorii upravíš v Sympliu. V noci se to ověří. Zařazení do plánu je 1 bod do odměny i do celkového skóre."
+                subtitle={audit
+                    ? 'Odškrtnuté kódy. Značka Přepsáno znamená, že noční kontrola už kategorii v databázi změnila.'
+                    : 'Odškrtni kód, až kategorii upravíš v Sympliu. V noci se to ověří. Zařazení do plánu je 1 bod do odměny i do celkového skóre.'}
                 actions={(
                     <div className="kz-month">
                         <button type="button" onClick={() => move(-1)} aria-label="Předchozí měsíc">‹</button>
@@ -166,6 +180,20 @@ export default function KategorieZboziModule() {
                     </div>
                 )}
             />
+            {isAdmin() && (
+                <Tabs
+                    className="kz-tabs"
+                    ariaLabel="Sekce kategorií zboží"
+                    tabs={[
+                        { id: 'seznam', label: 'K zařazení', to: '/kategorie-zbozi', end: true },
+                        { id: 'audit', label: 'Audit', to: '/kategorie-zbozi/audit' },
+                    ]}
+                />
+            )}
+            {audit ? (
+                <KategorieZboziAudit rok={rok} mesic={mesic} />
+            ) : (
+            <>
             <p className="kz-score">
                 Tvoje body za tenhle měsíc: <strong>{data?.moje_body ?? 0}</strong>
             </p>
@@ -225,6 +253,8 @@ export default function KategorieZboziModule() {
                         </table>
                     )}
                 </Modal>
+            )}
+            </>
             )}
         </div>
     );

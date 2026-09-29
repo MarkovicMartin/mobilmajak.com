@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Routes, Route, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { coachingAPI } from '../../services/api';
 import { PageHeader } from '../../components/ui';
+import { useAuth } from '../../context/AuthContext';
 import CoachingNav from './CoachingNav';
 import TeamRoster from './sections/TeamRoster';
 import SellerProfile from './sections/SellerProfile';
@@ -25,7 +26,49 @@ const buildMonthOptions = (count = 18) => {
     return out;
 };
 
-const CoachingModule = () => {
+const sellerName = (user) => (
+    user ? `${user.jmeno || ''} ${user.prijmeni || ''}`.trim() : ''
+);
+
+const isComparePath = (pathname) => (
+    pathname === '/coaching/compare' || pathname.startsWith('/coaching/compare/')
+);
+
+/** Běžný prodejce: jen analýza výkonu, první prodejce je vždy on sám. */
+const SellerVykonView = () => {
+    const { user } = useAuth();
+    const [mesic, setMesic] = useState(monthKey(new Date()));
+    const [staffUsers, setStaffUsers] = useState([]);
+    const monthOptions = useMemo(() => buildMonthOptions(), []);
+
+    const loadFilters = useCallback(async () => {
+        const res = await coachingAPI.getFilters();
+        if (res.success) {
+            setStaffUsers(res.prodejci || []);
+        }
+    }, []);
+
+    useEffect(() => { loadFilters(); }, [loadFilters]);
+
+    return (
+        <div className="coaching-module">
+            <PageHeader title="Porovnání výkonu" />
+            <div className="coaching-content">
+                <SellerCompare
+                    staffUsers={staffUsers}
+                    mesic={mesic}
+                    monthOptions={monthOptions}
+                    onMesicChange={setMesic}
+                    lockedPrimaryId={user?.id || ''}
+                    lockedPrimaryName={sellerName(user)}
+                    userSafe
+                />
+            </div>
+        </div>
+    );
+};
+
+const ManagerCoachingView = () => {
     const location = useLocation();
     const [mesic, setMesic] = useState(monthKey(new Date()));
     const [prodejnaId, setProdejnaId] = useState('');
@@ -118,6 +161,20 @@ const CoachingModule = () => {
             </div>
         </div>
     );
+};
+
+const CoachingModule = () => {
+    const { canAccessCoaching } = useAuth();
+    const location = useLocation();
+
+    if (!canAccessCoaching()) {
+        if (!isComparePath(location.pathname)) {
+            return <Navigate to="/coaching/compare" replace />;
+        }
+        return <SellerVykonView />;
+    }
+
+    return <ManagerCoachingView />;
 };
 
 export default CoachingModule;

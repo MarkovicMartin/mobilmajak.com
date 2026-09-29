@@ -39,7 +39,6 @@ export const NAV_GROUPS = [
             { sectionKey: 'wreck-parts', label: 'Díly z vraků', path: '/wreck-parts', icon: 'fa-mobile-alt' },
             { sectionKey: 'kategorie-zbozi', label: 'Kategorie zboží', path: '/kategorie-zbozi', icon: 'fa-tags' },
             { sectionKey: 'leaderboard', label: 'Žebříček', path: '/leaderboard', icon: 'fa-trophy' },
-            { sectionKey: 'vykon', label: 'Porovnání', path: '/vykon', icon: 'fa-chart-line' },
         ],
     },
     {
@@ -48,7 +47,7 @@ export const NAV_GROUPS = [
         items: [
             { sectionKey: 'shifts', label: 'Směny', path: '/shifts', icon: 'fa-calendar-alt' },
             { sectionKey: 'tasks', label: 'Úkoly', path: '/tasks', icon: 'fa-clipboard-list' },
-            { sectionKey: 'coaching', label: 'Výkony', path: '/coaching', coachingOnly: true, icon: 'fa-user-check' },
+            { sectionKey: 'coaching', label: 'Výkony', path: '/coaching', icon: 'fa-user-check' },
         ],
     },
     {
@@ -104,6 +103,14 @@ export const isNavItemVisible = (item, { isAdmin, canManageTasks, canAccessCoach
     return true;
 };
 
+/** Prodejce otevře rovnou analýzu výkonu. Vedoucí a admin zůstanou na přehledu týmu. */
+const resolveNavItem = (item, auth) => {
+    if (item.sectionKey === 'coaching' && !auth.canAccessCoaching()) {
+        return { ...item, path: '/coaching/compare' };
+    }
+    return item;
+};
+
 const attachChildren = (item, auth) => {
     if (!PARENTS_WITH_CHILDREN.has(item.sectionKey)) {
         return { ...item, children: [] };
@@ -122,7 +129,9 @@ const flattenItemsForMobile = (items, auth) =>
 
 export const getVisibleNavGroups = (auth, { mobile = false } = {}) => {
     const groups = NAV_GROUPS.map((group) => {
-        const visible = group.items.filter((item) => isNavItemVisible(item, auth));
+        const visible = group.items
+            .filter((item) => isNavItemVisible(item, auth))
+            .map((item) => resolveNavItem(item, auth));
         const items = mobile
             ? flattenItemsForMobile(visible, auth)
             : visible.map((item) => attachChildren(item, auth));
@@ -166,6 +175,9 @@ export const getRouteLabel = (pathname) => {
     if (pathname.startsWith('/wreck-parts')) {
         return 'Díly z vraků';
     }
+    if (pathname.startsWith('/kategorie-zbozi/audit')) {
+        return 'Kategorie zboží – Audit';
+    }
     if (pathname.startsWith('/kategorie-zbozi')) {
         return 'Kategorie zboží';
     }
@@ -178,6 +190,9 @@ export const getRouteLabel = (pathname) => {
     }
     if (pathname === '/tasks' || pathname === '/my-tasks') {
         return 'Úkoly';
+    }
+    if (pathname === '/vykon' || pathname.startsWith('/vykon/')) {
+        return 'Výkony';
     }
     if (pathname.startsWith('/coaching')) {
         if (pathname.includes('/compare')) return 'Analýza výkonu';

@@ -158,7 +158,7 @@ export default function SellerDashboard({ user }) {
             <button
               type="button"
               className="btn btn--secondary"
-              onClick={() => navigate('/vykon')}
+              onClick={() => navigate('/coaching/compare')}
             >
               Porovnat výkon
             </button>

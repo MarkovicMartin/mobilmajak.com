@@ -33,6 +33,7 @@ export function getNavChildren(parentItem, auth) {
             }));
 
         case 'coaching':
+            if (!auth?.canAccessCoaching?.()) return [];
             return COACHING_SECTIONS.map((s) => ({
                 sectionKey: `coaching-${s.id}`,
                 label: s.tabLabel,

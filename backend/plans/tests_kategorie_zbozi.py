@@ -96,4 +96,12 @@ class OdmenaTests(TestCase):
         self.assertEqual(odmena.castka, Decimal('1'))
         self.assertIn('P99021', odmena.poznamka)
         self.assertEqual(odmena.mesic, timezone.localdate().replace(day=1))
+        self.assertTrue(claim.prepsano)
         _update.assert_called_once()
+
+    def test_beze_zmeny_neprepisuje_databazi(self):
+        claim = self._claim()
+        stav = aplikuj_vysledek(claim, 'Nově naskladněno', '', '')
+        claim.refresh_from_db()
+        self.assertEqual(stav, 'nepotvrzeno')
+        self.assertFalse(claim.prepsano)

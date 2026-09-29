@@ -69,3 +69,20 @@ a.kz-link code {
   color: #4b5563;
   margin-bottom: 0.5rem;
 }
+
+.kz-tabs {
+  margin-bottom: 1rem;
+}
+
+.kz-badge {
+  display: inline-block;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.kz-badge-prepsano {
+  background: #e7f6ec;
+  color: #146c43;
+}

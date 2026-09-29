@@ -11,6 +11,7 @@ from .kategorie_zbozi import (
     ClaimObsazeny,
     NeniVAuditu,
     UzPotvrzeno,
+    audit_radky,
     moje_body,
     obohatit_o_claimy,
     polozky_kodu,
@@ -62,6 +63,22 @@ def kategorie_zbozi_polozky(request):
         'mesic': mesic,
         'kod': kod,
         'polozky': polozky_kodu(rok, mesic, kod),
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def kategorie_zbozi_audit(request):
+    if request.user.role != 'ADMIN':
+        return Response({'error': 'Přístup pouze pro administrátory.'}, status=status.HTTP_403_FORBIDDEN)
+    parsed = _rok_mesic(request)
+    if not parsed:
+        return Response({'error': 'Neplatný měsíc.'}, status=status.HTTP_400_BAD_REQUEST)
+    rok, mesic = parsed
+    return Response({
+        'rok': rok,
+        'mesic': mesic,
+        'radky': audit_radky(rok, mesic),
     })
 
 
