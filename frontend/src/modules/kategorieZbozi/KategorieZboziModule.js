@@ -7,6 +7,9 @@ import './KategorieZboziModule.css';
 const SYMPLIO_ORDER_URL = (orderId) =>
     `https://www.mobilmajak.cz/admin/objednavky/objednavka-${orderId}`;
 
+const SYMPLIO_KATALOG_URL = (kod) =>
+    `https://www.mobilmajak.cz/admin/katalog/vyhledavani?p%5Bhledat%5D=${encodeURIComponent(kod)}`;
+
 const mesicLabel = (rok, mesic) =>
     new Date(rok, mesic - 1, 1).toLocaleDateString('cs-CZ', { month: 'long', year: 'numeric' });
 
@@ -45,7 +48,16 @@ function ProductTable({ rows, busyKod, onToggle, onOpen }) {
                                     aria-label={`Upraveno v Sympliu ${row.kod}`}
                                 />
                             </td>
-                            <td><code>{row.kod}</code></td>
+                            <td>
+                                <a
+                                    className="kz-link"
+                                    href={SYMPLIO_KATALOG_URL(row.kod)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                >
+                                    <code>{row.kod}</code>
+                                </a>
+                            </td>
                             <td>
                                 <button type="button" className="kz-link" onClick={() => onOpen(row)}>
                                     {row.nazev || '—'}

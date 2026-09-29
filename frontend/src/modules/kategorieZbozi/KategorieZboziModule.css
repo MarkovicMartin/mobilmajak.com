@@ -46,6 +46,12 @@
   color: #1d4e89;
   cursor: pointer;
   text-align: left;
+  text-decoration: none;
+}
+
+a.kz-link code {
+  color: inherit;
+  text-decoration: underline;
 }
 
 .kz-note {

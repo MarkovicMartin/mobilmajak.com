@@ -180,7 +180,7 @@ Doporučené pořadí po MVP: **R8** → **R9** → **R11** (až po R3 workflow 
 
 ## 5. Gamifikace znalostí (katalog / kategorie)
 
-> Poznámky z brainstormingu — zatím **neimplementováno**, vhodné jako samostatná fáze po stabilizaci provozních modulů.
+> Modul **Kategorie zboží** je v provozu (1 bod za potvrzený kód, odměna i sloupec žebříčku). Níže zůstávají další nápady.
 
 ### Kontext
 
@@ -197,6 +197,7 @@ Doporučené pořadí po MVP: **R8** → **R9** → **R11** (až po R3 workflow 
 | **G3 – Vážené hlasy** | Váha podle kvízové přesnosti v dané podkategorii | M | 3 | Až po G1+G2 |
 | **G4 – Žebříček katalogářů** | Týdenní pořadí; body za konsenzus, ne za rychlost | S | 2 | Motivace; pozor na gaming |
 | **G5 – Propojení s auditem** | V `AuditZbytekPanel` badge: doporučeno / spor / hotovo | M | 4 | Admin vidí výsledek hry |
+| **G6 – Kategorie podle směn** | Pravidelně rozdělit položky k zařazení mezi prodejce, kteří ten den mají směnu. Vlastní prodeje daného dne jako povinnost směny, odměňovaný seznam nechat pro starší zbytky | M | 4 | Navazuje na modul Kategorie zboží; zatím neimplementováno |
 
 ### Doporučené pořadí
 
