@@ -27,9 +27,6 @@ const ProfileModule = lazy(() => import('../modules/profile/ProfileModule'));
 const FinanceModule = FINANCE_MODULE_ENABLED
     ? lazy(() => import('../modules/finance/FinanceModule'))
     : null;
-const FinanceFakturyModule = FINANCE_MODULE_ENABLED
-    ? lazy(() => import('../modules/finance/FinanceFakturyModule'))
-    : null;
 const WreckPartsModule = lazy(() => import('../modules/wreckParts/WreckPartsModule'));
 const KategorieZboziModule = lazy(() => import('../modules/kategorieZbozi/KategorieZboziModule'));
 const ReklamaceModule = lazy(() => import('../modules/reklamace/ReklamaceModule'));
@@ -85,11 +82,11 @@ const Dashboard = () => {
                             <Route path="/daily-duties" element={<DailyDutiesModule />} />
                         )}
                         <Route path="/plans/*" element={isAdmin() ? <PlansModule /> : <Navigate to="/" />} />
-                        {FINANCE_MODULE_ENABLED && FinanceFakturyModule && (
-                            <Route path="/finance/faktury" element={<FinanceFakturyModule />} />
-                        )}
                         {FINANCE_MODULE_ENABLED && (
-                            <Route path="/finance/*" element={isAdmin() ? <FinanceModule /> : <Navigate to="/finance/faktury" />} />
+                            <>
+                                <Route path="/finance" element={<FinanceModule />} />
+                                <Route path="/finance/*" element={<FinanceModule />} />
+                            </>
                         )}
                         <Route path="/leaderboard" element={<LeaderboardModule />} />
                         <Route path="/vykon" element={<Navigate to="/coaching" replace />} />

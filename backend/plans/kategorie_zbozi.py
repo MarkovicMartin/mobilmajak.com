@@ -323,6 +323,24 @@ def zrus_claim(user, claim_id: int) -> bool:
     return bool(deleted)
 
 
+def aktualizuj_nazev_kodu(kod: str, nazev: str) -> int:
+    """Přepíše název u všech prodejů daného P kódu, pokud se označení změnilo."""
+    nazev = (nazev or '').strip()
+    if not nazev:
+        return 0
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            UPDATE WEB_PRODEJE_ALL
+            SET Nazev = %s
+            WHERE TRIM(Kod) = %s
+              AND NOT (Nazev <=> %s)
+            """,
+            [nazev, kod, nazev],
+        )
+        return cursor.rowcount
+
+
 def aktualizuj_kategorii_kodu(kod: str, kategorie: str, kategorie_1: str, kategorie_2: str = '') -> int:
     """Přepíše kategorii u všech prodejů daného P kódu. Vrátí počet řádků."""
     with connection.cursor() as cursor:
@@ -372,7 +390,7 @@ def zapis_odmenu(claim):
     return odmena
 
 
-def aplikuj_vysledek(claim, nova_k, nova_k1, nova_k2='', *, konflikt=False, chybi=False):
+def aplikuj_vysledek(claim, nova_k, nova_k1, nova_k2='', nazev='', *, konflikt=False, chybi=False):
     """Rozhodne claim, případně přepíše prodeje a připíše odměnu."""
     from .models import KategorieZboziClaim
 
@@ -394,6 +412,10 @@ def aplikuj_vysledek(claim, nova_k, nova_k1, nova_k2='', *, konflikt=False, chyb
     if not chybi and not konflikt and (nova_k or '').strip() and zmena:
         aktualizuj_kategorii_kodu(claim.kod, nova_k, nova_k1, nova_k2)
         prepsano = True
+    novy_nazev = (nazev or '').strip()
+    if not chybi and not konflikt and novy_nazev and not _stejne(claim.nazev, novy_nazev):
+        aktualizuj_nazev_kodu(claim.kod, novy_nazev)
+        claim.nazev = novy_nazev
 
     claim.stav = (
         KategorieZboziClaim.STAV_POTVRZENO if stav == 'potvrzeno'
@@ -476,12 +498,24 @@ def audit_radky(rok: int, mesic: int) -> list[dict]:
             'kategorie_pred': _kat_text(claim.kategorie_pred, claim.kategorie_1_pred),
             'kategorie_po': _kat_text(claim.kategorie_po, claim.kategorie_1_po),
             'prepsano': bool(claim.prepsano),
+            'zkontrolovano': bool(claim.zkontrolovano),
             'body': int(claim.body or 0),
             'poznamka': claim.poznamka,
             'vytvoreno': claim.vytvoreno.isoformat() if claim.vytvoreno else '',
             'overeno': claim.overeno.isoformat() if claim.overeno else '',
         })
     return radky
+
+
+def oznac_audit(ids: list[int], zkontrolovano: bool) -> int:
+    from .models import KategorieZboziClaim
+
+    if not ids:
+        return 0
+    return KategorieZboziClaim.objects.filter(id__in=ids).update(
+        zkontrolovano=zkontrolovano,
+        zkontrolovano_kdy=timezone.now() if zkontrolovano else None,
+    )
 
 
 def cekajici_claimy():

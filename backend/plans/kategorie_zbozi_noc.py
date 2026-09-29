@@ -190,6 +190,7 @@ def spustit(*, stdout=None, force=False) -> dict:
                         info.get('kategorie') or '',
                         info.get('kategorie_1') or '',
                         info.get('kategorie_2') or '',
+                        info.get('nazev') or '',
                     )
                 if stav == 'potvrzeno':
                     potvrzeno += 1

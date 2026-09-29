@@ -99,6 +99,18 @@ class OdmenaTests(TestCase):
         self.assertTrue(claim.prepsano)
         _update.assert_called_once()
 
+    @patch('plans.kategorie_zbozi.aktualizuj_nazev_kodu', return_value=2)
+    def test_zmena_nazvu_prepise_oznaceni(self, update):
+        claim = self._claim()
+        claim.nazev = 'Starý HAD'
+        claim.save(update_fields=['nazev'])
+        stav = aplikuj_vysledek(claim, 'Nově naskladněno', '', '', nazev='Nový HAD')
+        claim.refresh_from_db()
+        self.assertEqual(stav, 'nepotvrzeno')
+        self.assertEqual(claim.nazev, 'Nový HAD')
+        self.assertFalse(claim.prepsano)
+        update.assert_called_once_with('P99021', 'Nový HAD')
+
     def test_beze_zmeny_neprepisuje_databazi(self):
         claim = self._claim()
         stav = aplikuj_vysledek(claim, 'Nově naskladněno', '', '')

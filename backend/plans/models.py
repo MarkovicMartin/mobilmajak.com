@@ -220,6 +220,8 @@ class KategorieZboziClaim(models.Model):
     body = models.DecimalField(max_digits=6, decimal_places=0, default=0)
     poznamka = models.TextField(blank=True, default='')
     prepsano = models.BooleanField(default=False, verbose_name='Kategorie přepsána v databázi')
+    zkontrolovano = models.BooleanField(default=False, verbose_name='Admin zkontroloval zařazení')
+    zkontrolovano_kdy = models.DateTimeField(null=True, blank=True)
     vytvoreno = models.DateTimeField(auto_now_add=True)
     overeno = models.DateTimeField(null=True, blank=True)
     odmena = models.ForeignKey(

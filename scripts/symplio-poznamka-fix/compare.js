@@ -296,6 +296,7 @@ async function main() {
         kody[kod] = entry;
         continue;
       }
+      if (entry.nazev) prev.nazev = entry.nazev;
       if (prev.kategorie !== entry.kategorie || prev.kategorie_1 !== entry.kategorie_1) {
         if (!konflikty.includes(kod)) konflikty.push(kod);
       }

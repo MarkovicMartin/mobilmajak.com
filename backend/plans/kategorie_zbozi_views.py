@@ -12,6 +12,7 @@ from .kategorie_zbozi import (
     NeniVAuditu,
     UzPotvrzeno,
     audit_radky,
+    oznac_audit,
     moje_body,
     obohatit_o_claimy,
     polozky_kodu,
@@ -80,6 +81,22 @@ def kategorie_zbozi_audit(request):
         'mesic': mesic,
         'radky': audit_radky(rok, mesic),
     })
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def kategorie_zbozi_audit_kontrola(request):
+    if request.user.role != 'ADMIN':
+        return Response({'error': 'Přístup pouze pro administrátory.'}, status=status.HTTP_403_FORBIDDEN)
+    ids = request.data.get('ids') or []
+    if not isinstance(ids, list):
+        return Response({'error': 'Chybí seznam položek.'}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        id_list = [int(i) for i in ids]
+    except (TypeError, ValueError):
+        return Response({'error': 'Neplatné id.'}, status=status.HTTP_400_BAD_REQUEST)
+    zkontrolovano = bool(request.data.get('zkontrolovano'))
+    return Response({'ok': True, 'upraveno': oznac_audit(id_list, zkontrolovano)})
 
 
 @api_view(['POST'])

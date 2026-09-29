@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { PageHeader } from '../../components/ui';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { PageHeader, Tabs } from '../../components/ui';
+import { useAuth } from '../../context/AuthContext';
 import { financeAPI, storeAPI } from '../../services/api';
 import './FinanceModule.css';
 import FinanceFakturyPanel from './FinanceFakturyPanel';
@@ -26,6 +28,21 @@ const DPH_BADGE_LABELS = {
     bez_dph: 'bez DPH',
 };
 
+const FINANCE_TABS = [
+    { id: 'k-zarazeni', label: 'K zařazení', to: '/finance', end: true },
+    { id: 'prehled', label: 'Přehled', to: '/finance/prehled' },
+    { id: 'kontrola', label: 'Kontrola FA', to: '/finance/kontrola' },
+    { id: 'faktury', label: 'Faktury', to: '/finance/faktury' },
+    { id: 'manual', label: 'Ruční náklad', to: '/finance/manual' },
+    { id: 'pravidla', label: 'Pravidla', to: '/finance/pravidla' },
+    { id: 'kategorie', label: 'Kategorie', to: '/finance/kategorie' },
+];
+
+const tabFromPath = (pathname) => {
+    const match = FINANCE_TABS.find((item) => item.to !== '/finance' && pathname.startsWith(item.to));
+    return match ? match.id : 'k-zarazeni';
+};
+
 const emptyPravidloForm = () => ({
     protiucet: '',
     zprava_obsahuje: '',
@@ -37,7 +54,11 @@ const emptyPravidloForm = () => ({
 });
 
 const FinanceModule = () => {
-    const [tab, setTab] = useState('k-zarazeni');
+    const { isAdmin } = useAuth();
+    const admin = isAdmin();
+    const location = useLocation();
+    const navigate = useNavigate();
+    const tab = tabFromPath(location.pathname);
     const [status, setStatus] = useState(null);
     const [kategorie, setKategorie] = useState([]);
     const [stores, setStores] = useState([]);
@@ -45,7 +66,7 @@ const FinanceModule = () => {
     const [pravidla, setPravidla] = useState([]);
     const [jenBezFaktury, setJenBezFaktury] = useState(false);
     const [filterZdroj, setFilterZdroj] = useState('');
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(admin);
     const [error, setError] = useState('');
     const [message, setMessage] = useState('');
     const [applying, setApplying] = useState(false);
@@ -97,8 +118,9 @@ const FinanceModule = () => {
     }, [jenBezFaktury]);
 
     useEffect(() => {
+        if (!admin) return;
         loadAll();
-    }, [loadAll]);
+    }, [admin, loadAll]);
 
     const handleManualSubmit = async (e) => {
         e.preventDefault();
@@ -197,7 +219,7 @@ const FinanceModule = () => {
             typ_dph: k.typ_dph || 'z_faktury',
             poradi: String(k.poradi ?? 0),
         });
-        setTab('kategorie');
+        navigate('/finance/kategorie');
         window.requestAnimationFrame(() => {
             document.getElementById('finance-kategorie-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
             document.getElementById('finance-kategorie-nazev')?.focus();
@@ -260,7 +282,7 @@ const FinanceModule = () => {
             prodejna_id: rule.prodejna_id ? String(rule.prodejna_id) : '',
             ignorovat: !!rule.ignorovat,
         });
-        setTab('pravidla');
+        navigate('/finance/pravidla');
         document.getElementById('finance-pravidlo-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
 
@@ -379,10 +401,20 @@ const FinanceModule = () => {
         ? nezarazene.filter((p) => p.zdroj === filterZdroj)
         : nezarazene;
 
+    if (!admin && tab !== 'faktury') {
+        return <Navigate to="/finance/faktury" replace />;
+    }
+
     return (
         <div className="finance-module">
-            <PageHeader title="Finance" subtitle="Admin sekce – náklady a Fio" />
+            <PageHeader
+                title="Finance"
+                subtitle={admin
+                    ? 'Náklady, Fio a faktury k výdajům'
+                    : 'Přiložte fakturu k výdeji z pokladny'}
+            />
 
+            {admin && (
             <div className="finance-status-panel" role="status">
                 <div className="finance-status-panel__row">
                     <span><strong>Chybí zařazení:</strong> {counts.nezarazene ?? '–'}</span>
@@ -402,58 +434,15 @@ const FinanceModule = () => {
                     </span>
                 </div>
             </div>
+            )}
 
-            <nav className="finance-tabs" aria-label="Finance záložky">
-                <button
-                    type="button"
-                    className={tab === 'k-zarazeni' ? 'active' : ''}
-                    onClick={() => setTab('k-zarazeni')}
-                >
-                    K zařazení
-                </button>
-                <button
-                    type="button"
-                    className={tab === 'prehled' ? 'active' : ''}
-                    onClick={() => setTab('prehled')}
-                >
-                    Přehled
-                </button>
-                <button
-                    type="button"
-                    className={tab === 'kontrola' ? 'active' : ''}
-                    onClick={() => setTab('kontrola')}
-                >
-                    Kontrola FA
-                </button>
-                <button
-                    type="button"
-                    className={tab === 'faktury' ? 'active' : ''}
-                    onClick={() => setTab('faktury')}
-                >
-                    Faktury
-                </button>
-                <button
-                    type="button"
-                    className={tab === 'manual' ? 'active' : ''}
-                    onClick={() => setTab('manual')}
-                >
-                    Ruční náklad
-                </button>
-                <button
-                    type="button"
-                    className={tab === 'pravidla' ? 'active' : ''}
-                    onClick={() => setTab('pravidla')}
-                >
-                    Pravidla
-                </button>
-                <button
-                    type="button"
-                    className={tab === 'kategorie' ? 'active' : ''}
-                    onClick={() => setTab('kategorie')}
-                >
-                    Kategorie
-                </button>
-            </nav>
+            {admin && (
+                <Tabs
+                    className="finance-module-tabs"
+                    ariaLabel="Finance záložky"
+                    tabs={FINANCE_TABS}
+                />
+            )}
 
             {loading && <p className="finance-loading">Načítám…</p>}
             {error && <p className="finance-error">{error}</p>}
@@ -628,7 +617,11 @@ const FinanceModule = () => {
             {!loading && tab === 'kontrola' && <FinanceKontrolaPanel />}
 
             {!loading && tab === 'faktury' && (
-                <FinanceFakturyPanel intro="Výdaje čekající na fakturu – admin vidí všechny prodejny." />
+                <FinanceFakturyPanel
+                    intro={admin
+                        ? 'Výdaje čekající na fakturu – admin vidí všechny prodejny.'
+                        : 'U výdeje s nákupem zboží stačí přiložit PDF nebo foto – OCR doplní údaje z faktury.'}
+                />
             )}
 
             {!loading && tab === 'manual' && (

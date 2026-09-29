@@ -165,6 +165,10 @@
     margin-top: 0.5rem;
 }
 
+.finance-module-tabs {
+    margin-bottom: 1rem;
+}
+
 .finance-tabs {
     display: flex;
     gap: 0.5rem;

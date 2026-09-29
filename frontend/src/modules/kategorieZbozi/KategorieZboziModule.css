@@ -60,11 +60,13 @@ a.kz-link code {
   margin-top: 0.15rem;
 }
 
-.kz-cizi {
+.kz-cizi,
+.kz-skryte {
   margin-top: 1.25rem;
 }
 
-.kz-cizi summary {
+.kz-cizi summary,
+.kz-skryte summary {
   cursor: pointer;
   color: #4b5563;
   margin-bottom: 0.5rem;
