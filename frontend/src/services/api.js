@@ -351,6 +351,38 @@ export const shiftsAPI = {
         const response = await api.get('/shifts/attendance/today-board/');
         return response.data;
     },
+    listVyjezdy: async (mesic) => {
+        const response = await api.get('/shifts/vyjezdy/', { params: { mesic } });
+        return response.data;
+    },
+    mojeVyjezdy: async () => {
+        const response = await api.get('/shifts/vyjezdy/moje/');
+        return response.data;
+    },
+    navrhniVyjezdy: async (mesic) => {
+        const response = await api.post('/shifts/vyjezdy/navrhnout/', { mesic });
+        return response.data;
+    },
+    ulozVyjezd: async (id, payload) => {
+        const response = await api.patch(`/shifts/vyjezdy/${id}/`, payload);
+        return response.data;
+    },
+    potvrditVyjezdy: async (mesic, ids) => {
+        const response = await api.post('/shifts/vyjezdy/potvrdit/', {
+            mesic,
+            ...(ids ? { ids } : {}),
+        });
+        return response.data;
+    },
+    listVyjezdNotifications: async ({ unread = true } = {}) => {
+        const params = unread ? {} : { read: '1' };
+        const response = await api.get('/shifts/vyjezdy/notifikace/', { params });
+        return response.data;
+    },
+    markVyjezdNotificationsRead: async (ids) => {
+        const response = await api.post('/shifts/vyjezdy/notifikace/mark-read/', { ids });
+        return response.data;
+    },
 };
 
 export const leaderboardAPI = {

@@ -31,6 +31,7 @@ Přehled – co je provozní, co plánované rozšíření. Nepřidávejte jedno
 | `install-daily-report-cron.sh` | Cron denního Slack reportu |
 | `install-orders-sla-cron.sh` | Cron SLA připomínek objednávek |
 | `install-reklamace-reminders-cron.sh` | Cron připomínek reklamací |
+| `install-vyjezd-navrh-cron.sh` | Cron návrhů výjezdů na jinou prodejnu (denně 6:10); `STAGING=1` pro staging |
 
 Detaily a ruční řádky crontab: [`docs/secrets-setup.md`](../docs/secrets-setup.md).
 

@@ -359,3 +359,63 @@ class PrumerMzdyMesicOverrideLog(models.Model):
 
     def __str__(self):
         return f'{self.user_id} {self.rok}-{self.mesic:02d} {self.akce}'
+
+
+class VyjezdNavrh(models.Model):
+    """Návrh dvou směn měsíčně na jiné prodejně. Potvrzení teprve založí směnu."""
+
+    STAV_NAVRH = 'navrh'
+    STAV_POTVRZENO = 'potvrzeno'
+    STAV_ZRUSENO = 'zruseno'
+    STAV_CHOICES = [
+        (STAV_NAVRH, 'Návrh'),
+        (STAV_POTVRZENO, 'Potvrzeno'),
+        (STAV_ZRUSENO, 'Zrušeno'),
+    ]
+
+    user = models.ForeignKey(WebUser, on_delete=models.CASCADE, related_name='vyjezd_navrhy')
+    mesic = models.DateField(verbose_name='Měsíc (první den)')
+    datum = models.DateField()
+    prodejna = models.ForeignKey(
+        'stores.Prodejna',
+        on_delete=models.CASCADE,
+        related_name='vyjezd_navrhy',
+    )
+    stav = models.CharField(max_length=20, choices=STAV_CHOICES, default=STAV_NAVRH)
+    smena = models.ForeignKey(
+        Smena,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='vyjezd_navrhy',
+    )
+    vytvoreno = SafeDateTimeField(auto_now_add=True)
+    upraveno = SafeDateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'WEB_VYJEZD_NAVRH'
+        verbose_name = 'Návrh výjezdu'
+        verbose_name_plural = 'Návrhy výjezdů'
+        ordering = ['mesic', 'user_id', 'datum']
+
+    def __str__(self):
+        return f'{self.user_id} {self.datum} → {self.prodejna_id} ({self.stav})'
+
+
+class VyjezdNotifikace(models.Model):
+    """In-app upozornění prodejci na navržené směny jinde."""
+
+    user = models.ForeignKey(WebUser, on_delete=models.CASCADE, related_name='vyjezd_notifikace')
+    mesic = models.DateField(verbose_name='Měsíc (první den)')
+    message = models.CharField(max_length=400)
+    created_at = SafeDateTimeField(auto_now_add=True)
+    read_at = SafeDateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'WEB_VYJEZD_NOTIFIKACE'
+        verbose_name = 'Notifikace výjezdu'
+        verbose_name_plural = 'Notifikace výjezdů'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.user_id} {self.mesic}'

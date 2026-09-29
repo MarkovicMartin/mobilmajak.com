@@ -873,8 +873,16 @@ def kalendar_data(request):
                     entry['zavreni_typ'] = zavreni
                 svatky_mesic[datum_str] = entry
         
+        from .vyjezd import vyjezdy_pro_kalendar
         response_data = {
             'kalendar_data': kalendar_data,
+            'vyjezdy': vyjezdy_pro_kalendar(
+                rok,
+                mesic_cislo,
+                prodejna=prodejna,
+                person_user_id=(person_user or request.user).id if person_scope else None,
+                backoffice=backoffice_calendar,
+            ),
             'svatky': svatky_mesic,
             'dnes_smeny': [_format_smena_info(s, include_store=all_stores) for s in dnes_smeny],
             'zitra_smeny': [_format_smena_info(s, include_store=all_stores) for s in zitra_smeny],

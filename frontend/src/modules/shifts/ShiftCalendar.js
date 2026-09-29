@@ -10,6 +10,7 @@ import { userMayEditShiftMonth, userMayEditShiftOnDate } from './shiftEditPolicy
 import { isStoreExpectingShift, getClosureNotice } from '../../constants/prodejnaZavreni';
 import { isBackofficeCalendarFilter, BACKOFFICE_CALENDAR_COLOR } from './shiftBackoffice';
 import { handleFetchAuthFailure } from '../../utils/sessionExpired';
+import { shiftsAPI } from '../../services/api';
 
 const isWorkShift = (shift) => shift.typ_smeny === 'prace';
 
@@ -26,8 +27,8 @@ const getStaffingGap = (shifts, stores, allStores, dateStr, selectedProdejnaId =
             : stores;
         if (!openStores.length) return null;
 
-        const staffedIds = new Set(workShifts.map((s) => s.prodejna_id));
-        const missing = openStores.filter((s) => !staffedIds.has(s.id));
+        const staffedIds = new Set(workShifts.map((s) => String(s.prodejna_id)));
+        const missing = openStores.filter((s) => !staffedIds.has(String(s.id)));
         if (!missing.length) return null;
         const allEmpty = missing.length === openStores.length;
         const gapStores = allEmpty ? openStores : missing;
@@ -83,8 +84,16 @@ function ShiftCalendar({
     calendarScope = '',
     calendarUserId = '',
     personView = false,
+    onJumpToMonth,
+    onOpenVyjezdy,
 }) {
     const [kalendarData, setKalendarData] = useState({});
+    const [vyjezdy, setVyjezdy] = useState({});
+    const [vyjezdBannery, setVyjezdBannery] = useState([]);
+    const [vyjezdKPotvrzeni, setVyjezdKPotvrzeni] = useState(null);
+    const [vyjezdError, setVyjezdError] = useState('');
+    const [vyjezdBusy, setVyjezdBusy] = useState(false);
+    const canManageVyjezd = user?.role === 'ADMIN' || user?.role === 'VEDOUCI';
     const [seeAllEmployees, setSeeAllEmployees] = useState(false);
     const [svatky, setSvatky] = useState({});
     const [loading, setLoading] = useState(true);
@@ -107,6 +116,19 @@ function ShiftCalendar({
         }
     }, [refreshTrigger]);
 
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            try {
+                const data = await shiftsAPI.mojeVyjezdy();
+                if (!cancelled) setVyjezdBannery(data.skupiny || []);
+            } catch {
+                if (!cancelled) setVyjezdBannery([]);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [refreshTrigger, user?.id]);
+
     const fetchKalendarData = async () => {
         try {
             setLoading(true);
@@ -128,6 +150,7 @@ function ShiftCalendar({
             if (response.ok) {
                 const data = await response.json();
                 setKalendarData(data.kalendar_data);
+                setVyjezdy(data.vyjezdy || {});
                 setSeeAllEmployees(Boolean(data.see_all_employees));
                 setSvatky(data.svatky || {});
                 onFeatureFlagsChange?.({
@@ -149,7 +172,28 @@ function ShiftCalendar({
         }
     };
 
+    const potvrditVybranyVyjezd = async () => {
+        if (!vyjezdKPotvrzeni) return;
+        setVyjezdBusy(true);
+        setVyjezdError('');
+        try {
+            const result = await shiftsAPI.potvrditVyjezdy(month, [vyjezdKPotvrzeni.id]);
+            const chyba = (result.chyby || [])[0];
+            if (chyba) {
+                setVyjezdError(chyba.error);
+                return;
+            }
+            setVyjezdKPotvrzeni(null);
+            onRefresh?.();
+        } catch (err) {
+            setVyjezdError(err?.response?.data?.error || 'Směnu se nepodařilo založit.');
+        } finally {
+            setVyjezdBusy(false);
+        }
+    };
+
     const getShiftsForDate = (dateStr) => kalendarData[dateStr] || [];
+    const getVyjezdyForDate = (dateStr) => vyjezdy[dateStr] || [];
 
     const showStaffingGaps = seeAllEmployees && !personView && !isBackofficeCalendarFilter(prodejna);
 
@@ -165,7 +209,17 @@ function ShiftCalendar({
         let partialDays = 0;
         days.forEach((day) => {
             const dateStr = format(day, 'yyyy-MM-dd');
-            const gap = getStaffingGap(getShiftsForDate(dateStr), stores, allStores, dateStr, prodejna);
+            const navrhyJakoSmeny = getVyjezdyForDate(dateStr).map((navrh) => ({
+                typ_smeny: 'prace',
+                prodejna_id: navrh.prodejna_id,
+            }));
+            const gap = getStaffingGap(
+                [...getShiftsForDate(dateStr), ...navrhyJakoSmeny],
+                stores,
+                allStores,
+                dateStr,
+                prodejna,
+            );
             if (!gap) return;
             gapsByDate[dateStr] = gap;
             gapDays += 1;
@@ -173,20 +227,21 @@ function ShiftCalendar({
             else partialDays += 1;
         });
         return { gapDays, allEmptyDays, partialDays, gapsByDate };
-    }, [showStaffingGaps, month, kalendarData, stores, allStores, prodejna]);
+    }, [showStaffingGaps, month, kalendarData, vyjezdy, stores, allStores, prodejna]);
 
     const staffingGapsByDate = monthCoverage.gapsByDate;
 
     const getExtraCellClass = useCallback((dateStr) => {
         const classes = [];
         if (svatky[dateStr]) classes.push('holiday');
+        if ((vyjezdy[dateStr] || []).length) classes.push('has-vyjezd');
         if (!dateStr.startsWith(month) || !showStaffingGaps) {
             return classes.join(' ');
         }
         const gap = staffingGapsByDate[dateStr];
         if (gap) classes.push(gap.kind === 'all-empty' ? 'staffing-empty' : 'staffing-partial');
         return classes.join(' ');
-    }, [month, svatky, showStaffingGaps, staffingGapsByDate]);
+    }, [month, svatky, showStaffingGaps, staffingGapsByDate, vyjezdy]);
 
     const formatTime = (timeStr) => {
         return timeStr.substring(0, 5);
@@ -404,6 +459,16 @@ function ShiftCalendar({
     return (
         <div className={`shift-calendar${personView ? ' shift-calendar--person' : ''}`}>
             {/* CHYBOVÁ HLÁŠKA JAKO BANNER */}
+            {vyjezdBannery.map((skupina) => (
+                <button
+                    key={skupina.mesic}
+                    type="button"
+                    className="vyjezd-banner"
+                    onClick={() => onJumpToMonth?.(skupina.mesic)}
+                >
+                    {skupina.text}
+                </button>
+            ))}
             {error && (
                 <div className="error-banner">
                     <div className="error-content">
@@ -495,6 +560,13 @@ function ShiftCalendar({
                 </div>
             )}
 
+            <div className="shifts-legend shifts-legend--vyjezd" aria-label="Návrh výjezdu">
+                <span className="legend-item">
+                    <span className="legend-swatch legend-swatch--vyjezd" />
+                    Žlutě je návrh. Admin a vedoucí ho potvrdí kliknutím, nebo hromadně na záložce Výjezdy.
+                </span>
+            </div>
+
             <p className="calendar-pick-hint">
                 <strong>Klik na den</strong> = přidat směnu · <strong>táhněte přes dny</strong> = hromadně · <strong>klik na směnu</strong> = upravit / smazat
             </p>
@@ -513,6 +585,7 @@ function ShiftCalendar({
                     renderCellContent={(date) => {
                         const dateStr = format(date, 'yyyy-MM-dd');
                         const shifts = getShiftsForDate(dateStr);
+                        const denVyjezdy = getVyjezdyForDate(dateStr);
                         const workShifts = shifts.filter(isWorkShift);
                         const absenceShifts = shifts.filter(isAbsenceShift);
                         const isSvatek = svatky[dateStr];
@@ -554,6 +627,25 @@ function ShiftCalendar({
                                 )}
                                 <div className="shifts-container">
                                     {renderWorkShifts(workShifts, dateStr)}
+                                    {denVyjezdy.map((navrh) => (
+                                        <div
+                                            key={`vyjezd-${navrh.id}`}
+                                            className="shift-item shift-item--vyjezd"
+                                            title={canManageVyjezd
+                                                ? `${navrh.user_jmeno} · ${navrh.prodejna_nazev}. Kliknutím směnu potvrdíš.`
+                                                : `${navrh.user_jmeno} · návrh · ${navrh.prodejna_nazev}. Ještě to není v rozpisu.`}
+                                            onMouseDown={(event) => event.stopPropagation()}
+                                            onClick={(event) => {
+                                                event.stopPropagation();
+                                                if (!canManageVyjezd) return;
+                                                setVyjezdError('');
+                                                setVyjezdKPotvrzeni(navrh);
+                                            }}
+                                        >
+                                            <span className="shift-name__text">{navrh.user_jmeno}</span>
+                                            <span className="shift-time">Návrh · {navrh.prodejna}</span>
+                                        </div>
+                                    ))}
                                     {absenceShifts.length > 0 && (
                                         <div className="shifts-absences">
                                             {absenceShifts.map((shift) => {
@@ -584,6 +676,55 @@ function ShiftCalendar({
                     }}
                 />
             </div>
+
+            {vyjezdKPotvrzeni && (
+                <Modal
+                    title="Potvrdit výjezd"
+                    onClose={() => { if (!vyjezdBusy) setVyjezdKPotvrzeni(null); }}
+                    size="sm"
+                    footer={(
+                        <>
+                            <button
+                                type="button"
+                                className="btn-cancel"
+                                disabled={vyjezdBusy}
+                                onClick={() => setVyjezdKPotvrzeni(null)}
+                            >
+                                Zrušit
+                            </button>
+                            {onOpenVyjezdy && (
+                                <button
+                                    type="button"
+                                    className="btn-secondary"
+                                    disabled={vyjezdBusy}
+                                    onClick={() => {
+                                        setVyjezdKPotvrzeni(null);
+                                        onOpenVyjezdy();
+                                    }}
+                                >
+                                    Upravit ve Výjezdech
+                                </button>
+                            )}
+                            <button
+                                type="button"
+                                className="btn-submit"
+                                disabled={vyjezdBusy}
+                                onClick={potvrditVybranyVyjezd}
+                            >
+                                Založit směnu
+                            </button>
+                        </>
+                    )}
+                >
+                    <div className="confirm-details">
+                        <p><strong>Prodejce:</strong> {vyjezdKPotvrzeni.user_jmeno}</p>
+                        <p><strong>Datum:</strong> {formatShiftDate(vyjezdKPotvrzeni)}</p>
+                        <p><strong>Prodejna:</strong> {vyjezdKPotvrzeni.prodejna_nazev}</p>
+                        <p>Potvrzení založí pracovní směnu a zruší domácí směnu v ten den.</p>
+                        {vyjezdError && <p className="confirm-details__note">{vyjezdError}</p>}
+                    </div>
+                </Modal>
+            )}
 
             {showActionModal && selectedShift && (
                 <Modal

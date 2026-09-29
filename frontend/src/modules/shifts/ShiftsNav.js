@@ -3,11 +3,15 @@ import { Tabs } from '../../components/ui';
 import { MODULE_PAGE_TABS_CLASS, sectionsToStateTabs } from '../../components/ui/moduleTabs';
 import { SHIFTS_SECTIONS } from './shiftsSections';
 
-const ShiftsNav = ({ activeView, onViewChange, isAdmin }) => {
+const ShiftsNav = ({ activeView, onViewChange, isAdmin, canManageShifts }) => {
     const tabs = useMemo(() => {
-        const visible = SHIFTS_SECTIONS.filter((s) => !s.adminOnly || isAdmin);
+        const visible = SHIFTS_SECTIONS.filter((s) => {
+            if (s.adminOnly && !isAdmin) return false;
+            if (s.manageOnly && !canManageShifts) return false;
+            return true;
+        });
         return sectionsToStateTabs(visible);
-    }, [isAdmin]);
+    }, [isAdmin, canManageShifts]);
 
     return (
         <Tabs

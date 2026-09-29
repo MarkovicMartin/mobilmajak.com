@@ -2,6 +2,7 @@ from django.urls import path
 from . import views
 from . import payroll_views
 from . import camera_views
+from . import vyjezd_views
 
 urlpatterns = [
     # Počet směn prodejce na prodejně v měsíci (typ=prace)
@@ -17,6 +18,15 @@ urlpatterns = [
     
     # Kalendářní data
     path('calendar/', views.kalendar_data, name='kalendar_data'),
+
+    # Návrhy směn na jiné prodejně
+    path('vyjezdy/', vyjezd_views.vyjezdy_list, name='vyjezdy_list'),
+    path('vyjezdy/moje/', vyjezd_views.vyjezdy_moje, name='vyjezdy_moje'),
+    path('vyjezdy/navrhnout/', vyjezd_views.vyjezdy_navrhnout, name='vyjezdy_navrhnout'),
+    path('vyjezdy/potvrdit/', vyjezd_views.vyjezdy_potvrdit, name='vyjezdy_potvrdit'),
+    path('vyjezdy/notifikace/', vyjezd_views.vyjezd_notifikace, name='vyjezd_notifikace'),
+    path('vyjezdy/notifikace/mark-read/', vyjezd_views.vyjezd_notifikace_mark_read, name='vyjezd_notifikace_mark_read'),
+    path('vyjezdy/<int:navrh_id>/', vyjezd_views.vyjezd_detail, name='vyjezd_detail'),
     
     # Docházka (check-in/out/pauza)
     path('attendance/', views.dochazka_akce, name='dochazka_akce'),
