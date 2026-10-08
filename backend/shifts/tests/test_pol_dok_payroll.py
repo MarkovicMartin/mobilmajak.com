@@ -18,8 +18,8 @@ class PolDokOdmenaTests(TestCase):
     def test_pod_dva_penalizace(self):
         self.assertEqual(pol_dok_odmena_body(1.9, 10), Decimal('-1000'))
 
-    def test_presne_dva_nula(self):
-        self.assertEqual(pol_dok_odmena_body(2.0, 10), Decimal('0'))
+    def test_presne_dva_bonus(self):
+        self.assertEqual(pol_dok_odmena_body(2.0, 10), Decimal('1000'))
 
     def test_bez_uctenek_nula(self):
         self.assertEqual(pol_dok_odmena_body(0, 0), Decimal('0'))
@@ -32,6 +32,7 @@ class PolDokPayrollRowTests(TestCase):
             nazev='Test PolDok', nazev_kratkiy='TPD', aktivni=True,
         )
         cls.user = WebUser.objects.create(
+            id=91051,
             uzivatelske_jmeno='pol_dok_pay',
             jmeno='Pol',
             prijmeni='Dok',
@@ -40,6 +41,21 @@ class PolDokPayrollRowTests(TestCase):
             aktivni=True,
             prodejna_id=cls.prodejna.id,
             mzda_zaklad=Decimal('14000'),
+        )
+
+    def _payroll_row(self, user, pol_dok_map):
+        # Prázdná cache, ať průměr dovolené nesahá na unmanaged WEB_VYKUPY.
+        lookback = {(2026, m): {} for m in (3, 4, 5)}
+        return build_payroll_row(
+            user, 2026, 6,
+            {user.id: {'odpracovano_h': 160, 'dovolena_h': 0, 'nemoc_h': 0, 'svatek_h': 0}},
+            date(2026, 6, 1),
+            {self.prodejna.id: 'Test PolDok'},
+            160,
+            {}, {}, {},
+            pol_dok_map=pol_dok_map,
+            hours_cache=lookback,
+            prumer_cache=lookback,
         )
 
     def _sale(self, doklad, kod='P100', cena=199, kusy=1):
@@ -55,17 +71,10 @@ class PolDokPayrollRowTests(TestCase):
         )
 
     def test_build_payroll_row_includes_pol_dok_bonus(self):
-        self._sale('UCT1', kusy=3)
+        for i in range(3):
+            self._sale('UCT1', kod=f'P10{i}')
         pol_dok_map = batch_pol_dok_for_month(2026, 6, [self.user.id])
-        row = build_payroll_row(
-            self.user, 2026, 6,
-            {self.user.id: {'odpracovano_h': 160, 'dovolena_h': 0, 'nemoc_h': 0, 'svatek_h': 0}},
-            date(2026, 6, 1),
-            {self.prodejna.id: 'Test PolDok'},
-            160,
-            {}, {}, {},
-            pol_dok_map=pol_dok_map,
-        )
+        row = self._payroll_row(self.user, pol_dok_map)
         self.assertGreater(row['pol_dok'], 2)
         self.assertEqual(row['pol_dok_odmena_body'], 1000.0)
         self.assertEqual(
@@ -78,14 +87,33 @@ class PolDokPayrollRowTests(TestCase):
     def test_build_payroll_row_includes_pol_dok_penalizace(self):
         self._sale('UCT1', kusy=1)
         pol_dok_map = batch_pol_dok_for_month(2026, 6, [self.user.id])
-        row = build_payroll_row(
-            self.user, 2026, 6,
-            {self.user.id: {'odpracovano_h': 160, 'dovolena_h': 0, 'nemoc_h': 0, 'svatek_h': 0}},
-            date(2026, 6, 1),
-            {self.prodejna.id: 'Test PolDok'},
-            160,
-            {}, {}, {},
-            pol_dok_map=pol_dok_map,
-        )
+        row = self._payroll_row(self.user, pol_dok_map)
         self.assertLess(row['pol_dok'], 2)
         self.assertEqual(row['pol_dok_odmena_body'], -1000.0)
+
+    def test_dolak_ignoruje_prumer_polozek(self):
+        dolak = WebUser.objects.create(
+            id=91052,
+            uzivatelske_jmeno='dolak_pay',
+            jmeno='Tomáš',
+            prijmeni='Dolák',
+            heslo='x',
+            role='PRODEJCE',
+            aktivni=True,
+            prodejna_id=self.prodejna.id,
+            mzda_zaklad=Decimal('14000'),
+        )
+        WebProdejeAll.objects.create(
+            typ=date(2026, 6, 15),
+            doklad='UCT-DOL',
+            kod='P100',
+            nazev='Položka',
+            pocet_kusu=1,
+            cena_ks_vcl_dph=Decimal('199'),
+            id_prodejce=dolak.id,
+            stredisko='Test',
+        )
+        pol_dok_map = batch_pol_dok_for_month(2026, 6, [dolak.id])
+        row = self._payroll_row(dolak, pol_dok_map)
+        self.assertLess(row['pol_dok'], 2)
+        self.assertEqual(row['pol_dok_odmena_body'], 0.0)

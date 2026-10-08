@@ -957,7 +957,7 @@ function PayrollPanel({ month, onExport }) {
         if (!bonus) return null;
         const avg = Number(row.pol_dok) || 0;
         const label = bonus > 0
-            ? `+ Prům. pol./účt. ${avg.toFixed(2)} (nad 2)`
+            ? `+ Prům. pol./účt. ${avg.toFixed(2)} (2 a více)`
             : `− Prům. pol./účt. ${avg.toFixed(2)} (pod 2)`;
         return (
             <div
@@ -1256,6 +1256,7 @@ function PayrollPanel({ month, onExport }) {
                                     <th>Měsíc (průměr)</th>
                                     <th>Odpracováno</th>
                                     <th>Základ</th>
+                                    <th>Přesčas</th>
                                     <th>Provize</th>
                                     <th>Položky</th>
                                     <th>Odměna</th>
@@ -1274,6 +1275,7 @@ function PayrollPanel({ month, onExport }) {
                                                 : ''}
                                         </td>
                                         <td>{formatPoints(pm.zaklad_body ?? pm.fixni_body)}</td>
+                                        <td>{formatPoints(pm.prescas_body || 0)}</td>
                                         <td>{formatPoints(pm.provize_body || 0)}</td>
                                         <td>{formatPoints(pm.pol_dok_odmena_body || 0)}</td>
                                         <td>{formatPoints(pm.odmena_mesic_body || 0)}</td>
@@ -1291,6 +1293,7 @@ function PayrollPanel({ month, onExport }) {
                                     <td>Celkem / průměr</td>
                                     <td>{formatNumber(prumerDetail.celkem_h)} h</td>
                                     <td>{formatPoints(prumerDetail.celkem_fixni)}</td>
+                                    <td>{formatPoints(prumerDetail.celkem_prescas || 0)}</td>
                                     <td>{formatPoints(prumerDetail.celkem_provize || 0)}</td>
                                     <td>{formatPoints(prumerDetail.celkem_pol_dok || 0)}</td>
                                     <td>{formatPoints(prumerDetail.celkem_odmena || 0)}</td>

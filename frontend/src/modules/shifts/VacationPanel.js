@@ -520,7 +520,7 @@ function VacationPanel({ user }) {
                         )}
 
                         <p className="vacation-rate-hint">
-                            Průměr mzdy (jako ve výplatě, bez dopravného a dýška) za poslední 3 měsíce (k {row.prumer_mesice || `${rok}`}):
+                            Průměr mzdy (jako ve výplatě, včetně přesčasu, bez dopravného a dýška) za poslední 3 měsíce (k {row.prumer_mesice || `${rok}`}):
                             {' '}<strong>{formatPoints(row.prumer_fixni_h)} bodů/h</strong>
                             {' '}→ výplata dovolené {formatPoints(row.dovolena_sazba_h)} bodů/h
                         </p>
@@ -533,6 +533,7 @@ function VacationPanel({ user }) {
                                             <th>Měsíc (průměr)</th>
                                             <th>Odpracováno</th>
                                             <th>Základ</th>
+                                            <th>Přesčas</th>
                                             <th>Provize</th>
                                             <th>Položky</th>
                                             <th>Odměna</th>
@@ -546,6 +547,7 @@ function VacationPanel({ user }) {
                                                 <td>{MONTH_NAMES[pm.mesic - 1]} {pm.rok}</td>
                                                 <td>{formatNumber(pm.odpracovano_h)} h</td>
                                                 <td>{formatPoints(pm.zaklad_body ?? pm.fixni_body)}</td>
+                                                <td>{formatPoints(pm.prescas_body || 0)}</td>
                                                 <td>{formatPoints(pm.provize_body || 0)}</td>
                                                 <td>{formatPoints(pm.pol_dok_odmena_body || 0)}</td>
                                                 <td>{formatPoints(pm.odmena_mesic_body || 0)}</td>
@@ -566,6 +568,7 @@ function VacationPanel({ user }) {
                                             <td>Celkem / průměr</td>
                                             <td>{formatNumber(row.prumer_detail.celkem_h)} h</td>
                                             <td>{formatPoints(row.prumer_detail.celkem_fixni)}</td>
+                                            <td>{formatPoints(row.prumer_detail.celkem_prescas || 0)}</td>
                                             <td>{formatPoints(row.prumer_detail.celkem_provize || 0)}</td>
                                             <td>{formatPoints(row.prumer_detail.celkem_pol_dok || 0)}</td>
                                             <td>{formatPoints(row.prumer_detail.celkem_odmena || 0)}</td>

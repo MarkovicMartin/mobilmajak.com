@@ -108,10 +108,13 @@ export default function KategorieZboziAudit({ rok, mesic }) {
         setBusy(true);
         setError('');
         try {
-            await api.post('/kategorie-zbozi/audit/kontrola/', { ids, zkontrolovano });
+            const res = await api.post('/kategorie-zbozi/audit/kontrola/', { ids, zkontrolovano });
             const idSet = new Set(ids);
+            const prepsane = new Set(res.data.prepsano_ids || []);
             setRows((list) => list.map((row) => (
-                idSet.has(row.id) ? { ...row, zkontrolovano } : row
+                idSet.has(row.id)
+                    ? { ...row, zkontrolovano, prepsano: row.prepsano || prepsane.has(row.id) }
+                    : row
             )));
         } catch (e) {
             setError(e?.response?.data?.error || 'Kontrolu se nepodařilo uložit.');

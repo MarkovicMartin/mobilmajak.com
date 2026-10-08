@@ -549,6 +549,29 @@ class PayrollComputationTests(TestCase):
         expected = ((zaklad_brezen + Decimal('9000') + Decimal('5000') + Decimal('1000')) / h).quantize(Decimal('1'))
         self.assertEqual(prumer, expected)
 
+    def test_prumer_dovolena_zahrnuje_prescas(self):
+        user = WebUser.objects.create(
+            id=9034, uzivatelske_jmeno='test_ot_prum', jmeno='Ot', prijmeni='Prum',
+            heslo='x', role='PRODEJCE', aktivni=True, prodejna_id=self.prodejna.id,
+            mzda_zaklad=Decimal('14000'),
+            mzda_doplnky=[],
+        )
+        fond = fondu_hodin_mesic(2026, 3)
+        prescas_h = 24
+        h = Decimal(str(fond)) + Decimal(prescas_h)
+        prumer = prumer_dovolena_hodinove_body(
+            user, 2026, 6,
+            hours_cache={(2026, 4): {}, (2026, 5): {}},
+            prumer_cache={},
+            override_mesice=[{'rok': 2026, 'mesic': 3, 'odpracovano_h': float(h)}],
+        )
+        prescas, _, _ = prescas_body_vypocet(user, prescas_h, fond)
+        self.assertGreater(prescas, 0)
+        bez_prescasu = (Decimal('14000') / h).quantize(Decimal('1'))
+        self.assertGreater(prumer, bez_prescasu)
+        expected = ((Decimal('14000') + prescas) / h).quantize(Decimal('1'))
+        self.assertEqual(prumer, expected)
+
     def test_build_payroll_row_includes_cestovne(self):
         fond = fondu_hodin_mesic(2026, 6)
         row = build_payroll_row(
@@ -622,6 +645,32 @@ class PayrollComputationTests(TestCase):
         )
         detail = row['prumer_dovolena_detail']
         self.assertEqual(detail['zdroj'], 'override_excel')
+        self.assertEqual(
+            [(m['rok'], m['mesic']) for m in detail['mesice']],
+            [(2026, 3), (2026, 4), (2026, 5)],
+        )
         self.assertEqual(detail['celkem_h'], sum(m['odpracovano_h'] for m in override))
         detail_bez_override = prumer_dovolena_hodinove_detail(user, 2026, 6, prumer_cache={})
-        self.assertNotEqual(row['prumer_dovolena_h'], float(detail_bez_override['prumer_h']))
+        self.assertGreater(detail['celkem_h'], 0)
+        self.assertEqual(detail_bez_override['celkem_h'], 0.0)
+        self.assertNotEqual(detail['zdroj'], detail_bez_override['zdroj'])
+
+    def test_override_mimo_okno_se_nezobrazi(self):
+        """Import březen–květen nesmí zůstat ve výplatě za září."""
+        user = WebUser.objects.create(
+            id=9033, uzivatelske_jmeno='test_kolar_zari', jmeno='Adam', prijmeni='Kolarčík',
+            heslo='x', role='PRODEJCE', aktivni=True, prodejna_id=self.prodejna.id,
+            mzda_zaklad=Decimal('14000'),
+        )
+        override = prumer_override_for_user(user)
+        detail = prumer_dovolena_hodinove_detail(
+            user, 2026, 9,
+            hours_cache={(2026, 6): {}, (2026, 7): {}, (2026, 8): {}},
+            prumer_cache={},
+            override_mesice=override,
+        )
+        self.assertEqual(
+            [(m['rok'], m['mesic']) for m in detail['mesice']],
+            [(2026, 6), (2026, 7), (2026, 8)],
+        )
+        self.assertNotEqual(detail['zdroj'], 'override_excel')

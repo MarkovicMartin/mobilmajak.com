@@ -1,7 +1,7 @@
 """Seznam produktů ve Zbytku, claim uživatele a rozhodnutí o bodu."""
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 
 from django.db import connection, transaction
@@ -267,15 +267,32 @@ def obohatit_o_claimy(radky: list[dict], user) -> list[dict]:
     return radky
 
 
-def moje_body(user, rok: int, mesic: int) -> int:
+def _rozsah_dnu(od: date, do: date):
+    """Lokální půlnoc od včetně, den po do bez."""
+    start = timezone.make_aware(datetime(od.year, od.month, od.day))
+    konec = do + timedelta(days=1)
+    end = timezone.make_aware(datetime(konec.year, konec.month, konec.day))
+    return start, end
+
+
+def _qs_aktivni_body(od: date, do: date):
+    """Body za odškrtnutí. Drží je stav čeká i potvrzeno, nepotvrzeno má body 0."""
     from .models import KategorieZboziClaim
 
+    start, end = _rozsah_dnu(od, do)
     return KategorieZboziClaim.objects.filter(
-        user=user,
-        stav=KategorieZboziClaim.STAV_POTVRZENO,
-        overeno__year=rok,
-        overeno__month=mesic,
-    ).count() * BODY_ZA_KATEGORII
+        body__gt=0,
+        vytvoreno__gte=start,
+        vytvoreno__lt=end,
+    )
+
+
+def moje_body(user, rok: int, mesic: int) -> int:
+    if mesic == 12:
+        posledni = date(rok + 1, 1, 1) - timedelta(days=1)
+    else:
+        posledni = date(rok, mesic + 1, 1) - timedelta(days=1)
+    return _qs_aktivni_body(date(rok, mesic, 1), posledni).filter(user=user).count() * BODY_ZA_KATEGORII
 
 
 def zaloz_claim(user, kod: str, rok: int, mesic: int):
@@ -293,6 +310,9 @@ def zaloz_claim(user, kod: str, rok: int, mesic: int):
         if otevreny:
             if otevreny.user_id != user.id:
                 raise ClaimObsazeny()
+            if not otevreny.odmena_id:
+                zapis_odmenu(otevreny)
+                otevreny.save(update_fields=['odmena', 'body'])
             return otevreny
         if KategorieZboziClaim.objects.filter(
             kod=kod, stav=KategorieZboziClaim.STAV_POTVRZENO,
@@ -301,7 +321,7 @@ def zaloz_claim(user, kod: str, rok: int, mesic: int):
         produkt = next((p for p in produkty_mesice(rok, mesic) if p['kod'] == kod), None)
         if not produkt:
             raise NeniVAuditu()
-        return KategorieZboziClaim.objects.create(
+        claim = KategorieZboziClaim.objects.create(
             kod=kod,
             nazev=(produkt.get('nazev') or '')[:255],
             rok=rok,
@@ -310,17 +330,29 @@ def zaloz_claim(user, kod: str, rok: int, mesic: int):
             kategorie_pred=produkt.get('kategorie') or '',
             kategorie_1_pred=produkt.get('kategorie_1') or '',
         )
+        zapis_odmenu(claim)
+        claim.save(update_fields=['odmena', 'body'])
+        return claim
 
 
 def zrus_claim(user, claim_id: int) -> bool:
     from .models import KategorieZboziClaim
 
-    deleted, _ = KategorieZboziClaim.objects.filter(
-        id=claim_id,
-        user=user,
-        stav=KategorieZboziClaim.STAV_CEKA,
-    ).delete()
-    return bool(deleted)
+    with transaction.atomic():
+        claim = (
+            KategorieZboziClaim.objects.select_for_update()
+            .filter(
+                id=claim_id,
+                user=user,
+                stav=KategorieZboziClaim.STAV_CEKA,
+            )
+            .first()
+        )
+        if not claim:
+            return False
+        odeber_odmenu(claim)
+        claim.delete()
+        return True
 
 
 def aktualizuj_nazev_kodu(kod: str, nazev: str) -> int:
@@ -371,7 +403,9 @@ def aktualizuj_kategorii_kodu(kod: str, kategorie: str, kategorie_1: str, katego
 def zapis_odmenu(claim):
     from shifts.models import MzdovaOdmenaMesic
 
-    when = claim.overeno or timezone.now()
+    if claim.odmena_id:
+        return claim.odmena
+    when = claim.vytvoreno or timezone.now()
     local = timezone.localtime(when) if timezone.is_aware(when) else when
     mesic = date(local.year, local.month, 1)
     nazev = (claim.nazev or '').strip()
@@ -390,8 +424,37 @@ def zapis_odmenu(claim):
     return odmena
 
 
+def odeber_odmenu(claim):
+    """Smaže bod i měsíční odměnu. Volá se při odškrtnutí a při neúspěšném auditu."""
+    from shifts.models import MzdovaOdmenaMesic
+
+    odmena_id = claim.odmena_id
+    claim.body = Decimal('0')
+    claim.odmena = None
+    if claim.pk:
+        claim.save(update_fields=['body', 'odmena'])
+    if odmena_id:
+        MzdovaOdmenaMesic.objects.filter(pk=odmena_id).delete()
+
+
+def pripis_body_cekajicim() -> int:
+    """Jednorázově připíše bod odškrtnutím, která ještě čekají na noční audit."""
+    from .models import KategorieZboziClaim
+
+    n = 0
+    cekajici = KategorieZboziClaim.objects.filter(
+        stav=KategorieZboziClaim.STAV_CEKA,
+        odmena__isnull=True,
+    )
+    for claim in cekajici.iterator():
+        zapis_odmenu(claim)
+        claim.save(update_fields=['odmena', 'body'])
+        n += 1
+    return n
+
+
 def aplikuj_vysledek(claim, nova_k, nova_k1, nova_k2='', nazev='', *, konflikt=False, chybi=False):
-    """Rozhodne claim, případně přepíše prodeje a připíše odměnu."""
+    """Rozhodne claim. Bod už je z odškrtnutí. Přepis prodejů čeká na audit."""
     from .models import KategorieZboziClaim
 
     stav, poznamka = rozhodni_kategorii(
@@ -407,11 +470,6 @@ def aplikuj_vysledek(claim, nova_k, nova_k1, nova_k2='', nazev='', *, konflikt=F
         claim.save(update_fields=['poznamka'])
         return stav
 
-    zmena = not _stejne(claim.kategorie_pred, nova_k) or not _stejne(claim.kategorie_1_pred, nova_k1)
-    prepsano = False
-    if not chybi and not konflikt and (nova_k or '').strip() and zmena:
-        aktualizuj_kategorii_kodu(claim.kod, nova_k, nova_k1, nova_k2)
-        prepsano = True
     novy_nazev = (nazev or '').strip()
     if not chybi and not konflikt and novy_nazev and not _stejne(claim.nazev, novy_nazev):
         aktualizuj_nazev_kodu(claim.kod, novy_nazev)
@@ -423,26 +481,25 @@ def aplikuj_vysledek(claim, nova_k, nova_k1, nova_k2='', nazev='', *, konflikt=F
     )
     claim.kategorie_po = nova_k or ''
     claim.kategorie_1_po = nova_k1 or ''
-    claim.prepsano = prepsano
+    claim.kategorie_2_po = nova_k2 or ''
+    claim.prepsano = False
     claim.poznamka = poznamka
     claim.overeno = timezone.now()
     if stav == 'potvrzeno':
         zapis_odmenu(claim)
+    else:
+        odeber_odmenu(claim)
     claim.save()
+    if claim.zkontrolovano:
+        prepis_kategorii_claimu(claim)
     return stav
 
 
 def body_podle_uzivatele(od: date, do: date) -> dict[int, int]:
     from django.db.models import Count
 
-    from .models import KategorieZboziClaim
-
     rows = (
-        KategorieZboziClaim.objects.filter(
-            stav=KategorieZboziClaim.STAV_POTVRZENO,
-            overeno__date__gte=od,
-            overeno__date__lte=do,
-        )
+        _qs_aktivni_body(od, do)
         .values('user_id')
         .annotate(pocet=Count('id'))
     )
@@ -452,15 +509,9 @@ def body_podle_uzivatele(od: date, do: date) -> dict[int, int]:
 def body_podle_prodejny(od: date, do: date) -> dict[int, int]:
     from django.db.models import Count
 
-    from .models import KategorieZboziClaim
-
     rows = (
-        KategorieZboziClaim.objects.filter(
-            stav=KategorieZboziClaim.STAV_POTVRZENO,
-            overeno__date__gte=od,
-            overeno__date__lte=do,
-            user__prodejna_id__isnull=False,
-        )
+        _qs_aktivni_body(od, do)
+        .filter(user__prodejna_id__isnull=False)
         .values('user__prodejna_id')
         .annotate(pocet=Count('id'))
     )
@@ -507,15 +558,51 @@ def audit_radky(rok: int, mesic: int) -> list[dict]:
     return radky
 
 
-def oznac_audit(ids: list[int], zkontrolovano: bool) -> int:
+def _ma_zmenu_kategorie(claim) -> bool:
+    if not (claim.kategorie_po or '').strip():
+        return False
+    return (
+        not _stejne(claim.kategorie_pred, claim.kategorie_po)
+        or not _stejne(claim.kategorie_1_pred, claim.kategorie_1_po)
+    )
+
+
+def prepis_kategorii_claimu(claim) -> bool:
+    """Zapíše kategorii do prodejů. Jen po auditu a jen když noční kontrola už změnu má."""
+    from .models import KategorieZboziClaim
+
+    if claim.prepsano or claim.stav == KategorieZboziClaim.STAV_CEKA:
+        return False
+    if not claim.zkontrolovano or not _ma_zmenu_kategorie(claim):
+        return False
+    aktualizuj_kategorii_kodu(
+        claim.kod,
+        claim.kategorie_po,
+        claim.kategorie_1_po,
+        claim.kategorie_2_po or '',
+    )
+    claim.prepsano = True
+    claim.save(update_fields=['prepsano'])
+    return True
+
+
+def oznac_audit(ids: list[int], zkontrolovano: bool) -> dict:
     from .models import KategorieZboziClaim
 
     if not ids:
-        return 0
-    return KategorieZboziClaim.objects.filter(id__in=ids).update(
+        return {'upraveno': 0, 'prepsano_ids': []}
+    claims = list(KategorieZboziClaim.objects.filter(id__in=ids))
+    upraveno = KategorieZboziClaim.objects.filter(id__in=[c.id for c in claims]).update(
         zkontrolovano=zkontrolovano,
         zkontrolovano_kdy=timezone.now() if zkontrolovano else None,
     )
+    prepsano_ids = []
+    if zkontrolovano:
+        for claim in claims:
+            claim.zkontrolovano = True
+            if prepis_kategorii_claimu(claim):
+                prepsano_ids.append(claim.id)
+    return {'upraveno': upraveno, 'prepsano_ids': prepsano_ids}
 
 
 def cekajici_claimy():

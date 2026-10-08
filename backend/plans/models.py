@@ -217,6 +217,7 @@ class KategorieZboziClaim(models.Model):
     kategorie_1_pred = models.CharField(max_length=255, blank=True, default='')
     kategorie_po = models.CharField(max_length=255, blank=True, default='')
     kategorie_1_po = models.CharField(max_length=255, blank=True, default='')
+    kategorie_2_po = models.CharField(max_length=255, blank=True, default='')
     body = models.DecimalField(max_digits=6, decimal_places=0, default=0)
     poznamka = models.TextField(blank=True, default='')
     prepsano = models.BooleanField(default=False, verbose_name='Kategorie přepsána v databázi')

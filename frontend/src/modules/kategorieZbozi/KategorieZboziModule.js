@@ -170,8 +170,8 @@ export default function KategorieZboziModule() {
             <PageHeader
                 title="Kategorie zboží"
                 subtitle={audit
-                    ? 'Odškrtnuté kódy. Značka Přepsáno znamená, že noční kontrola už kategorii v databázi změnila.'
-                    : 'Odškrtni kód, až kategorii upravíš v Sympliu. V noci se to ověří. Zařazení do plánu je 1 bod do odměny i do celkového skóre.'}
+                    ? 'Odškrtnuté kódy. Kategorie v prodejích se přepíše až po zaškrtnutí kontroly.'
+                    : 'Odškrtni kód, až kategorii upravíš v Sympliu. Bod se připíše hned. Když noční kontrola zařazení nepotvrdí, bod se odečte.'}
                 actions={(
                     <div className="kz-month">
                         <button type="button" onClick={() => move(-1)} aria-label="Předchozí měsíc">‹</button>

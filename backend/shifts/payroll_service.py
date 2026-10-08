@@ -1,4 +1,5 @@
 """Výpočet payroll dat – hodiny, provize, mzda (body)."""
+import unicodedata
 from datetime import date, datetime, timedelta
 from decimal import Decimal, ROUND_HALF_UP
 
@@ -24,6 +25,18 @@ from .hpp_dpp import attach_hpp_dpp_to_row
 
 POL_DOK_HRANI = Decimal('2')
 POL_DOK_ODMENA_KC = Decimal('1000')
+# Dočasně bez bonusu i penalizace za průměr položek/účtenku.
+POL_DOK_VYNECHAT_PRIJMENI = frozenset({'dolak'})
+
+
+def _prijmeni_klic(prijmeni):
+    raw = unicodedata.normalize('NFD', (prijmeni or '').strip().lower())
+    return ''.join(ch for ch in raw if unicodedata.category(ch) != 'Mn')
+
+
+def pol_dok_odmena_plati(user):
+    """False = průměr položek/účtenku se do výplaty nezapočítá."""
+    return _prijmeni_klic(getattr(user, 'prijmeni', '')) not in POL_DOK_VYNECHAT_PRIJMENI
 
 
 def _body_whole(val):
@@ -120,6 +133,21 @@ def _subtract_months(rok, mesic, count):
     return y, m
 
 
+def _prumer_okno_mesicu(rok, mesic_cislo, override_mesice):
+    """
+    Tři měsíce před výplatou, od nejstaršího.
+    Importované hodiny se berou jen pro měsíc, který do okna patří.
+    """
+    by_key = {}
+    for row in override_mesice or []:
+        by_key[(int(row['rok']), int(row['mesic']))] = row
+    okno = []
+    for i in range(3, 0, -1):
+        y, m = _subtract_months(rok, mesic_cislo, i)
+        okno.append((y, m, by_key.get((y, m))))
+    return okno
+
+
 def _odpracovano_h_mesic(user_id, rok, mesic_cislo, prodejna_id=None):
     hours_map = aggregate_hours_by_user(rok, mesic_cislo, prodejna_id)
     return Decimal(str(hours_map.get(user_id, {}).get('odpracovano_h', 0)))
@@ -199,7 +227,7 @@ def _odmena_mesic_pro_prumer(user, rok, mesic_cislo, prumer_cache=None):
 def _pol_dok_odmena_mesic(user, rok, mesic_cislo, prumer_cache=None):
     """Bonus/penalizace za průměr položek/účtenku – stejně jako ve výplatě."""
     user = mzda_user_as_of(user, date(rok, mesic_cislo, 1))
-    if is_brigadnik(user):
+    if is_brigadnik(user) or not pol_dok_odmena_plati(user):
         return Decimal('0')
     if prumer_cache is not None:
         row = prumer_cache.get((rok, mesic_cislo), {}).get(user.id)
@@ -222,9 +250,15 @@ def _mzda_mesic_pro_prumer_dovolene(user, rok, mesic_cislo, h, override_row=None
                                     provize_cache=None, prumer_cache=None):
     """
     Měsíční mzda pro průměr dovolené – stejné složky jako výplata kromě
-    cestovného, dýška/víceprací (P63615), dovolené a přesčasu.
+    cestovného, dýška/víceprací (P63615) a dovolené.
+    Přesčas (hodiny nad fond) je v čitateli, protože je i ve jmenovateli.
     """
+    if rok and mesic_cislo:
+        user = mzda_user_as_of(user, date(rok, mesic_cislo, 1))
     zaklad = _zaklad_pro_prumer_dovolene(user, h, override_row, rok=rok, mesic_cislo=mesic_cislo)
+    fond = fondu_hodin_mesic(rok, mesic_cislo) if rok and mesic_cislo else 0
+    prescas_h = prescas_hodin(h, fond)
+    prescas, _, _ = prescas_body_vypocet(user, prescas_h, fond)
     provize = _provize_detail_mesic(user, rok, mesic_cislo, prumer_cache=prumer_cache)
     if prumer_cache is None and provize_cache is not None:
         provize_net = _provize_body_mesic(user, rok, mesic_cislo, provize_cache=provize_cache)
@@ -232,10 +266,11 @@ def _mzda_mesic_pro_prumer_dovolene(user, rok, mesic_cislo, h, override_row=None
         provize_net = provize['provize_net']
     odmena = _odmena_mesic_pro_prumer(user, rok, mesic_cislo, prumer_cache=prumer_cache)
     pol_dok = _pol_dok_odmena_mesic(user, rok, mesic_cislo, prumer_cache=prumer_cache)
-    mzda = zaklad + provize_net + odmena + pol_dok
+    mzda = zaklad + prescas + provize_net + odmena + pol_dok
     return {
         'mzda': mzda,
         'zaklad': zaklad,
+        'prescas': prescas,
         'provize': provize,
         'provize_net': provize_net,
         'odmena_mesic': odmena,
@@ -293,7 +328,7 @@ def build_prumer_mzdy_cache_for_prumer(user_ids, rok, ref_mesic):
             )
             odmena_mesic, _ = _sum_odmeny_from_map(odmeny_map.get(uid))
             pol_info = pol_dok_map.get(uid) or {'pol_dok': 0.0, 'unikatni_doklady': 0}
-            if is_brigadnik(user, on_date=mesic_date):
+            if is_brigadnik(user, on_date=mesic_date) or not pol_dok_odmena_plati(user):
                 pol_dok_odmena = Decimal('0')
             else:
                 pol_dok_odmena = pol_dok_odmena_body(
@@ -327,6 +362,7 @@ def prumer_fixni_hodinove_body(user, rok, mesic_cislo, hours_cache=None, overrid
     Průměr fixní části (základ + doplňky) / odpracované hodiny za 3 předchozí měsíce.
     hours_cache: volitelně {(rok, mesic): hours_map} – vyhne se N× dotazům na směny.
     override_mesice: volitelně [{'rok', 'mesic', 'odpracovano_h', 'fixni_body'?}, ...].
+    Použije se jen měsíc, který spadá do okna 3 předchozích měsíců.
     Bez fixni_body v override se fixní část bere z profilu uživatele.
     """
     return _prumer_hodinove_body(
@@ -341,8 +377,8 @@ def prumer_dovolena_hodinove_body(
 ):
     """
     Průměr výplaty/h za dovolenou: složky běžné výplaty / odpracované hodiny.
-    Zahrnuje základ, provize vč. servisu (po penalizaci), odměny a položky/účtenku.
-    Mimo: cestovné, dýško/vícepráce (P63615), dovolená, přesčas.
+    Zahrnuje základ, přesčas, provize vč. servisu (po penalizaci), odměny a položky/účtenku.
+    Mimo: cestovné, dýško/vícepráce (P63615), dovolená.
     """
     return _prumer_hodinove_body(
         user, rok, mesic_cislo, hours_cache=hours_cache, override_mesice=override_mesice,
@@ -359,37 +395,23 @@ def _prumer_hodinove_body(
 
     total_mzda = Decimal('0')
     total_h = Decimal('0')
-    if override_mesice:
-        for row in override_mesice:
-            y = int(row['rok'])
-            m = int(row['mesic'])
-            h = Decimal(str(row.get('odpracovano_h', 0)))
-            if vcetne_provize:
-                parts = _mzda_mesic_pro_prumer_dovolene(
-                    user, y, m, h, row, provize_cache=provize_cache, prumer_cache=prumer_cache,
-                )
-                mzda = parts['mzda']
-            else:
-                mzda = _fixni_pro_prumer_mesic(user, h, row, rok=y, mesic_cislo=m)
-            total_mzda += mzda
-            total_h += h
-    else:
-        for i in range(1, 4):
-            y, m = _subtract_months(rok, mesic_cislo, i)
-            if hours_cache is not None:
-                hm = hours_cache.get((y, m), {})
-                h = Decimal(str(hm.get(user.id, {}).get('odpracovano_h', 0)))
-            else:
-                h = _odpracovano_h_mesic(user.id, y, m)
-            if vcetne_provize:
-                parts = _mzda_mesic_pro_prumer_dovolene(
-                    user, y, m, h, None, provize_cache=provize_cache, prumer_cache=prumer_cache,
-                )
-                mzda = parts['mzda']
-            else:
-                mzda = _fixni_pro_prumer_mesic(user, h, None, rok=y, mesic_cislo=m)
-            total_mzda += mzda
-            total_h += h
+    for y, m, override_row in _prumer_okno_mesicu(rok, mesic_cislo, override_mesice):
+        if override_row is not None:
+            h = Decimal(str(override_row.get('odpracovano_h', 0)))
+        elif hours_cache is not None:
+            hm = hours_cache.get((y, m), {})
+            h = Decimal(str(hm.get(user.id, {}).get('odpracovano_h', 0)))
+        else:
+            h = _odpracovano_h_mesic(user.id, y, m)
+        if vcetne_provize:
+            parts = _mzda_mesic_pro_prumer_dovolene(
+                user, y, m, h, override_row, provize_cache=provize_cache, prumer_cache=prumer_cache,
+            )
+            mzda = parts['mzda']
+        else:
+            mzda = _fixni_pro_prumer_mesic(user, h, override_row, rok=y, mesic_cislo=m)
+        total_mzda += mzda
+        total_h += h
 
     if total_h > 0:
         return _body_whole(total_mzda / total_h)
@@ -428,7 +450,7 @@ def _prumer_hodinove_detail(
         return {
             'mesice': [], 'celkem_h': 0.0, 'celkem_fixni': 0.0,
             'celkem_provize': 0.0, 'celkem_penalizace': 0.0,
-            'celkem_odmena': 0.0, 'celkem_pol_dok': 0.0,
+            'celkem_odmena': 0.0, 'celkem_pol_dok': 0.0, 'celkem_prescas': 0.0,
             'celkem_ponizeni': 0.0, 'celkem_mzda': 0.0, 'prumer_fixni_h': 0.0,
         }
 
@@ -438,16 +460,10 @@ def _prumer_hodinove_detail(
     total_penalizace = Decimal('0')
     total_odmena = Decimal('0')
     total_pol_dok = Decimal('0')
+    total_prescas = Decimal('0')
     total_h = Decimal('0')
 
-    if override_mesice:
-        rows = [(int(r['rok']), int(r['mesic']), r) for r in override_mesice]
-    else:
-        rows = []
-        for i in range(1, 4):
-            y, m = _subtract_months(rok, mesic_cislo, i)
-            rows.append((y, m, None))
-
+    rows = _prumer_okno_mesicu(rok, mesic_cislo, override_mesice)
     for y, m, override_row in rows:
         if override_row is not None:
             h = Decimal(str(override_row.get('odpracovano_h', 0)))
@@ -473,6 +489,7 @@ def _prumer_hodinove_detail(
             provize_net = parts['provize_net']
             odmena = parts['odmena_mesic']
             pol_dok = parts['pol_dok_odmena']
+            prescas = parts['prescas']
             penalizace = provize_detail['penalizace_srazka']
             provize_brutto = provize_detail['provize_brutto']
         else:
@@ -481,6 +498,7 @@ def _prumer_hodinove_detail(
             penalizace = Decimal('0')
             odmena = Decimal('0')
             pol_dok = Decimal('0')
+            prescas = Decimal('0')
             mzda = zaklad
             provize_brutto = Decimal('0')
         sazba = _body_whole(mzda / h) if h > 0 else Decimal('0')
@@ -489,6 +507,7 @@ def _prumer_hodinove_detail(
         total_penalizace += penalizace
         total_odmena += odmena
         total_pol_dok += pol_dok
+        total_prescas += prescas
         total_h += h
         row_out = {
             'rok': y,
@@ -501,6 +520,7 @@ def _prumer_hodinove_detail(
             'penalizace_srazka_body': float(penalizace),
             'odmena_mesic_body': float(odmena),
             'pol_dok_odmena_body': float(pol_dok),
+            'prescas_body': float(prescas),
             'ponizeni_manual_body': float(min(Decimal('0'), odmena)),
             'mzda_body': float(mzda),
             'sazba_h': float(sazba),
@@ -519,7 +539,7 @@ def _prumer_hodinove_detail(
     zdroj = 'prumer_3m'
     fallback_zaklad = None
     fallback_fond = None
-    if override_mesice:
+    if any(row is not None for _, _, row in rows):
         zdroj = 'override_excel'
     elif total_h <= 0:
         fond_fb = Decimal(str(fondu_hodin_mesic(rok, mesic_cislo) or 0))
@@ -536,8 +556,11 @@ def _prumer_hodinove_detail(
         'celkem_penalizace': float(total_penalizace),
         'celkem_odmena': float(total_odmena),
         'celkem_pol_dok': float(total_pol_dok),
+        'celkem_prescas': float(total_prescas),
         'celkem_ponizeni': float(min(Decimal('0'), total_odmena)),
-        'celkem_mzda': float(total_zaklad + total_provize + total_odmena + total_pol_dok),
+        'celkem_mzda': float(
+            total_zaklad + total_prescas + total_provize + total_odmena + total_pol_dok
+        ),
         'prumer_fixni_h': float(prumer),
         'prumer_h': float(prumer),
         'zdroj': zdroj,
@@ -590,16 +613,14 @@ def dovolena_body_vypocet(user, dovolena_h, prumer_h):
 def pol_dok_odmena_body(pol_dok, unikatni_doklady):
     """
     Bonus/penalizace za průměr položek/účtenku v měsíci.
-    > 2 → +1000 Kč, < 2 → −1000 Kč, přesně 2 nebo bez účtenek → 0.
+    ≥ 2 → +1000 Kč, < 2 → −1000 Kč, bez účtenek → 0.
     """
     if not unikatni_doklady or int(unikatni_doklady) <= 0:
         return Decimal('0')
     avg = Decimal(str(pol_dok or 0))
-    if avg > POL_DOK_HRANI:
+    if avg >= POL_DOK_HRANI:
         return POL_DOK_ODMENA_KC
-    if avg < POL_DOK_HRANI:
-        return -POL_DOK_ODMENA_KC
-    return Decimal('0')
+    return -POL_DOK_ODMENA_KC
 
 
 def aggregate_hours_by_user(rok, mesic_cislo, prodejna_id=None):
@@ -741,7 +762,7 @@ def build_payroll_row(user, rok, mesic_cislo, hours_map, mesic_date, prodejny_ca
     pol_dok_info = (pol_dok_map or {}).get(uid) or {'pol_dok': 0.0, 'unikatni_doklady': 0}
     pol_dok = float(pol_dok_info.get('pol_dok') or 0)
     pol_dok_unikatni = int(pol_dok_info.get('unikatni_doklady') or 0)
-    if is_brigadnik(user):
+    if is_brigadnik(user) or not pol_dok_odmena_plati(user):
         pol_dok_odmena = Decimal('0')
     else:
         pol_dok_odmena = pol_dok_odmena_body(pol_dok, pol_dok_unikatni)
