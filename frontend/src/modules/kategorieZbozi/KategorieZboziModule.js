@@ -195,7 +195,7 @@ export default function KategorieZboziModule() {
             ) : (
             <>
             <p className="kz-score">
-                Tvoje body za tenhle měsíc: <strong>{data?.moje_body ?? 0}</strong>
+                Kódy odškrtnuté v {mesicLabel(rok, mesic)}: <strong>{data?.moje_body ?? 0}</strong>
             </p>
             {error && <p className="kz-error">{error}</p>}
             {loading && <p>Načítám produkty…</p>}

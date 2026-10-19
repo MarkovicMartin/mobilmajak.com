@@ -25,6 +25,8 @@ _leaderboard_excluded_ids_cache = None
 # Aktivní prodej na pultu – ve žebříčku i při roli ADMIN (výplata dál podle is_excluded_report_user)
 _LEADERBOARD_INCLUDED_NAME_PAIRS = frozenset({
     ('radek', 'bulandra'),
+    ('martin', 'markovič'),
+    ('martin', 'markovic'),
 })
 
 

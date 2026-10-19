@@ -6,5 +6,7 @@
   "autodiscover_nvr": true,
   "nvr_host": "",
   "nvr_user": "admin",
-  "nvr_pass": "DOPLNTE_HESLO_NVR"
+  "nvr_pass": "DOPLNTE_HESLO_NVR",
+  "log_od": "07:30",
+  "log_do": "20:30"
 }

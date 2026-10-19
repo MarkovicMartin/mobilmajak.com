@@ -2,9 +2,8 @@ from django.db import migrations
 
 
 def pripis_cekajici(apps, schema_editor):
-    from plans.kategorie_zbozi import pripis_body_cekajicim
-
-    pripis_body_cekajicim()
+    # Sloupec kategorie_2_po přibývá až v 0010. Připsání bodů je tam.
+    pass
 
 
 class Migration(migrations.Migration):

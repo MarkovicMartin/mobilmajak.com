@@ -20,6 +20,7 @@ import json
 import os
 import re
 import sys
+import threading
 import time
 from datetime import datetime, timezone
 from typing import Optional
@@ -142,6 +143,41 @@ def parse_alert_xml(chunk: str) -> Optional[bool]:
     return None
 
 
+SAMPLE_SECONDS = 60
+DEFAULT_LOG_OD = '07:30'
+DEFAULT_LOG_DO = '20:30'
+
+
+def parse_hhmm(value, fallback):
+    raw = (value or fallback).strip()
+    try:
+        hour_s, minute_s = raw.split(':', 1)
+        hour, minute = int(hour_s), int(minute_s)
+    except (AttributeError, TypeError, ValueError):
+        hour_s, minute_s = fallback.split(':', 1)
+        hour, minute = int(hour_s), int(minute_s)
+    return max(0, min(23, hour)), max(0, min(59, minute))
+
+
+def in_log_clock_window(now_local, log_od, log_do):
+    """Lokální čas prodejny, interval [od, do). Výchozí 07:30–20:30."""
+    od_h, od_m = parse_hhmm(log_od, DEFAULT_LOG_OD)
+    do_h, do_m = parse_hhmm(log_do, DEFAULT_LOG_DO)
+    minutes = now_local.hour * 60 + now_local.minute
+    start = od_h * 60 + od_m
+    end = do_h * 60 + do_m
+    if end <= start:
+        return False
+    return start <= minutes < end
+
+
+def minute_sample_has_motion(last_motion_at, now, sample_seconds=SAMPLE_SECONDS):
+    """True, když NVR hlásil pohyb v posledním vzorku (výchozí 60 s)."""
+    if not last_motion_at or sample_seconds <= 0:
+        return False
+    return (now - last_motion_at) < sample_seconds
+
+
 def subscribe_nvr_events(device_base: str, auth: HTTPDigestAuth) -> None:
     """Některé NVR vyžadují subscribe před alertStream."""
     url = f'{device_base}/ISAPI/Event/notification/subscribeEvent'
@@ -218,8 +254,9 @@ def run_alert_stream_loop(
     api_base: str,
     prodejna_id: int,
     secret: str,
-    quiet_after_seconds: int,
-    motion_cooldown_seconds: int,
+    log_od: str = DEFAULT_LOG_OD,
+    log_do: str = DEFAULT_LOG_DO,
+    sample_seconds: int = SAMPLE_SECONDS,
     nvr_port: Optional[int] = None,
     nvr_use_https: bool = False,
     reconnect_min_seconds: int = 15,
@@ -237,8 +274,9 @@ def run_alert_stream_loop(
                 api_base=api_base,
                 prodejna_id=prodejna_id,
                 secret=secret,
-                quiet_after_seconds=quiet_after_seconds,
-                motion_cooldown_seconds=motion_cooldown_seconds,
+                log_od=log_od,
+                log_do=log_do,
+                sample_seconds=sample_seconds,
                 nvr_port=nvr_port,
                 nvr_use_https=nvr_use_https,
             )
@@ -273,129 +311,93 @@ def run_alert_stream(
     api_base: str,
     prodejna_id: int,
     secret: str,
-    quiet_after_seconds: int,
-    motion_cooldown_seconds: int,
+    log_od: str = DEFAULT_LOG_OD,
+    log_do: str = DEFAULT_LOG_DO,
+    sample_seconds: int = SAMPLE_SECONDS,
     nvr_port: Optional[int] = None,
     nvr_use_https: bool = False,
 ) -> None:
+    """Každou minutu pošle stav: pohyb v posledních sample_seconds, jinak klid.
+
+    Posílá jen v lokálním okně log_od–log_do. Server navíc zahodí vzorek
+    mimo otevírací dobu prodejny ± 30 min.
+    """
     device_base, _ = probe_isapi_device(
         nvr_host, nvr_user, nvr_pass, port=nvr_port, use_https=nvr_use_https, raise_on_fail=True,
     )
     url = f'{device_base}/ISAPI/Event/notification/alertStream'
     auth = HTTPDigestAuth(nvr_user, nvr_pass)
-    last_motion_post = 0.0
-    last_quiet_post = 0.0
-    motion_session_active = False
-    last_motion_signal_at = 0.0
+    lock = threading.Lock()
+    last_nvr_motion_at = 0.0
+    stop = threading.Event()
+
+    def note_motion(ts: float) -> None:
+        nonlocal last_nvr_motion_at
+        with lock:
+            last_nvr_motion_at = ts
+
+    def post_sample() -> None:
+        now_local = datetime.now().astimezone()
+        if not in_log_clock_window(now_local, log_od, log_do):
+            return
+        with lock:
+            seen = last_nvr_motion_at
+        motion = minute_sample_has_motion(seen, time.time(), sample_seconds)
+        try:
+            result = post_motion(
+                api_base=api_base,
+                prodejna_id=prodejna_id,
+                secret=secret,
+                motion=motion,
+                source='gateway',
+            )
+        except Exception as exc:
+            print(
+                f'[{datetime.now().isoformat(timespec="seconds")}] vzorek se nepodarilo odeslat: {exc}',
+                flush=True,
+            )
+            return
+        if result.get('ignored'):
+            return
+        stav = 'pohyb' if motion else 'klid'
+        print(f'[{datetime.now().isoformat(timespec="seconds")}] → {stav} (minuta)', flush=True)
+
+    def sampler() -> None:
+        while not stop.wait(sample_seconds):
+            post_sample()
 
     subscribe_nvr_events(device_base, auth)
-    print(f'Připojuji alertStream {url} …', flush=True)
+    print(
+        f'Připojuji alertStream {url} … vzorek každých {sample_seconds}s, '
+        f'okno {log_od}–{log_do}',
+        flush=True,
+    )
 
-    with requests.get(url, auth=auth, stream=True, timeout=(10, None), verify=False) as resp:
-        resp.raise_for_status()
-        boundary = _multipart_boundary(resp.headers.get('Content-Type', ''))
-        print(
-            f'Připojeno (HTTP {resp.status_code}, boundary={boundary or "?"}). '
-            f'Čekám na události pohybu z NVR…',
-            flush=True,
-        )
-        print(
-            'V NVR u Motion Detection zapněte Linkage → Notify Surveillance Center, '
-            'pak projděte před kamerou.',
-            flush=True,
-        )
-        last_heartbeat = time.time()
-        buffer = ''
-        print(
-            f'[{datetime.now().isoformat(timespec="seconds")}] nasloucham (heartbeat kazdych 60s)',
-            flush=True,
-        )
-        for chunk in resp.iter_content(chunk_size=4096):
-            now = time.time()
-            if now - last_heartbeat >= 60:
-                print(
-                    f'[{datetime.now().isoformat(timespec="seconds")}] stale nasloucham…',
-                    flush=True,
-                )
-                last_heartbeat = now
-            if not chunk:
-                continue
-            buffer += chunk.decode('utf-8', errors='replace')
-            while '</EventNotificationAlert>' in buffer:
-                part, buffer = buffer.split('</EventNotificationAlert>', 1)
-                part += '</EventNotificationAlert>'
-                event_type = _event_type_from_chunk(part)
-                event_state = None
-                try:
-                    _root = ElementTree.fromstring(part)
-                    for _el in _root.iter():
-                        _tag = _el.tag.split('}')[-1] if '}' in _el.tag else _el.tag
-                        if _tag == 'eventState' and _el.text:
-                            event_state = _el.text.strip()
-                            break
-                except ElementTree.ParseError:
-                    pass
-                if event_type:
-                    detail = f'{event_type}' + (f' ({event_state})' if event_state else '')
-                    print(
-                        f'[{datetime.now().isoformat(timespec="seconds")}] událost: {detail}',
-                        flush=True,
-                    )
-                motion_flag = parse_alert_xml(part)
-                if motion_flag is None:
+    thread = threading.Thread(target=sampler, name='motion-sample', daemon=True)
+    thread.start()
+    try:
+        with requests.get(url, auth=auth, stream=True, timeout=(10, None), verify=False) as resp:
+            resp.raise_for_status()
+            boundary = _multipart_boundary(resp.headers.get('Content-Type', ''))
+            print(
+                f'Připojeno (HTTP {resp.status_code}, boundary={boundary or "?"}). '
+                f'Čekám na události pohybu z NVR…',
+                flush=True,
+            )
+            buffer = ''
+            post_sample()
+            for chunk in resp.iter_content(chunk_size=4096):
+                if not chunk:
                     continue
-                now = time.time()
-                if motion_flag is False:
-                    if motion_session_active:
-                        post_motion(
-                            api_base=api_base,
-                            prodejna_id=prodejna_id,
-                            secret=secret,
-                            motion=False,
-                            source='gateway',
-                        )
-                        last_quiet_post = now
-                        print(f'[{datetime.now().isoformat(timespec="seconds")}] → klid (NVR stop)', flush=True)
-                    motion_session_active = False
-                    last_motion_signal_at = 0.0
-                    continue
-
-                if motion_session_active:
-                    continue
-
-                if now - last_motion_post < motion_cooldown_seconds:
-                    continue
-
-                post_motion(
-                    api_base=api_base,
-                    prodejna_id=prodejna_id,
-                    secret=secret,
-                    motion=True,
-                    source='gateway',
-                )
-                last_motion_post = now
-                last_motion_signal_at = now
-                motion_session_active = True
-                print(f'[{datetime.now().isoformat(timespec="seconds")}] → pohyb (odesláno)', flush=True)
-
-            now = time.time()
-            if (
-                motion_session_active
-                and last_motion_signal_at
-                and now - last_motion_signal_at >= quiet_after_seconds
-                and now - last_quiet_post >= quiet_after_seconds
-            ):
-                post_motion(
-                    api_base=api_base,
-                    prodejna_id=prodejna_id,
-                    secret=secret,
-                    motion=False,
-                    source='gateway',
-                )
-                last_quiet_post = now
-                motion_session_active = False
-                last_motion_signal_at = 0.0
-                print(f'[{datetime.now().isoformat(timespec="seconds")}] → klid (timeout)', flush=True)
+                buffer += chunk.decode('utf-8', errors='replace')
+                while '</EventNotificationAlert>' in buffer:
+                    part, buffer = buffer.split('</EventNotificationAlert>', 1)
+                    part += '</EventNotificationAlert>'
+                    motion_flag = parse_alert_xml(part)
+                    if motion_flag is True:
+                        note_motion(time.time())
+    finally:
+        stop.set()
 
 
 ISAPI_PROBE_PATHS = (
@@ -727,8 +729,7 @@ def main():
         action='store_true',
         help='Sken LAN: NVR, IPC kamery a kamery v NVR (bez monitoru)',
     )
-    parser.add_argument('--quiet-after', type=int, default=300, help='Sekund bez pohybu → klid')
-    parser.add_argument('--motion-cooldown', type=int, default=60, help='Min. interval mezi POST pohyb')
+    parser.add_argument('--sample-seconds', type=int, default=60, help='Interval vzorku pohybu/klidu')
     parser.add_argument('--reconnect-min', type=int, default=15, help='Min. cekani pred reconnect (s)')
     parser.add_argument('--reconnect-max', type=int, default=300, help='Max. cekani pred reconnect (s)')
     args = parser.parse_args()
@@ -823,8 +824,9 @@ def main():
         api_base=api_base,
         prodejna_id=prodejna_id,
         secret=secret,
-        quiet_after_seconds=args.quiet_after,
-        motion_cooldown_seconds=args.motion_cooldown,
+        log_od=str(cfg.get('log_od') or DEFAULT_LOG_OD),
+        log_do=str(cfg.get('log_do') or DEFAULT_LOG_DO),
+        sample_seconds=args.sample_seconds,
         nvr_port=nvr_port,
         nvr_use_https=nvr_use_https,
         reconnect_min_seconds=args.reconnect_min,

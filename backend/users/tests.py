@@ -29,9 +29,16 @@ class LeaderboardExclusionsTests(SimpleTestCase):
             is_excluded_from_leaderboard(role='ADMIN', jmeno='Radek', prijmeni='Bulandra')
         )
 
+    def test_martin_markovic_included_in_leaderboard_despite_admin(self):
+        self.assertTrue(is_leaderboard_included_user(jmeno='Martin', prijmeni='Markovič'))
+        self.assertTrue(is_excluded_report_user(role='ADMIN', jmeno='Martin', prijmeni='Markovič'))
+        self.assertFalse(
+            is_excluded_from_leaderboard(role='ADMIN', jmeno='Martin', prijmeni='Markovič')
+        )
+
     def test_other_admin_still_excluded_from_leaderboard(self):
         self.assertTrue(
-            is_excluded_from_leaderboard(role='ADMIN', jmeno='Martin', prijmeni='Markovič')
+            is_excluded_from_leaderboard(role='ADMIN', jmeno='Jan', prijmeni='Novák')
         )
 
 

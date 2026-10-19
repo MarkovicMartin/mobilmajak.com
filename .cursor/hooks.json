@@ -8,7 +8,7 @@
     ],
     "beforeMCPExecution": [
       {
-        "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .cursor/hooks/mcp-policy.ps1",
+        "command": "/usr/bin/python3 .cursor/hooks/mcp-policy.py",
         "failClosed": true
       }
     ]

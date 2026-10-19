@@ -22,6 +22,8 @@ const formatCurrency = (value) => {
     }).format(Math.round(n));
 };
 
+const MANUAL_PREVIEW = 10;
+
 const DPH_BADGE_LABELS = {
     ceka_na_fakturu: 'čeká na fakturu',
     sparovano: 'spárováno',
@@ -79,6 +81,8 @@ const FinanceModule = () => {
         popis: '',
         poznamka_admin: '',
     });
+    const [manualList, setManualList] = useState([]);
+    const [manualShowAll, setManualShowAll] = useState(false);
 
     const [pravidloForm, setPravidloForm] = useState(emptyPravidloForm);
     const [pravidloEditId, setPravidloEditId] = useState(null);
@@ -117,10 +121,22 @@ const FinanceModule = () => {
         }
     }, [jenBezFaktury]);
 
+    const loadManual = useCallback(async () => {
+        const rows = await financeAPI.getManualNaklady();
+        setManualList(Array.isArray(rows) ? rows : []);
+    }, []);
+
     useEffect(() => {
         if (!admin) return;
         loadAll();
     }, [admin, loadAll]);
+
+    useEffect(() => {
+        if (!admin || tab !== 'manual') return;
+        loadManual().catch((e) => {
+            setError(e.response?.data?.error || e.message || 'Chyba načítání ručních nákladů');
+        });
+    }, [admin, tab, loadManual]);
 
     const handleManualSubmit = async (e) => {
         e.preventDefault();
@@ -141,9 +157,23 @@ const FinanceModule = () => {
                 });
             }
             setManualForm((f) => ({ ...f, castka: '', popis: '', poznamka_admin: '' }));
+            loadManual();
             loadAll();
         } catch (err) {
             setMessage(err.response?.data?.error || 'Uložení selhalo');
+        }
+    };
+
+    const handleDeleteManual = async (polozka) => {
+        const label = polozka.popis || formatCurrency(polozka.castka);
+        if (!window.confirm(`Smazat ruční náklad „${label}“?`)) return;
+        setMessage('');
+        try {
+            await financeAPI.deleteManualNaklad(polozka.id);
+            setMessage('Ruční náklad smazán.');
+            loadManual();
+        } catch (err) {
+            setMessage(err.response?.data?.error || 'Smazání selhalo');
         }
     };
 
@@ -637,12 +667,12 @@ const FinanceModule = () => {
                             />
                         </label>
                         <label>
-                            Částka (Kč, záporná = výdaj)
+                            Částka (Kč, uloží se jako výdaj)
                             <input
                                 type="text"
                                 value={manualForm.castka}
                                 onChange={(e) => setManualForm((f) => ({ ...f, castka: e.target.value }))}
-                                placeholder="-1500"
+                                placeholder="8000"
                                 required
                             />
                         </label>
@@ -680,6 +710,52 @@ const FinanceModule = () => {
                         </label>
                         <button type="submit" className="finance-btn-primary">Uložit náklad</button>
                     </form>
+                    <h3 className="finance-manual-list__title">Ruční náklady</h3>
+                    {manualList.length === 0 ? (
+                        <p className="finance-panel__intro">Zatím žádný ruční náklad.</p>
+                    ) : (
+                        <>
+                            <div className="finance-table-wrap finance-table-wrap--top">
+                                <table className="finance-table finance-table--compact">
+                                    <thead>
+                                        <tr>
+                                            <th>Datum</th>
+                                            <th>Částka</th>
+                                            <th>Kategorie</th>
+                                            <th>Prodejna</th>
+                                            <th>Popis</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {(manualShowAll ? manualList : manualList.slice(0, MANUAL_PREVIEW)).map((p) => (
+                                            <tr key={p.id}>
+                                                <td>{new Date(`${p.datum}T00:00:00`).toLocaleDateString('cs-CZ')}</td>
+                                                <td>{formatCurrency(p.castka)}</td>
+                                                <td>{p.kategorie_nazev || '–'}</td>
+                                                <td>{p.prodejna_nazev || storeLabel(stores, p.prodejna_id) || '–'}</td>
+                                                <td>{p.popis || '–'}</td>
+                                                <td>
+                                                    <button type="button" onClick={() => handleDeleteManual(p)}>
+                                                        Smazat
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {manualList.length > MANUAL_PREVIEW && !manualShowAll && (
+                                <button
+                                    type="button"
+                                    className="finance-btn-secondary"
+                                    onClick={() => setManualShowAll(true)}
+                                >
+                                    Zobrazit starší ({manualList.length - MANUAL_PREVIEW})
+                                </button>
+                            )}
+                        </>
+                    )}
                 </section>
             )}
 

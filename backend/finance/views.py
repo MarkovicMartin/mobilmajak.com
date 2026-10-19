@@ -1,7 +1,7 @@
 """Finance API – všechny endpointy ADMIN-only."""
 import calendar
 from datetime import date, datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from django.db.models import Count, F, Sum
 from django.db.models.functions import Abs, Coalesce
@@ -443,18 +443,32 @@ def naklady_analytika(request):
     })
 
 
-@api_view(['POST'])
+@api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 @finance_admin_view
 def naklad_manual_create(request):
+    if request.method == 'GET':
+        log_finance_audit(request, 'naklad_manual_list')
+        qs = (
+            NakladPolozka.objects.filter(zdroj=NakladPolozka.ZDROJ_MANUAL)
+            .select_related('kategorie', 'doklad')
+            .order_by('-datum', '-id')
+        )
+        return _no_store_response(serialize_naklad_polozky(qs[:200]))
+
     data = request.data
     try:
         datum = datetime.strptime(data.get('datum', ''), '%Y-%m-%d').date()
-        castka = data.get('castka')
-        if castka is None or castka == '':
-            return _no_store_response({'error': 'Chybí castka'}, status.HTTP_400_BAD_REQUEST)
     except ValueError:
         return _no_store_response({'error': 'Neplatný datum (YYYY-MM-DD)'}, status.HTTP_400_BAD_REQUEST)
+
+    raw_castka = data.get('castka')
+    if raw_castka is None or str(raw_castka).strip() == '':
+        return _no_store_response({'error': 'Chybí castka'}, status.HTTP_400_BAD_REQUEST)
+    try:
+        castka = -abs(Decimal(str(raw_castka).replace(',', '.').replace(' ', '').strip()))
+    except InvalidOperation:
+        return _no_store_response({'error': 'Neplatná částka'}, status.HTTP_400_BAD_REQUEST)
 
     kategorie_id = data.get('kategorie_id') or None
     if kategorie_id:
@@ -498,7 +512,7 @@ def naklad_manual_create(request):
     return _no_store_response(payload, status.HTTP_201_CREATED)
 
 
-@api_view(['PATCH'])
+@api_view(['PATCH', 'DELETE'])
 @permission_classes([IsAuthenticated])
 @finance_admin_view
 def naklad_update(request, polozka_id):
@@ -506,6 +520,16 @@ def naklad_update(request, polozka_id):
         polozka = NakladPolozka.objects.get(pk=polozka_id)
     except NakladPolozka.DoesNotExist:
         return _no_store_response({'error': 'Položka nenalezena'}, status.HTTP_404_NOT_FOUND)
+
+    if request.method == 'DELETE':
+        if polozka.zdroj != NakladPolozka.ZDROJ_MANUAL:
+            return _no_store_response(
+                {'error': 'Smazat lze jen ruční náklad'},
+                status.HTTP_400_BAD_REQUEST,
+            )
+        polozka.delete()
+        log_finance_audit(request, 'naklad_manual_delete', f'id={polozka_id}')
+        return _no_store_response({'ok': True})
 
     data = request.data
     if 'kategorie_id' in data:

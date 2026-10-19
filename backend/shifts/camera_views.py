@@ -77,6 +77,12 @@ def camera_motion_event(request):
         cas=cas,
         zdroj=str(data.get('source') or 'gateway')[:32],
     )
+    if event is None:
+        return Response({
+            'ok': True,
+            'ignored': True,
+            'reason': 'mimo otevírací dobu',
+        })
 
     return Response({
         'ok': True,
@@ -126,6 +132,12 @@ def camera_hikvision_webhook(request, prodejna_id, token):
         cas=parsed.get('cas'),
         zdroj='nvr-http',
     )
+    if event is None:
+        return Response({
+            'ok': True,
+            'ignored': True,
+            'reason': 'mimo otevírací dobu',
+        })
 
     return Response({
         'ok': True,

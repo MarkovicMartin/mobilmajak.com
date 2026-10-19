@@ -14,7 +14,7 @@ from zoneinfo import ZoneInfo
 from django.utils import timezone
 
 from stores.models import Prodejna
-from stores.oteviraci_doba_utils import clip_interval_to_opening_hours
+from stores.oteviraci_doba_utils import clip_interval_to_opening_hours, opening_window_for_date
 
 from .models import ProdejnaPohybUdalost
 
@@ -22,9 +22,12 @@ PRAGUE_TZ = ZoneInfo('Europe/Prague')
 
 MOTION_WINDOW_MINUTES = int(os.getenv('CAMERA_MOTION_WINDOW_MINUTES', '15'))
 MOTION_ACTIVE_MINUTES = int(os.getenv('CAMERA_MOTION_ACTIVE_MINUTES', '5'))
-EVENT_RETENTION_DAYS = int(os.getenv('CAMERA_MOTION_RETENTION_DAYS', '7'))
+EVENT_RETENTION_DAYS = int(os.getenv('CAMERA_MOTION_RETENTION_DAYS', '60'))
+LOG_MARGIN_MINUTES = int(os.getenv('CAMERA_MOTION_LOG_MARGIN_MINUTES', '30'))
 QUIET_LOG_MIN_MINUTES = int(os.getenv('CAMERA_MOTION_QUIET_LOG_MINUTES', '10'))
-QUIET_LOG_MAX_PERIODS = int(os.getenv('CAMERA_MOTION_QUIET_LOG_MAX', '80'))
+QUIET_LOG_MAX_PERIODS = int(os.getenv('CAMERA_MOTION_QUIET_LOG_MAX', '400'))
+# Minutové vzorky. Díra delší než tohle už není „zavřeno“, ale výpadek brány.
+SAMPLE_LINK_SECONDS = int(os.getenv('CAMERA_MOTION_SAMPLE_LINK_SECONDS', '90'))
 SIGNATURE_MAX_AGE_SECONDS = int(os.getenv('CAMERA_MOTION_SIGNATURE_MAX_AGE', '300'))
 
 
@@ -116,9 +119,32 @@ def verify_motion_signature(request, prodejna_id):
     return True, None
 
 
+def motion_log_bounds(oteviraci_doba, moment):
+    """Okno zápisu: otevírací doba ± LOG_MARGIN_MINUTES. None = ten den zavřeno."""
+    local = moment.astimezone(PRAGUE_TZ)
+    window = opening_window_for_date(oteviraci_doba, local.date(), PRAGUE_TZ)
+    if not window:
+        return None
+    margin = timedelta(minutes=LOG_MARGIN_MINUTES)
+    return window[0] - margin, window[1] + margin
+
+
+def within_motion_log_window(oteviraci_doba, moment) -> bool:
+    bounds = motion_log_bounds(oteviraci_doba, moment)
+    if not bounds:
+        return False
+    local = moment.astimezone(PRAGUE_TZ)
+    return bounds[0] <= local < bounds[1]
+
+
 def record_motion_event(*, prodejna_id, pohyb, cas=None, zdroj='gateway'):
-    Prodejna.objects.get(pk=prodejna_id)
+    """Zapíše minutový vzorek. Mimo okno otevírací doby vrátí None a nic neukládá."""
+    store = Prodejna.objects.only('id', 'oteviraci_doba').get(pk=prodejna_id)
     cas = cas or timezone.now()
+    if timezone.is_naive(cas):
+        cas = timezone.make_aware(cas, PRAGUE_TZ)
+    if not within_motion_log_window(store.oteviraci_doba, cas):
+        return None
     event = ProdejnaPohybUdalost.objects.create(
         prodejna_id=prodejna_id,
         pohyb=bool(pohyb),
@@ -134,14 +160,61 @@ def _prune_old_events(prodejna_id):
     ProdejnaPohybUdalost.objects.filter(prodejna_id=prodejna_id, cas__lt=cutoff).delete()
 
 
+def _false_runs(events, now):
+    """Souvislé řady pohyb=False. Díra mezi vzorky > SAMPLE_LINK_SECONDS řadu utne.
+
+    Vrací (start, end, ongoing). ongoing = poslední vzorek je čerstvý a pohyb se nevrátil.
+    """
+    link = timedelta(seconds=SAMPLE_LINK_SECONDS)
+    runs = []
+    n = len(events)
+    i = 0
+    while i < n:
+        start, pohyb = events[i]
+        if pohyb:
+            i += 1
+            continue
+        j = i
+        while j + 1 < n:
+            nxt_cas, nxt_pohyb = events[j + 1]
+            if nxt_pohyb or nxt_cas - events[j][0] > link:
+                break
+            j += 1
+        last = events[j][0]
+        closed_by_motion = (
+            j + 1 < n
+            and events[j + 1][1]
+            and events[j + 1][0] - last <= link
+        )
+        if closed_by_motion:
+            end = events[j + 1][0]
+            ongoing = False
+        else:
+            ongoing = (now - last) <= link
+            end = now if ongoing else last + timedelta(seconds=60)
+        if end > start:
+            runs.append((start, end, ongoing))
+        i = j + 1
+    return runs
+
+
+def _open_minutes(start, end, oteviraci):
+    total = 0
+    segments = []
+    for seg_start, seg_end in clip_interval_to_opening_hours(start, end, oteviraci, PRAGUE_TZ):
+        total += int((seg_end - seg_start).total_seconds() // 60)
+        segments.append((seg_start, seg_end))
+    return total, segments
+
+
 def motion_status_for_prodejna(prodejna_id, now=None):
     """
     Vrací dict: status (active|quiet|unknown), last_motion_at, last_event_at, in_pilot.
-    Pohyb = detekce za posledních MOTION_ACTIVE_MINUTES (výchozí 5 min).
+    Poslední minutový vzorek rozhoduje. Vzorek starší než 15 min = kamera nehlásí.
     """
     now = now or timezone.now()
     in_pilot = prodejna_id in motion_pilot_prodejna_ids()
-    active_since = now - timedelta(minutes=MOTION_ACTIVE_MINUTES)
+    stale_after = timedelta(minutes=MOTION_WINDOW_MINUTES)
 
     last_event = (
         ProdejnaPohybUdalost.objects.filter(prodejna_id=prodejna_id)
@@ -149,58 +222,68 @@ def motion_status_for_prodejna(prodejna_id, now=None):
         .first()
     )
 
-    if not last_event:
+    if not last_event or now - last_event.cas > stale_after:
+        last_motion = (
+            ProdejnaPohybUdalost.objects.filter(prodejna_id=prodejna_id, pohyb=True)
+            .order_by('-cas')
+            .values_list('cas', flat=True)
+            .first()
+        )
         return {
             'status': 'unknown',
             'label': 'Kamera nehlásí',
             'in_pilot': in_pilot,
-            'last_motion_at': None,
-            'last_event_at': None,
+            'last_motion_at': last_motion.isoformat() if last_motion else None,
+            'last_event_at': last_event.cas.isoformat() if last_event else None,
             'quiet_minutes': None,
             'active_minutes': MOTION_ACTIVE_MINUTES,
             'window_minutes': MOTION_WINDOW_MINUTES,
         }
 
-    last_motion_recent = (
-        ProdejnaPohybUdalost.objects.filter(
-            prodejna_id=prodejna_id,
-            pohyb=True,
-            cas__gte=active_since,
-        )
-        .order_by('-cas')
-        .first()
-    )
-
-    if last_motion_recent:
+    if last_event.pohyb:
         return {
             'status': 'active',
             'label': 'Pohyb',
             'in_pilot': in_pilot,
-            'last_motion_at': last_motion_recent.cas.isoformat(),
+            'last_motion_at': last_event.cas.isoformat(),
             'last_event_at': last_event.cas.isoformat(),
             'quiet_minutes': None,
             'active_minutes': MOTION_ACTIVE_MINUTES,
             'window_minutes': MOTION_WINDOW_MINUTES,
         }
 
+    try:
+        oteviraci = Prodejna.objects.only('oteviraci_doba').get(pk=prodejna_id).oteviraci_doba
+    except Prodejna.DoesNotExist:
+        oteviraci = {}
+    since = now - timedelta(hours=16)
+    events = list(
+        ProdejnaPohybUdalost.objects.filter(prodejna_id=prodejna_id, cas__gte=since)
+        .order_by('cas')
+        .values_list('cas', 'pohyb')
+    )
+    quiet_minutes = None
+    runs = _false_runs(events, now)
+    if runs and runs[-1][2]:
+        quiet_minutes, _segs = _open_minutes(runs[-1][0], runs[-1][1], oteviraci)
+        if not quiet_minutes:
+            quiet_minutes = None
     last_motion = (
         ProdejnaPohybUdalost.objects.filter(prodejna_id=prodejna_id, pohyb=True)
         .order_by('-cas')
+        .values_list('cas', flat=True)
         .first()
     )
-
-    quiet_minutes = None
-    if last_motion:
-        quiet_minutes = max(0, int((now - last_motion.cas).total_seconds() // 60))
-        label = f'Bez pohybu {quiet_minutes} min' if quiet_minutes >= MOTION_ACTIVE_MINUTES else 'Bez pohybu'
-    else:
-        label = 'Bez pohybu'
-
+    label = (
+        f'Bez pohybu {quiet_minutes} min'
+        if quiet_minutes and quiet_minutes >= MOTION_ACTIVE_MINUTES
+        else 'Bez pohybu'
+    )
     return {
         'status': 'quiet',
         'label': label,
         'in_pilot': in_pilot,
-        'last_motion_at': last_motion.cas.isoformat() if last_motion else None,
+        'last_motion_at': last_motion.isoformat() if last_motion else None,
         'last_event_at': last_event.cas.isoformat(),
         'quiet_minutes': quiet_minutes,
         'active_minutes': MOTION_ACTIVE_MINUTES,
@@ -209,7 +292,10 @@ def motion_status_for_prodejna(prodejna_id, now=None):
 
 
 def motion_detail_for_prodejna(prodejna_id, now=None, lookback_hours=None):
-    """Období bez pohybu ≥ QUIET_LOG_MIN_MINUTES jen uvnitř otevírací doby."""
+    """Souvislé minuty bez pohybu (vzorky klidu) uvnitř otevírací doby.
+
+    Díra bez vzorků je výpadek brány, ne zavření.
+    """
     now = now or timezone.now()
     if lookback_hours is None:
         lookback_hours = EVENT_RETENTION_DAYS * 24
@@ -221,56 +307,29 @@ def motion_detail_for_prodejna(prodejna_id, now=None, lookback_hours=None):
     except Prodejna.DoesNotExist:
         oteviraci = {}
 
-    motion_qs = ProdejnaPohybUdalost.objects.filter(
-        prodejna_id=prodejna_id,
-        pohyb=True,
+    events = list(
+        ProdejnaPohybUdalost.objects.filter(prodejna_id=prodejna_id, cas__gte=since)
+        .order_by('cas')
+        .values_list('cas', 'pohyb')
     )
-    motion_times = list(
-        motion_qs.filter(cas__gte=since).order_by('cas').values_list('cas', flat=True)
-    )
-    seed = motion_qs.filter(cas__lt=since).order_by('-cas').values_list('cas', flat=True).first()
-    if seed is not None:
-        motion_times = [seed] + motion_times
-
-    last_motion_at = motion_times[-1] if motion_times else None
-    open_quiet_segments = []
-    if last_motion_at:
-        open_quiet_segments = clip_interval_to_opening_hours(
-            last_motion_at, now, oteviraci, PRAGUE_TZ,
-        )
-    current_quiet_minutes = None
-    if open_quiet_segments:
-        open_mins = sum(
-            int((seg_end - seg_start).total_seconds() // 60)
-            for seg_start, seg_end in open_quiet_segments
-        )
-        if open_mins >= MOTION_ACTIVE_MINUTES:
-            current_quiet_minutes = open_mins
 
     quiet_periods = []
-    for i, start in enumerate(motion_times):
-        if i + 1 < len(motion_times):
-            end = motion_times[i + 1]
-            gap_ongoing = False
-        else:
-            if current_quiet_minutes is None and not open_quiet_segments:
-                continue
-            end = now
-            gap_ongoing = True
-
-        for seg_start, seg_end in clip_interval_to_opening_hours(
-            start, end, oteviraci, PRAGUE_TZ,
-        ):
+    current_quiet_minutes = None
+    for start, end, ongoing in _false_runs(events, now):
+        _total, segments = _open_minutes(start, end, oteviraci)
+        for seg_start, seg_end in segments:
             minutes = int((seg_end - seg_start).total_seconds() // 60)
             if minutes < QUIET_LOG_MIN_MINUTES:
                 continue
-            ongoing = bool(gap_ongoing and seg_end >= now)
+            seg_ongoing = bool(ongoing and seg_end >= now)
             quiet_periods.append({
                 'from': seg_start.isoformat(),
-                'to': None if ongoing else seg_end.isoformat(),
+                'to': None if seg_ongoing else seg_end.isoformat(),
                 'minutes': minutes,
-                'ongoing': ongoing,
+                'ongoing': seg_ongoing,
             })
+            if seg_ongoing and (current_quiet_minutes is None or minutes > current_quiet_minutes):
+                current_quiet_minutes = minutes
 
     quiet_periods.sort(key=lambda p: p['from'], reverse=True)
 

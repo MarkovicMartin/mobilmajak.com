@@ -507,12 +507,14 @@ export const financeAPI = {
     ).data,
     getCekaNaFakturu: async () => (await api.get('/finance/naklady/ceka-na-fakturu/')).data,
     getDokladyKeKontrole: async () => (await api.get('/finance/doklady/ke-kontrole/')).data,
+    getManualNaklady: async () => (await api.get('/finance/naklady/manual/')).data,
     createManualNaklad: async (payload) => (
         await api.post('/finance/naklady/manual/', payload)
     ).data,
     updateNaklad: async (id, payload) => (
         await api.patch(`/finance/naklady/${id}/`, payload)
     ).data,
+    deleteManualNaklad: async (id) => (await api.delete(`/finance/naklady/${id}/`)).data,
     getPravidla: async () => (await api.get('/finance/pravidla/')).data,
     createPravidlo: async (payload) => (await api.post('/finance/pravidla/', payload)).data,
     createPravidloFromPolozka: async (payload) => (

@@ -288,6 +288,7 @@ def _qs_aktivni_body(od: date, do: date):
 
 
 def moje_body(user, rok: int, mesic: int) -> int:
+    """Body za kódy odškrtnuté v daném měsíci. Měsíc zboží nerozhoduje."""
     if mesic == 12:
         posledni = date(rok + 1, 1, 1) - timedelta(days=1)
     else:
