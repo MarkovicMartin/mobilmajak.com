@@ -228,7 +228,7 @@ def try_auto_link_doklad(doklad: FinanceDoklad) -> bool:
         return False
 
     qs = _unmatched_odchozi_qs().filter(
-        zdroj=NakladPolozka.ZDROJ_FIO,
+        zdroj__in=(NakladPolozka.ZDROJ_FIO, NakladPolozka.ZDROJ_RAIFFEISEN),
     ).filter(
         models_Q_vs(vs),
     ).order_by('-datum', '-id')[:5]

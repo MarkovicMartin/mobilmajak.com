@@ -9,7 +9,7 @@ from pathlib import Path
 from django.conf import settings
 
 from .flexi_client import FlexiClient, FlexiError
-from .models import FinanceDoklad, NakladPolozka
+from .models import FinanceDoklad, NakladPolozka, is_bank_zdroj
 from .secrets import get_flexi_config, is_flexi_sync_enabled
 
 logger = logging.getLogger(__name__)
@@ -42,7 +42,7 @@ def resolve_flexi_match_keys(doklad: FinanceDoklad, polozka: NakladPolozka | Non
         seen.add(pair)
         keys.append({'field': field, 'value': value, 'source': source, 'op': op})
 
-    if polozka and polozka.zdroj == NakladPolozka.ZDROJ_FIO:
+    if polozka and is_bank_zdroj(polozka.zdroj):
         vs = (polozka.vs or '').strip()
         # Legacy bug: dřív se do vs ukládal column10 (název), VS bylo v protiucet (column5).
         if not re.fullmatch(r'\d{4,}', vs):

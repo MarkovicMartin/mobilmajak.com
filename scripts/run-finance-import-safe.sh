@@ -34,17 +34,17 @@ trap cleanup EXIT
 if [ -f "$LOCK_FILE" ] && [ -f "$PID_FILE" ]; then
   OLD_PID=$(cat "$PID_FILE")
   if ps -p "$OLD_PID" > /dev/null 2>&1; then
-    echo "$(date '+%Y-%m-%d %H:%M:%S') - Fio import už běží (PID $OLD_PID), skip" >> "$LOG_FILE"
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - Import účtů už běží (PID $OLD_PID), skip" >> "$LOG_FILE"
     exit 0
   fi
   rm -f "$LOCK_FILE" "$PID_FILE"
 fi
 
-MANAGE_CMD=$(finance_manage_cmd "import_fio_naklady --days '$DAYS'")
+MANAGE_CMD=$(finance_manage_cmd "import_bank_naklady --days '$DAYS'")
 
 touch "$LOCK_FILE"
 echo $$ > "$PID_FILE"
-echo "$(date '+%Y-%m-%d %H:%M:%S') - Start Fio import (days=$DAYS, timeout ${RUN_TIMEOUT}s)" >> "$LOG_FILE"
+echo "$(date '+%Y-%m-%d %H:%M:%S') - Start import účtů Fio+Raiffeisen (days=$DAYS, timeout ${RUN_TIMEOUT}s)" >> "$LOG_FILE"
 
 set +e
 nice -n 10 timeout "${RUN_TIMEOUT}" bash -c "
@@ -55,7 +55,7 @@ EXIT_CODE=$?
 set -e
 
 if [ "$EXIT_CODE" -eq 0 ]; then
-  echo "$(date '+%Y-%m-%d %H:%M:%S') - Hotovo Fio import" >> "$LOG_FILE"
+  echo "$(date '+%Y-%m-%d %H:%M:%S') - Hotovo import účtů" >> "$LOG_FILE"
 elif [ "$EXIT_CODE" -eq 124 ]; then
   echo "$(date '+%Y-%m-%d %H:%M:%S') - Timeout ${RUN_TIMEOUT}s" >> "$LOG_FILE"
 else

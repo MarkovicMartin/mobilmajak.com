@@ -4,7 +4,7 @@ from functools import wraps
 from rest_framework import status
 from rest_framework.response import Response
 
-from .models import NakladPolozka
+from .models import NakladPolozka, is_bank_zdroj
 
 
 def _client_ip(request):
@@ -28,7 +28,7 @@ def naklady_qs_for_invoice_user(qs, user):
 def user_can_upload_doklad(user, polozka) -> bool:
     if not user_can_access_polozka(user, polozka):
         return False
-    if not is_finance_admin(user) and polozka.zdroj == NakladPolozka.ZDROJ_FIO:
+    if not is_finance_admin(user) and is_bank_zdroj(polozka.zdroj):
         return False
     return True
 

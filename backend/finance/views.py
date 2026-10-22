@@ -33,6 +33,7 @@ from .services import (
     apply_pravidlo_to_nezarazene,
     compute_stav_rozdilu,
     get_finance_counts,
+    qs_ceka_na_fakturu,
     get_last_fio_import_info,
     log_finance_audit,
     navrh_pravidla_from_polozka,
@@ -220,13 +221,7 @@ def naklady_nezarazene(request):
     bez_faktury = request.GET.get('bez_faktury', '').strip().lower() in ('1', 'true', 'yes')
     if bez_faktury:
         qs = (
-            NakladPolozka.objects.filter(
-                dph_stav=NakladPolozka.DPH_STAV_CEKA,
-                typ_platby=NakladPolozka.TYP_PLATBY_ODCHOZI,
-                ignorovat=False,
-                doklad__isnull=True,
-            )
-            .exclude(stav=NakladPolozka.STAV_IGNOROVAT)
+            qs_ceka_na_fakturu()
             .select_related('kategorie', 'doklad')
             .order_by('-datum', '-id')
         )
@@ -261,7 +256,11 @@ def naklady_prehled(request):
     elif stav == 'ignorovat':
         qs = qs.filter(stav=NakladPolozka.STAV_IGNOROVAT)
   # vse = all outgoing
-    if zdroj in (NakladPolozka.ZDROJ_FIO, NakladPolozka.ZDROJ_SYMPLIO_POKLADNA):
+    if zdroj in (
+        NakladPolozka.ZDROJ_FIO,
+        NakladPolozka.ZDROJ_RAIFFEISEN,
+        NakladPolozka.ZDROJ_SYMPLIO_POKLADNA,
+    ):
         qs = qs.filter(zdroj=zdroj)
     return _no_store_response(serialize_naklad_polozky(qs[:400]))
 
@@ -761,13 +760,7 @@ def naklady_ceka_na_fakturu(request):
     """Výdaje čekající na přiložení faktury – prodejce vidí svou prodejnu."""
     log_finance_audit(request, 'naklady_ceka_na_fakturu')
     qs = (
-        NakladPolozka.objects.filter(
-            dph_stav=NakladPolozka.DPH_STAV_CEKA,
-            typ_platby=NakladPolozka.TYP_PLATBY_ODCHOZI,
-            ignorovat=False,
-            doklad__isnull=True,
-        )
-        .exclude(stav=NakladPolozka.STAV_IGNOROVAT)
+        qs_ceka_na_fakturu()
         .select_related('kategorie', 'doklad')
         .order_by('-datum', '-id')
     )

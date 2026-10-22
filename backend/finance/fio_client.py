@@ -57,13 +57,12 @@ def _parse_statement(data: dict) -> tuple[dict, list]:
     return statement, txs
 
 
-def fetch_transactions(token: str, date_from: date, date_to: date) -> list[dict]:
-    ensure_fio_available()
+def _download_period_http(token: str, date_from: date, date_to: date) -> tuple[list, dict]:
     url = f'{FIO_BASE}/periods/{token}/{date_from.isoformat()}/{date_to.isoformat()}/transactions.json'
     resp = requests.get(url, timeout=60)
     resp.raise_for_status()
     data = resp.json()
-    _, txs = _parse_statement(data)
+    statement, txs = _parse_statement(data)
     rows = []
     for tx in txs:
         amount = _parse_amount(_col(tx, 'column1', '0'))
@@ -73,13 +72,54 @@ def fetch_transactions(token: str, date_from: date, date_to: date) -> list[dict]
             'datum': datum,
             'castka': amount,
             # Oficiální mapování Fio JSON (viz API Bankovnictví):
-            # column2 = protiúčet, column5 = VS, column10 = název protiúčtu
+            # column2 = protiúčet, column3 = kód banky, column5 = VS, column10 = název protiúčtu
             'protiucet': _col(tx, 'column2'),
+            'protiucet_cislo': _col(tx, 'column2'),
+            'protiucet_banka': _col(tx, 'column3'),
             'vs': _col(tx, 'column5'),
             'zprava': _col(tx, 'column16') or _col(tx, 'column25') or _col(tx, 'column7'),
             'popis': _col(tx, 'column7') or _col(tx, 'column10'),
         })
-    return [r for r in rows if r['fio_id']]
+    info = dict(statement.get('info') or {})
+    if not info.get('accountId') and statement.get('accountId'):
+        info['accountId'] = statement.get('accountId')
+    if not info.get('bankId') and statement.get('bankId'):
+        info['bankId'] = statement.get('bankId')
+    return [r for r in rows if r['fio_id']], info
+
+
+def _download_period(token: str, date_from: date, date_to: date) -> tuple[list, dict]:
+    ensure_fio_available()
+    return _download_period_http(token, date_from, date_to)
+
+
+def _identity_from_info(info: dict, label: str) -> dict | None:
+    account_id = str(info.get('accountId') or '').strip()
+    if not account_id:
+        return None
+    bank = str(info.get('bankId') or '2010').strip() or '2010'
+    return {'label': label, 'account_number': account_id, 'bank': bank}
+
+
+def fetch_fio_identities(date_from: date, date_to: date) -> list[dict]:
+    """Čísla vlastních účtů i když je import pohybů Fio vypnutý."""
+    identities = []
+    for account in get_fio_accounts():
+        label = account.get('label', 'fio')
+        try:
+            _rows, info = _download_period_http(account['token'], date_from, date_to)
+        except Exception:
+            logger.warning('Fio identity selhala pro účet %s', label)
+            continue
+        ident = _identity_from_info(info, label)
+        if ident:
+            identities.append(ident)
+    return identities
+
+
+def fetch_transactions(token: str, date_from: date, date_to: date) -> list[dict]:
+    rows, _info = _download_period(token, date_from, date_to)
+    return rows
 
 
 def fetch_account_balance(token: str) -> dict:
@@ -104,20 +144,31 @@ def fetch_account_balance(token: str) -> dict:
     }
 
 
-def fetch_all_accounts(date_from: date, date_to: date) -> list[dict]:
+def fetch_fio_periods(date_from: date, date_to: date) -> tuple[list[dict], list[dict]]:
+    """Pohyby a identita účtů z jednoho stažení (kvůli limitu Fio API)."""
     ensure_fio_available()
     all_rows = []
+    identities = []
     for account in get_fio_accounts():
         token = account['token']
         label = account.get('label', 'fio')
         try:
-            rows = fetch_transactions(token, date_from, date_to)
-            for row in rows:
-                row['account_label'] = label
-            all_rows.extend(rows)
+            rows, info = _download_period(token, date_from, date_to)
         except Exception as exc:
             logger.warning('Fio import selhal pro účet %s: %s', label, exc)
-    return all_rows
+            continue
+        ident = _identity_from_info(info, label)
+        if ident:
+            identities.append(ident)
+        for row in rows:
+            row['account_label'] = label
+        all_rows.extend(rows)
+    return all_rows, identities
+
+
+def fetch_all_accounts(date_from: date, date_to: date) -> list[dict]:
+    rows, _identities = fetch_fio_periods(date_from, date_to)
+    return rows
 
 
 def fetch_all_balances() -> list[dict]:

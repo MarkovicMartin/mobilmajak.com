@@ -66,6 +66,7 @@ const FinancePrehledPanel = ({ kategorie = [], stores = [], onMessage }) => {
     const counts = useMemo(() => ({
         all: items.length,
         fio: items.filter((p) => p.zdroj === 'fio').length,
+        rb: items.filter((p) => p.zdroj === 'raiffeisen').length,
         kasa: items.filter((p) => p.zdroj === 'symplio_pokladna').length,
     }), [items]);
 
@@ -147,7 +148,7 @@ const FinancePrehledPanel = ({ kategorie = [], stores = [], onMessage }) => {
             {!loading && items.length > 0 && (
                 <p className="finance-prehled-meta">
                     Zobrazeno {items.length} položek
-                    {filterZdroj ? '' : ` (Fio ${counts.fio}, pokladna ${counts.kasa})`}
+                    {filterZdroj ? '' : ` (Fio ${counts.fio}, RB ${counts.rb}, pokladna ${counts.kasa})`}
                 </p>
             )}
             {!loading && items.length > 0 && (

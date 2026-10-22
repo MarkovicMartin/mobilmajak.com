@@ -29,6 +29,46 @@ def get_fio_accounts() -> list[dict]:
     return [a for a in accounts if a.get('token')]
 
 
+def _resolve_secret_file(path: str) -> Path:
+    file_path = Path(path)
+    if not file_path.is_absolute():
+        file_path = settings.BASE_DIR.parent / file_path
+    return file_path
+
+
+def get_raiffeisen_config() -> dict | None:
+    """Client ID, certifikáty .p12 a volitelný filtr účtů. Bez hesla vrací None."""
+    try:
+        data = load_finance_secrets()
+    except FileNotFoundError:
+        raise
+    except Exception:
+        return None
+    rb = data.get('raiffeisen') or {}
+    client_id = (rb.get('client_id') or '').strip()
+    certificates = []
+    for raw in rb.get('certificates') or []:
+        file_name = (raw.get('file') or '').strip()
+        password = raw.get('password') or ''
+        if not file_name or not password:
+            continue
+        path = _resolve_secret_file(file_name)
+        if not path.is_file():
+            continue
+        certificates.append({
+            'label': (raw.get('label') or path.stem).strip(),
+            'file': str(path),
+            'password': password,
+        })
+    if not client_id or not certificates:
+        return None
+    return {
+        'client_id': client_id,
+        'certificates': certificates,
+        'accounts': rb.get('accounts') or [],
+    }
+
+
 def get_flexi_config() -> dict | None:
     """
     Konfigurace ABRA Flexi REST API.

@@ -5,7 +5,7 @@ from pathlib import Path
 
 from django.test import TestCase
 
-from finance.models import NakladPolozka
+from finance.models import NakladKategorie, NakladPolozka
 from finance.services import import_symplio_pokladna_file
 from finance.symplio_pokladna import (
     is_symplio_vydej,
@@ -87,10 +87,14 @@ class SymplioImportTests(TestCase):
         self.assertEqual(p.symplio_doklad, '')
         self.assertEqual(p.castka, Decimal('-5000'))
         self.assertTrue(p.fio_id.startswith('symplio:'))
-        self.assertTrue(p.ignorovat)
-        self.assertEqual(p.stav, NakladPolozka.STAV_IGNOROVAT)
+        self.assertFalse(p.ignorovat)
+        self.assertEqual(p.stav, NakladPolozka.STAV_ZARAZENO)
         self.assertEqual(p.dph_stav, NakladPolozka.DPH_STAV_BEZ)
         self.assertEqual(p.auto_pravidlo, 'symplio:vykup')
+        self.assertEqual(
+            p.kategorie_id,
+            NakladKategorie.objects.get(nazev='Nákup zboží / výkup').id,
+        )
 
     def test_skip_duplicate_on_reimport(self):
         import_symplio_pokladna_file(FIXTURE, prodejna_id=STERNBERK_PRODEJNA_ID)

@@ -7,17 +7,13 @@ const FinanceZdrojFilter = ({ value, onChange, items }) => {
     return (
         <div className="finance-filters" role="group" aria-label="Filtr zdroje">
             {ZDROJ_FILTERS.map((f) => {
-                const count = f.id === 'fio'
-                    ? counts.fio
-                    : f.id === 'symplio_pokladna'
-                        ? counts.kasa
-                        : counts.all;
+                const count = f.id ? (counts[f.id] ?? 0) : counts.all;
                 const active = value === f.id;
                 return (
                     <button
                         key={f.id || 'all'}
                         type="button"
-                        className={`finance-filter-chip${active ? ' active' : ''}${f.id === 'fio' ? ' finance-filter-chip--fio' : ''}${f.id === 'symplio_pokladna' ? ' finance-filter-chip--kasa' : ''}`}
+                        className={`finance-filter-chip${active ? ' active' : ''}${f.id === 'fio' || f.id === 'raiffeisen' ? ' finance-filter-chip--fio' : ''}${f.id === 'symplio_pokladna' ? ' finance-filter-chip--kasa' : ''}`}
                         onClick={() => onChange(f.id)}
                     >
                         {f.label}

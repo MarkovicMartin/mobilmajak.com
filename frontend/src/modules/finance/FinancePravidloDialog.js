@@ -74,7 +74,7 @@ const FinancePravidloDialog = ({
 
     const varovani = navrh?.varovani;
     const varovaniText = varovani === 'fio_bez_uctu'
-        ? 'U této Fio platby chybí číslo účtu (v protiúčtu je pravděpodobně VS). Doplň účet ručně, nebo pravidlo přeskoč.'
+        ? 'U této platby z účtu chybí číslo protiúčtu (v poli je pravděpodobně VS). Doplň účet ručně, nebo pravidlo přeskoč.'
         : varovani === 'chybi_popis'
             ? 'Chybí popisek pro pravidlo z kasy. Doplň text, nebo přeskoč.'
             : '';
@@ -232,7 +232,7 @@ const FinancePravidloDialog = ({
                         {varovaniText && <p className="finance-doklad-edit__warn">{varovaniText}</p>}
                         <p className="finance-modal__hint">
                             {navrh?.zdroj_logika === 'fio'
-                                ? 'Fio: klíčem je číslo protiúčtu.'
+                                ? 'Účet: klíčem je číslo protiúčtu.'
                                 : 'Pokladna: klíčem je popisek výdeje.'}
                         </p>
                         <div className="finance-form finance-form--wide">

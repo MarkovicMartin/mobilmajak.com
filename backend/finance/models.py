@@ -120,11 +120,13 @@ class NakladPolozka(models.Model):
     ]
 
     ZDROJ_FIO = 'fio'
+    ZDROJ_RAIFFEISEN = 'raiffeisen'
     ZDROJ_MANUAL = 'manual'
     ZDROJ_SHEETS = 'sheets_import'
     ZDROJ_SYMPLIO_POKLADNA = 'symplio_pokladna'
     ZDROJ_CHOICES = [
         (ZDROJ_FIO, 'Fio'),
+        (ZDROJ_RAIFFEISEN, 'Raiffeisen'),
         (ZDROJ_MANUAL, 'Ruční'),
         (ZDROJ_SHEETS, 'Sheets import'),
         (ZDROJ_SYMPLIO_POKLADNA, 'Symplio pokladna'),
@@ -200,11 +202,18 @@ class NakladPolozka(models.Model):
         verbose_name_plural = 'Položky nákladů'
 
 
+def is_bank_zdroj(zdroj: str) -> bool:
+    """Fio i Raiffeisen jdou do nákladů stejnou cestou."""
+    return zdroj in (NakladPolozka.ZDROJ_FIO, NakladPolozka.ZDROJ_RAIFFEISEN)
+
+
 class FinanceZustatek(models.Model):
     TYP_FIO = 'fio'
+    TYP_RAIFFEISEN = 'raiffeisen'
     TYP_POKLADNA = 'pokladna'
     TYP_CHOICES = [
         (TYP_FIO, 'Fio účet'),
+        (TYP_RAIFFEISEN, 'Raiffeisen účet'),
         (TYP_POKLADNA, 'Pokladna'),
     ]
 

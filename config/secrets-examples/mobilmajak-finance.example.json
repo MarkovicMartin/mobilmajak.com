@@ -22,6 +22,15 @@
     }
   },
 
+  "raiffeisen": {
+    "_comment": "Premium API. client_id z developers.rb.cz, heslo k .p12. accounts prázdné = všechny účty na certifikátu.",
+    "client_id": "RB_CLIENT_ID",
+    "certificates": [
+      { "label": "mm.com", "file": "secrets/mm.com.p12", "password": "HESLO_CERTIFIKATU" }
+    ],
+    "accounts": []
+  },
+
   "flexi": {
     "_comment": "ABRA Flexi REST API. Není API klíč – uživatel typu REST API + heslo. Licence: zápis API v předplatném.",
     "enabled": true,

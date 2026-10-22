@@ -4,7 +4,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-from .models import NakladKategorie, NakladPolozka
+from .models import NakladKategorie, NakladPolozka, is_bank_zdroj
 
 # Zásilkovna suffix v poznámce: „prepravne - Glo“
 _ZASILKOVNA_SUFFIX = {
@@ -37,6 +37,15 @@ KAT_DOPRAVA = 'Doprava'
 KAT_SPOTREBA = 'Spotřeba prodejny'
 KAT_ZBOZI_NAKUP = 'Nákup zboží / výkup'
 KAT_ZBOZI_NAKUP_LEGACY = 'Zboží – nákup sklad'
+
+# K těmto pohybům se faktura nedokládá. Výkup se přitom počítá do nákladů.
+# Převod a vklad na účet jsou navíc celé mimo náklady.
+BEZ_FAKTURY_PRAVIDLA = frozenset({
+    'symplio:vykup',
+    'symplio:prevod_pokladna',
+    'symplio:vklad_na_ucet',
+    'fio:prevod_vlastni',
+})
 
 
 @dataclass(frozen=True)
@@ -234,7 +243,7 @@ def apply_builtin_rules(row: dict, zdroj: str = '', prodejna_id: int | None = No
     """Vrátí výsledek nebo None (= žádné vestavěné pravidlo)."""
     text = _text_blob(row)
 
-    if zdroj == NakladPolozka.ZDROJ_FIO:
+    if is_bank_zdroj(zdroj):
         fio = _apply_fio_builtin(text)
         if fio:
             return fio
@@ -253,9 +262,11 @@ def apply_builtin_rules(row: dict, zdroj: str = '', prodejna_id: int | None = No
                 NakladPolozka.STAV_IGNOROVAT, None, prodejna_id, True, True, 'symplio:storno',
             )
         if _is_vykup(text):
-            return KategorizaceVysledek(
-                NakladPolozka.STAV_IGNOROVAT, None, prodejna_id, True, True, 'symplio:vykup',
-            )
+            kid = _kat_zbozi_nakup()
+            if kid:
+                return KategorizaceVysledek(
+                    NakladPolozka.STAV_ZARAZENO, kid, prodejna_id, False, True, 'symplio:vykup',
+                )
         if _is_spotreba_prodejny(text):
             kid = _kat(KAT_SPOTREBA)
             if kid:

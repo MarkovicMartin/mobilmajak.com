@@ -1,8 +1,12 @@
 """Testy vestavěných pravidel kategorizace pokladny."""
+from datetime import date
+from decimal import Decimal
+
 from django.test import TestCase
 
 from finance.kategorizace import apply_builtin_rules
 from finance.models import NakladKategorie, NakladPolozka
+from finance.services import qs_ceka_na_fakturu
 
 
 class SymplioKategorizaceTests(TestCase):
@@ -52,11 +56,45 @@ class SymplioKategorizaceTests(TestCase):
     def test_manualni_vydej_vykup(self):
         r = self._apply('Manuální výdej V26070023 Výkup')
         self.assertEqual(r.pravidlo, 'symplio:vykup')
-        self.assertTrue(r.ignorovat)
-        self.assertEqual(r.stav, NakladPolozka.STAV_IGNOROVAT)
-        self.assertIsNone(r.kategorie_id)
+        self.assertFalse(r.ignorovat)
+        self.assertEqual(r.stav, NakladPolozka.STAV_ZARAZENO)
+        self.assertEqual(r.kategorie_id, NakladKategorie.objects.get(nazev='Nákup zboží / výkup').id)
 
-    def test_uhrada_vykupky_ignore(self):
+    def test_uhrada_vykupky(self):
         r = self._apply('Úhrada výkupky V26070012')
         self.assertEqual(r.pravidlo, 'symplio:vykup')
-        self.assertTrue(r.ignorovat)
+        self.assertFalse(r.ignorovat)
+        self.assertEqual(r.kategorie_id, NakladKategorie.objects.get(nazev='Nákup zboží / výkup').id)
+
+    def test_vykup_neni_ve_fronte_faktur(self):
+        kat = NakladKategorie.objects.get(nazev='Nákup zboží / výkup')
+        NakladPolozka.objects.create(
+            datum=date(2026, 10, 21),
+            rok=2026,
+            mesic=10,
+            castka=Decimal('-1500'),
+            kategorie=kat,
+            stav=NakladPolozka.STAV_ZARAZENO,
+            zdroj=NakladPolozka.ZDROJ_SYMPLIO_POKLADNA,
+            fio_id='symplio:test:vykup-fa',
+            ignorovat=False,
+            auto_pravidlo='symplio:vykup',
+            typ_platby=NakladPolozka.TYP_PLATBY_ODCHOZI,
+            dph_stav=NakladPolozka.DPH_STAV_CEKA,
+        )
+        NakladPolozka.objects.create(
+            datum=date(2026, 10, 21),
+            rok=2026,
+            mesic=10,
+            castka=Decimal('-400'),
+            stav=NakladPolozka.STAV_ZARAZENO,
+            zdroj=NakladPolozka.ZDROJ_SYMPLIO_POKLADNA,
+            fio_id='symplio:test:zbozi-fa',
+            ignorovat=False,
+            auto_pravidlo='symplio:zbozi',
+            typ_platby=NakladPolozka.TYP_PLATBY_ODCHOZI,
+            dph_stav=NakladPolozka.DPH_STAV_CEKA,
+        )
+        ids = set(qs_ceka_na_fakturu().values_list('fio_id', flat=True))
+        self.assertNotIn('symplio:test:vykup-fa', ids)
+        self.assertIn('symplio:test:zbozi-fa', ids)

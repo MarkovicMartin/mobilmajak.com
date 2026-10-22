@@ -7,9 +7,15 @@ from decimal import Decimal
 
 from django.utils import timezone
 
-from .models import FinanceDoklad, FioKategorizacniPravidlo, NakladKategorie, NakladPolozka
+from .models import (
+    FinanceDoklad,
+    FioKategorizacniPravidlo,
+    NakladKategorie,
+    NakladPolozka,
+    is_bank_zdroj,
+)
 
-from .kategorizace import apply_all_rules
+from .kategorizace import BEZ_FAKTURY_PRAVIDLA, apply_all_rules
 from .symplio_vydej_parse import faktura_hint_from_polozka
 
 logger = logging.getLogger(__name__)
@@ -40,7 +46,10 @@ def log_finance_system(akce: str, detail: str = ''):
 
 def resolve_dph_stav(kategorie_id: int | None, typ_platby: str) -> str:
     """DPH stav podle kategorie a typu platby – DPH jen z faktury (OCR)."""
-    if typ_platby == NakladPolozka.TYP_PLATBY_PRICHOZI:
+    if typ_platby in (
+        NakladPolozka.TYP_PLATBY_PRICHOZI,
+        NakladPolozka.TYP_PLATBY_INTERNI,
+    ):
         return NakladPolozka.DPH_STAV_BEZ
     if not kategorie_id:
         return NakladPolozka.DPH_STAV_CEKA
@@ -159,7 +168,7 @@ def rule_key_from_polozka(polozka: NakladPolozka) -> dict | None:
     - Fio: jen číslo protiúčtu (ne VS, ne zpráva)
     - Pokladna / ruční: úryvek popisu
     """
-    if polozka.zdroj == NakladPolozka.ZDROJ_FIO:
+    if is_bank_zdroj(polozka.zdroj):
         protiucet = (polozka.protiucet or '').strip()
         if is_fio_account_number(protiucet):
             return {'protiucet': protiucet[:64], 'vs': '', 'zprava_obsahuje': ''}
@@ -178,7 +187,7 @@ def rule_key_from_polozka(polozka: NakladPolozka) -> dict | None:
 
 def navrh_pravidla_from_polozka(polozka: NakladPolozka, *, ignorovat: bool = False) -> dict:
     """Návrh formuláře pravidla – bez uložení."""
-    is_fio = polozka.zdroj == NakladPolozka.ZDROJ_FIO
+    is_fio = is_bank_zdroj(polozka.zdroj)
     key = rule_key_from_polozka(polozka)
     varovani = None
     if is_fio:
@@ -653,90 +662,115 @@ def serialize_pravidlo(rule: FioKategorizacniPravidlo) -> dict:
     }
 
 
-def upsert_fio_row(row: dict, dry_run: bool = False) -> str:
-    """Vrátí 'created' | 'skipped' | 'incoming'."""
+def upsert_fio_row(row: dict, dry_run: bool = False, zdroj: str | None = None) -> str:
+    """Vrátí 'created' | 'skipped' | 'incoming' | 'internal'."""
+    zdroj = zdroj or NakladPolozka.ZDROJ_FIO
     fio_id = row['fio_id']
     if NakladPolozka.objects.filter(fio_id=fio_id).exists():
         return 'skipped'
 
     castka = Decimal(str(row['castka']))
     typ_platby = typ_platby_from_castka(castka)
+    account_label = row.get('account_label', '') if zdroj == NakladPolozka.ZDROJ_RAIFFEISEN else ''
 
-    if typ_platby == NakladPolozka.TYP_PLATBY_PRICHOZI:
-        payload = {
+    def payload(**extra) -> dict:
+        data = {
             'datum': row['datum'],
             'rok': row['datum'].year,
             'mesic': row['datum'].month,
             'castka': castka,
             'kategorie_id': None,
             'prodejna_id': None,
-            'stav': NakladPolozka.STAV_IGNOROVAT,
-            'zdroj': NakladPolozka.ZDROJ_FIO,
+            'zdroj': zdroj,
             'fio_id': fio_id,
             'popis': row.get('popis', ''),
             'protiucet': row.get('protiucet', ''),
             'vs': row.get('vs', ''),
             'zprava': row.get('zprava', ''),
-            'ignorovat': True,
+            'pokladna_label': account_label,
+            'ignorovat': False,
             'zarazeno_automaticky': False,
-            'typ_platby': typ_platby,
-            'dph_stav': NakladPolozka.DPH_STAV_BEZ,
+            'auto_pravidlo': '',
         }
-        if dry_run:
-            return 'incoming'
-        NakladPolozka.objects.create(**payload)
-        return 'incoming'
+        data.update(extra)
+        return data
 
-    cat = apply_all_rules(row, zdroj=NakladPolozka.ZDROJ_FIO)
-    dph_stav = resolve_dph_stav(cat['kategorie_id'], typ_platby)
-    payload = {
-        'datum': row['datum'],
-        'rok': row['datum'].year,
-        'mesic': row['datum'].month,
-        'castka': castka,
-        'kategorie_id': cat['kategorie_id'],
-        'prodejna_id': cat['prodejna_id'],
-        'stav': cat['stav'],
-        'zdroj': NakladPolozka.ZDROJ_FIO,
-        'fio_id': fio_id,
-        'popis': row.get('popis', ''),
-        'protiucet': row.get('protiucet', ''),
-        'vs': row.get('vs', ''),
-        'zprava': row.get('zprava', ''),
-        'ignorovat': cat['ignorovat'],
-        'zarazeno_automaticky': cat['zarazeno_automaticky'],
-        'auto_pravidlo': cat.get('auto_pravidlo', ''),
-        'typ_platby': typ_platby,
-        'dph_stav': dph_stav,
-    }
+    link_doklad = False
+    if row.get('interni'):
+        result = 'internal'
+        item = payload(
+            stav=NakladPolozka.STAV_IGNOROVAT,
+            ignorovat=True,
+            zarazeno_automaticky=True,
+            auto_pravidlo='bank:interni_prevod',
+            typ_platby=NakladPolozka.TYP_PLATBY_INTERNI,
+            dph_stav=NakladPolozka.DPH_STAV_BEZ,
+        )
+    elif typ_platby == NakladPolozka.TYP_PLATBY_PRICHOZI:
+        result = 'incoming'
+        item = payload(
+            stav=NakladPolozka.STAV_IGNOROVAT,
+            ignorovat=True,
+            typ_platby=typ_platby,
+            dph_stav=NakladPolozka.DPH_STAV_BEZ,
+        )
+    else:
+        cat = apply_all_rules(row, zdroj=zdroj)
+        result = 'created'
+        link_doklad = True
+        item = payload(
+            kategorie_id=cat['kategorie_id'],
+            prodejna_id=cat['prodejna_id'],
+            stav=cat['stav'],
+            ignorovat=cat['ignorovat'],
+            zarazeno_automaticky=cat['zarazeno_automaticky'],
+            auto_pravidlo=cat.get('auto_pravidlo', ''),
+            typ_platby=typ_platby,
+            dph_stav=resolve_dph_stav(cat['kategorie_id'], typ_platby),
+        )
+
     if dry_run:
-        return 'created'
-    polozka = NakladPolozka.objects.create(**payload)
-    try:
-        from .doklady import try_auto_link_polozka
-        try_auto_link_polozka(polozka)
-    except Exception:
-        logger.exception('Auto-link doklad failed for fio_id=%s', fio_id)
-    return 'created'
+        return result
+    polozka = NakladPolozka.objects.create(**item)
+    if link_doklad:
+        try:
+            from .doklady import try_auto_link_polozka
+            try_auto_link_polozka(polozka)
+        except Exception:
+            logger.exception('Auto-link doklad failed for fio_id=%s', fio_id)
+    return result
+
+
+def qs_ceka_na_fakturu():
+    """Výdaje, ke kterým se má přiložit faktura.
+
+    Výkup, převod pokladen, vklad na účet a převod vlastních účtů fakturu nechtějí.
+    """
+    return (
+        NakladPolozka.objects.filter(
+            dph_stav=NakladPolozka.DPH_STAV_CEKA,
+            typ_platby=NakladPolozka.TYP_PLATBY_ODCHOZI,
+            ignorovat=False,
+            doklad__isnull=True,
+        )
+        .exclude(stav=NakladPolozka.STAV_IGNOROVAT)
+        .exclude(auto_pravidlo__in=BEZ_FAKTURY_PRAVIDLA)
+    )
 
 
 def get_finance_counts() -> dict:
     odchozi = NakladPolozka.objects.filter(typ_platby=NakladPolozka.TYP_PLATBY_ODCHOZI)
+    ceka = qs_ceka_na_fakturu()
     return {
         'nezarazene': odchozi.filter(stav=NakladPolozka.STAV_NEZARAZENO).count(),
-        'ceka_na_fakturu': odchozi.filter(
-            dph_stav=NakladPolozka.DPH_STAV_CEKA,
-        ).count(),
+        'ceka_na_fakturu': ceka.count(),
         'auto_zarazeno': odchozi.filter(
             stav=NakladPolozka.STAV_ZARAZENO,
             zarazeno_automaticky=True,
         ).count(),
         'rucne_zarazeno': odchozi.filter(stav=NakladPolozka.STAV_RUCNE).count(),
         'ignorovano': odchozi.filter(stav=NakladPolozka.STAV_IGNOROVAT).count(),
-        'bez_faktury': odchozi.filter(
-            dph_stav=NakladPolozka.DPH_STAV_CEKA,
-            doklad__isnull=True,
-        ).exclude(stav=NakladPolozka.STAV_IGNOROVAT).count(),
+        'bez_faktury': ceka.count(),
         'doklady_ke_kontrole': FinanceDoklad.objects.filter(
             stav__in=(
                 FinanceDoklad.STAV_CEKA_NA_OCR,
@@ -807,7 +841,8 @@ def import_symplio_pokladna_file(
             'auto_pravidlo': cat.get('auto_pravidlo', ''),
             'typ_platby': NakladPolozka.TYP_PLATBY_ODCHOZI,
             'dph_stav': (
-                NakladPolozka.DPH_STAV_BEZ if cat['ignorovat']
+                NakladPolozka.DPH_STAV_BEZ
+                if cat['ignorovat'] or cat.get('auto_pravidlo') in BEZ_FAKTURY_PRAVIDLA
                 else resolve_dph_stav(cat['kategorie_id'], NakladPolozka.TYP_PLATBY_ODCHOZI)
             ),
         }

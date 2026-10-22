@@ -6752,6 +6752,48 @@ def _leaderboard_servis_only_day_rows(
     return rows
 
 
+def _leaderboard_servis_only_month_rows(
+    servis_map,
+    seen_ids,
+    excluded_ids,
+    prev_month_points_map,
+    home_store_map,
+    zasilkovna_map=None,
+):
+    """Technici s body ze servisu v měsíci, kteří nemají prodej pod svým id_prodejce."""
+    extra_ids = [
+        int(uid) for uid, pts in servis_map.items()
+        if int(pts) > 0 and int(uid) not in excluded_ids and int(uid) not in seen_ids
+    ]
+    if not extra_ids:
+        return []
+
+    users = {u.id: u for u in _leaderboard_webuser_queryset().filter(id__in=extra_ids)}
+    home_store_map.update(_leaderboard_home_store_map(users))
+    rows = []
+    for uid in extra_ids:
+        user = users.get(uid)
+        if not user:
+            continue
+        servis_points = int(servis_map.get(uid, 0) or 0)
+        rows.append({
+            'id': uid,
+            'prodejce': f"{user.jmeno} {user.prijmeni}".strip(),
+            'prodejna': str(home_store_map.get(uid, 'Neznámá')),
+            'total_points': servis_points,
+            'last_month_points': _leaderboard_prev_month_points_for_user(user, prev_month_points_map),
+            'polozky_nad_100': 0,
+            'viceprace_obrat': 0.0,
+            'sluzby_celkem': 0,
+            'servis_provize': servis_points,
+            'vykupy': 0,
+            'prumer_polozek_uctu': 0.0,
+            'prumer_hodnota_uctenky': 0.0,
+            **(_leaderboard_row_zasilkovna(zasilkovna_map or {}, user, uid, uid)),
+        })
+    return rows
+
+
 def _leaderboard_zasilkovna_only_day_rows(
     zasilkovna_map,
     seen_ids,
@@ -6940,6 +6982,16 @@ def web_prodeje_leaderboard_points(request):
                 servis_points=servis_map.get(staff_user.id, 0),
             ))
             seen_ids.add(staff_user.id)
+
+        leaderboard.extend(_leaderboard_servis_only_month_rows(
+            servis_map,
+            seen_ids,
+            excluded_ids,
+            prev_month_points_map,
+            home_store_map,
+            zasilkovna_map=zasilkovna_map,
+        ))
+        seen_ids = {int(row['id']) for row in leaderboard}
 
         from plans.kategorie_zbozi import body_podle_uzivatele
         kat_map = body_podle_uzivatele(today.replace(day=1), today)
