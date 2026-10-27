@@ -1,7 +1,12 @@
-import React, { useMemo, useRef, useEffect, useCallback } from 'react';
-import { format, parse, startOfMonth, startOfWeek, addDays } from 'date-fns';
+import React, { useMemo, useRef, useEffect, useCallback, useState } from 'react';
+import { format, parse, startOfMonth, startOfWeek, addDays, endOfWeek, isBefore, startOfDay } from 'date-fns';
 import { cs } from 'date-fns/locale';
 import './UnifiedCalendar.css';
+
+/** Týden je uzavřený od pondělí, kdy už jeho neděle skončila. */
+function isFinishedWeek(weekStart, todayStart) {
+  return isBefore(endOfWeek(weekStart, { weekStartsOn: 1 }), todayStart);
+}
 
 /**
  * Unified calendar grid used in both "Správa směn" (full) and "Hromadně" (compact) views.
@@ -21,6 +26,8 @@ function UnifiedCalendar({
   renderCellContent, // (date: Date, meta: { isCurrentMonth, isToday, isSelected }) => ReactNode
   isDateEnabled, // optional (date: Date) => boolean
   getExtraCellClass, // optional (dateStr: string) => string
+  collapsePastWeeks = false,
+  countWeekEntries, // optional (dateStrs: string[]) => number
 }) {
   const monthDate = useMemo(() => parse(`${month}-01`, 'yyyy-MM-dd', new Date()), [month]);
 
@@ -156,6 +163,33 @@ function UnifiedCalendar({
   };
 
   const selectable = Boolean(onDateClick || onDateDragSelect);
+  const todayStart = startOfDay(new Date());
+  const [openWeekKeys, setOpenWeekKeys] = useState(() => new Set());
+
+  useEffect(() => {
+    setOpenWeekKeys(new Set());
+  }, [month]);
+
+  const weeks = useMemo(() => {
+    const rows = [];
+    for (let weekIndex = 0; weekIndex < 6; weekIndex += 1) {
+      rows.push(days.slice(weekIndex * 7, weekIndex * 7 + 7));
+    }
+    return rows;
+  }, [days]);
+
+  const toggleWeek = (weekKey) => {
+    setOpenWeekKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(weekKey)) next.delete(weekKey);
+      else next.add(weekKey);
+      return next;
+    });
+  };
+
+  const stopToggleEvent = (event) => {
+    event.stopPropagation();
+  };
 
   return (
     <div
@@ -172,37 +206,92 @@ function UnifiedCalendar({
       </div>
 
       <div className="uc-grid">
-        {days.map((date, idx) => {
-          const dateStr = format(date, 'yyyy-MM-dd');
-          const inCurrentMonth = format(date, 'yyyy-MM') === month;
-          const isToday = dateStr === todayStr;
-          const isSelected = selectedDates && selectedDates.has(dateStr);
-          const disabled = isCellDisabled(dateStr, date);
-          const extraClass = getExtraCellClass ? getExtraCellClass(dateStr) : '';
+        {weeks.map((weekDays, weekIndex) => {
+          const weekKey = format(weekDays[0], 'yyyy-MM-dd');
+          const pastWeek = collapsePastWeeks && isFinishedWeek(weekDays[0], todayStart);
+          const collapsed = pastWeek && !openWeekKeys.has(weekKey);
+          const rangeLabel = `${format(weekDays[0], 'd. M.', { locale: cs })} – ${format(weekDays[6], 'd. M.', { locale: cs })}`;
 
           return (
             <div
-              key={dateStr + idx}
-              ref={(el) => { cellRefs.current[idx] = el; }}
+              key={weekKey}
               className={[
-                'uc-cell',
-                inCurrentMonth ? 'current' : 'other',
-                disabled ? 'disabled' : '',
-                isSelected ? 'selected' : '',
-                isToday ? 'today' : '',
-                selectable && !disabled ? 'selectable' : '',
-                extraClass || '',
+                'uc-week',
+                collapsed ? 'uc-week--collapsed' : '',
+                pastWeek && !collapsed ? 'uc-week--past-open' : '',
               ].filter(Boolean).join(' ')}
-              role="gridcell"
-              tabIndex={disabled ? -1 : 0}
-              aria-selected={isSelected || undefined}
-              onKeyDown={(e) => handleKeyDown(idx, e)}
-              onMouseDown={(e) => handleDateMouseDown(dateStr, date, e)}
-              onMouseEnter={() => handleDateMouseEnter(dateStr, date)}
             >
-              <div className="uc-day-number">{format(date, 'd')}</div>
-              <div className="uc-cell-content">
-                {renderCellContent ? renderCellContent(date, { isCurrentMonth: inCurrentMonth, isToday, isSelected }) : null}
+              {pastWeek && !collapsed && (
+                <div className="uc-week-bar">
+                  <button
+                    type="button"
+                    className="uc-week-toggle"
+                    aria-expanded="true"
+                    onMouseDown={stopToggleEvent}
+                    onClick={(event) => {
+                      stopToggleEvent(event);
+                      toggleWeek(weekKey);
+                    }}
+                  >
+                    Sbalit směny
+                  </button>
+                </div>
+              )}
+              <div className="uc-week-days">
+                {weekDays.map((date, dayIndex) => {
+                  const idx = weekIndex * 7 + dayIndex;
+                  const dateStr = format(date, 'yyyy-MM-dd');
+                  const inCurrentMonth = format(date, 'yyyy-MM') === month;
+                  const isToday = dateStr === todayStr;
+                  const isSelected = selectedDates && selectedDates.has(dateStr);
+                  const disabled = isCellDisabled(dateStr, date);
+                  const extraClass = !collapsed && getExtraCellClass ? getExtraCellClass(dateStr) : '';
+                  const dayCount = collapsed && countWeekEntries ? countWeekEntries([dateStr]) : 0;
+
+                  return (
+                    <div
+                      key={dateStr + idx}
+                      ref={(el) => { cellRefs.current[idx] = el; }}
+                      className={[
+                        'uc-cell',
+                        inCurrentMonth ? 'current' : 'other',
+                        disabled ? 'disabled' : '',
+                        isSelected ? 'selected' : '',
+                        isToday ? 'today' : '',
+                        selectable && !disabled ? 'selectable' : '',
+                        extraClass || '',
+                      ].filter(Boolean).join(' ')}
+                      role="gridcell"
+                      tabIndex={disabled ? -1 : 0}
+                      aria-selected={isSelected || undefined}
+                      onKeyDown={(e) => handleKeyDown(idx, e)}
+                      onMouseDown={(e) => handleDateMouseDown(dateStr, date, e)}
+                      onMouseEnter={() => handleDateMouseEnter(dateStr, date)}
+                    >
+                      <div className="uc-day-number">{format(date, 'd')}</div>
+                      {collapsed && dayCount > 0 && (
+                        <button
+                          type="button"
+                          className="uc-week-toggle"
+                          aria-expanded="false"
+                          aria-label={`Rozbalit směny ${format(date, 'd. M.', { locale: cs })}, týden ${rangeLabel}`}
+                          onMouseDown={stopToggleEvent}
+                          onClick={(event) => {
+                            stopToggleEvent(event);
+                            toggleWeek(weekKey);
+                          }}
+                        >
+                          Rozbalit směny ({dayCount})
+                        </button>
+                      )}
+                      {!collapsed && (
+                        <div className="uc-cell-content">
+                          {renderCellContent ? renderCellContent(date, { isCurrentMonth: inCurrentMonth, isToday, isSelected }) : null}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           );

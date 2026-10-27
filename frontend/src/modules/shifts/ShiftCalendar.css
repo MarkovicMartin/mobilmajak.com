@@ -195,14 +195,14 @@
 }
 
 .staffing-alert {
-    position: absolute;
-    top: 14px;
-    right: 2px;
-    left: 2px;
-    z-index: 4;
+    position: static;
+    z-index: auto;
     display: flex;
     flex-direction: column;
     gap: 1px;
+    width: 100%;
+    box-sizing: border-box;
+    margin-top: 2px;
     font-size: 9px;
     font-weight: 700;
     text-align: center;
@@ -229,11 +229,12 @@
 }
 
 .closure-notice {
-    position: absolute;
-    top: 14px;
-    right: 2px;
-    left: 2px;
-    z-index: 4;
+    position: static;
+    z-index: auto;
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    margin-top: 2px;
     font-size: 8px;
     font-weight: 600;
     text-align: center;
@@ -241,6 +242,7 @@
     border-radius: 3px;
     line-height: 1.25;
     pointer-events: none;
+    overflow-wrap: anywhere;
 }
 
 .closure-notice--always_closed {
@@ -383,7 +385,7 @@
 
 /* KONTEJNER PRO SMĚNY */
 .shifts-container {
-    margin-top: 16px;
+    margin-top: 2px;
     padding: 0;
     display: flex;
     flex-direction: column;
@@ -561,10 +563,6 @@
     box-shadow: 0 0 0 2px #fff4cc;
 }
 
-.unified-calendar.full .uc-cell.has-vyjezd .staffing-alert {
-    max-height: 22px;
-    overflow: hidden;
-}
 
 .legend-swatch--vyjezd {
     background: #fff8e1;
@@ -825,7 +823,7 @@
     }
     
     .shifts-container {
-        margin-top: 20px;
+        margin-top: 2px;
     }
     
     .shift-item {
@@ -876,7 +874,7 @@
     }
     
     .shifts-container {
-        margin-top: 16px;
+        margin-top: 2px;
     }
     
     .shift-item {

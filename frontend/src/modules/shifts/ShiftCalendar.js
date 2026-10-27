@@ -608,6 +608,12 @@ function ShiftCalendar({
                     onDateDragSelect={(dateStr) => handlePickDate(dateStr)}
                     onDragSelectComplete={handleDragSelectComplete}
                     getExtraCellClass={getExtraCellClass}
+                    collapsePastWeeks={month === format(new Date(), 'yyyy-MM')}
+                    countWeekEntries={(dateStrs) => dateStrs.reduce((sum, dateStr) => (
+                        sum
+                        + (kalendarData[dateStr]?.length || 0)
+                        + (vyjezdy[dateStr]?.length || 0)
+                    ), 0)}
                     renderCellContent={(date) => {
                         const dateStr = format(date, 'yyyy-MM-dd');
                         const shifts = getShiftsForDate(dateStr);

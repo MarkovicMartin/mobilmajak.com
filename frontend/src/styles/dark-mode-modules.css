@@ -293,6 +293,23 @@
     box-shadow: inset 0 0 0 2px var(--brand-pink);
 }
 
+.dark-mode .uc-week-bar {
+    background: var(--bg-inset) !important;
+    border-bottom-color: var(--border-subtle) !important;
+}
+
+.dark-mode .uc-week-toggle {
+    background: var(--bg-card) !important;
+    color: var(--text-muted) !important;
+    border-color: var(--border-primary) !important;
+}
+
+.dark-mode .uc-week-toggle:hover,
+.dark-mode .uc-week-toggle:focus-visible {
+    color: var(--text-primary) !important;
+    border-color: var(--brand-pink) !important;
+}
+
 .dark-mode .profile-calendar .btn-outline {
     background: var(--bg-inset) !important;
     border-color: var(--border-primary) !important;
