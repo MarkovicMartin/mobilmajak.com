@@ -57,7 +57,7 @@ class UpsertFioRowTests(TestCase):
     def _row(self, castka, fio_id='fio-1'):
         return {
             'fio_id': fio_id,
-            'datum': date(2026, 3, 1),
+            'datum': date(2026, 10, 23),
             'castka': Decimal(castka),
             'popis': 'test',
             'protiucet': '123/0100',

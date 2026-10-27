@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from datetime import date
 
 from .models import NakladKategorie, NakladPolozka, is_bank_zdroj
 
@@ -40,6 +41,8 @@ KAT_ZBOZI_NAKUP_LEGACY = 'Zboží – nákup sklad'
 
 # K těmto pohybům se faktura nedokládá. Výkup se přitom počítá do nákladů.
 # Převod a vklad na účet jsou navíc celé mimo náklady.
+# Fakturu chceme jen u výdajů od tohoto dne dál.
+FAKTURA_OD = date(2026, 10, 23)
 BEZ_FAKTURY_PRAVIDLA = frozenset({
     'symplio:vykup',
     'symplio:prevod_pokladna',

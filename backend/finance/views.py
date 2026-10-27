@@ -18,6 +18,7 @@ from .permissions import (
     accessible_store_ids,
     finance_admin_view,
     finance_invoice_view,
+    invoice_prodejny_context,
     is_finance_admin,
     naklady_qs_for_invoice_user,
     user_can_upload_doklad,
@@ -753,12 +754,39 @@ def pravidla_apply_all(request):
     return _no_store_response(result)
 
 
+def _parse_invoice_store_param(raw, store_ids):
+    """Vrátí (selected, error_response). selected je int nebo 'all'."""
+    if raw in (None, '', 'all'):
+        if raw == 'all' or store_ids is None:
+            return 'all', None
+        return None, None
+    try:
+        selected_id = int(raw)
+    except (TypeError, ValueError):
+        return None, _no_store_response(
+            {'error': 'Neplatná prodejna'},
+            status.HTTP_400_BAD_REQUEST,
+        )
+    if store_ids is not None and selected_id not in store_ids:
+        return None, _no_store_response(
+            {'error': 'K této prodejně nemáte přístup'},
+            status.HTTP_403_FORBIDDEN,
+        )
+    return selected_id, None
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 @finance_invoice_view
 def naklady_ceka_na_fakturu(request):
-    """Výdaje čekající na přiložení faktury – prodejce vidí svou prodejnu."""
+    """Výdaje čekající na fakturu.
+
+    Admin vidí vše. Prodejce a brigádník výchozí domácí prodejnu,
+    při probíhající směně jinde tu prodejnu. `prodejna_id=all` vrátí
+    všechny jejich chybějící faktury.
+    """
     log_finance_audit(request, 'naklady_ceka_na_fakturu')
+    ctx = invoice_prodejny_context(request.user)
     qs = (
         qs_ceka_na_fakturu()
         .select_related('kategorie', 'doklad')
@@ -768,7 +796,35 @@ def naklady_ceka_na_fakturu(request):
     if store_ids is not None:
         qs = qs.filter(prodejna_id__in=store_ids)
     qs = naklady_qs_for_invoice_user(qs, request.user)
-    return _no_store_response(serialize_naklad_polozky(qs[:300]))
+
+    counts = {
+        row['prodejna_id']: row['n']
+        for row in qs.values('prodejna_id').annotate(n=Count('id'))
+    }
+    prodejny = ctx['prodejny']
+    if prodejny is not None:
+        for row in prodejny:
+            row['pocet'] = counts.get(row['id'], 0)
+    pocet_vse = sum(counts.values())
+
+    raw = request.GET.get('prodejna_id')
+    selected, error = _parse_invoice_store_param(raw, store_ids)
+    if error:
+        return error
+    if selected is None:
+        selected = ctx['default_prodejna_id'] if ctx['default_prodejna_id'] else 'all'
+    if selected != 'all':
+        qs = qs.filter(prodejna_id=selected)
+
+    return _no_store_response({
+        'items': serialize_naklad_polozky(qs[:300]),
+        'prodejny': prodejny,
+        'default_prodejna_id': ctx['default_prodejna_id'],
+        'domaci_prodejna_id': ctx['domaci_prodejna_id'],
+        'aktualni_smena_prodejna_id': ctx['aktualni_smena_prodejna_id'],
+        'prodejna_id': selected,
+        'pocet_vse': pocet_vse,
+    })
 
 
 @api_view(['POST'])

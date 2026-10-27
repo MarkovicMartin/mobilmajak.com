@@ -105,7 +105,7 @@ class UpsertBankRowTests(TestCase):
         NakladKategorie.objects.create(nazev='Energie rb')
         result = upsert_fio_row({
             'fio_id': 'rb:1:out',
-            'datum': date(2026, 10, 1),
+            'datum': date(2026, 10, 23),
             'castka': Decimal('-800'),
             'popis': 'Dodavatel',
             'protiucet': '1234567890/0100',

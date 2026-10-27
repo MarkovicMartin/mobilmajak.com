@@ -50,40 +50,13 @@
     color: #c62828;
 }
 
-.reklamace-form__actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 8px;
-    margin-top: 12px;
+.modal-overlay.reklamace-form-confirm-overlay {
+    z-index: 16000 !important;
 }
 
-.reklamace-form-confirm {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.55);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1100;
-    padding: 1rem;
-}
-
-.reklamace-form-confirm__box {
-    background: var(--bg-card, #fff);
-    border-radius: 12px;
-    padding: 1.25rem;
-    max-width: 420px;
-    width: 100%;
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
-}
-
-.reklamace-form-confirm__box h4 {
-    margin: 0 0 0.5rem;
-}
-
-.reklamace-form-confirm__box p {
-    margin: 0 0 1rem;
-    color: #555;
+.reklamace-form-confirm__text {
+    margin: 0;
+    color: var(--text-secondary, #555);
     font-size: 0.9rem;
 }
 

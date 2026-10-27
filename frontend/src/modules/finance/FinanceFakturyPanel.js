@@ -6,6 +6,8 @@ import FinanceDokladSummary from './FinanceDokladSummary';
 import { movementLabel, zdrojMeta } from './financeUtils';
 import './FinanceFakturyPanel.css';
 
+const sameStore = (a, b) => a != null && b != null && String(a) === String(b);
+
 const formatCurrency = (value) => {
     const n = Number(value) || 0;
     return new Intl.NumberFormat('cs-CZ', {
@@ -24,6 +26,11 @@ const FinanceFakturyPanel = ({ intro }) => {
     const [uploadingId, setUploadingId] = useState(null);
     const [forms, setForms] = useState({});
     const [filterZdroj, setFilterZdroj] = useState('');
+    /** undefined = server zvolí výchozí prodejnu; číslo nebo 'all' = ruční volba. */
+    const [prodejnaParam, setProdejnaParam] = useState(undefined);
+    const [prodejny, setProdejny] = useState(null);
+    const [vybrana, setVybrana] = useState('all');
+    const [pocetVse, setPocetVse] = useState(0);
     /** Položky právě nahrané v této relaci – držíme kartu s OCR shrnutím. */
     const [doneUploads, setDoneUploads] = useState([]);
 
@@ -31,14 +38,27 @@ const FinanceFakturyPanel = ({ intro }) => {
         setLoading(true);
         setError('');
         try {
-            const rows = await financeAPI.getCekaNaFakturu();
-            setItems(Array.isArray(rows) ? rows : []);
+            const params = {};
+            if (prodejnaParam !== undefined) params.prodejna_id = prodejnaParam;
+            const data = await financeAPI.getCekaNaFakturu(params);
+            if (Array.isArray(data)) {
+                setItems(data);
+                setProdejny(null);
+                setVybrana('all');
+                setPocetVse(data.length);
+            } else {
+                const rows = Array.isArray(data?.items) ? data.items : [];
+                setItems(rows);
+                setProdejny(Array.isArray(data?.prodejny) ? data.prodejny : null);
+                setVybrana(data?.prodejna_id ?? 'all');
+                setPocetVse(data?.pocet_vse ?? rows.length);
+            }
         } catch (e) {
             setError(e.response?.data?.error || e.message || 'Chyba načítání');
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [prodejnaParam]);
 
     useEffect(() => {
         load();
@@ -49,10 +69,14 @@ const FinanceFakturyPanel = ({ intro }) => {
         [items, filterZdroj],
     );
 
-    const doneFiltered = useMemo(
-        () => (filterZdroj ? doneUploads.filter((p) => p.zdroj === filterZdroj) : doneUploads),
-        [doneUploads, filterZdroj],
-    );
+    const doneFiltered = useMemo(() => {
+        let rows = doneUploads;
+        if (vybrana !== 'all') {
+            rows = rows.filter((p) => sameStore(p.prodejna_id, vybrana));
+        }
+        if (filterZdroj) rows = rows.filter((p) => p.zdroj === filterZdroj);
+        return rows;
+    }, [doneUploads, filterZdroj, vybrana]);
 
     const hintDefaults = (p) => {
         const h = p.faktura_hint;
@@ -200,6 +224,9 @@ const FinanceFakturyPanel = ({ intro }) => {
     };
 
     const empty = !loading && waiting.length === 0 && doneFiltered.length === 0;
+    const jinde = Array.isArray(prodejny)
+        ? prodejny.filter((store) => !sameStore(store.id, vybrana) && (store.pocet || 0) > 0)
+        : [];
 
     return (
         <section className="finance-faktury-panel">
@@ -208,10 +235,43 @@ const FinanceFakturyPanel = ({ intro }) => {
                 Výdej z pokladny se sem dostane během dne (import ze Symplio cca každých
                 30&nbsp;min mezi 8:30–21:00). Prodejna je podle pokladny, kde byl výběr.
             </p>
+            {Array.isArray(prodejny) && prodejny.length > 1 && (
+                <div className="finance-faktury-stores" role="group" aria-label="Prodejna">
+                    {prodejny.map((store) => {
+                        const active = sameStore(vybrana, store.id);
+                        const tags = [
+                            store.je_domaci ? 'domácí' : '',
+                            store.je_aktualni_smena && !store.je_domaci ? 'směna' : '',
+                        ].filter(Boolean);
+                        return (
+                            <button
+                                key={store.id}
+                                type="button"
+                                className={`finance-filter-chip${active ? ' active' : ''}`}
+                                onClick={() => setProdejnaParam(store.id)}
+                            >
+                                {store.nazev}
+                                {tags.length > 0 && (
+                                    <span className="finance-faktury-store-tag">{tags.join(', ')}</span>
+                                )}
+                                <span className="finance-filter-chip__count">{store.pocet ?? 0}</span>
+                            </button>
+                        );
+                    })}
+                    <button
+                        type="button"
+                        className={`finance-filter-chip${vybrana === 'all' ? ' active' : ''}`}
+                        onClick={() => setProdejnaParam('all')}
+                    >
+                        Všechny chybějící
+                        <span className="finance-filter-chip__count">{pocetVse}</span>
+                    </button>
+                </div>
+            )}
             {loading && <p>Načítám…</p>}
             {error && <p className="finance-faktury-error">{error}</p>}
             {message && <p className="finance-faktury-message">{message}</p>}
-            {!loading && (items.length > 0 || doneUploads.length > 0) && (
+            {!loading && prodejny == null && (items.length > 0 || doneUploads.length > 0) && (
                 <FinanceZdrojFilter
                     value={filterZdroj}
                     onChange={setFilterZdroj}
@@ -219,7 +279,14 @@ const FinanceFakturyPanel = ({ intro }) => {
                 />
             )}
             {empty && (
-                <p className="finance-faktury-empty">Žádné výdaje nečekají na fakturu.</p>
+                <p className="finance-faktury-empty">
+                    {vybrana === 'all' || !Array.isArray(prodejny)
+                        ? 'Žádné výdaje nečekají na fakturu.'
+                        : 'Na této prodejně nic nečeká na fakturu.'}
+                    {vybrana !== 'all' && jinde.length > 0 && (
+                        <> Chybějící faktury jsou na {jinde.map((store) => store.nazev).join(', ')}.</>
+                    )}
+                </p>
             )}
             {!loading && doneFiltered.length > 0 && (
                 <div className="finance-faktury-list">

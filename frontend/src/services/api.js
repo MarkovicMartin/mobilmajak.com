@@ -505,7 +505,9 @@ export const financeAPI = {
     getNakladyAnalytika: async (params = {}) => (
         await api.get('/finance/naklady/analytika/', { params })
     ).data,
-    getCekaNaFakturu: async () => (await api.get('/finance/naklady/ceka-na-fakturu/')).data,
+    getCekaNaFakturu: async (params = {}) => (
+        await api.get('/finance/naklady/ceka-na-fakturu/', { params })
+    ).data,
     getDokladyKeKontrole: async () => (await api.get('/finance/doklady/ke-kontrole/')).data,
     getManualNaklady: async () => (await api.get('/finance/naklady/manual/')).data,
     createManualNaklad: async (payload) => (

@@ -8,6 +8,18 @@
     margin-bottom: 1rem;
 }
 
+.finance-faktury-stores {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.finance-faktury-store-tag {
+    font-weight: 500;
+    opacity: 0.75;
+}
+
 .finance-faktury-error {
     color: #c0392b;
 }

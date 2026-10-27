@@ -70,12 +70,13 @@ const ReklamaceForm = ({ defaultProdejna, onSave, onCancel }) => {
         <>
             <Modal
                 title="Nová reklamace"
-                onClose={onCancel}
+                onClose={showNoTrackingConfirm ? undefined : onCancel}
+                closeOnBackdrop={!showNoTrackingConfirm}
                 size="md"
                 bodyClassName="reklamace-form-body"
                 footer={(
                     <>
-                        <button type="button" className="btn-cancel" onClick={onCancel}>
+                        <button type="button" className="btn-cancel" onClick={onCancel} disabled={saving}>
                             Zrušit
                         </button>
                         <button
@@ -142,14 +143,19 @@ const ReklamaceForm = ({ defaultProdejna, onSave, onCancel }) => {
             </Modal>
 
             {showNoTrackingConfirm && (
-                <div className="reklamace-form-confirm" role="dialog" aria-modal="true">
-                    <div className="reklamace-form-confirm__box">
-                        <h4>Přidat reklamaci bez čísla balíčku?</h4>
-                        <p>Doplníš později / čekáš na další zboží?</p>
-                        <div className="reklamace-form__actions">
+                <Modal
+                    title="Přidat reklamaci bez čísla balíčku?"
+                    onClose={() => {
+                        if (!saving) setShowNoTrackingConfirm(false);
+                    }}
+                    size="sm"
+                    overlayClassName="reklamace-form-confirm-overlay"
+                    footer={(
+                        <>
                             <button
                                 type="button"
                                 className="btn-cancel"
+                                disabled={saving}
                                 onClick={() => setShowNoTrackingConfirm(false)}
                             >
                                 Zpět – doplnit číslo
@@ -162,9 +168,13 @@ const ReklamaceForm = ({ defaultProdejna, onSave, onCancel }) => {
                             >
                                 {saving ? 'Ukládám…' : 'Ano, uložit bez čísla'}
                             </button>
-                        </div>
-                    </div>
-                </div>
+                        </>
+                    )}
+                >
+                    <p className="reklamace-form-confirm__text">
+                        Doplníš později / čekáš na další zboží?
+                    </p>
+                </Modal>
             )}
         </>
     );

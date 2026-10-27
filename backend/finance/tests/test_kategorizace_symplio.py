@@ -89,6 +89,19 @@ class SymplioKategorizaceTests(TestCase):
             castka=Decimal('-400'),
             stav=NakladPolozka.STAV_ZARAZENO,
             zdroj=NakladPolozka.ZDROJ_SYMPLIO_POKLADNA,
+            fio_id='symplio:test:zbozi-stare',
+            ignorovat=False,
+            auto_pravidlo='symplio:zbozi',
+            typ_platby=NakladPolozka.TYP_PLATBY_ODCHOZI,
+            dph_stav=NakladPolozka.DPH_STAV_CEKA,
+        )
+        NakladPolozka.objects.create(
+            datum=date(2026, 10, 23),
+            rok=2026,
+            mesic=10,
+            castka=Decimal('-400'),
+            stav=NakladPolozka.STAV_ZARAZENO,
+            zdroj=NakladPolozka.ZDROJ_SYMPLIO_POKLADNA,
             fio_id='symplio:test:zbozi-fa',
             ignorovat=False,
             auto_pravidlo='symplio:zbozi',
@@ -97,4 +110,5 @@ class SymplioKategorizaceTests(TestCase):
         )
         ids = set(qs_ceka_na_fakturu().values_list('fio_id', flat=True))
         self.assertNotIn('symplio:test:vykup-fa', ids)
+        self.assertNotIn('symplio:test:zbozi-stare', ids)
         self.assertIn('symplio:test:zbozi-fa', ids)

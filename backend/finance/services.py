@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 import re
+from datetime import date
 from decimal import Decimal
 
 from django.utils import timezone
@@ -15,7 +16,7 @@ from .models import (
     is_bank_zdroj,
 )
 
-from .kategorizace import BEZ_FAKTURY_PRAVIDLA, apply_all_rules
+from .kategorizace import BEZ_FAKTURY_PRAVIDLA, FAKTURA_OD, apply_all_rules
 from .symplio_vydej_parse import faktura_hint_from_polozka
 
 logger = logging.getLogger(__name__)
@@ -726,7 +727,10 @@ def upsert_fio_row(row: dict, dry_run: bool = False, zdroj: str | None = None) -
             zarazeno_automaticky=cat['zarazeno_automaticky'],
             auto_pravidlo=cat.get('auto_pravidlo', ''),
             typ_platby=typ_platby,
-            dph_stav=resolve_dph_stav(cat['kategorie_id'], typ_platby),
+            dph_stav=dph_stav_vydaje(
+                row['datum'], cat['kategorie_id'], typ_platby,
+                ignorovat=cat['ignorovat'], auto_pravidlo=cat.get('auto_pravidlo', ''),
+            ),
         )
 
     if dry_run:
@@ -741,13 +745,22 @@ def upsert_fio_row(row: dict, dry_run: bool = False, zdroj: str | None = None) -
     return result
 
 
+def dph_stav_vydaje(datum: date, kategorie_id, typ_platby: str, ignorovat: bool = False, auto_pravidlo: str = '') -> str:
+    """Fakturu vyžadujeme až od 23. 10. 2026. Starší výdaj ji nedostane."""
+    if ignorovat or (auto_pravidlo or '') in BEZ_FAKTURY_PRAVIDLA or datum < FAKTURA_OD:
+        return NakladPolozka.DPH_STAV_BEZ
+    return resolve_dph_stav(kategorie_id, typ_platby)
+
+
 def qs_ceka_na_fakturu():
     """Výdaje, ke kterým se má přiložit faktura.
 
     Výkup, převod pokladen, vklad na účet a převod vlastních účtů fakturu nechtějí.
+    Před 23. 10. 2026 se faktura nedokládá.
     """
     return (
         NakladPolozka.objects.filter(
+            datum__gte=FAKTURA_OD,
             dph_stav=NakladPolozka.DPH_STAV_CEKA,
             typ_platby=NakladPolozka.TYP_PLATBY_ODCHOZI,
             ignorovat=False,
@@ -840,10 +853,9 @@ def import_symplio_pokladna_file(
             'zarazeno_automaticky': cat['zarazeno_automaticky'],
             'auto_pravidlo': cat.get('auto_pravidlo', ''),
             'typ_platby': NakladPolozka.TYP_PLATBY_ODCHOZI,
-            'dph_stav': (
-                NakladPolozka.DPH_STAV_BEZ
-                if cat['ignorovat'] or cat.get('auto_pravidlo') in BEZ_FAKTURY_PRAVIDLA
-                else resolve_dph_stav(cat['kategorie_id'], NakladPolozka.TYP_PLATBY_ODCHOZI)
+            'dph_stav': dph_stav_vydaje(
+                row['datum'], cat['kategorie_id'], NakladPolozka.TYP_PLATBY_ODCHOZI,
+                ignorovat=cat['ignorovat'], auto_pravidlo=cat.get('auto_pravidlo', ''),
             ),
         }
         if pokladna_key:
@@ -859,6 +871,8 @@ def import_symplio_pokladna_file(
             changed = False
             for field, value in payload.items():
                 if field == 'fio_id' and existing.fio_id:
+                    continue
+                if field == 'dph_stav' and existing.dph_stav == NakladPolozka.DPH_STAV_SPAROVANO:
                     continue
                 if getattr(existing, field) != value:
                     setattr(existing, field, value)

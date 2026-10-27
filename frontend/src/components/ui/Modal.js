@@ -22,6 +22,7 @@ function Modal({
     footer,
     bodyClassName = '',
     contentClassName = '',
+    overlayClassName = '',
     formRef,
     onSubmit,
     closeOnBackdrop = true,
@@ -76,7 +77,7 @@ function Modal({
     return (
         <ModalPortal>
             <div
-                className="modal-overlay ui-modal__overlay"
+                className={['modal-overlay', 'ui-modal__overlay', overlayClassName].filter(Boolean).join(' ')}
                 onClick={handleBackdrop}
                 role="presentation"
             >
