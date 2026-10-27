@@ -35,6 +35,7 @@ from users.exclusions import vacation_overview_users_queryset
 from users.models import WebUser
 from stores.models import Prodejna
 from .czech_holidays import get_ceske_svatky, get_nazev_svatku
+from .mall_closure import christmas_eve_shift_error, retail_closed_shift_error
 from .shift_helpers import (
     apply_calendar_prodejna_filter,
     apply_backoffice_calendar_filter,
@@ -349,6 +350,14 @@ def smeny_list(request):
             poznamka_err = _validate_shift_poznamka(typ_smeny, pozice, data.get('poznamka', ''))
             if poznamka_err:
                 return Response({'error': poznamka_err}, status=status.HTTP_400_BAD_REQUEST)
+            closed_err = retail_closed_shift_error(request.user, shift_datum, prodejna_obj)
+            if closed_err:
+                return Response({'error': closed_err}, status=status.HTTP_403_FORBIDDEN)
+            eve_err = christmas_eve_shift_error(
+                shift_datum, prodejna_obj, typ_smeny, cas_od, cas_do,
+            )
+            if eve_err:
+                return Response({'error': eve_err}, status=status.HTTP_400_BAD_REQUEST)
 
             with transaction.atomic():
                 Smena.objects.select_for_update().filter(
@@ -484,6 +493,10 @@ def smeny_bulk_create(request):
                 if not user_may_edit_shift_on_date(request.user, datum):
                     chyby.append(f'{datum_str}: Nelze vytvářet směny v minulých měsících')
                     continue
+                closed_err = retail_closed_shift_error(request.user, datum, prodejna_obj)
+                if closed_err:
+                    chyby.append(f'{datum_str}: {closed_err}')
+                    continue
                 
                 bulk_cas_od = parse_shift_time(cas_od)
                 bulk_cas_do = parse_shift_time(cas_do)
@@ -495,6 +508,13 @@ def smeny_bulk_create(request):
                     bulk_cas_od, bulk_cas_do = normalize_dovolena_casy(datum, bulk_cas_od, bulk_cas_do)
                 elif is_absence_shift(typ_smeny):
                     bulk_cas_od, bulk_cas_do = normalize_dovolena_casy(datum, bulk_cas_od, bulk_cas_do)
+
+                eve_err = christmas_eve_shift_error(
+                    datum, prodejna_obj, typ_smeny, bulk_cas_od, bulk_cas_do,
+                )
+                if eve_err:
+                    chyby.append(f'{datum_str}: {eve_err}')
+                    continue
 
                 if find_overlapping_shift(user, datum, prodejna_obj, typ_smeny, bulk_cas_od, bulk_cas_do):
                     chyby.append(f'{datum_str}: Směna se časově překrývá s existující')
@@ -645,6 +665,14 @@ def smena_detail(request, smena_id):
             poznamka_err = _validate_shift_poznamka(smena.typ_smeny, smena.pozice_smeny, smena.poznamka)
             if poznamka_err:
                 return Response({'error': poznamka_err}, status=status.HTTP_400_BAD_REQUEST)
+            closed_err = retail_closed_shift_error(request.user, smena.datum, smena.prodejna)
+            if closed_err:
+                return Response({'error': closed_err}, status=status.HTTP_403_FORBIDDEN)
+            eve_err = christmas_eve_shift_error(
+                smena.datum, smena.prodejna, smena.typ_smeny, smena.cas_od, smena.cas_do,
+            )
+            if eve_err:
+                return Response({'error': eve_err}, status=status.HTTP_400_BAD_REQUEST)
 
             conflict = find_overlapping_shift(
                 smena.user,
@@ -865,7 +893,7 @@ def kalendar_data(request):
                 datum_str = f"{rok_s}-{mesic_s:02d}-{den_s:02d}"
                 entry = {
                     'je_svatek': True,
-                    'nazev': get_nazev_svatku(mesic_s, den_s),
+                    'nazev': get_nazev_svatku(mesic_s, den_s, rok_s),
                 }
                 from .mall_closure import closure_kind_for_date
                 zavreni = closure_kind_for_date(date(rok_s, mesic_s, den_s))

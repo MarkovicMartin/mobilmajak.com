@@ -7,6 +7,13 @@ import { isBackofficeUser, isAdminUser, BACKOFFICE_LOCATION, isBackofficeLocatio
 import { isSenimoStore, extraPoziceSelectEnabled } from './shiftStoreHelpers';
 import { format } from 'date-fns';
 import { userMayEditShiftOnDate } from './shiftEditPolicy';
+import {
+    isRetailClosedDay,
+    isChristmasEve,
+    shiftCrossesNoon,
+    RETAIL_CLOSED_SHIFT_MESSAGE,
+    CHRISTMAS_EVE_SHIFT_MESSAGE,
+} from '../../constants/prodejnaZavreni';
 
 function BulkShiftForm({ user, onClose, onSuccess, initialDates = [], initialMonth = null }) {
     const [formData, setFormData] = useState(() => {
@@ -94,7 +101,7 @@ function BulkShiftForm({ user, onClose, onSuccess, initialDates = [], initialMon
             setFormData(prev => ({
                 ...prev,
                 cas_od: '08:00',
-                cas_do: '20:00'
+                cas_do: '20:00',
             }));
         }
     }, [formData.prodejna, stores]);
@@ -208,6 +215,19 @@ function BulkShiftForm({ user, onClose, onSuccess, initialDates = [], initialMon
     const handleSubmit = async () => {
         if (selectedDates.size === 0) {
             setError('Vyberte alespoň jeden den');
+            return;
+        }
+        const actorIsAdmin = isAdminUser(user);
+        if (!actorIsAdmin && Array.from(selectedDates).some((dateStr) => isRetailClosedDay(dateStr))) {
+            setError(RETAIL_CLOSED_SHIFT_MESSAGE);
+            return;
+        }
+        if (
+            storeWorkShift
+            && Array.from(selectedDates).some((dateStr) => isChristmasEve(dateStr))
+            && shiftCrossesNoon(formData.cas_od, formData.cas_do)
+        ) {
+            setError(CHRISTMAS_EVE_SHIFT_MESSAGE);
             return;
         }
         if (backofficeShift && !formData.poznamka?.trim()) {
@@ -541,8 +561,8 @@ function BulkShiftForm({ user, onClose, onSuccess, initialDates = [], initialMon
                                     selectedDates={selectedDates}
                                     enableDragSelect
                                     isDateEnabled={(date) => {
-                                        if (user?.role === 'ADMIN') return true;
                                         const dateStr = format(date, 'yyyy-MM-dd');
+                                        if (isRetailClosedDay(dateStr) && user?.role !== 'ADMIN') return false;
                                         return userMayEditShiftOnDate(user, dateStr);
                                     }}
                                     onDateClick={(dateStr) => handleDateToggle(dateStr)}

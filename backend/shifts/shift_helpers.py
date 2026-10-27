@@ -85,6 +85,9 @@ def user_muze_dostat_plan(user) -> bool:
         return False
     if is_backoffice_user(user):
         return False
+    from users.exclusions import is_excluded_report_user
+    if is_excluded_report_user(user=user):
+        return False
     return getattr(user, 'role', None) != 'ADMIN'
 
 

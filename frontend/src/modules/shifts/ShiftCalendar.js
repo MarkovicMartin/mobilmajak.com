@@ -7,7 +7,14 @@ import { shiftRoleLabel } from './shiftRoleLabels';
 import { groupDayShiftsByStore } from './shiftRosterUtils';
 import { format, parse, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
 import { userMayEditShiftMonth, userMayEditShiftOnDate } from './shiftEditPolicy';
-import { isStoreExpectingShift, getClosureNotice } from '../../constants/prodejnaZavreni';
+import {
+    isStoreExpectingShift,
+    getClosureNotice,
+    isRetailClosedDay,
+    isChristmasEve,
+    RETAIL_CLOSED_SHIFT_MESSAGE,
+} from '../../constants/prodejnaZavreni';
+import { isSenimoStore } from './shiftStoreHelpers';
 import { isBackofficeCalendarFilter, BACKOFFICE_CALENDAR_COLOR } from './shiftBackoffice';
 import { handleFetchAuthFailure } from '../../utils/sessionExpired';
 import { shiftsAPI } from '../../services/api';
@@ -231,9 +238,14 @@ function ShiftCalendar({
 
     const staffingGapsByDate = monthCoverage.gapsByDate;
 
+    const viewingSenimo = !allStores && isSenimoStore(
+        stores.find((store) => String(store.id) === String(prodejna)),
+    );
+
     const getExtraCellClass = useCallback((dateStr) => {
         const classes = [];
-        if (svatky[dateStr]) classes.push('holiday');
+        if (isRetailClosedDay(dateStr)) classes.push('retail-closed');
+        if (isChristmasEve(dateStr)) classes.push('short-day');
         if ((vyjezdy[dateStr] || []).length) classes.push('has-vyjezd');
         if (!dateStr.startsWith(month) || !showStaffingGaps) {
             return classes.join(' ');
@@ -241,7 +253,11 @@ function ShiftCalendar({
         const gap = staffingGapsByDate[dateStr];
         if (gap) classes.push(gap.kind === 'all-empty' ? 'staffing-empty' : 'staffing-partial');
         return classes.join(' ');
-    }, [month, svatky, showStaffingGaps, staffingGapsByDate, vyjezdy]);
+    }, [month, showStaffingGaps, staffingGapsByDate, vyjezdy]);
+
+    const retailClosedForUser = useCallback((dateStr) => (
+        user?.role !== 'ADMIN' && isRetailClosedDay(dateStr)
+    ), [user]);
 
     const formatTime = (timeStr) => {
         return timeStr.substring(0, 5);
@@ -345,25 +361,35 @@ function ShiftCalendar({
     }, [user]);
 
     const handlePickDate = useCallback((dateStr) => {
+        if (retailClosedForUser(dateStr)) return;
         setDragPreviewDates((prev) => {
             const next = new Set(prev);
             if (next.has(dateStr)) next.delete(dateStr);
             else next.add(dateStr);
             return next;
         });
-    }, []);
+    }, [retailClosedForUser]);
 
     const handleSingleDayAdd = useCallback((dateStr) => {
         if (!onRequestSingleAdd) return;
         if (!isDateSelectable(parse(dateStr, 'yyyy-MM-dd', new Date()))) return;
+        if (retailClosedForUser(dateStr)) {
+            setError(RETAIL_CLOSED_SHIFT_MESSAGE);
+            return;
+        }
         onRequestSingleAdd(dateStr);
-    }, [onRequestSingleAdd, isDateSelectable]);
+    }, [onRequestSingleAdd, isDateSelectable, retailClosedForUser]);
 
     const handleDragSelectComplete = useCallback((dates) => {
         setDragPreviewDates(new Set());
         if (!dates?.length || !onRequestBulkAdd) return;
-        onRequestBulkAdd(dates);
-    }, [onRequestBulkAdd]);
+        const allowed = dates.filter((dateStr) => !retailClosedForUser(dateStr));
+        if (!allowed.length) {
+            setError(RETAIL_CLOSED_SHIFT_MESSAGE);
+            return;
+        }
+        onRequestBulkAdd(allowed);
+    }, [onRequestBulkAdd, retailClosedForUser]);
 
     const isBackofficeView = isBackofficeCalendarFilter(prodejna);
     const useStoreColors = allStores || isBackofficeView;
@@ -591,14 +617,14 @@ function ShiftCalendar({
                         const isSvatek = svatky[dateStr];
                         const inMonth = dateStr.startsWith(month);
                         const closureNotice = inMonth
-                            ? getClosureNotice(dateStr, { stores, allStores, prodejnaId: prodejna })
+                            ? getClosureNotice(dateStr, { senimo: viewingSenimo })
                             : null;
                         const staffingGap = inMonth && showStaffingGaps
                             ? staffingGapsByDate[dateStr]
                             : null;
                         return (
                             <>
-                                {isSvatek && (
+                                {isSvatek && viewingSenimo && !closureNotice && (
                                     <div className="holiday-indicator" title={isSvatek.nazev}>
                                         {getHolidayIcon(isSvatek.nazev)}
                                     </div>
@@ -608,7 +634,7 @@ function ShiftCalendar({
                                         className={`closure-notice closure-notice--${closureNotice.kind}`}
                                         title={closureNotice.title}
                                     >
-                                        {closureNotice.kind === 'always_closed' ? '🔒' : '⛪'}
+                                        {closureNotice.kind === 'always_closed' ? '🔒' : closureNotice.kind === 'short_day' ? '🕛' : '⛪'}
                                         {' '}
                                         {closureNotice.label}
                                     </div>

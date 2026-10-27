@@ -8,6 +8,7 @@ import UnifiedCalendar from '../shifts/UnifiedCalendar';
 import ProfileDayPanel from './ProfileDayPanel';
 import { useAuth } from '../../context/AuthContext';
 import { getClosureNotice } from '../../constants/prodejnaZavreni';
+import { isSenimoStore } from '../shifts/shiftStoreHelpers';
 import { urgencyClassName, urgencyForTask } from '../../utils/taskUrgency';
 import { openTask } from '../../utils/taskNavigation';
 import '../shifts/ShiftCalendar.css';
@@ -85,7 +86,7 @@ const ProfileCalendar = () => {
         const userStore = user?.prodejna_id
             ? { id: user.prodejna_id, nazev: user.prodejna, nazev_kratkiy: user.prodejna }
             : null;
-        const closureNotice = getClosureNotice(dateStr, { userStore });
+        const closureNotice = getClosureNotice(dateStr, { senimo: isSenimoStore(userStore) });
         return (
             <>
                 {closureNotice && (
@@ -93,7 +94,7 @@ const ProfileCalendar = () => {
                         className={`closure-notice closure-notice--${closureNotice.kind}`}
                         title={closureNotice.title}
                     >
-                        {closureNotice.kind === 'always_closed' ? '🔒' : '⛪'} {closureNotice.label}
+                        {closureNotice.kind === 'always_closed' ? '🔒' : closureNotice.kind === 'short_day' ? '🕛' : '⛪'} {closureNotice.label}
                     </div>
                 )}
                 {workShifts.length > 0 && (

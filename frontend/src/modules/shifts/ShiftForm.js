@@ -5,6 +5,15 @@ import { userAPI, storeAPI } from '../../services/api';
 import { shiftRoleLabel } from './shiftRoleLabels';
 import { isBackofficeUser, isAdminUser, BACKOFFICE_LOCATION, isBackofficeLocation, isBackofficeWorkShift, isHomeOfficeWorkShift, getAdminWorkMode, ADMIN_WORK_HOME_OFFICE, ADMIN_WORK_BACKOFFICE, ADMIN_WORK_STORE } from './shiftBackoffice';
 import { isSenimoStore, extraPoziceSelectEnabled } from './shiftStoreHelpers';
+import {
+    isRetailClosedDay,
+    isChristmasEve,
+    shiftCrossesNoon,
+    RETAIL_CLOSED_SHIFT_MESSAGE,
+    CHRISTMAS_EVE_SHIFT_MESSAGE,
+    SENIMO_HOLIDAY_MESSAGE,
+    isCzechStateHoliday,
+} from '../../constants/prodejnaZavreni';
 import './ShiftForm.css';
 
 const buildInitialFormData = (user, initialDatum, editShift) => {
@@ -85,13 +94,13 @@ function ShiftForm({ user, onClose, onSuccess, initialDatum = '', editShift = nu
                 const datum = new Date(formData.datum);
                 const denVTydnu = datum.getDay(); // 0 = neděle, 6 = sobota
                 
-                if (denVTydnu === 6) { // Sobota
+                if (denVTydnu === 6 || isChristmasEve(formData.datum)) {
                     setFormData(prev => ({
                         ...prev,
                         cas_od: '09:00',
                         cas_do: '12:00'
                     }));
-                } else { // Ostatní dny
+                } else {
                     setFormData(prev => ({
                         ...prev,
                         cas_od: '09:00',
@@ -107,11 +116,11 @@ function ShiftForm({ user, onClose, onSuccess, initialDatum = '', editShift = nu
                 }));
             }
         } else {
-            // Standardní čas pro ostatní prodejny
+            const doPoledne = isChristmasEve(formData.datum);
             setFormData(prev => ({
                 ...prev,
                 cas_od: '08:00',
-                cas_do: '20:00'
+                cas_do: doPoledne ? '12:00' : '20:00',
             }));
         }
     }, [formData.prodejna, formData.datum, stores, isEditMode]);
@@ -233,9 +242,25 @@ function ShiftForm({ user, onClose, onSuccess, initialDatum = '', editShift = nu
         (!adminUser && (extraPoziceEnabled || backofficeUser) && !isBackofficeLocation(formData.prodejna))
     );
 
+    const actorIsAdmin = isAdminUser(user);
+    const retailClosed = isRetailClosedDay(formData.datum);
+    const retailClosedBlocked = retailClosed && !actorIsAdmin;
+    const christmasEveLimited = isChristmasEve(formData.datum) && storeWorkShift;
+    const christmasEveBlocked = christmasEveLimited && shiftCrossesNoon(formData.cas_od, formData.cas_do);
+    const senimoHolidayHint = isSenimo && storeWorkShift && isCzechStateHoliday(formData.datum)
+        && !retailClosed && !isChristmasEve(formData.datum);
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (loading) return;
+        if (retailClosedBlocked) {
+            setError(RETAIL_CLOSED_SHIFT_MESSAGE);
+            return;
+        }
+        if (christmasEveBlocked) {
+            setError(CHRISTMAS_EVE_SHIFT_MESSAGE);
+            return;
+        }
         if (backofficeShift && !formData.poznamka?.trim()) {
             setError('U směny Backoffice je povinná poznámka – popište, co jste ten den dělali.');
             return;
@@ -324,7 +349,7 @@ function ShiftForm({ user, onClose, onSuccess, initialDatum = '', editShift = nu
                     <button type="button" onClick={handleClose} className="btn-cancel">
                         Zrušit
                     </button>
-                    <button type="submit" disabled={loading} className="btn-submit">
+                    <button type="submit" disabled={loading || retailClosedBlocked || christmasEveBlocked} className="btn-submit">
                         {loading ? 'Ukládání...' : (isEditMode ? 'Uložit změny' : 'Uložit')}
                     </button>
                 </>
@@ -381,6 +406,21 @@ function ShiftForm({ user, onClose, onSuccess, initialDatum = '', editShift = nu
                         showError={false}
                         required
                     />
+                    {retailClosedBlocked && (
+                        <p className="form-hint">
+                            {RETAIL_CLOSED_SHIFT_MESSAGE}
+                        </p>
+                    )}
+                    {christmasEveLimited && (
+                        <p className="form-hint">
+                            {CHRISTMAS_EVE_SHIFT_MESSAGE}
+                        </p>
+                    )}
+                    {senimoHolidayHint && (
+                        <p className="form-hint">
+                            {SENIMO_HOLIDAY_MESSAGE}
+                        </p>
+                    )}
 
                     {!isAbsence && (
                         <>

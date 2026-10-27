@@ -1,7 +1,8 @@
 """
 Vynechání systémových / demo účtů z výplaty, žebříčků a průměrů.
 
-Nejsou to skuteční prodejci: administrátoři, účty „Prodejce Prodejce“, systémový, nový prodejce, …
+Nejsou to skuteční prodejci: administrátoři, účty „Prodejce Prodejce“,
+„prodejce test“ (ID 0, testovací přihlášení), systémový, nový prodejce, …
 """
 from django.db.models import Q
 
@@ -12,6 +13,7 @@ STAFF_ROLES = ('PRODEJCE', 'VEDOUCI', 'BRIGADNIK')
 # (jmeno, prijmeni) bez diakritiky / case-insensitive porovnání
 _EXCLUDED_NAME_PAIRS = frozenset({
     ('prodejce', 'prodejce'),
+    ('prodejce', 'test'),
     ('administrátor', 'systémový'),
     ('administrator', 'systemovy'),
     ('administrátor', 'systemovy'),
@@ -25,8 +27,6 @@ _leaderboard_excluded_ids_cache = None
 # Aktivní prodej na pultu – ve žebříčku i při roli ADMIN (výplata dál podle is_excluded_report_user)
 _LEADERBOARD_INCLUDED_NAME_PAIRS = frozenset({
     ('radek', 'bulandra'),
-    ('martin', 'markovič'),
-    ('martin', 'markovic'),
 })
 
 
@@ -40,6 +40,8 @@ def _normalize_pair(jmeno, prijmeni):
 def is_excluded_report_user(role=None, jmeno=None, prijmeni=None, user=None):
     """True = nepatří do výpisů prodejců (výplata, žebříček, průměry)."""
     if user is not None:
+        if getattr(user, 'id', None) == 0:
+            return True
         role = getattr(user, 'role', None)
         jmeno = getattr(user, 'jmeno', None)
         prijmeni = getattr(user, 'prijmeni', None)
@@ -58,7 +60,7 @@ def get_excluded_report_user_ids():
         for uid, role, jmeno, prijmeni in WebUser.objects.values_list(
             'id', 'role', 'jmeno', 'prijmeni',
         ):
-            if is_excluded_report_user(role=role, jmeno=jmeno, prijmeni=prijmeni):
+            if uid == 0 or is_excluded_report_user(role=role, jmeno=jmeno, prijmeni=prijmeni):
                 excluded.add(uid)
         _excluded_ids_cache = excluded
     return _excluded_ids_cache

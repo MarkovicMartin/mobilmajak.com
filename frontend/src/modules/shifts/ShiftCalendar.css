@@ -248,10 +248,15 @@
     color: #fff;
 }
 
-.closure-notice--nc_verify_closed {
+.closure-notice--senimo_check {
     background: #fef3c7;
     color: #92400e;
     border: 1px solid #f59e0b;
+}
+
+.closure-notice--short_day {
+    background: #dbeafe;
+    color: #1e3a8a;
 }
 
 .calendar-container {

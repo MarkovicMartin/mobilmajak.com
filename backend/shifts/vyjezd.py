@@ -11,7 +11,7 @@ from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
-from shifts.mall_closure import closure_kind_for_date
+from shifts.mall_closure import cap_christmas_eve_hours, closure_kind_for_date
 from shifts.models import Smena, VyjezdNavrh, VyjezdNotifikace
 from shifts.shift_helpers import shift_store_role_slot
 from stores.models import Prodejna
@@ -109,10 +109,7 @@ def _opening_times(store, day: date):
 
 
 def store_open_on(store, day: date) -> bool:
-    kind = closure_kind_for_date(day)
-    if kind == 'always_closed':
-        return False
-    if kind == 'nc_verify_closed' and store_key(store.nazev) != 'globus':
+    if closure_kind_for_date(day) == 'always_closed':
         return False
     return _opening_times(store, day) is not None
 
@@ -596,7 +593,10 @@ def potvrdit_navrh(navrh: VyjezdNavrh) -> Smena:
     times = _opening_times(store, navrh.datum)
     if not times or not store_open_on(store, navrh.datum):
         raise VyjezdChyba('Prodejna má ten den zavřeno.')
-    cas_od, cas_do = times
+    capped = cap_christmas_eve_hours(store, navrh.datum, times[0], times[1])
+    if capped is None:
+        raise VyjezdChyba('24. 12. může být prodejna otevřená jen do 12:00.')
+    cas_od, cas_do = capped
     from shifts.shift_helpers import find_store_role_slot_conflict
 
     conflict = find_store_role_slot_conflict(

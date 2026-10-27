@@ -1,10 +1,18 @@
 """České státní svátky – sdílené mezi views, payroll a dovolenou."""
+from datetime import timedelta
+
+from shifts.mall_closure import easter_sunday
 
 
 def get_ceske_svatky(rok):
     """Vrací seznam českých státních svátků pro daný rok."""
+    nedela = easter_sunday(rok)
+    patek = nedela - timedelta(days=2)
+    pondeli = nedela + timedelta(days=1)
     svatky = [
         (rok, 1, 1),
+        (rok, patek.month, patek.day),
+        (rok, pondeli.month, pondeli.day),
         (rok, 5, 1),
         (rok, 5, 8),
         (rok, 7, 5),
@@ -16,15 +24,19 @@ def get_ceske_svatky(rok):
         (rok, 12, 25),
         (rok, 12, 26),
     ]
-    if rok == 2025:
-        svatky.extend([(2025, 4, 18), (2025, 4, 21)])
-    elif rok == 2026:
-        svatky.extend([(2026, 4, 3), (2026, 4, 6)])
     return svatky
 
 
-def get_nazev_svatku(mesic, den):
+def get_nazev_svatku(mesic, den, rok=None):
     """Vrací název českého státního svátku podle data."""
+    if rok:
+        nedela = easter_sunday(rok)
+        patek = nedela - timedelta(days=2)
+        pondeli = nedela + timedelta(days=1)
+        if (mesic, den) == (patek.month, patek.day):
+            return "Velký pátek"
+        if (mesic, den) == (pondeli.month, pondeli.day):
+            return "Velikonoční pondělí"
     svatky_nazvy = {
         (1, 1): "Nový rok",
         (5, 1): "Svátek práce",
@@ -37,9 +49,5 @@ def get_nazev_svatku(mesic, den):
         (12, 24): "Štědrý den",
         (12, 25): "1. svátek vánoční",
         (12, 26): "2. svátek vánoční",
-        (4, 18): "Velký pátek",
-        (4, 21): "Velikonoční pondělí",
-        (4, 3): "Velký pátek",
-        (4, 6): "Velikonoční pondělí",
     }
     return svatky_nazvy.get((mesic, den), "Státní svátek")
