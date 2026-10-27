@@ -102,6 +102,20 @@ class ReklamaceWorkflowTests(TestCase):
         znacky = {row['nase_znacka'] for row in res.data}
         self.assertIn('R90004', znacky)
 
+    def test_search_includes_vyrizene(self):
+        self._create(nase_znacka='R90014', nazev_zbozi='Skrytý díl', status=ReklamaceStatus.VRIZENE)
+        res = self.client.get('/api/reklamace/polozky/?search=Skrytý')
+        znacky = {row['nase_znacka'] for row in res.data}
+        self.assertIn('R90014', znacky)
+
+    def test_resolved_count(self):
+        self._create(nase_znacka='R90015', status=ReklamaceStatus.VRIZENE, prodejna='Servis')
+        self._create(nase_znacka='R90016', status=ReklamaceStatus.VRIZENE, prodejna='Jiná')
+        self._create(nase_znacka='R90017', status=ReklamaceStatus.ODESLANE, prodejna='Servis')
+        res = self.client.get('/api/reklamace/polozky/resolved-count/?prodejna=Servis')
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data['count'], 1)
+
     def test_odeslat_dodavateli_transition(self):
         item = self._create(nase_znacka='R90005')
         res = self.client.post(f'/api/reklamace/polozky/{item.id}/odeslat_dodavateli/')

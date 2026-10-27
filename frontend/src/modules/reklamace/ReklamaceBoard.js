@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     DndContext,
     DragOverlay,
@@ -12,6 +12,8 @@ import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import ReklamaceRow from './ReklamaceRow';
 import ReklamaceColumn from './ReklamaceColumn';
 import {
+    ACTIVE_STATUS_COLUMNS,
+    DONE_STATUS_COLUMN,
     STATUS_COLUMNS,
     STATUS_KEYS,
     canTransition,
@@ -27,9 +29,19 @@ const ReklamaceBoard = ({
     onDeleteItem,
     loading,
     statusFilter = '',
+    searchActive = false,
 }) => {
     const [activeItem, setActiveItem] = useState(null);
     const [dragOverColumn, setDragOverColumn] = useState(null);
+    const [doneExpanded, setDoneExpanded] = useState(false);
+
+    useEffect(() => {
+        if (searchActive || statusFilter === REKLAMACE_STATUS.VRIZENE) {
+            setDoneExpanded(true);
+        } else {
+            setDoneExpanded(false);
+        }
+    }, [searchActive, statusFilter]);
 
     const sensors = useSensors(
         useSensor(PointerSensor, {
@@ -43,11 +55,20 @@ const ReklamaceBoard = ({
         }),
     );
 
-    const visibleColumns = (() => {
-        if (statusFilter && STATUS_KEYS.includes(statusFilter)) {
-            return STATUS_COLUMNS.filter((c) => c.key === statusFilter);
+    const { activeColumns, showDoneSeparately } = (() => {
+        if (statusFilter === REKLAMACE_STATUS.VRIZENE) {
+            return { activeColumns: [], showDoneSeparately: true };
         }
-        return STATUS_COLUMNS;
+        if (statusFilter && STATUS_KEYS.includes(statusFilter)) {
+            return {
+                activeColumns: STATUS_COLUMNS.filter((c) => c.key === statusFilter),
+                showDoneSeparately: false,
+            };
+        }
+        return {
+            activeColumns: ACTIVE_STATUS_COLUMNS,
+            showDoneSeparately: true,
+        };
     })();
 
     const handleDragStart = (event) => {
@@ -94,7 +115,10 @@ const ReklamaceBoard = ({
             return;
         }
 
-        const allowedCols = new Set(visibleColumns.map((c) => c.key));
+        const allowedCols = new Set([
+            ...activeColumns.map((c) => c.key),
+            ...(showDoneSeparately && DONE_STATUS_COLUMN ? [DONE_STATUS_COLUMN.key] : []),
+        ]);
         if (!allowedCols.has(newStatus)) return;
 
         if (!canTransition(activeItem.status, newStatus)) {
@@ -141,7 +165,7 @@ const ReklamaceBoard = ({
         >
             <div className="reklamace-board">
                 <div className="reklamace-board__columns">
-                    {visibleColumns.map((config) => {
+                    {activeColumns.map((config) => {
                         const columnData = (kanbanData && kanbanData[config.key]) || {
                             orders: [],
                             count: 0,
@@ -161,6 +185,32 @@ const ReklamaceBoard = ({
                             />
                         );
                     })}
+                    {showDoneSeparately && DONE_STATUS_COLUMN && (() => {
+                        const columnData = (kanbanData && kanbanData[DONE_STATUS_COLUMN.key]) || {
+                            orders: [],
+                            count: 0,
+                        };
+                        const doneLazyHint = !searchActive && statusFilter !== REKLAMACE_STATUS.VRIZENE
+                            ? 'Vyřízené se načtou až při hledání (značka, název, EAN, zásilka…).'
+                            : '';
+                        return (
+                            <ReklamaceColumn
+                                key={DONE_STATUS_COLUMN.key}
+                                id={DONE_STATUS_COLUMN.key}
+                                title={DONE_STATUS_COLUMN.label}
+                                color={DONE_STATUS_COLUMN.color}
+                                textColor={DONE_STATUS_COLUMN.textColor}
+                                orders={columnData.orders || []}
+                                count={columnData.count || 0}
+                                isDropTarget={dragOverColumn === DONE_STATUS_COLUMN.key}
+                                onItemClick={onItemClick}
+                                onDeleteItem={onDeleteItem}
+                                collapsed={!doneExpanded}
+                                onToggleCollapse={() => setDoneExpanded((v) => !v)}
+                                lazyEmptyHint={doneExpanded ? doneLazyHint : ''}
+                            />
+                        );
+                    })()}
                 </div>
 
                 <DragOverlay>

@@ -21,11 +21,35 @@
     font-size: 14px;
 }
 
+.reklamace-column__header--toggle {
+    cursor: pointer;
+    user-select: none;
+}
+
+.reklamace-column__header--toggle:hover {
+    filter: brightness(0.96);
+}
+
 .reklamace-column__header-content {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-start;
     gap: 8px;
+}
+
+.reklamace-column__chevron {
+    font-size: 12px;
+    line-height: 1;
+    opacity: 0.9;
+}
+
+.reklamace-column--collapsed .reklamace-column__header {
+    border-radius: 8px;
+}
+
+.reklamace-column__title {
+    text-align: left;
+    flex: 1;
 }
 
 .reklamace-column__count {
@@ -34,6 +58,7 @@
     border-radius: 10px;
     font-size: 12px;
     font-weight: 600;
+    margin-left: auto;
 }
 
 .reklamace-column__content {
@@ -48,9 +73,11 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    height: 48px;
+    min-height: 48px;
+    padding: 8px 12px;
     color: #999;
     font-size: 13px;
+    text-align: center;
 }
 
 .reklamace-column__empty p {

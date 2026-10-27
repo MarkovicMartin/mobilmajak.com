@@ -23,13 +23,17 @@ class ReklamacePolozkaViewSet(ModelViewSet):
         if self.request.query_params.get('include_inactive') != '1':
             qs = qs.filter(is_active=True)
 
-        if self.request.query_params.get('include_resolved') != '1':
-            qs = qs.exclude(status=ReklamaceStatus.VRIZENE)
-
         prodejna = self.request.query_params.get('prodejna', '').strip()
         search = self.request.query_params.get('search', '').strip()
         dodavatel = self.request.query_params.get('dodavatel', '').strip()
         status_filter = self.request.query_params.get('status', '').strip()
+        include_resolved = (
+            self.request.query_params.get('include_resolved') == '1'
+            or bool(search)
+            or status_filter == ReklamaceStatus.VRIZENE
+        )
+        if self.action == 'list' and not include_resolved:
+            qs = qs.exclude(status=ReklamaceStatus.VRIZENE)
         if status_filter:
             qs = qs.filter(status=status_filter)
 
@@ -96,6 +100,20 @@ class ReklamacePolozkaViewSet(ModelViewSet):
             'sklad_vyskladneno', 'sklad_naskladneno', 'updated_at',
         ])
         return Response(ReklamacePolozkaSerializer(instance).data)
+
+    @action(detail=False, methods=['get'], url_path='resolved-count')
+    def resolved_count(self, request):
+        qs = ReklamacePolozka.objects.filter(
+            is_active=True,
+            status=ReklamaceStatus.VRIZENE,
+        )
+        prodejna = request.query_params.get('prodejna', '').strip()
+        dodavatel = request.query_params.get('dodavatel', '').strip()
+        if prodejna:
+            qs = qs.filter(prodejna__iexact=prodejna)
+        if dodavatel:
+            qs = qs.filter(dodavatel__icontains=dodavatel)
+        return Response({'count': qs.count()})
 
 
 @api_view(['GET'])

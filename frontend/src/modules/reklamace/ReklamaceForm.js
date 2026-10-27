@@ -71,7 +71,6 @@ const ReklamaceForm = ({ defaultProdejna, onSave, onCancel }) => {
             <Modal
                 title="Nová reklamace"
                 onClose={showNoTrackingConfirm ? undefined : onCancel}
-                closeOnBackdrop={!showNoTrackingConfirm}
                 size="md"
                 bodyClassName="reklamace-form-body"
                 footer={(

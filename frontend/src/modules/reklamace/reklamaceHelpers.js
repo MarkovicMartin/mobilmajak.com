@@ -23,6 +23,13 @@ export const STATUS_COLUMNS = [
 
 export const STATUS_KEYS = STATUS_COLUMNS.map((c) => c.key);
 
+export const ACTIVE_STATUS_COLUMNS = STATUS_COLUMNS.filter(
+    (c) => c.key !== REKLAMACE_STATUS.VRIZENE,
+);
+export const DONE_STATUS_COLUMN = STATUS_COLUMNS.find(
+    (c) => c.key === REKLAMACE_STATUS.VRIZENE,
+);
+
 export const FILTER_STATUS_OPTIONS = [
     { value: '', label: 'Všechny stavy' },
     ...STATUS_COLUMNS.map((c) => ({ value: c.key, label: c.label })),
@@ -52,20 +59,28 @@ export function statusConfig(status) {
     return STATUS_COLUMNS.find((c) => c.key === status) || null;
 }
 
-export function groupByStatus(items) {
+export function groupByStatus(items, resolvedMeta = null) {
     const data = {};
     STATUS_COLUMNS.forEach((col) => {
         data[col.key] = {
             label: col.label,
             orders: [],
             count: 0,
+            lazy: false,
         };
     });
+    const hideResolved = Boolean(resolvedMeta?.lazy);
     (items || []).forEach((item) => {
         const key = item.status in data ? item.status : REKLAMACE_STATUS.NEZPRACOVANE;
+        if (hideResolved && key === REKLAMACE_STATUS.VRIZENE) return;
         data[key].orders.push(item);
         data[key].count = data[key].orders.length;
     });
+    if (hideResolved) {
+        data[REKLAMACE_STATUS.VRIZENE].orders = [];
+        data[REKLAMACE_STATUS.VRIZENE].count = resolvedMeta.count || 0;
+        data[REKLAMACE_STATUS.VRIZENE].lazy = true;
+    }
     return data;
 }
 

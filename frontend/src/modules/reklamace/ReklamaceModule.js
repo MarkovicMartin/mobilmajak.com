@@ -52,8 +52,12 @@ function moveItemInKanban(data, itemId, newStatus, patch = {}) {
         status_label: statusLabel(newStatus),
         is_overdue: newStatus === REKLAMACE_STATUS.NEZPRACOVANE ? found.item.is_overdue : false,
     };
-    next[newStatus].orders = [moved, ...next[newStatus].orders.filter((o) => o.id !== itemId)];
-    next[newStatus].count = next[newStatus].orders.length;
+    if (next[newStatus].lazy) {
+        next[newStatus].count = (next[newStatus].count || 0) + 1;
+    } else {
+        next[newStatus].orders = [moved, ...next[newStatus].orders.filter((o) => o.id !== itemId)];
+        next[newStatus].count = next[newStatus].orders.length;
+    }
     return next;
 }
 
@@ -95,14 +99,35 @@ const ReklamaceModule = () => {
         try {
             if (!silent) setLoading(true);
             const params = new URLSearchParams();
+            const search = (filters.search || '').trim();
+            const includeResolved = Boolean(search) || filters.status === REKLAMACE_STATUS.VRIZENE;
             if (filters.prodejna) params.append('prodejna', filters.prodejna);
-            if (filters.search) params.append('search', filters.search);
+            if (search) params.append('search', search);
             if (filters.dodavatel) params.append('dodavatel', filters.dodavatel);
-            params.append('include_resolved', '1');
-            const res = await api.get(`/reklamace/polozky/?${params}`);
+            if (filters.status === REKLAMACE_STATUS.VRIZENE) {
+                params.append('status', filters.status);
+            }
+            if (includeResolved) params.append('include_resolved', '1');
+
+            const countParams = new URLSearchParams();
+            if (filters.prodejna) countParams.append('prodejna', filters.prodejna);
+            if (filters.dodavatel) countParams.append('dodavatel', filters.dodavatel);
+            const needResolvedCount = !includeResolved && !filters.status;
+
+            const [res, countRes] = await Promise.all([
+                api.get(`/reklamace/polozky/?${params}`),
+                needResolvedCount
+                    ? api.get(`/reklamace/polozky/resolved-count/?${countParams}`).catch(() => ({ data: { count: 0 } }))
+                    : Promise.resolve(null),
+            ]);
             const list = res.data || [];
             setItems(list);
-            setKanbanData(groupByStatus(list));
+            setKanbanData(groupByStatus(
+                list,
+                needResolvedCount
+                    ? { lazy: true, count: countRes?.data?.count || 0 }
+                    : null,
+            ));
             setError(null);
         } catch (err) {
             console.error(err);
@@ -114,7 +139,7 @@ const ReklamaceModule = () => {
         } finally {
             if (!silent) setLoading(false);
         }
-    }, [filters.prodejna, filters.search, filters.dodavatel]);
+    }, [filters.prodejna, filters.search, filters.dodavatel, filters.status]);
 
     useEffect(() => {
         loadData();
@@ -365,6 +390,7 @@ const ReklamaceModule = () => {
                 onDeleteItem={handleDelete}
                 loading={loading}
                 statusFilter={filters.status}
+                searchActive={Boolean((filters.search || '').trim())}
             />
 
             {showForm && (

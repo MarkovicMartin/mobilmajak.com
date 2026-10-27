@@ -11,6 +11,8 @@ const SIZE_CLASS = {
 
 /**
  * Jednotná šablona modálního okna – overlay, hlavička, scrollovatelné tělo, patička.
+ * Zavření: Esc a tlačítko. Klik mimo okno (ani potažení z okna ven) nezavírá.
+ * Zapnout zavření klikem mimo okno jde jen propem `closeOnBackdrop`.
  */
 function Modal({
     onClose,
@@ -25,7 +27,7 @@ function Modal({
     overlayClassName = '',
     formRef,
     onSubmit,
-    closeOnBackdrop = true,
+    closeOnBackdrop = false,
 }) {
     useModalKeyboard(true, { onClose, formRef });
 

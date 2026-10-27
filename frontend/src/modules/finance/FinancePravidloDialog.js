@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { financeAPI } from '../../services/api';
+import { useModalKeyboard } from '../../utils/useModalKeyboard';
 import './FinanceModule.css';
 
 const emptyForm = {
@@ -69,6 +70,8 @@ const FinancePravidloDialog = ({
         setPreview(null);
         setError('');
     }, [open, isIgnore, keepKatDefault, navrhPayload, polozka?.id]);
+
+    useModalKeyboard(open, { onClose: onSkip });
 
     if (!open || !polozka) return null;
 
@@ -170,12 +173,11 @@ const FinancePravidloDialog = ({
         : 'Vytvořit pravidlo ze zařazení';
 
     return (
-        <div className="finance-modal-backdrop" role="presentation" onClick={close}>
+        <div className="finance-modal-backdrop" role="presentation">
             <div
                 className="finance-modal"
                 role="dialog"
                 aria-labelledby="finance-pravidlo-title"
-                onClick={(e) => e.stopPropagation()}
             >
                 <h3 id="finance-pravidlo-title">{title}</h3>
                 {error && <p className="finance-error">{error}</p>}
