@@ -809,12 +809,18 @@ def import_symplio_pokladna_file(
     from .symplio_pokladna import (
         find_existing_symplio_polozka,
         is_symplio_vydej,
+        last_imported_datum,
         parse_symplio_pokladna_xlsx,
         symplio_pokladna_external_id,
     )
 
-    rows = parse_symplio_pokladna_xlsx(Path(path))
-    stats = {'created': 0, 'updated': 0, 'skipped': 0, 'non_vydej': 0, 'out_of_range': 0}
+    # Export je od nejnovějšího. Čteme jen od posledního uloženého dne výš.
+    stop_before = last_imported_datum(prodejna_id, pokladna_key) or date_from
+    rows = parse_symplio_pokladna_xlsx(Path(path), stop_before=stop_before)
+    stats = {
+        'created': 0, 'updated': 0, 'skipped': 0, 'non_vydej': 0,
+        'out_of_range': 0, 'read': len(rows),
+    }
 
     for row in rows:
         if date_from and row['datum'] < date_from:

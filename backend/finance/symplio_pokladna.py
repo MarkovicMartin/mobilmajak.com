@@ -57,46 +57,73 @@ def _header_index(headers: list) -> dict[str, int]:
     return idx
 
 
-def parse_symplio_pokladna_xlsx(path: str | Path) -> list[dict]:
-    """Vrátí všechny řádky z exportu (včetně příjmů)."""
+def last_imported_datum(prodejna_id: int, pokladna_key: str = '') -> date | None:
+    """Nejnovější den už uložený pro tuto pokladnu. Export jde od nejnovějšího."""
+    qs = NakladPolozka.objects.filter(
+        zdroj=NakladPolozka.ZDROJ_SYMPLIO_POKLADNA,
+        prodejna_id=prodejna_id,
+    )
+    key = (pokladna_key or '').strip()
+    if key:
+        qs = qs.filter(pokladna_key=key)
+    return qs.order_by('-datum').values_list('datum', flat=True).first()
+
+
+def parse_symplio_pokladna_xlsx(
+    path: str | Path,
+    *,
+    stop_before: date | None = None,
+) -> list[dict]:
+    """Řádky z exportu (včetně příjmů).
+
+    Symplio vrací celou historii, seřazenou od nejnovějšího. `stop_before` je
+    poslední uložený den: ten den se ještě přečte (nový výdej tentýž den),
+    starší řádky se už nečtou.
+    """
     import openpyxl
 
     wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
     try:
         ws = wb.active
-        rows = list(ws.iter_rows(values_only=True))
+        row_iter = ws.iter_rows(values_only=True)
+        try:
+            header = next(row_iter)
+        except StopIteration:
+            return []
+        idx = _header_index(list(header))
+        parsed = []
+        seen_in_window = stop_before is None
+        for row_num, row in enumerate(row_iter, start=2):
+            if not row or all(v is None or str(v).strip() == '' for v in row):
+                continue
+            try:
+                castka = parse_symplio_castka(row[idx['castka']])
+                datum = parse_symplio_datum(row[idx['datum']])
+            except (ValueError, IndexError, TypeError):
+                continue
+            if stop_before is not None and datum < stop_before:
+                if seen_in_window:
+                    break
+                continue
+            seen_in_window = True
+
+            doklad = _cell_str(row[idx['doklad']]) if idx['doklad'] < len(row) else ''
+            objednavka = _cell_str(row[idx['objednavka']]) if idx['objednavka'] < len(row) else ''
+            nazev = _cell_str(row[idx['nazev']]) if idx['nazev'] < len(row) else ''
+            admin = _cell_str(row[idx['admin']]) if idx['admin'] < len(row) else ''
+
+            parsed.append({
+                'datum': datum,
+                'castka': castka,
+                'popis': nazev,
+                'admin': admin,
+                'objednavka': objednavka,
+                'symplio_doklad': doklad,
+                'row_num': row_num,
+            })
+        return parsed
     finally:
         wb.close()
-
-    if not rows:
-        return []
-
-    idx = _header_index(list(rows[0]))
-    parsed = []
-    for row_num, row in enumerate(rows[1:], start=2):
-        if not row or all(v is None or str(v).strip() == '' for v in row):
-            continue
-        try:
-            castka = parse_symplio_castka(row[idx['castka']])
-            datum = parse_symplio_datum(row[idx['datum']])
-        except ValueError:
-            continue
-
-        doklad = _cell_str(row[idx['doklad']])
-        objednavka = _cell_str(row[idx['objednavka']])
-        nazev = _cell_str(row[idx['nazev']])
-        admin = _cell_str(row[idx['admin']])
-
-        parsed.append({
-            'datum': datum,
-            'castka': castka,
-            'popis': nazev,
-            'admin': admin,
-            'objednavka': objednavka,
-            'symplio_doklad': doklad,
-            'row_num': row_num,
-        })
-    return parsed
 
 
 def is_symplio_vydej(row: dict) -> bool:

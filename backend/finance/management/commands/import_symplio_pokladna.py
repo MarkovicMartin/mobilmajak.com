@@ -90,7 +90,8 @@ class Command(BaseCommand):
             self.stdout.write(
                 f'{path.name}: nových {result["created"]}, aktualizováno {result["updated"]}, '
                 f'přeskočeno {result["skipped"]}, ne-výdej {result["non_vydej"]}, '
-                f'mimo rozsah {result.get("out_of_range", 0)}',
+                f'mimo rozsah {result.get("out_of_range", 0)}, '
+                f'přečteno {result.get("read", 0)}',
             )
 
         summary = (

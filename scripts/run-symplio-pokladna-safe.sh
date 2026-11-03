@@ -32,7 +32,9 @@ if [ -f "$LOCK_FILE" ] && [ -f "$PID_FILE" ]; then
   rm -f "$LOCK_FILE" "$PID_FILE"
 fi
 
-IMPORT_CMD=$(finance_manage_cmd "import_symplio_pokladna --input-dir '$REPORTS_DIR'")
+INBOX_DIR="$REPORTS_DIR/inbox"
+IMPORT_CMD=$(finance_manage_cmd "import_symplio_pokladna --input-dir '$INBOX_DIR'")
+PRESERVE_DAYS="${SYMPLIO_POKLADNA_DAYS-}"
 
 touch "$LOCK_FILE"
 echo $$ > "$PID_FILE"
@@ -42,21 +44,29 @@ set +e
 nice -n 10 timeout "${RUN_TIMEOUT}" bash -c "
   set -euo pipefail
   cd '$ACTOR_DIR'
+  PRESERVE_DAYS='${PRESERVE_DAYS}'
   if [[ -f .env ]]; then
     set -a
     # shellcheck disable=SC1091
     source .env
     set +a
   fi
+  if [[ -n \"\$PRESERVE_DAYS\" ]]; then
+    export SYMPLIO_POKLADNA_DAYS=\"\$PRESERVE_DAYS\"
+  fi
   if [[ ! -d node_modules ]]; then
     npm install --omit=dev
   fi
+  set +e
   node fetch-pokladna-xlsx.js
-  if compgen -G 'reports/*.xlsx' > /dev/null; then
+  FETCH_CODE=\$?
+  set -e
+  if compgen -G 'reports/inbox/*.xlsx' > /dev/null; then
     $IMPORT_CMD
   else
-    echo 'Žádné XLSX v reports/ – import přeskočen'
+    echo 'Žádné XLSX v reports/inbox – import přeskočen'
   fi
+  exit \$FETCH_CODE
 " >> "$LOG_FILE" 2>&1
 EXIT_CODE=$?
 set -e

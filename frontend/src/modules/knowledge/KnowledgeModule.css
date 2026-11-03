@@ -150,6 +150,16 @@
     padding-left: 1.1rem;
 }
 
+.kb-chat__source {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
 .kb-chat__composer {
     display: flex;
     gap: 0.4rem;

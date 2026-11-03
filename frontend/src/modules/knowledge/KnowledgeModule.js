@@ -90,6 +90,23 @@ const KnowledgeModule = () => {
         }
     };
 
+    const download = async (doc) => {
+        setError(null);
+        try {
+            const res = await api.get(`/knowledge/documents/${doc.id}/download/`, { responseType: 'blob' });
+            const blobUrl = window.URL.createObjectURL(res.data);
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            link.download = doc.original_filename || doc.nazev || 'dokument';
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(blobUrl);
+        } catch {
+            setError('Stažení se nezdařilo.');
+        }
+    };
+
     const remove = async (doc) => {
         if (!window.confirm(`Smazat „${doc.nazev}“?`)) return;
         try {
@@ -224,7 +241,7 @@ const KnowledgeModule = () => {
                                 </div>
                                 {doc.popis && <p>{doc.popis}</p>}
                                 <div className="knowledge-card__actions">
-                                    <a className="btn btn--secondary" href={doc.download_path}>Stáhnout</a>
+                                    <button type="button" className="btn btn--secondary" onClick={() => download(doc)}>Stáhnout</button>
                                     {admin && (
                                         <>
                                             <button type="button" className="btn btn--secondary" onClick={() => setEditing({

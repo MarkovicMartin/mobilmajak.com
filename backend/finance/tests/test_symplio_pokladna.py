@@ -32,6 +32,11 @@ class SymplioParserTests(TestCase):
         self.assertEqual(rows[0]['popis'], 'Příjem za prodej zboží')
         self.assertEqual(rows[0]['symplio_doklad'], '32607061003')
 
+    def test_stops_before_older_than_last_saved_day(self):
+        rows = parse_symplio_pokladna_xlsx(FIXTURE, stop_before=date(2026, 7, 6))
+        self.assertEqual([r['datum'] for r in rows], [date(2026, 7, 6), date(2026, 7, 6)])
+        self.assertTrue(all(r['datum'] >= date(2026, 7, 6) for r in rows))
+
     def test_vydeje_are_negative_only(self):
         rows = parse_symplio_pokladna_xlsx(FIXTURE)
         vydeje = [r for r in rows if is_symplio_vydej(r)]
@@ -100,7 +105,9 @@ class SymplioImportTests(TestCase):
         import_symplio_pokladna_file(FIXTURE, prodejna_id=STERNBERK_PRODEJNA_ID)
         result = import_symplio_pokladna_file(FIXTURE, prodejna_id=STERNBERK_PRODEJNA_ID)
         self.assertEqual(result['created'], 0)
-        self.assertEqual(result['skipped'], 4)
+        # Druhý běh čte jen poslední uložený den (6. 7.), starší historii ne.
+        self.assertEqual(result['read'], 2)
+        self.assertEqual(result['skipped'], 1)
         self.assertEqual(
             NakladPolozka.objects.filter(zdroj=NakladPolozka.ZDROJ_SYMPLIO_POKLADNA).count(),
             4,

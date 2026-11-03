@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Symplio historie pokladny – stáhne XLSX export úhrad a uloží do reports/.
- * Django import: manage.py import_symplio_pokladna --input-dir reports/
+ * Django import: manage.py import_symplio_pokladna --input-dir reports/inbox/
  *
  * Cron: run-symplio-pokladna-safe.sh (den 8:30–21 + večer 22:00)
  */
@@ -29,6 +29,7 @@ const { loginSymplio, sleep } = require(path.join(SYMPLIO_DIR, 'symplio-login'))
 
 const BASE = 'https://www.mobilmajak.cz';
 const REPORTS_DIR = path.join(__dirname, 'reports');
+const INBOX_DIR = path.join(REPORTS_DIR, 'inbox');
 const POKLADNY_FILE = path.join(__dirname, 'pokladny.json');
 const DAYS_BACK = parseInt(process.env.SYMPLIO_POKLADNA_DAYS || '7', 10);
 
@@ -41,7 +42,15 @@ function loadPokladny() {
 }
 
 function isoDate(d) {
-  return d.toISOString().slice(0, 10);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function resetInbox() {
+  fs.rmSync(INBOX_DIR, { recursive: true, force: true });
+  fs.mkdirSync(INBOX_DIR, { recursive: true });
 }
 
 function dateRange() {
@@ -150,7 +159,8 @@ async function main() {
   }
 
   const { from, to } = dateRange();
-  console.log(`Symplio pokladna export ${from} – ${to}, pokladen: ${pokladny.length}`);
+  resetInbox();
+  console.log(`Symplio pokladna export ${from} – ${to} (DAYS=${DAYS_BACK}), pokladen: ${pokladny.length}`);
 
   const options = new chrome.Options();
   options.addArguments('--no-sandbox', '--disable-dev-shm-usage', '--headless=new');
@@ -162,24 +172,27 @@ async function main() {
   });
   const driver = await new Builder().forBrowser('chrome').setChromeOptions(options).build();
 
+  let failed = 0;
   try {
     for (const pokladna of pokladny) {
       console.log(`\n→ ${pokladna.label} (${pokladna.admin_slug}, prodejna_id=${pokladna.prodejna_id})`);
-      const out = path.join(REPORTS_DIR, `uhrady_${pokladna.key}_${from}_${to}.xlsx`);
-      if (fs.existsSync(out) && fs.statSync(out).size > 1000) {
-        console.log('Přeskočeno – soubor už existuje:', out);
-        if (!fs.existsSync(out.replace(/\.xlsx$/i, '.meta.json'))) {
-          writeMeta(out, pokladna, from, to);
-        }
-        continue;
+      const out = path.join(INBOX_DIR, `uhrady_${pokladna.key}.xlsx`);
+      try {
+        await loginForPokladna(driver, pokladna.store_button);
+        const url = buildExportUrl(pokladna.admin_slug, from, to);
+        await downloadXlsxViaBrowser(driver, url, out);
+        writeMeta(out, pokladna, from, to);
+      } catch (err) {
+        failed += 1;
+        console.error(`Selhalo ${pokladna.label}:`, err && err.message ? err.message : err);
       }
-      await loginForPokladna(driver, pokladna.store_button);
-      const url = buildExportUrl(pokladna.admin_slug, from, to);
-      await downloadXlsxViaBrowser(driver, url, out);
-      writeMeta(out, pokladna, from, to);
     }
   } finally {
     await driver.quit();
+  }
+  if (failed) {
+    console.error(`Selhalo pokladen: ${failed}/${pokladny.length}`);
+    process.exitCode = 1;
   }
 }
 

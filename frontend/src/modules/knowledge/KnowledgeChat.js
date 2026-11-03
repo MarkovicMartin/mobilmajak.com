@@ -26,6 +26,26 @@ const KnowledgeChat = () => {
         }
     }, [messages]);
 
+    const download = async (source) => {
+        try {
+            const res = await api.get(`/knowledge/documents/${source.document_id}/download/`, { responseType: 'blob' });
+            const blobUrl = window.URL.createObjectURL(res.data);
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            link.download = source.title || 'dokument';
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(blobUrl);
+        } catch {
+            setMessages((prev) => [...prev, {
+                role: 'assistant',
+                text: 'Soubor se nepodařilo stáhnout.',
+                sources: [],
+            }]);
+        }
+    };
+
     const ask = async (event) => {
         event.preventDefault();
         const text = question.trim();
@@ -70,7 +90,9 @@ const KnowledgeChat = () => {
                             <ul className="kb-chat__sources">
                                 {message.sources.map((source) => (
                                     <li key={source.document_id}>
-                                        <a href={source.download_path}>{source.title}</a>
+                                        <button type="button" className="kb-chat__source" onClick={() => download(source)}>
+                                            {source.title}
+                                        </button>
                                     </li>
                                 ))}
                             </ul>
