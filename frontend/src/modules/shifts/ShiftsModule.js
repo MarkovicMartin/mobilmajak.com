@@ -33,6 +33,53 @@ function defaultCalendarProdejna(user) {
     return ALL_PRODEJNY;
 }
 
+const STIT_MONTHS = [
+    'leden', 'únor', 'březen', 'duben', 'květen', 'červen',
+    'červenec', 'srpen', 'září', 'říjen', 'listopad', 'prosinec',
+];
+
+function formatStitMesic(ym) {
+    if (!ym || !ym.includes('-')) return ym || '';
+    const [year, month] = ym.split('-').map(Number);
+    const name = STIT_MONTHS[month - 1];
+    return name ? `${name} ${year}` : ym;
+}
+
+function StitBanner() {
+    const [stit, setStit] = useState(null);
+
+    useEffect(() => {
+        let cancelled = false;
+        fetch('/api/shifts/payroll/stit/', { credentials: 'include' })
+            .then((res) => (res.ok ? res.json() : null))
+            .then((data) => {
+                if (!cancelled) setStit(data?.stit || null);
+            })
+            .catch(() => {});
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
+    if (!stit || stit.stav === 'zadny') return null;
+    if (stit.stav === 'volny') {
+        return (
+            <p className="shifts-stit-banner">
+                Máte štít. První srážka 10 % z provize se neuplatní.
+            </p>
+        );
+    }
+    const kdy = formatStitMesic(stit.mesic);
+    return (
+        <p className="shifts-stit-banner shifts-stit-banner--used">
+            Štít byl použit
+            {kdy ? ` v ${kdy}` : ''}
+            {stit.duvod ? ` (${stit.duvod})` : ''}
+            .
+        </p>
+    );
+}
+
 function ShiftsModule() {
     const location = useLocation();
     const { user } = useAuth();
@@ -245,6 +292,7 @@ function ShiftsModule() {
     return (
         <div className="shifts-module">
             <PageHeader title="Směny" />
+            <StitBanner />
 
             <ShiftsNav
                 activeView={activeView}

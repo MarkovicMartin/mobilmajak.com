@@ -293,6 +293,39 @@
     font-weight: 500;
 }
 
+.payroll-stit-badge,
+.payroll-stit-hint {
+    color: #1e7a3a;
+    font-weight: 600;
+}
+
+.payroll-stit-badge {
+    display: inline-block;
+    margin-left: 0.4rem;
+    padding: 0.05rem 0.45rem;
+    border-radius: 999px;
+    background: #e7f6ec;
+    font-size: 0.75rem;
+    vertical-align: middle;
+}
+
+.payroll-stit-hint {
+    font-size: 0.82rem;
+}
+
+.payroll-stit-box {
+    margin: 0.75rem 0;
+    padding: 0.75rem;
+    border: 1px solid #b7e0c2;
+    border-radius: 10px;
+    background: #f3fbf6;
+    font-size: 0.9rem;
+}
+
+.payroll-stit-box p {
+    margin: 0 0 0.5rem;
+}
+
 .payroll-penalizace-existing {
     margin: 0.75rem 0 1rem;
     padding: 0.75rem;

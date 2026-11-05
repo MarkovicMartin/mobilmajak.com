@@ -53,14 +53,40 @@ def _sum_odmeny_from_map(rows):
     return total, rows
 
 
+STIT_PROCENTA = Decimal('10')
+
+
+def oznac_penalizace_stitem(rows):
+    """Doplní zruseno_stitem podle vazby MzdovyStit.penalizace."""
+    rows = list(rows or [])
+    need_ids = [
+        r.id for r in rows
+        if getattr(r, 'id', None) and not getattr(r, 'zruseno_stitem', False)
+    ]
+    linked = set()
+    if need_ids:
+        from .models import MzdovyStit
+        linked = set(
+            MzdovyStit.objects.filter(penalizace_id__in=need_ids).values_list(
+                'penalizace_id', flat=True,
+            )
+        )
+    for row in rows:
+        if getattr(row, 'zruseno_stitem', False):
+            continue
+        row.zruseno_stitem = getattr(row, 'id', None) in linked
+    return rows
+
+
 def provize_po_penalizaci(provize_brutto, penalizace_rows):
     """
     Srážky z hrubé provize:
     - procenta: sčítají se (max 100 %), počítáno z brutto
     - fixni: odečtou se z výsledku po procentech (min. 0)
+    - srážka 10 % navázaná na štít se nepočítá
     """
     brutto = _body_whole(provize_brutto)
-    rows = list(penalizace_rows or [])
+    rows = oznac_penalizace_stitem(penalizace_rows)
     if not rows:
         return brutto, Decimal('0'), Decimal('0'), []
 
@@ -71,22 +97,35 @@ def provize_po_penalizaci(provize_brutto, penalizace_rows):
     for row in rows:
         typ = getattr(row, 'typ', None) or 'procenta'
         hodnota = Decimal(str(getattr(row, 'hodnota', None) or 10))
+        duvod = (getattr(row, 'duvod', None) or '').strip()
         if typ == 'fixni':
             fixed_sum += _body_whole(hodnota)
             detail.append({
                 'typ': typ,
                 'hodnota': float(hodnota),
-                'duvod': (getattr(row, 'duvod', None) or '').strip(),
+                'duvod': duvod,
                 'srazka_body': float(_body_whole(hodnota)),
+                'zruseno_stitem': False,
             })
         else:
             pct = min(Decimal('100'), max(Decimal('0'), hodnota))
+            zruseno = bool(getattr(row, 'zruseno_stitem', False)) and pct == STIT_PROCENTA
+            if zruseno:
+                detail.append({
+                    'typ': typ,
+                    'hodnota': float(pct),
+                    'duvod': duvod,
+                    'srazka_body': 0.0,
+                    'zruseno_stitem': True,
+                })
+                continue
             total_procent += pct
             detail.append({
                 'typ': typ,
                 'hodnota': float(pct),
-                'duvod': (getattr(row, 'duvod', None) or '').strip(),
+                'duvod': duvod,
                 'srazka_body': float(_body_whole(brutto * pct / Decimal('100'))),
+                'zruseno_stitem': False,
             })
 
     total_procent = min(total_procent, Decimal('100'))
@@ -829,6 +868,7 @@ def build_payroll_row(user, rok, mesic_cislo, hours_map, mesic_date, prodejny_ca
                 'typ': p.typ or MzdovaPenalizaceMesic.TYP_PROCENTA,
                 'hodnota': float(p.hodnota or 0),
                 'srazka_body': float((penalizace_detail[i] or {}).get('srazka_body') or 0),
+                'zruseno_stitem': bool((penalizace_detail[i] or {}).get('zruseno_stitem')),
                 'vytvoreno': p.vytvoreno.isoformat() if p.vytvoreno else None,
                 'vytvoril_jmeno': (
                     f'{p.vytvoril.jmeno} {p.vytvoril.prijmeni}'.strip()
@@ -909,8 +949,13 @@ def build_payroll_preview(mesic_str, prodejna_id=None, base_only=False):
             hours_cache=hours_cache, pol_dok_map=pol_dok_map, prumer_cache=provize_cache,
         ))
 
-    from .payroll_manual import manual_payroll_revision, strip_manual_adjustments_from_row
+    from .payroll_manual import (
+        manual_payroll_revision,
+        stamp_stit_on_rows,
+        strip_manual_adjustments_from_row,
+    )
 
+    stamp_stit_on_rows(rows)
     manual_revision = manual_payroll_revision(mesic_date, odmeny_map, penalizace_map)
     if base_only:
         rows = [strip_manual_adjustments_from_row(r) for r in rows]

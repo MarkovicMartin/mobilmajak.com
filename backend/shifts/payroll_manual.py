@@ -4,31 +4,94 @@ from decimal import Decimal
 from types import SimpleNamespace
 
 from .hpp_dpp import attach_hpp_dpp_to_row
-from .models import MzdovaOdmenaMesic, MzdovaPenalizaceMesic
+from .models import MzdovaOdmenaMesic, MzdovaPenalizaceMesic, MzdovyStit
 from .payroll_service import _body_float, _body_whole, provize_po_penalizaci
 
 
 def _penalizace_namespace(row):
     return SimpleNamespace(
+        id=getattr(row, 'id', None),
         typ=row.typ or MzdovaPenalizaceMesic.TYP_PROCENTA,
         hodnota=row.hodnota,
         duvod=row.duvod or '',
+        zruseno_stitem=bool(getattr(row, 'zruseno_stitem', False)),
     )
 
 
-def serialize_penalizace(p, srazka_body=None):
+def serialize_penalizace(p, srazka_body=None, zruseno_stitem=False):
     return {
         'id': p.id,
         'duvod': p.duvod or '',
         'typ': p.typ or MzdovaPenalizaceMesic.TYP_PROCENTA,
         'hodnota': float(p.hodnota or 0),
         'srazka_body': float(srazka_body or 0),
+        'zruseno_stitem': bool(zruseno_stitem),
         'vytvoreno': p.vytvoreno.isoformat() if p.vytvoreno else None,
         'vytvoril_jmeno': (
             f'{p.vytvoril.jmeno} {p.vytvoril.prijmeni}'.strip()
             if getattr(p, 'vytvoril_id', None) else None
         ),
     }
+
+
+def serialize_stit(stit):
+    if stit is None:
+        return {'stav': 'zadny'}
+    if stit.penalizace_id:
+        penalizace = getattr(stit, 'penalizace', None)
+        mesic = None
+        duvod = ''
+        if penalizace is not None and getattr(penalizace, 'mesic', None):
+            mesic = penalizace.mesic.strftime('%Y-%m')
+            duvod = penalizace.duvod or ''
+        return {
+            'stav': 'pouzity',
+            'id': stit.id,
+            'mesic': mesic,
+            'duvod': duvod,
+            'penalizace_id': stit.penalizace_id,
+            'vytvoreno': stit.vytvoreno.isoformat() if stit.vytvoreno else None,
+        }
+    return {
+        'stav': 'volny',
+        'id': stit.id,
+        'vytvoreno': stit.vytvoreno.isoformat() if stit.vytvoreno else None,
+    }
+
+
+def pick_stit(stity):
+    """Volný štít má přednost, jinak naposledy použitý."""
+    volny = None
+    pouzity = None
+    for stit in stity or []:
+        if stit.penalizace_id is None:
+            if volny is None:
+                volny = stit
+            continue
+        if pouzity is None or (
+            stit.vytvoreno and pouzity.vytvoreno and stit.vytvoreno > pouzity.vytvoreno
+        ):
+            pouzity = stit
+    return volny or pouzity
+
+
+def load_stit_map(user_ids):
+    if not user_ids:
+        return {}
+    grouped = {}
+    qs = MzdovyStit.objects.filter(user_id__in=list(user_ids)).select_related('penalizace')
+    for stit in qs:
+        grouped.setdefault(stit.user_id, []).append(stit)
+    return {uid: pick_stit(rows) for uid, rows in grouped.items()}
+
+
+def stamp_stit_on_rows(rows):
+    if not rows:
+        return rows
+    stit_map = load_stit_map([r['user_id'] for r in rows])
+    for row in rows:
+        row['stit'] = serialize_stit(stit_map.get(row['user_id']))
+    return rows
 
 
 def serialize_odmena(o):
@@ -71,6 +134,9 @@ def manual_payroll_revision(mesic_date, odmeny_map=None, penalizace_map=None):
         for p in rows:
             if p.vytvoreno:
                 times.append(p.vytvoreno)
+    for stit in MzdovyStit.objects.all().only('vytvoreno'):
+        if stit.vytvoreno:
+            times.append(stit.vytvoreno)
     if not times:
         return None
     return max(times).isoformat()
@@ -89,7 +155,7 @@ def _celkem_from_parts(row, provize_body, odmena_mesic):
     )
 
 
-def apply_manual_adjustments_to_row(row, odmeny_rows=None, penalizace_rows=None):
+def apply_manual_adjustments_to_row(row, odmeny_rows=None, penalizace_rows=None, stit=None):
     """
     Aplikuje měsíční odměny a penalizace na řádek výplaty.
     row musí obsahovat provize_body_brutto (nebo provize_body jako brutto před srážkami).
@@ -124,9 +190,10 @@ def apply_manual_adjustments_to_row(row, odmeny_rows=None, penalizace_rows=None)
         (p.duvod or '').strip() for p in penalizace_rows if (p.duvod or '').strip()
     )
     row['penalizace'] = [
-        serialize_penalizace(p, d.get('srazka_body'))
+        serialize_penalizace(p, d.get('srazka_body'), d.get('zruseno_stitem'))
         for p, d in zip(penalizace_rows, penalizace_detail)
     ]
+    row['stit'] = serialize_stit(stit)
     row['celkem_body'] = _body_float(_celkem_from_parts(row, provize_body, odmena_mesic))
     return attach_hpp_dpp_to_row(row)
 
@@ -145,6 +212,7 @@ def strip_manual_adjustments_from_row(row):
     row['penalizace_srazka_body'] = 0.0
     row['penalizace_popis'] = ''
     row['penalizace'] = []
+    row['stit'] = {'stav': 'zadny'}
     row['provize_body'] = _body_float(provize_brutto)
     row['celkem_body'] = _body_float(
         _celkem_from_parts(row, provize_brutto, Decimal('0')),
@@ -156,7 +224,7 @@ def load_manual_maps(mesic_date, user_ids=None):
     odmeny_qs = MzdovaOdmenaMesic.objects.filter(mesic=mesic_date).select_related('vytvoril').order_by('vytvoreno')
     penalizace_qs = MzdovaPenalizaceMesic.objects.filter(
         mesic=mesic_date,
-    ).select_related('vytvoril').order_by('vytvoreno')
+    ).select_related('vytvoril').order_by('vytvoreno', 'id')
     if user_ids is not None:
         user_ids = list(user_ids)
         odmeny_qs = odmeny_qs.filter(user_id__in=user_ids)
@@ -178,6 +246,7 @@ def merge_manual_into_rows(rows, mesic_str):
     mesic_date = date(rok, mesic_cislo, 1)
     user_ids = [r['user_id'] for r in rows]
     odmeny_map, penalizace_map = load_manual_maps(mesic_date, user_ids)
+    stit_map = load_stit_map(user_ids)
     revision = manual_payroll_revision(mesic_date, odmeny_map, penalizace_map)
     merged = []
     for row in rows:
@@ -186,5 +255,6 @@ def merge_manual_into_rows(rows, mesic_str):
             row,
             odmeny_map.get(uid),
             penalizace_map.get(uid),
+            stit=stit_map.get(uid),
         ))
     return merged, revision

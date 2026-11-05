@@ -723,3 +723,40 @@ class SkladVydejkaPolozka(models.Model):
 
     def __str__(self):
         return f'{self.doklad_id} / {self.kod}'
+
+
+class VykupKartaStav(models.Model):
+    """Stav karty výkupu po kontrole v administraci. Hotová karta se znovu nestahuje."""
+
+    kod = models.CharField(max_length=50, unique=True)
+    hotovo = models.BooleanField(default=False)
+    skladem = models.BooleanField(default=False)
+    ukol_id = models.IntegerField(null=True, blank=True)
+    zbozi_id = models.CharField(max_length=20, blank=True, default='')
+    kategorie_id = models.CharField(max_length=20, blank=True, default='')
+    zkontrolovano = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'WEB_VYKUP_KARTA_STAV'
+        verbose_name = 'Stav karty výkupu'
+        verbose_name_plural = 'Stavy karet výkupů'
+
+    def __str__(self):
+        return f'{self.kod} hotovo={self.hotovo}'
+
+
+class VykupKartyHlaseni(models.Model):
+    """Jedno měsíční hlášení Radkovi Bulandrovi o nedokončených kartách."""
+
+    mesic = models.CharField(max_length=7, unique=True)
+    odeslano_v = models.DateTimeField(auto_now_add=True)
+    pocet = models.IntegerField(default=0)
+    text = models.TextField(blank=True, default='')
+
+    class Meta:
+        db_table = 'WEB_VYKUP_KARTY_HLASENI'
+        verbose_name = 'Hlášení karet výkupů'
+        verbose_name_plural = 'Hlášení karet výkupů'
+
+    def __str__(self):
+        return f'{self.mesic} ({self.pocet})'

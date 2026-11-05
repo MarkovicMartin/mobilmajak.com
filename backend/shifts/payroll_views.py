@@ -2,6 +2,7 @@
 from datetime import date, timedelta
 from decimal import Decimal
 
+from django.db import transaction
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -10,7 +11,7 @@ from rest_framework.response import Response
 
 from users.models import WebUser
 
-from .models import MzdovaOdmenaMesic, MzdovaPenalizaceMesic, Smena, SmenaDochazka
+from .models import MzdovaOdmenaMesic, MzdovaPenalizaceMesic, MzdovyStit, Smena, SmenaDochazka
 from .payroll_service import build_payroll_preview
 from .attendance_service import (
     _board_store_bucket,
@@ -376,33 +377,10 @@ def payroll_penalizace(request):
     if not isinstance(raw_polozky, list) or not raw_polozky:
         return Response({'error': 'Chybí položky penalizace'}, status=status.HTTP_400_BAD_REQUEST)
 
-    created = []
-    for item in raw_polozky:
-        if not isinstance(item, dict):
-            return Response({'error': 'Neplatný formát položky'}, status=status.HTTP_400_BAD_REQUEST)
-        duvod = (item.get('duvod') or '').strip()
-        if not duvod:
-            return Response({'error': 'Každá penalizace musí mít důvod'}, status=status.HTTP_400_BAD_REQUEST)
-        typ = (item.get('typ') or MzdovaPenalizaceMesic.TYP_PROCENTA).strip()
-        if typ not in (MzdovaPenalizaceMesic.TYP_PROCENTA, MzdovaPenalizaceMesic.TYP_FIXNI):
-            return Response({'error': 'Neplatný typ srážky'}, status=status.HTTP_400_BAD_REQUEST)
-        try:
-            hodnota = Decimal(str(item.get('hodnota', 10)))
-        except Exception:
-            return Response({'error': 'Neplatná hodnota srážky'}, status=status.HTTP_400_BAD_REQUEST)
-        if hodnota <= 0:
-            return Response({'error': 'Hodnota srážky musí být větší než 0'}, status=status.HTTP_400_BAD_REQUEST)
-        if typ == MzdovaPenalizaceMesic.TYP_PROCENTA and hodnota > 100:
-            return Response({'error': 'Procenta max. 100'}, status=status.HTTP_400_BAD_REQUEST)
-        row = MzdovaPenalizaceMesic.objects.create(
-            user=user,
-            mesic=mesic_date,
-            duvod=duvod,
-            typ=typ,
-            hodnota=hodnota,
-            vytvoril=request.user,
-        )
-        created.append(row)
+    try:
+        created = _uloz_penalizace(user, mesic_date, raw_polozky, request.user)
+    except ValueError as exc:
+        return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
     return Response({
         'user_id': user.id,
@@ -414,6 +392,7 @@ def payroll_penalizace(request):
                 'duvod': row.duvod,
                 'typ': row.typ,
                 'hodnota': float(row.hodnota),
+                'zruseno_stitem': bool(getattr(row, 'zruseno_stitem', False)),
                 'vytvoreno': row.vytvoreno.isoformat() if row.vytvoreno else None,
                 'vytvoril_jmeno': (
                     f'{row.vytvoril.jmeno} {row.vytvoril.prijmeni}'.strip()
@@ -422,6 +401,98 @@ def payroll_penalizace(request):
             }
             for row in created
         ],
+    }, status=status.HTTP_201_CREATED)
+
+
+def _je_srazka_deset_procent(typ, hodnota):
+    return typ == MzdovaPenalizaceMesic.TYP_PROCENTA and hodnota == Decimal('10')
+
+
+def _uloz_penalizace(user, mesic_date, raw_polozky, vytvoril):
+    created = []
+    with transaction.atomic():
+        stit = (
+            MzdovyStit.objects.select_for_update()
+            .filter(user=user, penalizace__isnull=True)
+            .order_by('vytvoreno', 'id')
+            .first()
+        )
+        for item in raw_polozky:
+            if not isinstance(item, dict):
+                raise ValueError('Neplatný formát položky')
+            duvod = (item.get('duvod') or '').strip()
+            if not duvod:
+                raise ValueError('Každá penalizace musí mít důvod')
+            typ = (item.get('typ') or MzdovaPenalizaceMesic.TYP_PROCENTA).strip()
+            if typ not in (MzdovaPenalizaceMesic.TYP_PROCENTA, MzdovaPenalizaceMesic.TYP_FIXNI):
+                raise ValueError('Neplatný typ srážky')
+            try:
+                hodnota = Decimal(str(item.get('hodnota', 10)))
+            except Exception as exc:
+                raise ValueError('Neplatná hodnota srážky') from exc
+            if hodnota <= 0:
+                raise ValueError('Hodnota srážky musí být větší než 0')
+            if typ == MzdovaPenalizaceMesic.TYP_PROCENTA and hodnota > 100:
+                raise ValueError('Procenta max. 100')
+            row = MzdovaPenalizaceMesic.objects.create(
+                user=user,
+                mesic=mesic_date,
+                duvod=duvod,
+                typ=typ,
+                hodnota=hodnota,
+                vytvoril=vytvoril,
+            )
+            if stit is not None and _je_srazka_deset_procent(typ, hodnota):
+                stit.penalizace = row
+                stit.save(update_fields=['penalizace'])
+                row.zruseno_stitem = True
+                stit = None
+            created.append(row)
+    return created
+
+
+def _stit_payload(user):
+    from .payroll_manual import pick_stit, serialize_stit
+
+    stity = list(
+        MzdovyStit.objects.filter(user=user).select_related('penalizace').order_by('vytvoreno', 'id')
+    )
+    return serialize_stit(pick_stit(stity))
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def payroll_stit(request):
+    """GET: vlastní štít (admin může ?user_id=). POST: admin přidá jeden volný štít."""
+    if request.method == 'GET':
+        user = request.user
+        user_id = request.GET.get('user_id')
+        if user_id:
+            denied = _require_admin(request)
+            if denied:
+                return denied
+            user = WebUser.objects.filter(id=user_id).first()
+            if not user:
+                return Response({'error': 'Uživatel nenalezen'}, status=status.HTTP_404_NOT_FOUND)
+        return Response({'user_id': user.id, 'stit': _stit_payload(user)})
+
+    denied = _require_admin(request)
+    if denied:
+        return denied
+    user_id = request.data.get('user_id')
+    if not user_id:
+        return Response({'error': 'Chybí user_id'}, status=status.HTTP_400_BAD_REQUEST)
+    user = WebUser.objects.filter(id=user_id).first()
+    if not user:
+        return Response({'error': 'Uživatel nenalezen'}, status=status.HTTP_404_NOT_FOUND)
+    with transaction.atomic():
+        if MzdovyStit.objects.select_for_update().filter(user=user, penalizace__isnull=True).exists():
+            return Response({'error': 'Uživatel už má volný štít'}, status=status.HTTP_400_BAD_REQUEST)
+        row = MzdovyStit.objects.create(user=user, vytvoril=request.user)
+    return Response({
+        'user_id': user.id,
+        'stit': _stit_payload(user),
+        'id': row.id,
     }, status=status.HTTP_201_CREATED)
 
 

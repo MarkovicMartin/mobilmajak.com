@@ -1,5 +1,8 @@
 from django.contrib import admin
-from .models import Smena, SmenaDochazka, SmenaStatistiky, MzdovaOdmenaMesic, MzdovaPenalizaceMesic
+from .models import (
+    Smena, SmenaDochazka, SmenaStatistiky,
+    MzdovaOdmenaMesic, MzdovaPenalizaceMesic, MzdovyStit,
+)
 
 @admin.register(Smena)
 class SmenaAdmin(admin.ModelAdmin):
@@ -62,6 +65,13 @@ class MzdovaOdmenaMesicAdmin(admin.ModelAdmin):
     list_filter = ['mesic']
     search_fields = ['user__jmeno', 'user__prijmeni']
     ordering = ['-mesic']
+
+
+@admin.register(MzdovyStit)
+class MzdovyStitAdmin(admin.ModelAdmin):
+    list_display = ['user', 'vytvoril', 'vytvoreno', 'penalizace']
+    search_fields = ['user__jmeno', 'user__prijmeni']
+    ordering = ['-vytvoreno']
 
 
 @admin.register(MzdovaPenalizaceMesic)

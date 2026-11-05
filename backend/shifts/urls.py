@@ -50,6 +50,7 @@ urlpatterns = [
     path('payroll/vydejky/', payroll_views.payroll_vydejky, name='payroll_vydejky'),
     path('payroll/odmena/', payroll_views.payroll_odmena, name='payroll_odmena'),
     path('payroll/penalizace/', payroll_views.payroll_penalizace, name='payroll_penalizace'),
+    path('payroll/stit/', payroll_views.payroll_stit, name='payroll_stit'),
     path('payroll/manual-revision/', payroll_views.payroll_manual_revision, name='payroll_manual_revision'),
     path('payroll/merge-manual/', payroll_views.payroll_merge_manual, name='payroll_merge_manual'),
 

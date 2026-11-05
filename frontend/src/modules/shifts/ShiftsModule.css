@@ -5,6 +5,21 @@
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
+.shifts-stit-banner {
+    margin: 0 0 12px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    background: #e7f6ec;
+    color: #1e7a3a;
+    font-weight: 600;
+}
+
+.shifts-stit-banner--used {
+    background: #f4f6f8;
+    color: #445;
+    font-weight: 500;
+}
+
 .shifts-subnav {
     margin-bottom: 1rem;
 }

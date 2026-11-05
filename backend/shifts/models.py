@@ -221,6 +221,39 @@ class MzdovaPenalizaceMesic(models.Model):
         return f"{self.user_id} – {self.mesic.strftime('%m/%Y')}: −{self.hodnota} % ({self.duvod[:40]})"
 
 
+class MzdovyStit(models.Model):
+    """Jednorázový štít. Zruší první srážku 10 % z provize."""
+
+    user = models.ForeignKey(WebUser, on_delete=models.CASCADE, related_name='mzda_stity')
+    vytvoril = models.ForeignKey(
+        WebUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='vytvorene_mzda_stity',
+        verbose_name='Zadal',
+    )
+    vytvoreno = SafeDateTimeField(auto_now_add=True)
+    penalizace = models.OneToOneField(
+        MzdovaPenalizaceMesic,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='stit',
+        verbose_name='Spotřebováno na srážku',
+    )
+
+    class Meta:
+        db_table = 'WEB_MZDOVY_STIT'
+        verbose_name = 'Štít proti srážce 10 %'
+        verbose_name_plural = 'Štíty proti srážce 10 %'
+        ordering = ['vytvoreno']
+
+    def __str__(self):
+        stav = 'použit' if self.penalizace_id else 'volný'
+        return f'{self.user_id} – štít {stav}'
+
+
 class ProdejnaPohybUdalost(models.Model):
     """Pilot: signál pohyb / klid z brány v LAN (bez uložení obrazu)."""
 

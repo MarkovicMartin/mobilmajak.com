@@ -12,7 +12,7 @@ import SymplioDocLink from '../../components/SymplioDocLink';
 import { ADMIN_ADJUSTMENT_EVENT } from './adminAdjustmentSync';
 import './PayrollPanel.css';
 
-const CACHE_PREFIX = 'payroll-overview-v6';
+const CACHE_PREFIX = 'payroll-overview-v7';
 const CURRENT_MONTH_STALE_MS = 5 * 60 * 1000;
 const RETURNS_CACHE_PREFIX = 'payroll-returns-v1';
 const RETURNS_STALE_MS = 10 * 60 * 1000;
@@ -230,6 +230,9 @@ function formatPenalizaceLabel(p) {
     const duvod = (p.duvod || '').trim();
     const autor = (p.vytvoril_jmeno || '').trim();
     const suffix = autor ? ` (${autor})` : '';
+    if (p.zruseno_stitem) {
+        return `Štít zrušil ${formatNumber(p.hodnota)} %: ${duvod}${suffix}`;
+    }
     if (p.typ === 'fixni') {
         return `−${formatPoints(p.hodnota)}: ${duvod}${suffix}`;
     }
@@ -240,6 +243,9 @@ function formatPenalizaceBreakdownLabel(p) {
     const duvod = (p.duvod || '').trim();
     const autor = (p.vytvoril_jmeno || '').trim();
     const suffix = autor ? ` (${autor})` : '';
+    if (p.zruseno_stitem) {
+        return `Štít zrušil penalizaci ${formatNumber(p.hodnota)} %: ${duvod}${suffix}`;
+    }
     if (p.typ === 'fixni') {
         return `− Penalizace ${formatPoints(p.hodnota)} b: ${duvod}${suffix}`;
     }
@@ -263,6 +269,7 @@ function PayrollPanel({ month, onExport }) {
     const [showPenalizaceModal, setShowPenalizaceModal] = useState(false);
     const [savingOdmena, setSavingOdmena] = useState(false);
     const [savingPenalizace, setSavingPenalizace] = useState(false);
+    const [savingStit, setSavingStit] = useState(false);
     const [odmenaForm, setOdmenaForm] = useState({ user_id: '', castka: '', poznamka: '' });
     const [penalizaceForm, setPenalizaceForm] = useState({
         user_id: '',
@@ -876,6 +883,34 @@ function PayrollPanel({ month, onExport }) {
         }
     };
 
+    const saveStit = async () => {
+        if (!penalizaceForm.user_id) {
+            alert('Vyberte zaměstnance.');
+            return;
+        }
+        setSavingStit(true);
+        try {
+            const res = await fetch('/api/shifts/payroll/stit/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({
+                    user_id: parseInt(penalizaceForm.user_id, 10),
+                }),
+            });
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                throw new Error(data.error || data.detail || `Uložení selhalo (${res.status})`);
+            }
+            invalidateCache(month);
+            await loadPayroll({ force: true });
+        } catch (err) {
+            alert(err.message);
+        } finally {
+            setSavingStit(false);
+        }
+    };
+
     const saveOdmena = async (e) => {
         e.preventDefault();
         const castka = parseFloat(odmenaForm.castka);
@@ -1212,7 +1247,9 @@ function PayrollPanel({ month, onExport }) {
         }
         const provizeBrutto = Number(row.provize_body_brutto ?? row.provize_body) || 0;
         const srazka = Number(row.penalizace_srazka_body) || 0;
-        if (srazka > 0 && provizeBrutto > provize) {
+        const maSrazkuNeboStit = (srazka > 0 && provizeBrutto > provize)
+            || (row.penalizace || []).some((p) => p.zruseno_stitem);
+        if (maSrazkuNeboStit) {
             lines.push(
                 <div key="provize-brutto" className="breakdown-line">
                     <span className="breakdown-label">+ Provize z prodeje (hrubá)</span>
@@ -1224,7 +1261,9 @@ function PayrollPanel({ month, onExport }) {
                 lines.push(
                     <div key={`pen-${i}`} className="breakdown-line breakdown-line-deduction">
                         <span className="breakdown-label">{formatPenalizaceBreakdownLabel(p)}</span>
-                        <span className="breakdown-value">−{formatPoints(srazkaBody)}</span>
+                        <span className="breakdown-value">
+                            {p.zruseno_stitem ? formatPoints(0) : `−${formatPoints(srazkaBody)}`}
+                        </span>
                     </div>
                 );
             });
@@ -1414,6 +1453,13 @@ function PayrollPanel({ month, onExport }) {
                         onClick={() => setShowPenalizaceModal(true)}
                     >
                         + Penalizace
+                    </button>
+                    <button
+                        type="button"
+                        className="btn-secondary"
+                        onClick={() => setShowPenalizaceModal(true)}
+                    >
+                        + Štít
                     </button>
                     {onExport && (
                         <button type="button" className="btn-export" onClick={onExport}>
@@ -1844,7 +1890,14 @@ function PayrollPanel({ month, onExport }) {
                                                 {isOpen ? '▼' : '▶'}
                                             </button>
                                         </td>
-                                        <td className="col-name">{row.jmeno}</td>
+                                        <td className="col-name">
+                                            {row.jmeno}
+                                            {row.stit?.stav === 'volny' && (
+                                                <span className="payroll-stit-badge" title="První srážka 10 % se neuplatní">
+                                                    Štít
+                                                </span>
+                                            )}
+                                        </td>
                                         <td>{formatNumber(row.odpracovano_h)}</td>
                                         <td
                                             title={
@@ -1869,6 +1922,12 @@ function PayrollPanel({ month, onExport }) {
                                                 >
                                                     {' '}
                                                     (−{formatPoints(row.penalizace_srazka_body)})
+                                                </span>
+                                            )}
+                                            {(row.penalizace || []).some((p) => p.zruseno_stitem) && (
+                                                <span className="payroll-stit-hint" title="Srážka 10 % zrušena štítem">
+                                                    {' '}
+                                                    (štít)
                                                 </span>
                                             )}
                                         </td>
@@ -1950,6 +2009,7 @@ function PayrollPanel({ month, onExport }) {
                         <p className="modal-hint">
                             Procenta se sčítají z hrubé provize (max. 100 %). Fixní body se odečtou
                             po procentech. Základ, cestovné a bonusy se nemění. Měsíc: {formatMonthName(month)}.
+                            Štít zruší první srážku 10 % a pak je spotřebovaný.
                         </p>
                             <label>
                                 Zaměstnanec
@@ -1964,6 +2024,35 @@ function PayrollPanel({ month, onExport }) {
                                     ))}
                                 </select>
                             </label>
+                            {penalizaceForm.user_id && (
+                                <div className="payroll-stit-box">
+                                    {existingPenalizaceRow?.stit?.stav === 'volny' && (
+                                        <p>Volný štít. První srážka 10 % z provize se neuplatní.</p>
+                                    )}
+                                    {existingPenalizaceRow?.stit?.stav === 'pouzity' && (
+                                        <p>
+                                            Štít použit
+                                            {existingPenalizaceRow.stit.mesic
+                                                ? ` (${existingPenalizaceRow.stit.mesic})`
+                                                : ''}
+                                            {existingPenalizaceRow.stit.duvod
+                                                ? `: ${existingPenalizaceRow.stit.duvod}`
+                                                : ''}
+                                            .
+                                        </p>
+                                    )}
+                                    {existingPenalizaceRow?.stit?.stav !== 'volny' && (
+                                        <button
+                                            type="button"
+                                            className="btn-secondary"
+                                            onClick={saveStit}
+                                            disabled={savingStit}
+                                        >
+                                            {savingStit ? 'Ukládám…' : 'Přidat štít'}
+                                        </button>
+                                    )}
+                                </div>
+                            )}
                             {existingPenalizaceForForm.length > 0 && (
                                 <div className="payroll-penalizace-existing">
                                     <strong>Už zadané srážky za {formatMonthName(month)}</strong>
