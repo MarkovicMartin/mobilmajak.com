@@ -63,6 +63,7 @@ def vyjezdy_navrhnout(request):
     result = dopln_vyjezdy(*parsed)
     payload = seznam_mesice(*parsed)
     payload['vytvoreno'] = result['vytvoreno']
+    payload['zruseno'] = result['zruseno']
     return Response(payload)
 
 

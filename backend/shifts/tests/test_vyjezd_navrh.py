@@ -137,6 +137,31 @@ class VyjezdNavrhTests(TestCase):
         vybrane = set(VyjezdNavrh.objects.filter(user=self.vsetin).values_list('datum', flat=True))
         self.assertEqual(vybrane, volne)
 
+    def test_prosinec_jen_jeden_vyjezd(self):
+        WebUser.objects.filter(id__in=(self.globus.id, self.prerov.id)).update(aktivni=False)
+        result = dopln_vyjezdy(2026, 12, rng=random.Random(1))
+        self.assertEqual(result['vytvoreno'], 1)
+        self.assertEqual(VyjezdNavrh.objects.filter(user=self.vsetin, stav='navrh').count(), 1)
+        listopad = dopln_vyjezdy(2026, 11, rng=random.Random(1))
+        self.assertEqual(listopad['vytvoreno'], 2)
+        self.assertEqual(VyjezdNavrh.objects.filter(user=self.vsetin, mesic=date(2026, 11, 1)).count(), 2)
+
+    def test_prosinec_necha_drivejsi_termin(self):
+        WebUser.objects.filter(id__in=(self.globus.id, self.prerov.id)).update(aktivni=False)
+        for day in (date(2026, 12, 3), date(2026, 12, 15)):
+            VyjezdNavrh.objects.create(
+                user=self.vsetin,
+                mesic=date(2026, 12, 1),
+                datum=day,
+                prodejna=self.stores['prerov'],
+                stav='navrh',
+            )
+        result = dopln_vyjezdy(2026, 12, rng=random.Random(1))
+        self.assertEqual(result['zruseno'], 1)
+        self.assertEqual(result['vytvoreno'], 0)
+        left = VyjezdNavrh.objects.get(user=self.vsetin, stav='navrh')
+        self.assertEqual(left.datum, date(2026, 12, 3))
+
     def test_druhy_beh_nepridava(self):
         WebUser.objects.filter(id__in=(self.globus.id, self.prerov.id)).update(aktivni=False)
         prvni = dopln_vyjezdy(2026, 11, rng=random.Random(1))

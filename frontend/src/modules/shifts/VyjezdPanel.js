@@ -43,9 +43,13 @@ function VyjezdPanel({ month, stores }) {
         try {
             const payload = await shiftsAPI.navrhniVyjezdy(month);
             setData(payload);
-            setInfo(payload.vytvoreno
-                ? `Přidáno ${payload.vytvoreno} návrhů.`
-                : 'Nové návrhy nepřibyly. Komu už návrh vyšel, ten se nemění.');
+            if (payload.zruseno) {
+                setInfo(`Zrušeno ${payload.zruseno} přebytečných návrhů. Zůstal jeden termín.`);
+            } else if (payload.vytvoreno) {
+                setInfo(`Přidáno ${payload.vytvoreno} návrhů.`);
+            } else {
+                setInfo('Nové návrhy nepřibyly. Komu už návrh vyšel, ten se nemění.');
+            }
         } catch (err) {
             setError(err?.response?.data?.error || 'Návrh se nepodařilo založit.');
         } finally {
@@ -95,12 +99,14 @@ function VyjezdPanel({ month, stores }) {
 
     const skupiny = data?.skupiny || [];
     const bez = data?.bez_navrhu || [];
+    const jeProsinec = String(month || '').endsWith('-12');
     const maNavrh = skupiny.some((skupina) => skupina.polozky.some((row) => row.stav === 'navrh'));
 
     return (
         <div className="vyjezd-panel">
             <p className="vyjezd-panel__lead">
-                Dva výjezdy na prodejce. Vsetín jezdí na Přerov a Zlín, Zlín na Vsetín a Přerov,
+                {jeProsinec ? 'Prosinec: jeden výjezd na prodejce. ' : 'Dva výjezdy na prodejce. '}
+                Vsetín jezdí na Přerov a Zlín, Zlín na Vsetín a Přerov,
                 Globus, Senimo, Šternberk a Přerov mezi sebou. Senimo v sobotu nejde vybrat.
                 Ručně lze zvolit i jinou prodejnu.
             </p>
@@ -163,7 +169,7 @@ function VyjezdPanel({ month, stores }) {
             ))}
             {bez.length > 0 && (
                 <p className="vyjezd-panel__missing">
-                    Bez dvou návrhů: {bez.map((row) => row.jmeno).join(', ')}.
+                    {jeProsinec ? 'Bez návrhu' : 'Bez dvou návrhů'}: {bez.map((row) => row.jmeno).join(', ')}.
                 </p>
             )}
         </div>

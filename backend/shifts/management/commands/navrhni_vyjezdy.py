@@ -35,7 +35,8 @@ class Command(BaseCommand):
         for rok, mesic in targets:
             result = dopln_vyjezdy(rok, mesic)
             self.stdout.write(
-                f'{mesic}/{rok}: nových návrhů {result["vytvoreno"]} '
+                f'{mesic}/{rok}: nových návrhů {result["vytvoreno"]}, '
+                f'zrušeno {result["zruseno"]} '
                 f'({len(result["uzivatele"])} prodejců).'
             )
             if result['vytvoreno']:

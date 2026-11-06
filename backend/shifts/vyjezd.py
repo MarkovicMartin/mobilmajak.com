@@ -1,4 +1,4 @@
-"""Návrh dvou směn měsíčně na jiné prodejně."""
+"""Návrh směn na jiné prodejně. Běžně dvě měsíčně, v prosinci jedna."""
 
 from __future__ import annotations
 
@@ -50,6 +50,13 @@ NAZVY_MESICU = (
 
 GRACE_DAYS = 7
 POCET_VYJEZDU = 2
+
+
+def pocet_vyjezdu(_rok: int, mesic: int) -> int:
+    """Prosinec je výjimka: jeden termín na prodejce. Ostatní měsíce dva."""
+    if mesic == 12:
+        return 1
+    return POCET_VYJEZDU
 
 
 class VyjezdChyba(Exception):
@@ -293,7 +300,7 @@ def _pick_for_seller(user, rok, mesic, stores_by_key, occupancy, rng: random.Ran
         return []
 
     covered = _covered_days(user, rok, mesic)
-    need = POCET_VYJEZDU - len(covered)
+    need = pocet_vyjezdu(rok, mesic) - len(covered)
     if need <= 0:
         return []
 
@@ -334,19 +341,55 @@ def _pick_for_seller(user, rok, mesic, stores_by_key, occupancy, rng: random.Ran
     return chosen
 
 
+def _orez_prebytecne(rok: int, mesic: int) -> int:
+    """Zruší nepotvrzené návrhy nad měsíční kvótu. Nechá dřívější termín."""
+    quota = pocet_vyjezdu(rok, mesic)
+    mesic_den = first_day(rok, mesic)
+    rows = list(
+        VyjezdNavrh.objects.filter(
+            mesic=mesic_den,
+            stav__in=(VyjezdNavrh.STAV_NAVRH, VyjezdNavrh.STAV_POTVRZENO),
+        ).select_related('user').order_by('user_id', 'datum', 'id')
+    )
+    by_user: dict[int, list] = {}
+    for row in rows:
+        by_user.setdefault(row.user_id, []).append(row)
+    zrusit = []
+    notify_users = []
+    for items in by_user.values():
+        potvrzene = [row for row in items if row.stav == VyjezdNavrh.STAV_POTVRZENO]
+        navrhy = [row for row in items if row.stav == VyjezdNavrh.STAV_NAVRH]
+        keep = max(0, quota - len(potvrzene))
+        extra = navrhy[keep:]
+        if not extra:
+            continue
+        zrusit.extend(extra)
+        notify_users.append(items[0].user)
+    if not zrusit:
+        return 0
+    VyjezdNavrh.objects.filter(id__in=[row.id for row in zrusit]).update(
+        stav=VyjezdNavrh.STAV_ZRUSENO,
+    )
+    for user in notify_users:
+        _notifikuj(user, mesic_den)
+    return len(zrusit)
+
+
 def dopln_vyjezdy(rok: int, mesic: int, rng: random.Random | None = None) -> dict:
-    """Doplní chybějící návrhy. Hotové řádky nepřepisuje."""
+    """Doplní chybějící návrhy. Hotové řádky nepřepisuje. Nad kvótou ruší nepotvrzené."""
     rng = rng or random.Random()
     zrus_navrhy_mimo_prodejce(rok, mesic)
     mesic_den = first_day(rok, mesic)
     stores_by_key = _stores_by_key()
     sellers = eligible_sellers(stores_by_key)
     rng.shuffle(sellers)
-    occupancy = _prodej_occupancy(rok, mesic)
     created_rows = []
     notified_users = []
+    zruseno = 0
 
     with transaction.atomic():
+        zruseno = _orez_prebytecne(rok, mesic)
+        occupancy = _prodej_occupancy(rok, mesic)
         for user in sellers:
             picks = _pick_for_seller(user, rok, mesic, stores_by_key, occupancy, rng)
             if not picks:
@@ -366,6 +409,7 @@ def dopln_vyjezdy(rok: int, mesic: int, rng: random.Random | None = None) -> dic
         'rok': rok,
         'mesic': mesic,
         'vytvoreno': len(created_rows),
+        'zruseno': zruseno,
         'uzivatele': notified_users,
     }
 
@@ -503,7 +547,8 @@ def seznam_mesice(rok: int, mesic: int) -> dict:
             'obsazeno': _obsazeno(row) if row.stav == VyjezdNavrh.STAV_NAVRH else False,
             'stav': row.stav,
         })
-    ma_navrh = {item['user_id'] for item in skupiny.values() if len(item['polozky']) >= POCET_VYJEZDU}
+    quota = pocet_vyjezdu(rok, mesic)
+    ma_navrh = {item['user_id'] for item in skupiny.values() if len(item['polozky']) >= quota}
     bez_navrhu = []
     for user in eligible_sellers(stores_by_key):
         if user.id in ma_navrh:
@@ -517,6 +562,7 @@ def seznam_mesice(rok: int, mesic: int) -> dict:
     return {
         'mesic': f'{rok:04d}-{mesic:02d}',
         'mesic_nazev': mesic_nazev(rok, mesic),
+        'pocet': quota,
         'skupiny': list(skupiny.values()),
         'bez_navrhu': bez_navrhu,
     }
