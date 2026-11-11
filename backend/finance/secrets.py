@@ -102,6 +102,13 @@ def get_flexi_config() -> dict | None:
         'password': password,
         'mode': (flexi.get('mode') or 'priloha').strip().lower() or 'priloha',
         'typ_dokl': (flexi.get('typ_dokl') or '').strip(),
+        # Prázdné = výchozí Partnertele ODD v dobropis_flexi (záporná přijatá FA).
+        'dobropis_firma': (flexi.get('dobropis_firma') or '').strip(),
+        'dobropis_typ_dokl': (flexi.get('dobropis_typ_dokl') or '').strip(),
+        'dobropis_popis': (flexi.get('dobropis_popis') or '').strip(),
+        'dobropis_clen_dph': (flexi.get('dobropis_clen_dph') or '').strip(),
+        'dobropis_typ_uc_op': (flexi.get('dobropis_typ_uc_op') or '').strip(),
+        'dobropis_stat': (flexi.get('dobropis_stat') or '').strip(),
     }
 
 

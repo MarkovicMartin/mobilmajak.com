@@ -509,6 +509,7 @@ export const financeAPI = {
         await api.get('/finance/naklady/ceka-na-fakturu/', { params })
     ).data,
     getDokladyKeKontrole: async () => (await api.get('/finance/doklady/ke-kontrole/')).data,
+    getDoklady: async () => (await api.get('/finance/doklady/')).data,
     getManualNaklady: async () => (await api.get('/finance/naklady/manual/')).data,
     createManualNaklad: async (payload) => (
         await api.post('/finance/naklady/manual/', payload)
@@ -555,6 +556,33 @@ export const financeAPI = {
         });
         return response.data;
     },
+    uploadDobropisy: async (files) => {
+        const form = new FormData();
+        files.forEach((file) => form.append('files', file));
+        return (await api.post('/finance/dobropisy/', form)).data;
+    },
+    getDobropisy: async () => (await api.get('/finance/dobropisy/')).data,
+    createDobropis: async ({
+        file,
+        cislo_faktury,
+        datum_vystaveni,
+        castka_celkem,
+        dph_castka,
+        vs,
+        popis,
+    }) => {
+        const form = new FormData();
+        form.append('file', file);
+        form.append('cislo_faktury', cislo_faktury || '');
+        form.append('datum_vystaveni', datum_vystaveni || '');
+        form.append('castka_celkem', castka_celkem || '');
+        if (dph_castka) form.append('dph_castka', dph_castka);
+        if (vs) form.append('vs', vs);
+        if (popis) form.append('popis', popis);
+        const response = await api.post('/finance/dobropisy/', form);
+        return response.data;
+    },
+    odeslatDobropisFlexi: async (id) => (await api.post(`/finance/dobropisy/${id}/flexi/`)).data,
     schvalitDoklad: async (id) => (await api.post(`/finance/doklady/${id}/schvalit/`)).data,
     odeslatDokladFlexi: async (id) => (await api.post(`/finance/doklady/${id}/odeslat-flexi/`)).data,
     zamitnoutDoklad: async (id, payload = {}) => (
@@ -566,6 +594,14 @@ export const financeAPI = {
     updateDoklad: async (id, payload) => (
         await api.patch(`/finance/doklady/${id}/`, payload)
     ).data,
+    replaceDokladSoubor: async (id, file) => {
+        const form = new FormData();
+        form.append('file', file);
+        const response = await api.post(`/finance/doklady/${id}/soubor/`, form, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        return response.data;
+    },
 };
 
 export const reklamaceAPI = {

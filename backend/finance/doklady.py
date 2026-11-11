@@ -118,6 +118,22 @@ def link_doklad_to_polozka(
     return doklad
 
 
+def replace_doklad_file(doklad: FinanceDoklad, uploaded_file) -> FinanceDoklad:
+    """Vymění soubor u ještě neschválené faktury a znovu zkusí OCR do prázdných polí."""
+    from .permissions import DOKLAD_STAV_BEZ_UPRAVY
+
+    if doklad.stav in DOKLAD_STAV_BEZ_UPRAVY:
+        raise ValueError('Schválenou fakturu už nelze měnit.')
+    rel_path, _orig = save_doklad_file(uploaded_file)
+    doklad.soubor = rel_path
+    doklad.upraveno = timezone.now()
+    doklad.save(update_fields=['soubor', 'upraveno'])
+    from .faktura_process import process_doklad_ocr
+    process_doklad_ocr(doklad.id, overwrite_empty=True)
+    doklad.refresh_from_db()
+    return doklad
+
+
 def create_orphan_doklad(uploaded_file, *, user_id: int | None = None) -> FinanceDoklad:
     """Nahrání FA bez platby – OCR + případné auto-spárování podle VS."""
     rel_path, _orig = save_doklad_file(uploaded_file)
@@ -344,6 +360,7 @@ def serialize_doklad(d: FinanceDoklad, *, include_polozka: bool = False) -> dict
         'soubor_url': f'{settings.MEDIA_URL.rstrip("/")}/{d.soubor}' if d.soubor else None,
         'schvaleno': d.schvaleno.isoformat() if d.schvaleno else None,
         'vytvoreno': d.vytvoreno.isoformat() if d.vytvoreno else None,
+        'upraveno': d.upraveno.isoformat() if d.upraveno else None,
         'ocr_zdroj': (d.ocr_raw or {}).get('extracted', {}).get('zdroj') if d.ocr_raw else None,
         'ocr_method': (d.ocr_raw or {}).get('meta', {}).get('method') if d.ocr_raw else None,
         'ocr_chyby': (
@@ -351,6 +368,7 @@ def serialize_doklad(d: FinanceDoklad, *, include_polozka: bool = False) -> dict
             or ([d.ocr_raw['error']] if d.ocr_raw and d.ocr_raw.get('error') else [])
         ),
         'flexi_id': d.flexi_id or None,
+        'druh': d.druh or FinanceDoklad.DRUH_FAKTURA,
         'flexi': (d.match_detail or {}).get('flexi'),
         'prirazeno_automaticky': bool(d.prirazeno_automaticky),
         'ceka_na_platbu': d.naklad_polozka_id is None,

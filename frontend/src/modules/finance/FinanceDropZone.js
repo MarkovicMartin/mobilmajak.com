@@ -8,6 +8,8 @@ const ACCEPT = '.pdf,.jpg,.jpeg,.png,.webp,image/*,application/pdf';
  */
 const FinanceDropZone = ({
     onFile,
+    onFiles,
+    multiple = false,
     disabled = false,
     compact = false,
     label = 'Přetáhněte fakturu sem nebo klepněte pro výběr',
@@ -15,10 +17,12 @@ const FinanceDropZone = ({
     const [dragOver, setDragOver] = useState(false);
     const inputRef = useRef(null);
 
-    const pick = useCallback((file) => {
-        if (!file || disabled) return;
-        onFile?.(file);
-    }, [disabled, onFile]);
+    const deliver = useCallback((list) => {
+        const files = Array.from(list || []).filter(Boolean);
+        if (!files.length || disabled) return;
+        if (multiple && onFiles) onFiles(files);
+        else onFile?.(files[0]);
+    }, [disabled, multiple, onFile, onFiles]);
 
     const onDragEnter = (e) => {
         e.preventDefault();
@@ -41,8 +45,7 @@ const FinanceDropZone = ({
         e.preventDefault();
         e.stopPropagation();
         setDragOver(false);
-        const file = e.dataTransfer?.files?.[0];
-        pick(file);
+        deliver(e.dataTransfer?.files);
     };
 
     return (
@@ -67,10 +70,14 @@ const FinanceDropZone = ({
                 ref={inputRef}
                 type="file"
                 accept={ACCEPT}
-                capture="environment"
+                multiple={multiple}
+                capture={multiple ? undefined : 'environment'}
                 className="finance-dropzone__input"
                 disabled={disabled}
-                onChange={(e) => pick(e.target.files?.[0])}
+                onChange={(e) => {
+                    deliver(e.target.files);
+                    e.target.value = '';
+                }}
             />
             <span className="finance-dropzone__icon" aria-hidden>📄</span>
             <span className="finance-dropzone__label">{label}</span>

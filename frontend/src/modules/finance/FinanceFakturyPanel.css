@@ -67,6 +67,15 @@
     border-radius: 6px;
 }
 
+.finance-faktury-card__parsed--warn {
+    color: #92400e;
+    background: #fff7ed;
+}
+
+.finance-faktury-replace {
+    margin-top: 0.5rem;
+}
+
 .finance-faktury-card__meta {
     margin: 0 0 0.75rem;
     font-size: 0.9rem;

@@ -6,7 +6,7 @@ const FinanceFakturyModule = () => (
     <div className="finance-module">
         <PageHeader
             title="Faktury k výdajům"
-            subtitle="Přiložte fakturu k výdeji z pokladny"
+            subtitle="Přiložte fakturu k výdeji z pokladny. Než ji schválí admin, můžete ji opravit."
         />
         <FinanceFakturyPanel intro="U výdeje s nákupem zboží stačí přiložit PDF nebo foto – OCR doplní údaje z faktury." />
     </div>

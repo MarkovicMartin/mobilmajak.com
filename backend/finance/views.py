@@ -21,12 +21,21 @@ from .permissions import (
     invoice_prodejny_context,
     is_finance_admin,
     naklady_qs_for_invoice_user,
+    DOKLAD_STAV_K_OPRAVE,
+    user_can_edit_doklad,
     user_can_upload_doklad,
 )
 from .doklady import (
     create_orphan_doklad,
     link_doklad_to_polozka,
+    replace_doklad_file,
     serialize_doklad,
+)
+from .dobropis_flexi import (
+    aktualizuj_dobropis,
+    odeslat_dobropis_do_flexi,
+    ulozit_dobropis_ze_souboru,
+    vytvor_dobropis_partnertele,
 )
 from .faktura_process import process_doklad_ocr, schvalit_doklad, zamitnout_doklad, odeslat_doklad_do_flexi
 from .services import (
@@ -975,14 +984,32 @@ def doklad_reprocess_ocr(request, doklad_id: int):
     return _no_store_response(serialize_doklad(doklad, include_polozka=True))
 
 
+def _doklad_response(doklad: FinanceDoklad, user, *, include_polozka: bool = False):
+    payload = serialize_doklad(doklad, include_polozka=include_polozka)
+    payload['lze_upravit'] = user_can_edit_doklad(user, doklad)
+    return payload
+
+
 @api_view(['PATCH'])
 @permission_classes([IsAuthenticated])
-@finance_admin_view
+@finance_invoice_view
 def doklad_update(request, doklad_id: int):
     try:
         doklad = FinanceDoklad.objects.select_related('naklad_polozka').get(pk=doklad_id)
     except FinanceDoklad.DoesNotExist:
         return _no_store_response({'error': 'Doklad nenalezen'}, status.HTTP_404_NOT_FOUND)
+    if not user_can_edit_doklad(request.user, doklad):
+        return _no_store_response(
+            {'error': 'Doklad už je schválený, nebo k němu nemáte oprávnění.'},
+            status.HTTP_403_FORBIDDEN,
+        )
+    if doklad.druh == FinanceDoklad.DRUH_DOBROPIS:
+        try:
+            doklad = aktualizuj_dobropis(doklad, request.data)
+        except ValueError as exc:
+            return _no_store_response({'error': str(exc)}, status.HTTP_400_BAD_REQUEST)
+        log_finance_audit(request, 'dobropis_update', f'id={doklad_id}')
+        return _no_store_response(serialize_doklad(doklad))
 
     data = request.data
     text_fields = ('dodavatel_nazev', 'cislo_faktury', 'dodavatel_ico', 'vs')
@@ -1023,25 +1050,135 @@ def doklad_update(request, doklad_id: int):
         doklad.refresh_from_db()
 
     log_finance_audit(request, 'doklad_update', f'id={doklad_id}')
-    return _no_store_response(serialize_doklad(doklad, include_polozka=True))
+    return _no_store_response(_doklad_response(doklad, request.user, include_polozka=True))
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@parser_classes([MultiPartParser, FormParser])
+@finance_invoice_view
+def doklad_replace_file(request, doklad_id: int):
+    """Výměna souboru u nahrané faktury, dokud ji admin neschválí."""
+    try:
+        doklad = FinanceDoklad.objects.select_related('naklad_polozka').get(pk=doklad_id)
+    except FinanceDoklad.DoesNotExist:
+        return _no_store_response({'error': 'Doklad nenalezen'}, status.HTTP_404_NOT_FOUND)
+    if not user_can_edit_doklad(request.user, doklad):
+        return _no_store_response(
+            {'error': 'Doklad už je schválený, nebo k němu nemáte oprávnění.'},
+            status.HTTP_403_FORBIDDEN,
+        )
+    upload = request.FILES.get('file')
+    if not upload:
+        return _no_store_response({'error': 'Chybí soubor (file)'}, status.HTTP_400_BAD_REQUEST)
+    try:
+        doklad = replace_doklad_file(doklad, upload)
+    except ValueError as exc:
+        return _no_store_response({'error': str(exc)}, status.HTTP_400_BAD_REQUEST)
+    log_finance_audit(request, 'doklad_replace_file', f'id={doklad_id}')
+    return _no_store_response(_doklad_response(doklad, request.user, include_polozka=True))
 
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 @finance_invoice_view
 def doklady_list(request):
-    """Nahráté faktury bez DPH (čekají na doplnění / OCR)."""
+    """Nahrané faktury, které uživatel ještě může opravit (do schválení adminem)."""
     log_finance_audit(request, 'doklady_list')
     qs = FinanceDoklad.objects.filter(
-        stav__in=(
-            FinanceDoklad.STAV_CEKA_NA_OCR,
-            FinanceDoklad.STAV_KE_KONTROLE,
-            FinanceDoklad.STAV_NOVA,
-        ),
+        stav__in=DOKLAD_STAV_K_OPRAVE,
+    ).exclude(
+        druh=FinanceDoklad.DRUH_DOBROPIS,
     ).select_related('naklad_polozka')
     store_ids = accessible_store_ids(request.user)
     if store_ids is not None:
         qs = qs.filter(naklad_polozka__prodejna_id__in=store_ids)
     if not is_finance_admin(request.user):
         qs = qs.filter(naklad_polozka__zdroj=NakladPolozka.ZDROJ_SYMPLIO_POKLADNA)
-    return _no_store_response([serialize_doklad(d) for d in qs.order_by('-vytvoreno')[:50]])
+    return _no_store_response([
+        _doklad_response(d, request.user, include_polozka=True)
+        for d in qs.order_by('-vytvoreno')[:100]
+    ])
+
+
+def _dobropis_response(doklad: FinanceDoklad, *, created: bool):
+    payload = serialize_doklad(doklad)
+    flexi = payload.get('flexi') or {}
+    if not flexi.get('ok'):
+        return _no_store_response(
+            {**payload, 'error': flexi.get('error') or 'Zápis do Flexi selhal'},
+            status.HTTP_502_BAD_GATEWAY,
+        )
+    code = status.HTTP_201_CREATED if created else status.HTTP_200_OK
+    return _no_store_response(payload, code)
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+@parser_classes([MultiPartParser, FormParser])
+@finance_admin_view
+def dobropisy(request):
+    """Testovací zápis přijatého dobropisu Partnertele. Jen admin."""
+    if request.method == 'GET':
+        log_finance_audit(request, 'dobropisy_list')
+        qs = FinanceDoklad.objects.filter(
+            druh=FinanceDoklad.DRUH_DOBROPIS,
+        ).order_by('-vytvoreno')
+        return _no_store_response([serialize_doklad(d) for d in qs[:50]])
+
+    files = list(request.FILES.getlist('files'))
+    single = request.FILES.get('file')
+    manual = request.data.get('castka_celkem') not in (None, '')
+    if files or (single and not manual):
+        batch = files or [single]
+        doklady = []
+        chyby = []
+        for upload in batch:
+            try:
+                doklad = ulozit_dobropis_ze_souboru(upload, user_id=request.user.id)
+            except ValueError as exc:
+                chyby.append({'soubor': getattr(upload, 'name', ''), 'error': str(exc)})
+                continue
+            log_finance_audit(request, 'dobropis_upload', f'doklad={doklad.id} cislo={doklad.cislo_faktury}')
+            doklady.append(serialize_doklad(doklad))
+        if not doklady and chyby:
+            return _no_store_response(
+                {'doklady': [], 'chyby': chyby, 'error': chyby[0]['error']},
+                status.HTTP_400_BAD_REQUEST,
+            )
+        return _no_store_response(
+            {'doklady': doklady, 'chyby': chyby},
+            status.HTTP_201_CREATED,
+        )
+
+    if not single:
+        return _no_store_response({'error': 'Chybí soubor dobropisu'}, status.HTTP_400_BAD_REQUEST)
+    try:
+        doklad = vytvor_dobropis_partnertele(
+            uploaded_file=single,
+            cislo=request.data.get('cislo_faktury') or '',
+            datum=request.data.get('datum_vystaveni') or '',
+            castka=request.data.get('castka_celkem'),
+            dph=request.data.get('dph_castka'),
+            vs=request.data.get('vs') or '',
+            popis=request.data.get('popis') or '',
+            user_id=request.user.id,
+        )
+    except ValueError as exc:
+        return _no_store_response({'error': str(exc)}, status.HTTP_400_BAD_REQUEST)
+    log_finance_audit(request, 'dobropis_create', f'doklad={doklad.id} flexi={doklad.flexi_id}')
+    return _dobropis_response(doklad, created=True)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@finance_admin_view
+def dobropis_flexi_retry(request, doklad_id: int):
+    """Opakuje zápis. Když doklad ve Flexi už je, jen doplní přílohu."""
+    try:
+        doklad = FinanceDoklad.objects.get(pk=doklad_id, druh=FinanceDoklad.DRUH_DOBROPIS)
+    except FinanceDoklad.DoesNotExist:
+        return _no_store_response({'error': 'Dobropis nenalezen'}, status.HTTP_404_NOT_FOUND)
+    doklad = odeslat_dobropis_do_flexi(doklad, reuse_existing=True)
+    log_finance_audit(request, 'dobropis_flexi_retry', f'doklad={doklad.id} flexi={doklad.flexi_id}')
+    return _dobropis_response(doklad, created=False)

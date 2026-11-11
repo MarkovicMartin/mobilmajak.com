@@ -4,6 +4,7 @@ import { PageHeader, Tabs } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
 import { financeAPI, storeAPI } from '../../services/api';
 import './FinanceModule.css';
+import FinanceDobropisyPanel from './FinanceDobropisyPanel';
 import FinanceFakturyPanel from './FinanceFakturyPanel';
 import FinancePrehledPanel from './FinancePrehledPanel';
 import FinanceKontrolaPanel from './FinanceKontrolaPanel';
@@ -35,6 +36,7 @@ const FINANCE_TABS = [
     { id: 'prehled', label: 'Přehled', to: '/finance/prehled' },
     { id: 'kontrola', label: 'Kontrola FA', to: '/finance/kontrola' },
     { id: 'faktury', label: 'Faktury', to: '/finance/faktury' },
+    { id: 'dobropisy', label: 'Dobropisy', to: '/finance/dobropisy' },
     { id: 'manual', label: 'Ruční náklad', to: '/finance/manual' },
     { id: 'pravidla', label: 'Pravidla', to: '/finance/pravidla' },
     { id: 'kategorie', label: 'Kategorie', to: '/finance/kategorie' },
@@ -650,9 +652,11 @@ const FinanceModule = () => {
                 <FinanceFakturyPanel
                     intro={admin
                         ? 'Výdaje čekající na fakturu – admin vidí všechny prodejny.'
-                        : 'U výdeje s nákupem zboží stačí přiložit PDF nebo foto – OCR doplní údaje z faktury.'}
+                        : 'U výdeje s nákupem zboží stačí přiložit PDF nebo foto. Nahranou fakturu můžete opravit, dokud ji neschválí admin.'}
                 />
             )}
+
+            {!loading && tab === 'dobropisy' && <FinanceDobropisyPanel />}
 
             {!loading && tab === 'manual' && (
                 <section className="finance-panel">

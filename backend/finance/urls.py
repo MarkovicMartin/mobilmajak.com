@@ -22,8 +22,11 @@ urlpatterns = [
     path('doklady/ke-kontrole/', views.doklady_ke_kontrole, name='finance-doklady-ke-kontrole'),
     path('doklady/upload/', views.doklad_upload, name='finance-doklad-upload'),
     path('doklady/<int:doklad_id>/', views.doklad_update, name='finance-doklad-update'),
+    path('doklady/<int:doklad_id>/soubor/', views.doklad_replace_file, name='finance-doklad-soubor'),
     path('doklady/<int:doklad_id>/schvalit/', views.doklad_schvalit, name='finance-doklad-schvalit'),
     path('doklady/<int:doklad_id>/odeslat-flexi/', views.doklad_odeslat_flexi, name='finance-doklad-odeslat-flexi'),
+    path('dobropisy/', views.dobropisy, name='finance-dobropisy'),
+    path('dobropisy/<int:doklad_id>/flexi/', views.dobropis_flexi_retry, name='finance-dobropis-flexi'),
     path('doklady/<int:doklad_id>/zamitnout/', views.doklad_zamitnout, name='finance-doklad-zamitnout'),
     path('doklady/<int:doklad_id>/reprocess-ocr/', views.doklad_reprocess_ocr, name='finance-doklad-reprocess'),
 ]

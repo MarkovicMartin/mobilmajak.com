@@ -96,6 +96,15 @@ class FinanceDoklad(models.Model):
     )
     ocr_raw = models.JSONField(null=True, blank=True)
     flexi_id = models.CharField(max_length=32, blank=True, default='', db_index=True)
+    DRUH_FAKTURA = 'faktura'
+    DRUH_DOBROPIS = 'dobropis'
+    DRUH_CHOICES = [
+        (DRUH_FAKTURA, 'Faktura'),
+        (DRUH_DOBROPIS, 'Dobropis'),
+    ]
+    druh = models.CharField(
+        max_length=16, choices=DRUH_CHOICES, default=DRUH_FAKTURA, db_index=True,
+    )
     prirazeno_automaticky = models.BooleanField(default=False)
     vytvoreno = SafeDateTimeField(auto_now_add=True)
     upraveno = SafeDateTimeField(null=True, blank=True)

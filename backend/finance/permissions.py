@@ -6,7 +6,19 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.response import Response
 
-from .models import NakladPolozka, is_bank_zdroj
+from .models import FinanceDoklad, NakladPolozka, is_bank_zdroj
+
+# Po schválení (nebo odeslání do Flexi) uživatel doklad už neupravuje.
+DOKLAD_STAV_BEZ_UPRAVY = (
+    FinanceDoklad.STAV_SCHVALENO,
+    FinanceDoklad.STAV_ODESLANO_FLEXI,
+)
+DOKLAD_STAV_K_OPRAVE = (
+    FinanceDoklad.STAV_CEKA_NA_OCR,
+    FinanceDoklad.STAV_KE_KONTROLE,
+    FinanceDoklad.STAV_NOVA,
+    FinanceDoklad.STAV_ZAMITNUTO,
+)
 
 
 def _client_ip(request):
@@ -33,6 +45,20 @@ def user_can_upload_doklad(user, polozka) -> bool:
     if not is_finance_admin(user) and is_bank_zdroj(polozka.zdroj):
         return False
     return True
+
+
+def user_can_edit_doklad(user, doklad) -> bool:
+    """Úprava nahrané faktury. Po schválení adminem už ne."""
+    if doklad.stav in DOKLAD_STAV_BEZ_UPRAVY:
+        return False
+    if is_finance_admin(user):
+        return True
+    if getattr(doklad, 'druh', None) == FinanceDoklad.DRUH_DOBROPIS:
+        return False
+    polozka = getattr(doklad, 'naklad_polozka', None)
+    if polozka is None:
+        return False
+    return user_can_upload_doklad(user, polozka)
 
 
 def _local_now(now=None):
