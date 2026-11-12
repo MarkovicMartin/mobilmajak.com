@@ -96,7 +96,8 @@ class FlexiClient:
         firma = firma.replace("'", "''")
         if firma:
             expr = f"({expr}) and firma='code:{firma}'"
-        filt = quote(expr)
+        # safe='' zakóduje i lomítka v čísle dokladu (100/07/26/…)
+        filt = quote(expr, safe='')
         url = self._url(self._company_path(
             f"faktura-prijata/({filt}).json"
         ))

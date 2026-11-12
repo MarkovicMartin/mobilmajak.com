@@ -29,6 +29,14 @@ PARTNERTELE = {
     'clen_dph': '03-04, 43-44',
     'typ_uc_op': '504001 EU ZBOŽÍ',
     'stat': 'PL',
+    'clen_kon_vyk': 'A.2.',
+    'sazba_dph_zakl': '23',
+    'sazba_dph_sniz': '144',
+    'dph_zakl_ucet': '343999',
+    'dph_sniz_ucet': '343015',
+    'dph_sniz2_ucet': '343010',
+    'prim_ucet': '321001',
+    'proti_ucet': '504001',
     'dph_sazba': Decimal('21'),
 }
 
@@ -50,6 +58,14 @@ def dobropis_nastaveni(cfg: dict | None = None) -> dict:
         'clen_dph': _cfg_or(cfg, 'dobropis_clen_dph', PARTNERTELE['clen_dph']),
         'typ_uc_op': _cfg_or(cfg, 'dobropis_typ_uc_op', PARTNERTELE['typ_uc_op']),
         'stat': _cfg_or(cfg, 'dobropis_stat', PARTNERTELE['stat']),
+        'clen_kon_vyk': _cfg_or(cfg, 'dobropis_clen_kon_vyk', PARTNERTELE['clen_kon_vyk']),
+        'sazba_dph_zakl': _cfg_or(cfg, 'dobropis_sazba_dph_zakl', PARTNERTELE['sazba_dph_zakl']),
+        'sazba_dph_sniz': _cfg_or(cfg, 'dobropis_sazba_dph_sniz', PARTNERTELE['sazba_dph_sniz']),
+        'dph_zakl_ucet': _cfg_or(cfg, 'dobropis_dph_zakl_ucet', PARTNERTELE['dph_zakl_ucet']),
+        'dph_sniz_ucet': _cfg_or(cfg, 'dobropis_dph_sniz_ucet', PARTNERTELE['dph_sniz_ucet']),
+        'dph_sniz2_ucet': _cfg_or(cfg, 'dobropis_dph_sniz2_ucet', PARTNERTELE['dph_sniz2_ucet']),
+        'prim_ucet': _cfg_or(cfg, 'dobropis_prim_ucet', PARTNERTELE['prim_ucet']),
+        'proti_ucet': _cfg_or(cfg, 'dobropis_proti_ucet', PARTNERTELE['proti_ucet']),
     }
 
 
@@ -92,6 +108,14 @@ def _parse_date(value) -> datetime.date:
         raise ValueError('Datum vystavení musí být RRRR-MM-DD') from exc
 
 
+def _datum_nahrani(doklad: FinanceDoklad):
+    """Den, kdy soubor přišel do Majáku. Do starého období se DPH neuplatňuje."""
+    created = doklad.vytvoreno or timezone.now()
+    if timezone.is_naive(created):
+        created = timezone.make_aware(created, timezone.get_current_timezone())
+    return timezone.localtime(created).date()
+
+
 def flexi_dobropis_fields(
     *,
     cislo: str,
@@ -101,12 +125,15 @@ def flexi_dobropis_fields(
     vs: str,
     popis: str,
     nastaveni: dict,
+    datum_prijeti=None,
 ) -> dict:
     """
     Záporná přijatá FA.
     sumCelkem = základ (částka k zápočtu), DPH je zvlášť – stejně jako ODD zboží EU.
+    Datum přijetí a uplatnění DPH je den nahrání, ne datum na dokladu dodavatele.
     """
     den = datum.isoformat()
+    prijeti = (datum_prijeti or datum).isoformat()
     base = -castka
     vat = -dph
     fields = {
@@ -114,9 +141,11 @@ def flexi_dobropis_fields(
         'firma': _code(nastaveni['firma']),
         'cisDosle': cislo,
         'varSym': vs,
-        'datVyst': den,
+        'datVyst': prijeti,
         'duzpPuv': den,
-        'duzpUcto': den,
+        'duzpUcto': prijeti,
+        'datUcto': prijeti,
+        'datSazbyDph': prijeti,
         'datSplat': den,
         'popis': popis[:255],
         'bezPolozek': True,
@@ -130,6 +159,23 @@ def flexi_dobropis_fields(
         fields['typUcOp'] = _code(nastaveni['typ_uc_op'])
     if nastaveni.get('stat'):
         fields['stat'] = _code(nastaveni['stat'])
+    if nastaveni.get('clen_kon_vyk'):
+        fields['clenKonVykDph'] = _code(nastaveni['clen_kon_vyk'])
+    # Sazby (id z číselníku sazba-dph) a účty DPH, jinak Flexi základ na daň nedopočítá.
+    if nastaveni.get('sazba_dph_zakl'):
+        fields['sazbaDphZakl'] = nastaveni['sazba_dph_zakl']
+    if nastaveni.get('sazba_dph_sniz'):
+        fields['sazbaDphSniz'] = nastaveni['sazba_dph_sniz']
+    if nastaveni.get('dph_zakl_ucet'):
+        fields['dphZaklUcet'] = _code(nastaveni['dph_zakl_ucet'])
+    if nastaveni.get('dph_sniz_ucet'):
+        fields['dphSnizUcet'] = _code(nastaveni['dph_sniz_ucet'])
+    if nastaveni.get('dph_sniz2_ucet'):
+        fields['dphSniz2Ucet'] = _code(nastaveni['dph_sniz2_ucet'])
+    if nastaveni.get('prim_ucet'):
+        fields['primUcet'] = _code(nastaveni['prim_ucet'])
+    if nastaveni.get('proti_ucet'):
+        fields['protiUcet'] = _code(nastaveni['proti_ucet'])
     return fields
 
 
@@ -352,10 +398,13 @@ def _zapsat(doklad: FinanceDoklad, *, reuse_existing: bool) -> dict:
     vat = abs(Decimal(doklad.dph_castka if doklad.dph_castka is not None else 0)).quantize(
         _MONEY, rounding=ROUND_HALF_UP,
     )
+    if vat == 0:
+        vat = (base * PARTNERTELE['dph_sazba'] / Decimal('100')).quantize(_MONEY, rounding=ROUND_HALF_UP)
     popis = (detail.get('popis') or nastaveni['popis']).strip()
     fields = flexi_dobropis_fields(
         cislo=doklad.cislo_faktury,
         datum=doklad.datum_vystaveni,
+        datum_prijeti=_datum_nahrani(doklad),
         castka=base,
         dph=vat,
         vs=(doklad.vs or var_sym_from_cislo(doklad.cislo_faktury)),

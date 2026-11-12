@@ -109,6 +109,7 @@ def get_flexi_config() -> dict | None:
         'dobropis_clen_dph': (flexi.get('dobropis_clen_dph') or '').strip(),
         'dobropis_typ_uc_op': (flexi.get('dobropis_typ_uc_op') or '').strip(),
         'dobropis_stat': (flexi.get('dobropis_stat') or '').strip(),
+        'dobropis_clen_kon_vyk': (flexi.get('dobropis_clen_kon_vyk') or '').strip(),
     }
 
 

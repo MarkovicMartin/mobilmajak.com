@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import re
 from datetime import date
+from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
 
 from .faktura_extract import (
@@ -61,8 +62,12 @@ def parse_partnertele_dobropis(text: str) -> FakturaExtracted:
     if amount:
         result.castka_celkem = amount
         result.castka_bez_dph = amount
-        result.dph_castka = '0.00'
-        result.dph_sazba = 0
+        # Na dokladu je 0 % (reverse charge). Do Flexi patří česká DPH 21 % ze základu,
+        # celkem k úhradě zůstává základ – stejně jako u ostatních ODD Partnertele.
+        zaklad = Decimal(amount)
+        dph = (zaklad * Decimal('21') / Decimal('100')).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        result.dph_castka = f'{dph:.2f}'
+        result.dph_sazba = 21
 
     doc_date = _DOC_DATE_RE.search(raw)
     if doc_date:

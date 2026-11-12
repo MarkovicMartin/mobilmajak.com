@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
+from django.utils import timezone
 from rest_framework.test import APIRequestFactory, force_authenticate
 
 from finance import views
@@ -127,12 +128,21 @@ class DobropisFlexiTests(TestCase):
         self.assertEqual(fields['sumZklZakl'], '-70.30')
         self.assertEqual(fields['sumDphZakl'], '-14.76')
         self.assertEqual(fields['sumCelkem'], '-70.30')
+        self.assertEqual(fields['duzpPuv'], '2026-11-11')
         self.assertEqual(fields['clenDph'], 'code:03-04, 43-44')
+        self.assertEqual(fields['clenKonVykDph'], 'code:A.2.')
+        self.assertEqual(fields['sazbaDphZakl'], '23')
+        self.assertEqual(fields['sazbaDphSniz'], '144')
+        self.assertEqual(fields['dphZaklUcet'], 'code:343999')
         client.upload_priloha.assert_called_once()
         find_kwargs = client.find_faktura_prijata.call_args.kwargs
         self.assertEqual(find_kwargs['firma_code'], 'PARTNER-PL')
 
         doklad = FinanceDoklad.objects.get(pk=response.data['id'])
+        prijeti = timezone.localtime(doklad.vytvoreno).date().isoformat()
+        self.assertEqual(fields['datVyst'], prijeti)
+        self.assertEqual(fields['duzpUcto'], prijeti)
+        self.assertEqual(fields['datUcto'], prijeti)
         self.assertEqual(doklad.stav, FinanceDoklad.STAV_ODESLANO_FLEXI)
         self.assertEqual(doklad.dph_castka, Decimal('-14.76'))
 
@@ -179,8 +189,8 @@ class PartnerteleDobropisExtractTests(TestCase):
         self.assertNotIn('2402', parsed.cislo_faktury)
         self.assertEqual(parsed.castka_celkem, '-43.55')
         self.assertEqual(parsed.castka_bez_dph, '-43.55')
-        self.assertEqual(parsed.dph_castka, '0.00')
-        self.assertEqual(parsed.dph_sazba, 0)
+        self.assertEqual(parsed.dph_castka, '-9.15')
+        self.assertEqual(parsed.dph_sazba, 21)
         self.assertEqual(parsed.datum_vystaveni, '2026-07-22')
         self.assertEqual(parsed.vs, '1000726')
         self.assertEqual(parsed.chyby, [])
@@ -279,5 +289,12 @@ class PartnerteleDobropisExtractTests(TestCase):
         self.assertEqual(fields['cisDosle'], '100/07/26/KFWZDWV')
         self.assertEqual(fields['sumCelkem'], '-43.55')
         self.assertEqual(fields['sumZklZakl'], '-43.55')
-        self.assertEqual(fields['sumDphZakl'], '0.00')
+        self.assertEqual(fields['sumDphZakl'], '-9.15')
+        self.assertEqual(fields['clenKonVykDph'], 'code:A.2.')
+        self.assertEqual(fields['sazbaDphZakl'], '23')
+        doklad.refresh_from_db()
+        prijeti = timezone.localtime(doklad.vytvoreno).date().isoformat()
+        self.assertEqual(fields['datVyst'], prijeti)
+        self.assertEqual(fields['duzpUcto'], prijeti)
+        self.assertEqual(fields['duzpPuv'], '2026-07-22')
 
