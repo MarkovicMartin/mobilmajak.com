@@ -77,6 +77,7 @@ class FlexiClient:
         op: str = 'eq',
         limit: int = 5,
         firma_code: str | None = None,
+        evidence: str = 'faktura-prijata',
     ) -> list[dict]:
         value = (value or '').strip()
         if not value:
@@ -98,8 +99,9 @@ class FlexiClient:
             expr = f"({expr}) and firma='code:{firma}'"
         # safe='' zakóduje i lomítka v čísle dokladu (100/07/26/…)
         filt = quote(expr, safe='')
+        evidence_name = (evidence or 'faktura-prijata').strip('/')
         url = self._url(self._company_path(
-            f"faktura-prijata/({filt}).json"
+            f"{evidence_name}/({filt}).json"
         ))
         params = {
             'detail': 'custom:id,kod,cisDosle,varSym,popis,sumCelkem,datVyst',
@@ -114,7 +116,7 @@ class FlexiClient:
                 f'Flexi hledání selhalo ({resp.status_code}): {resp.text[:300]}',
                 status_code=resp.status_code,
             )
-        items = (resp.json().get('winstrom') or {}).get('faktura-prijata') or []
+        items = (resp.json().get('winstrom') or {}).get(evidence_name) or []
         if isinstance(items, dict):
             items = [items]
         return items
@@ -126,10 +128,12 @@ class FlexiClient:
         filename: str,
         content: bytes,
         content_type: str,
+        evidence: str = 'faktura-prijata',
     ) -> dict[str, Any]:
         safe_name = (filename or 'doklad.pdf').replace('/', '_').replace('\\', '_')
+        evidence_name = (evidence or 'faktura-prijata').strip('/')
         url = self._url(self._company_path(
-            f'faktura-prijata/{faktura_id}/prilohy/new/{quote(safe_name)}'
+            f'{evidence_name}/{faktura_id}/prilohy/new/{quote(safe_name)}'
         ))
         try:
             resp = self.session.put(

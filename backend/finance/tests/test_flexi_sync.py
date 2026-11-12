@@ -59,20 +59,43 @@ class FlexiSyncTests(TestCase):
             naklad_polozka=self.sym_polozka,
         )
 
-    def test_resolve_keys_fio_prefers_vs(self):
+    def test_resolve_keys_fio_only_vs(self):
         keys = resolve_flexi_match_keys(self.fio_doklad, self.fio_polozka)
-        self.assertEqual(keys[0]['field'], 'varSym')
-        self.assertEqual(keys[0]['value'], '100042023')
-        self.assertTrue(any(k['field'] == 'cisDosle' for k in keys))
+        self.assertEqual(keys, [{
+            'field': 'varSym',
+            'value': '100042023',
+            'source': 'bank_vs',
+            'op': 'eq',
+            'evidence': 'faktura-prijata',
+        }])
 
-    def test_resolve_keys_symplio_uses_popis_not_cislo(self):
+    def test_resolve_keys_rb_only_vs(self):
+        self.fio_polozka.zdroj = NakladPolozka.ZDROJ_RAIFFEISEN
+        keys = resolve_flexi_match_keys(self.fio_doklad, self.fio_polozka)
+        self.assertEqual([k['field'] for k in keys], ['varSym'])
+        self.assertEqual(keys[0]['value'], '100042023')
+        self.assertEqual(keys[0]['evidence'], 'faktura-prijata')
+
+    def test_resolve_keys_symplio_uses_popis(self):
         keys = resolve_flexi_match_keys(self.sym_doklad, self.sym_polozka)
-        self.assertTrue(keys)
-        self.assertTrue(all(k['field'] == 'popis' for k in keys))
-        self.assertFalse(any(k['field'] == 'cisDosle' for k in keys))
-        self.assertEqual(keys[0]['value'], 'ASWO Czech - zbozi FA2026/001')
-        self.assertEqual(keys[0]['op'], 'eq')
-        self.assertTrue(any(k['op'] == 'like' for k in keys))
+        self.assertEqual(keys, [{
+            'field': 'popis',
+            'value': 'ASWO Czech - zbozi FA2026/001',
+            'source': 'pokladna_popis',
+            'op': 'like',
+            'evidence': 'pokladni-pohyb',
+        }])
+
+    def test_resolve_keys_symplio_ignores_vs(self):
+        self.sym_doklad.vs = '226110764'
+        self.sym_doklad.cislo_faktury = '2026028713'
+        self.sym_polozka.popis = 'Manuální výdej Servisní díly s.r.o\nDíly\n2026028713'
+        keys = resolve_flexi_match_keys(self.sym_doklad, self.sym_polozka)
+        self.assertEqual(len(keys), 1)
+        self.assertEqual(keys[0]['field'], 'popis')
+        self.assertEqual(keys[0]['evidence'], 'pokladni-pohyb')
+        self.assertNotIn('\n', keys[0]['value'])
+        self.assertEqual(keys[0]['value'], 'Servisní díly s.r.o Díly 2026028713')
 
     def test_resolve_keys_strips_manualni_vydej_prefix(self):
         self.sym_polozka.popis = 'Manuální výdej PANFICO - servis 202601234'
@@ -149,3 +172,42 @@ class FlexiSyncTests(TestCase):
         self.assertEqual(doklad.stav, FinanceDoklad.STAV_SCHVALENO)
         self.assertFalse(doklad.flexi_id)
         self.assertFalse((doklad.match_detail or {}).get('flexi', {}).get('ok'))
+
+    @patch('finance.flexi_sync.is_flexi_sync_enabled', return_value=True)
+    @patch('finance.flexi_sync.get_flexi_config')
+    @patch('finance.flexi_sync.FlexiClient')
+    def test_sync_symplio_falls_back_to_pokladni_pohyb(self, client_cls, get_cfg, _enabled):
+        get_cfg.return_value = {
+            'base_url': 'https://example.flexibee.eu:5434',
+            'company': 'test',
+            'username': 'u',
+            'password': 'p',
+            'mode': 'priloha',
+            'typ_dokl': '',
+        }
+        self.sym_doklad.vs = '2126034889'
+        self.sym_doklad.cislo_faktury = '2126034889'
+        self.sym_polozka.popis = 'Manuální výdej Bakr, s.r.o. Zboží 2126034889'
+        self.sym_doklad.save(update_fields=['vs', 'cislo_faktury'])
+        self.sym_polozka.save(update_fields=['popis'])
+        client = MagicMock()
+        client_cls.return_value = client
+
+        def find(*, field, value, op='eq', limit=5, firma_code=None, evidence='faktura-prijata'):
+            if evidence == 'pokladni-pohyb' and field == 'popis' and value == 'Bakr, s.r.o. Zboží 2126034889':
+                return [{
+                    'id': '338687',
+                    'kod': 'C1-000871/26',
+                    'popis': 'Manuální výdej: Bakr, s.r.o. Zboží 2126034889',
+                    'sumCelkem': '2572.0',
+                }]
+            return []
+
+        client.find_faktura_prijata.side_effect = find
+        client.upload_priloha.return_value = {'priloha_id': '9', 'status_code': 201}
+
+        result = sync_doklad_to_flexi(self.sym_doklad)
+        self.assertTrue(result['ok'])
+        self.assertEqual(result['flexi_id'], '338687')
+        self.assertEqual(result['matched_by']['evidence'], 'pokladni-pohyb')
+        self.assertEqual(client.upload_priloha.call_args.kwargs['evidence'], 'pokladni-pohyb')

@@ -565,6 +565,9 @@ def _find_amount_near(
                     continue
                 if d < Decimal('1'):
                     continue
+                # „21%“ / „21 %“ je sazba, ne částka (jinak základ = 21 a DPH = celkem − 21).
+                if re.match(r'\s*%', snippet[m.end():m.end() + 4]):
+                    continue
                 values.append(d)
             if values:
                 chosen = max(values) if prefer_largest else values[0]

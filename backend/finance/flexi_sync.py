@@ -17,57 +17,75 @@ logger = logging.getLogger(__name__)
 _VYDEJ_PREFIX = re.compile(r'^manu[aá]ln[ií]\s+v[yý]de[jj]\s+', re.I)
 
 
+def _one_line(value: str) -> str:
+    """Flexi filtr nesnese zalomení v hodnotě (adresaNeplatnaUrl)."""
+    return re.sub(r'\s+', ' ', (value or '').replace('\r', ' ').replace('\n', ' ')).strip()
+
+
 def _symplio_poznamka_for_flexi(popis: str) -> str:
     """Poznámka z pokladny → text, který účetní dává do Flexi popis."""
-    text = (popis or '').strip()
-    text = _VYDEJ_PREFIX.sub('', text).strip()
-    return text[:300]
+    text = _VYDEJ_PREFIX.sub('', (popis or '').strip()).strip()
+    return _one_line(text)[:300]
+
+
+def _bank_vs(polozka: NakladPolozka) -> str:
+    vs = (polozka.vs or '').strip()
+    # Legacy bug: dřív se do vs ukládal column10 (název), VS bylo v protiucet (column5).
+    if not re.fullmatch(r'\d{4,}', vs):
+        legacy = (polozka.protiucet or '').strip()
+        if re.fullmatch(r'\d{4,}', legacy):
+            vs = legacy
+    if re.fullmatch(r'\d{4,}', vs):
+        return vs
+    return ''
 
 
 def resolve_flexi_match_keys(doklad: FinanceDoklad, polozka: NakladPolozka | None) -> list[dict]:
     """
-    Klíče pro hledání přijaté FA ve Flexi.
-    Fio → varSym (VS). Symplio ruční výdej → popis (poznámka), ne číslo dokladu.
+    Fio a RB: přijatá FA podle VS platby.
+    Symplio pokladna: pokladní pohyb podle popis.
     """
     keys: list[dict] = []
-    seen: set[tuple[str, str, str]] = set()
+    seen: set[tuple[str, str, str, str]] = set()
 
-    def add(field: str, value: str, source: str, *, op: str = 'eq'):
-        value = (value or '').strip()
+    def add(
+        field: str,
+        value: str,
+        source: str,
+        *,
+        op: str = 'eq',
+        evidence: str = 'faktura-prijata',
+    ):
+        value = _one_line(value)
         if not value:
             return
-        pair = (field, value, op)
+        pair = (evidence, field, value, op)
         if pair in seen:
             return
         seen.add(pair)
-        keys.append({'field': field, 'value': value, 'source': source, 'op': op})
+        keys.append({
+            'field': field,
+            'value': value,
+            'source': source,
+            'op': op,
+            'evidence': evidence,
+        })
 
     if polozka and is_bank_zdroj(polozka.zdroj):
-        vs = (polozka.vs or '').strip()
-        # Legacy bug: dřív se do vs ukládal column10 (název), VS bylo v protiucet (column5).
-        if not re.fullmatch(r'\d{4,}', vs):
-            legacy = (polozka.protiucet or '').strip()
-            if re.fullmatch(r'\d{4,}', legacy):
-                vs = legacy
-        add('varSym', vs, 'fio_vs')
-        if doklad.cislo_faktury:
-            add('varSym', doklad.cislo_faktury, 'doklad_cislo_as_vs')
-            add('cisDosle', doklad.cislo_faktury, 'doklad_cislo')
-        if doklad.vs:
-            add('varSym', doklad.vs, 'doklad_vs')
+        add('varSym', _bank_vs(polozka), 'bank_vs')
         return keys
-
-    # Osiřelá FA / OCR VS → Flexi varSym i bez platby
-    if doklad.vs and re.fullmatch(r'\d{4,}', (doklad.vs or '').strip()):
-        add('varSym', doklad.vs.strip(), 'doklad_vs')
 
     if polozka and polozka.zdroj == NakladPolozka.ZDROJ_SYMPLIO_POKLADNA:
         poznamka = _symplio_poznamka_for_flexi(polozka.popis or '')
         if poznamka:
-            add('popis', poznamka, 'symplio_poznamka', op='eq')
-            add('popis', poznamka, 'symplio_poznamka_like', op='like')
-            add('popis', poznamka, 'symplio_poznamka_like_similar', op='like_similar')
+            add(
+                'popis', poznamka, 'pokladna_popis',
+                op='like', evidence='pokladni-pohyb',
+            )
         return keys
+
+    if doklad.vs and re.fullmatch(r'\d{4,}', (doklad.vs or '').strip()):
+        add('varSym', doklad.vs.strip(), 'doklad_vs')
 
     # Ostatní zdroje – fallback na číslo FA / popis položky
     add('cisDosle', doklad.cislo_faktury or '', 'doklad_cislo')
@@ -147,13 +165,11 @@ def sync_doklad_to_flexi(doklad: FinanceDoklad) -> dict:
                 field=key['field'],
                 value=key['value'],
                 op=key.get('op') or 'eq',
+                evidence=key.get('evidence') or 'faktura-prijata',
             )
         except FlexiError as exc:
-            return {
-                'ok': False,
-                'error': exc.message,
-                'tried': tried + [{**key, 'error': exc.message}],
-            }
+            tried.append({**key, 'error': exc.message})
+            continue
         tried.append({**key, 'count': len(found)})
         if len(found) == 1:
             matches = found
@@ -176,9 +192,13 @@ def sync_doklad_to_flexi(doklad: FinanceDoklad) -> dict:
             }
 
     if not matches:
+        searched = any('count' in row for row in tried)
+        error = 'Ve Flexi nenalezen odpovídající doklad'
+        if not searched and tried:
+            error = tried[-1].get('error') or error
         return {
             'ok': False,
-            'error': 'Ve Flexi nenalezena přijatá faktura',
+            'error': error,
             'tried': tried,
         }
 
@@ -197,6 +217,7 @@ def sync_doklad_to_flexi(doklad: FinanceDoklad) -> dict:
             filename=filename,
             content=content,
             content_type=content_type,
+            evidence=(match_meta or {}).get('evidence') or 'faktura-prijata',
         )
     except FlexiError as exc:
         logger.warning('Flexi upload failed doklad=%s: %s', doklad.id, exc.message)

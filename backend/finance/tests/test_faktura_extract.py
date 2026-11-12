@@ -73,6 +73,24 @@ class FakturaExtractTests(TestCase):
         )
         self.assertEqual(_parse_text_fields(text).cislo_faktury, '30001940')
 
+    def test_parse_recap_ignores_vat_rate_as_base(self):
+        """Sazba 21 % nesmí být základ. DPH je prostřední sloupec, celkem horní částka."""
+        text = """
+        Variabilní symbol: 226110764
+        Číslo dokladu: 2026028713
+        Celkem dobírka: 718 Kč
+        Rekapitulace DPH
+        Sazba Základ [Kč] DPH [Kč] Celkem vč. DPH [Kč]
+        Sazba 21% 593,39 124,61 718,00
+        Celkem: 593,39 124,61 718,00
+        """
+        r = _parse_text_fields(text)
+        self.assertEqual(r.vs, '226110764')
+        self.assertEqual(r.cislo_faktury, '2026028713')
+        self.assertEqual(r.castka_celkem, '718.00')
+        self.assertEqual(r.castka_bez_dph, '593.39')
+        self.assertEqual(r.dph_castka, '124.61')
+
     def test_parse_amount_thousand_dots(self):
         from finance.faktura_extract import _normalize_amount_str
         self.assertEqual(_normalize_amount_str('1.210,50'), '1210.50')
