@@ -61,6 +61,17 @@ def user_can_edit_doklad(user, doklad) -> bool:
     return user_can_upload_doklad(user, polozka)
 
 
+def user_can_delete_doklad(user, doklad) -> bool:
+    """Smazání nahraného souboru. Doklad už zapsaný ve Flexi zůstane."""
+    if (getattr(doklad, 'flexi_id', '') or '').strip():
+        return False
+    if doklad.stav == FinanceDoklad.STAV_ODESLANO_FLEXI:
+        return False
+    if is_finance_admin(user):
+        return True
+    return user_can_edit_doklad(user, doklad)
+
+
 def _local_now(now=None):
     if now is None:
         return timezone.localtime()

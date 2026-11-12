@@ -22,7 +22,7 @@ const fromRow = (row) => ({
     vs: row?.vs || '',
 });
 
-const ReviewCard = ({ row, busy, onSave, onFlexi }) => {
+const ReviewCard = ({ row, busy, onSave, onFlexi, onDelete }) => {
     const [form, setForm] = useState(() => fromRow(row));
 
     useEffect(() => {
@@ -43,6 +43,18 @@ const ReviewCard = ({ row, busy, onSave, onFlexi }) => {
                     <a href={row.soubor_url} target="_blank" rel="noopener noreferrer">
                         {row.soubor_nazev || 'Soubor'}
                     </a>
+                )}
+                {!row.flexi_id && (
+                    <button
+                        type="button"
+                        className="finance-doklad-remove"
+                        aria-label="Smazat dobropis"
+                        title="Smazat dobropis"
+                        disabled={busy}
+                        onClick={() => onDelete(row)}
+                    >
+                        ×
+                    </button>
                 )}
             </header>
             {chyby.length > 0 && <p className="finance-error">{chyby.join(' ')}</p>}
@@ -192,6 +204,23 @@ const FinanceDobropisyPanel = () => {
         }
     };
 
+    const remove = async (row) => {
+        const cislo = row.cislo_faktury ? ` ${row.cislo_faktury}` : '';
+        if (!window.confirm(`Smazat dobropis${cislo}?`)) return;
+        setBusyId(row.id);
+        setError('');
+        setMessage('');
+        try {
+            await financeAPI.deleteDoklad(row.id);
+            setMessage('Dobropis smazán.');
+            load();
+        } catch (e) {
+            setError(e.response?.data?.error || e.message || 'Smazání selhalo');
+        } finally {
+            setBusyId(null);
+        }
+    };
+
     const zapsat = async (id, form) => {
         setBusyId(id);
         setError('');
@@ -242,6 +271,7 @@ const FinanceDobropisyPanel = () => {
                         busy={busyId === row.id}
                         onSave={save}
                         onFlexi={zapsat}
+                        onDelete={remove}
                     />
                 ))}
             </div>

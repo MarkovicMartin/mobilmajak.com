@@ -594,6 +594,7 @@ export const financeAPI = {
     updateDoklad: async (id, payload) => (
         await api.patch(`/finance/doklady/${id}/`, payload)
     ).data,
+    deleteDoklad: async (id) => (await api.delete(`/finance/doklady/${id}/`)).data,
     replaceDokladSoubor: async (id, file) => {
         const form = new FormData();
         form.append('file', file);

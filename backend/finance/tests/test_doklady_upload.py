@@ -1,6 +1,7 @@
 """Testy nahrávání faktur."""
 from datetime import date
 from decimal import Decimal
+from pathlib import Path
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
@@ -168,6 +169,35 @@ class DokladOpravaTests(TestCase):
         self.assertEqual(self.doklad.cislo_faktury, 'FA-OPRAVA')
         self.assertEqual(self.doklad.dodavatel_nazev, 'Panfico')
         self.assertTrue(resp.data['lze_upravit'])
+
+    def test_prodejce_smaze_nahranou_fakturu(self):
+        self.polozka.doklad = self.doklad
+        self.polozka.save(update_fields=['doklad'])
+        media = Path('/tmp/mobilmajak-finance-test-media')
+        rel = 'finance/doklady/smazat.pdf'
+        dest = media / rel
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(b'%PDF')
+        self.doklad.soubor = rel
+        self.doklad.save(update_fields=['soubor'])
+
+        request = self._auth(self.factory.delete(f'/finance/doklady/{self.doklad.id}/'), self.prodejce)
+        resp = views.doklad_update(request, doklad_id=self.doklad.id)
+        self.assertEqual(resp.status_code, 204)
+        self.assertFalse(FinanceDoklad.objects.filter(pk=self.doklad.id).exists())
+        self.polozka.refresh_from_db()
+        self.assertIsNone(self.polozka.doklad_id)
+        self.assertEqual(self.polozka.dph_stav, NakladPolozka.DPH_STAV_CEKA)
+        self.assertFalse(dest.exists())
+
+    def test_nesmaze_doklad_ve_flexi(self):
+        self.doklad.flexi_id = '99'
+        self.doklad.stav = FinanceDoklad.STAV_ODESLANO_FLEXI
+        self.doklad.save(update_fields=['flexi_id', 'stav'])
+        request = self._auth(self.factory.delete(f'/finance/doklady/{self.doklad.id}/'), self.admin)
+        resp = views.doklad_update(request, doklad_id=self.doklad.id)
+        self.assertEqual(resp.status_code, 403)
+        self.assertTrue(FinanceDoklad.objects.filter(pk=self.doklad.id).exists())
 
     def test_prodejce_neupravi_schvalenou(self):
         self.assertFalse(user_can_edit_doklad(self.prodejce, self.schvaleny))

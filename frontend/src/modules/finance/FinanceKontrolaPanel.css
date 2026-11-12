@@ -115,6 +115,12 @@
     border-color: #065f46;
 }
 
+.finance-kontrola-actions button.finance-btn-primary {
+    background: #1d4ed8;
+    color: #fff;
+    border-color: #1d4ed8;
+}
+
 .finance-kontrola-actions button.danger {
     color: #991b1b;
     border-color: #fecaca;

@@ -158,6 +158,22 @@ const FinanceFakturyPanel = ({ intro }) => {
         }
     };
 
+    const removeDoklad = async (doklad) => {
+        const cislo = doklad.cislo_faktury ? ` ${doklad.cislo_faktury}` : '';
+        if (!window.confirm(`Smazat nahranou fakturu${cislo}? Výdej znovu čeká na doklad.`)) return;
+        setSavingId(doklad.id);
+        setMessage('');
+        try {
+            await financeAPI.deleteDoklad(doklad.id);
+            setMessage('Faktura smazána.');
+            load();
+        } catch (e) {
+            setMessage(e.response?.data?.error || 'Smazání selhalo');
+        } finally {
+            setSavingId(null);
+        }
+    };
+
     const replaceSoubor = async (id, file) => {
         if (!file) return;
         setReplacingId(id);
@@ -187,6 +203,18 @@ const FinanceFakturyPanel = ({ intro }) => {
                     {p.zdroj && <span className={`finance-badge ${src.badgeClass}`}>{src.label}</span>}
                     {p.datum && <span>{p.datum}</span>}
                     {p.castka != null && <strong>{formatCurrency(p.castka)}</strong>}
+                    {editable && !d.flexi_id && (
+                        <button
+                            type="button"
+                            className="finance-doklad-remove"
+                            aria-label="Smazat fakturu"
+                            title="Smazat fakturu"
+                            disabled={savingId === d.id || replacingId === d.id}
+                            onClick={() => removeDoklad(d)}
+                        >
+                            ×
+                        </button>
+                    )}
                 </div>
                 <p className="finance-faktury-card__text">
                     {p.id ? movementLabel(p) : 'Faktura bez vazby na výdej'}

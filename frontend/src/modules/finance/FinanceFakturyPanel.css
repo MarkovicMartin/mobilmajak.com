@@ -48,6 +48,25 @@
     margin-bottom: 0.5rem;
 }
 
+.finance-doklad-remove {
+    margin-left: auto;
+    width: 1.75rem;
+    height: 1.75rem;
+    padding: 0;
+    border: 1px solid #fecaca;
+    border-radius: 6px;
+    background: #fff;
+    color: #991b1b;
+    font-size: 1.15rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.finance-doklad-remove:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
 .finance-faktury-card__text {
     margin: 0 0 0.5rem;
 }

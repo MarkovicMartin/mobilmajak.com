@@ -118,6 +118,30 @@ def link_doklad_to_polozka(
     return doklad
 
 
+def smazat_doklad(doklad: FinanceDoklad) -> None:
+    """Smaže nahraný doklad a soubor. Navázaný výdej znovu čeká na fakturu."""
+    if (doklad.flexi_id or '').strip() or doklad.stav == FinanceDoklad.STAV_ODESLANO_FLEXI:
+        raise ValueError('Doklad už je ve Flexi, tady ho nesmažete.')
+    now = timezone.now()
+    linked_id = doklad.naklad_polozka_id
+    NakladPolozka.objects.filter(doklad_id=doklad.id).update(
+        doklad=None,
+        dph_stav=NakladPolozka.DPH_STAV_CEKA,
+        upraveno=now,
+    )
+    if linked_id:
+        NakladPolozka.objects.filter(pk=linked_id).update(
+            dph_stav=NakladPolozka.DPH_STAV_CEKA,
+            upraveno=now,
+        )
+    rel = (doklad.soubor or '').replace('\\', '/').lstrip('/')
+    if rel:
+        path = Path(settings.MEDIA_ROOT) / rel
+        if path.is_file():
+            path.unlink()
+    doklad.delete()
+
+
 def replace_doklad_file(doklad: FinanceDoklad, uploaded_file) -> FinanceDoklad:
     """Vymění soubor u ještě neschválené faktury a znovu zkusí OCR do prázdných polí."""
     from .permissions import DOKLAD_STAV_BEZ_UPRAVY

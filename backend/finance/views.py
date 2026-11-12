@@ -22,6 +22,7 @@ from .permissions import (
     is_finance_admin,
     naklady_qs_for_invoice_user,
     DOKLAD_STAV_K_OPRAVE,
+    user_can_delete_doklad,
     user_can_edit_doklad,
     user_can_upload_doklad,
 )
@@ -30,6 +31,7 @@ from .doklady import (
     link_doklad_to_polozka,
     replace_doklad_file,
     serialize_doklad,
+    smazat_doklad,
 )
 from .dobropis_flexi import (
     aktualizuj_dobropis,
@@ -993,7 +995,7 @@ def _doklad_response(doklad: FinanceDoklad, user, *, include_polozka: bool = Fal
     return payload
 
 
-@api_view(['PATCH'])
+@api_view(['PATCH', 'DELETE'])
 @permission_classes([IsAuthenticated])
 @finance_invoice_view
 def doklad_update(request, doklad_id: int):
@@ -1001,6 +1003,18 @@ def doklad_update(request, doklad_id: int):
         doklad = FinanceDoklad.objects.select_related('naklad_polozka').get(pk=doklad_id)
     except FinanceDoklad.DoesNotExist:
         return _no_store_response({'error': 'Doklad nenalezen'}, status.HTTP_404_NOT_FOUND)
+    if request.method == 'DELETE':
+        if not user_can_delete_doklad(request.user, doklad):
+            return _no_store_response(
+                {'error': 'Doklad už je ve Flexi, nebo k němu nemáte oprávnění.'},
+                status.HTTP_403_FORBIDDEN,
+            )
+        try:
+            smazat_doklad(doklad)
+        except ValueError as exc:
+            return _no_store_response({'error': str(exc)}, status.HTTP_400_BAD_REQUEST)
+        log_finance_audit(request, 'doklad_delete', f'id={doklad_id}')
+        return _no_store_response(None, status.HTTP_204_NO_CONTENT)
     if not user_can_edit_doklad(request.user, doklad):
         return _no_store_response(
             {'error': 'Doklad už je schválený, nebo k němu nemáte oprávnění.'},
