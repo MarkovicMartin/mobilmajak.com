@@ -134,6 +134,10 @@ def schvalit_doklad(doklad: FinanceDoklad, user_id: int) -> FinanceDoklad:
             polozka.dph_stav = NakladPolozka.DPH_STAV_SPAROVANO
             polozka.save(update_fields=['castka_bez_dph', 'dph_castka', 'dph_sazba', 'dph_stav'])
 
+    if doklad.druh == FinanceDoklad.DRUH_DOBROPIS:
+        from .dobropis_flexi import odeslat_dobropis_do_flexi
+        return odeslat_dobropis_do_flexi(doklad, reuse_existing=True)
+
     from .flexi_sync import sync_doklad_to_flexi
 
     try:

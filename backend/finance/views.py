@@ -946,7 +946,10 @@ def doklad_odeslat_flexi(request, doklad_id: int):
             {'error': 'Nejdřív schvalte doklad'},
             status.HTTP_400_BAD_REQUEST,
         )
-    doklad = odeslat_doklad_do_flexi(doklad)
+    if doklad.druh == FinanceDoklad.DRUH_DOBROPIS:
+        doklad = odeslat_dobropis_do_flexi(doklad, reuse_existing=True)
+    else:
+        doklad = odeslat_doklad_do_flexi(doklad)
     log_finance_audit(request, 'doklad_odeslat_flexi', f'id={doklad_id}')
     payload = serialize_doklad(doklad, include_polozka=True)
     flexi = payload.get('flexi') or {}

@@ -298,3 +298,50 @@ class PartnerteleDobropisExtractTests(TestCase):
         self.assertEqual(fields['duzpUcto'], prijeti)
         self.assertEqual(fields['duzpPuv'], '2026-07-22')
 
+    @override_settings(MEDIA_ROOT='/tmp/mobilmajak-finance-dobropis-test-media')
+    @patch('finance.dobropis_flexi.is_flexi_sync_enabled', return_value=True)
+    @patch('finance.dobropis_flexi.get_flexi_config', return_value=_FLEXI_CFG)
+    @patch('finance.dobropis_flexi.FlexiClient')
+    def test_schvaleni_vytvori_novy_flexi_doklad(self, client_cls, _cfg, _enabled):
+        from finance.faktura_process import schvalit_doklad
+
+        client = MagicMock()
+        client_cls.return_value = client
+        client.find_faktura_prijata.return_value = []
+        client.create_faktura_prijata.return_value = {'flexi_id': '88', 'flexi_kod': 'PF401160/26'}
+        client.upload_priloha.return_value = {'priloha_id': '4'}
+
+        media = Path('/tmp/mobilmajak-finance-dobropis-test-media')
+        media.mkdir(parents=True, exist_ok=True)
+        rel = 'finance/doklady/schvalit-dobropis.pdf'
+        dest = media / rel
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(b'%PDF-1.4')
+        doklad = FinanceDoklad.objects.create(
+            soubor=rel,
+            cislo_faktury='265/07/26/KFWZDWV',
+            vs='2650726',
+            datum_vystaveni=date(2026, 7, 22),
+            castka_celkem=Decimal('-52.88'),
+            castka_bez_dph=Decimal('-52.88'),
+            dph_castka=Decimal('-11.10'),
+            dph_sazba=21,
+            druh=FinanceDoklad.DRUH_DOBROPIS,
+            stav=FinanceDoklad.STAV_KE_KONTROLE,
+            match_detail={'popis': 'ODD zboží EU', 'firma': 'PARTNER-PL'},
+        )
+        doklad = schvalit_doklad(doklad, user_id=1)
+        self.assertEqual(doklad.stav, FinanceDoklad.STAV_ODESLANO_FLEXI)
+        self.assertEqual(doklad.flexi_id, '88')
+        fields = client.create_faktura_prijata.call_args.args[0]
+        self.assertEqual(fields['cisDosle'], '265/07/26/KFWZDWV')
+        self.assertEqual(fields['sumZklZakl'], '-52.88')
+        self.assertEqual(fields['sumDphZakl'], '-11.10')
+        self.assertEqual(fields['sumCelkem'], '-52.88')
+        self.assertEqual(fields['clenKonVykDph'], 'code:A.2.')
+        self.assertEqual(fields['sazbaDphZakl'], '23')
+        prijeti = timezone.localtime(doklad.vytvoreno).date().isoformat()
+        self.assertEqual(fields['datVyst'], prijeti)
+        self.assertEqual(fields['duzpUcto'], prijeti)
+        self.assertEqual(fields['duzpPuv'], '2026-07-22')
+
