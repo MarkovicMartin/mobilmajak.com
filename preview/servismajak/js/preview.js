@@ -837,6 +837,14 @@
     return parseLiveSearchHtml(await res.text());
   }
 
+  function productSuggestHtml(products, limit = 6) {
+    return products.slice(0, limit).map((p) => {
+      const clean = p.title.replace(/\s+Servis na\b.*$/i, "").trim();
+      const label = shortServiceTitle(clean);
+      return `<a href="${p.href}"><span><strong>${label}</strong><small>${clean}</small></span><span class="price">${p.price || "Detail"}</span></a>`;
+    });
+  }
+
   function initHeroSearch() {
     const root = document.querySelector("[data-hero-search]");
     if (!root) return;
@@ -859,11 +867,7 @@
       try {
         const products = await fetchLiveProductHits(q);
         if (my !== req) return;
-        const parts = products.slice(0, 6).map((p) => {
-          const clean = p.title.replace(/\s+Servis na\b.*$/i, "").trim();
-          const label = shortServiceTitle(clean);
-          return `<a href="${p.href}" target="_blank" rel="noopener"><span><strong>${label}</strong><small>${clean}</small></span><span class="price">${p.price || "Detail"}</span></a>`;
-        });
+        const parts = productSuggestHtml(products, 6);
         if (!parts.length) {
           results.innerHTML = `<div class="hero-search-empty">Nic nenalezeno. Zkuste jiný model nebo závadu.</div>`;
         } else {
@@ -902,8 +906,102 @@
     });
   }
 
+  function initTopSearch() {
+    const form = document.querySelector("form.top-search");
+    if (!form || form.dataset.suggestReady === "1") return;
+    form.dataset.suggestReady = "1";
+    const input = form.querySelector('input[name="q"], #q, input[type="search"]');
+    if (!input) return;
+
+    form.classList.add("has-suggest");
+    const panel = document.createElement("div");
+    panel.className = "top-search-suggest";
+    panel.hidden = true;
+    panel.setAttribute("role", "listbox");
+    panel.setAttribute("aria-label", "Návrhy oprav");
+    form.appendChild(panel);
+
+    let req = 0;
+    let hits = [];
+
+    const hide = () => {
+      panel.hidden = true;
+      panel.innerHTML = "";
+      hits = [];
+    };
+
+    const goFirst = () => {
+      const first = panel.querySelector("a");
+      if (first && first.href) {
+        window.location.href = first.href;
+        return true;
+      }
+      return false;
+    };
+
+    const render = async () => {
+      const q = input.value.trim();
+      const my = ++req;
+      if (q.length < 2) {
+        hide();
+        return;
+      }
+      panel.hidden = false;
+      panel.innerHTML = `<div class="top-search-empty">Hledám…</div>`;
+      try {
+        const products = await fetchLiveProductHits(q);
+        if (my !== req) return;
+        hits = products;
+        const parts = productSuggestHtml(products, 7);
+        if (!parts.length) {
+          panel.innerHTML = `<div class="top-search-empty">Nic nenalezeno</div>
+            <a class="top-search-all" href="hledani-v2.html?q=${encodeURIComponent(q)}">Zobrazit všechna hledání →</a>`;
+        } else {
+          panel.innerHTML =
+            parts.join("") +
+            `<a class="top-search-all" href="hledani-v2.html?q=${encodeURIComponent(q)}">Všechna hledání →</a>`;
+        }
+      } catch (err) {
+        if (my !== req) return;
+        console.error(err);
+        panel.innerHTML = `<div class="top-search-empty">Vyhledávání nejde načíst</div>`;
+      }
+    };
+
+    let timer = null;
+    input.addEventListener("input", () => {
+      clearTimeout(timer);
+      timer = setTimeout(render, 160);
+    });
+    input.addEventListener("focus", () => {
+      if (input.value.trim().length >= 2 && panel.innerHTML) panel.hidden = false;
+    });
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        hide();
+        return;
+      }
+      if (e.key === "Enter") {
+        if (hits.length) {
+          e.preventDefault();
+          goFirst();
+        }
+      }
+    });
+    form.addEventListener("submit", (e) => {
+      if (hits.length) {
+        e.preventDefault();
+        goFirst();
+      }
+    });
+    document.addEventListener("click", (e) => {
+      if (!form.contains(e.target)) hide();
+    });
+  }
+
   async function boot() {
     const page = document.body.dataset.page;
+    initTopSearch();
     try {
       if (page === "katalog") {
         await ensureData(["meta", "devices", "services"]);
