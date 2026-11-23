@@ -28,7 +28,7 @@ def _to_decimal(value) -> Decimal | None:
 def match_doklad_to_polozka(doklad: FinanceDoklad, polozka: NakladPolozka | None) -> dict:
     """
     Vrátí {stav: ok|warn|fail, checks: [...], hint: {...}}.
-    Nikdy automaticky neschvaluje – jen scoring pro admina.
+    Samo schvaluje jen pokladní doklad se stavem ok, viz maybe_auto_schvalit_pokladnu.
     """
     hint = faktura_hint_from_polozka(polozka) if polozka else None
     checks = []

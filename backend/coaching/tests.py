@@ -8,6 +8,7 @@ from coaching.aggregate import (
     _build_kategorie_rows,
     _compute_benchmark,
     _compute_signaly,
+    _overlay_month_benchmark,
     compare_sellers,
     sanitize_compare_for_user,
 )
@@ -32,6 +33,23 @@ def _make_user(pk, role, prodejna_id=None, **kwargs):
         user.prodejna_id = prodejna_id
         user.save(update_fields=['prodejna_id'])
     return user
+
+
+class CoachingMonthBenchmarkTests(TestCase):
+    def test_this_month_overlays_anchor_value(self):
+        series = {
+            'polozky_nad_100': [
+                {'month': '2026-09', 'value': 10},
+                {'month': '2026-10', 'value': 20},
+                {'month': '2026-11', 'value': 15},
+            ],
+        }
+        _overlay_month_benchmark(series, '2026-11')
+        self.assertEqual(
+            [p['compare_value'] for p in series['polozky_nad_100']],
+            [15, 15, 15],
+        )
+        self.assertEqual(series['polozky_nad_100'][0]['compare_month'], '2026-11')
 
 
 class CoachingKategorieTests(TestCase):
@@ -162,7 +180,12 @@ class CoachingApiTests(TestCase):
         })
         self.assertEqual(res.status_code, 200)
         keys = {row['metric'] for row in res.data['metriky']}
-        self.assertEqual(keys, {'polozky_nad_100', 'sluzby_celkem', 'unikatni_doklady'})
+        self.assertEqual(keys, {
+            'polozky_nad_100', 'sluzby_celkem', 'unikatni_doklady', 'odpracovane_hodiny',
+        })
+        hours = next(r for r in res.data['metriky'] if r['metric'] == 'odpracovane_hodiny')
+        self.assertEqual(hours['a'], 8)
+        self.assertEqual(hours['b'], 5)
         self.assertNotIn('plneni_a', res.data)
         self.assertNotIn('plneni_b', res.data)
         self.assertNotIn('hodiny_a', res.data)
@@ -302,6 +325,28 @@ class CoachingCompareHoursTests(TestCase):
     @patch('coaching.aggregate._batch_plan_map', return_value={})
     @patch('coaching.aggregate._batch_plneni_map_months', return_value={})
     @patch('coaching.aggregate.aggregate_polozky_by_salesperson')
+    def test_compare_hours_follow_custom_range(self, mock_sales, _skut, _plan):
+        mock_sales.return_value = [
+            {'id_prodejce': self.a.id, 'odpracovane_hodiny': 12.5, 'polozky_nad_100': 1,
+             'sluzby_celkem': 0, 'celkovy_obrat': 0, 'unikatni_doklady': 1},
+            {'id_prodejce': self.b.id, 'odpracovane_hodiny': 4, 'polozky_nad_100': 1,
+             'sluzby_celkem': 0, 'celkovy_obrat': 0, 'unikatni_doklady': 1},
+        ]
+        data = compare_sellers(
+            self.a.id, self.b.id, 2026, 11,
+            date_from='2026-11-03', date_to='2026-11-09',
+        )
+        params = mock_sales.call_args.args[0]
+        self.assertEqual(params.period_start.isoformat(), '2026-11-03')
+        self.assertEqual(params.period_end.isoformat(), '2026-11-09')
+        self.assertEqual(data['obdobi'], {'od': '2026-11-03', 'do': '2026-11-09'})
+        hours = next(r for r in data['metriky'] if r['metric'] == 'odpracovane_hodiny')
+        self.assertEqual(hours['a'], 12.5)
+        self.assertEqual(hours['b'], 4)
+
+    @patch('coaching.aggregate._batch_plan_map', return_value={})
+    @patch('coaching.aggregate._batch_plneni_map_months', return_value={})
+    @patch('coaching.aggregate.aggregate_polozky_by_salesperson')
     def test_sanitize_compare_drops_admin_fields(self, mock_sales, _skut, _plan):
         mock_sales.return_value = [
             {
@@ -324,6 +369,11 @@ class CoachingCompareHoursTests(TestCase):
         raw = compare_sellers(self.a.id, self.b.id, 2026, 5)
         data = sanitize_compare_for_user(raw)
         keys = {row['metric'] for row in data['metriky']}
-        self.assertEqual(keys, {'polozky_nad_100', 'sluzby_celkem', 'unikatni_doklady'})
+        self.assertEqual(keys, {
+            'polozky_nad_100', 'sluzby_celkem', 'unikatni_doklady', 'odpracovane_hodiny',
+        })
+        hours = next(r for r in data['metriky'] if r['metric'] == 'odpracovane_hodiny')
+        self.assertEqual(hours['a'], 8.0)
+        self.assertEqual(hours['b'], 5.0)
         self.assertNotIn('plneni_a', data)
         self.assertNotIn('hodiny_a', data)

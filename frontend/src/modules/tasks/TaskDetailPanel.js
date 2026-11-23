@@ -329,6 +329,13 @@ const TaskDetailPanel = ({
                     {task.assignee && task.typ === 'prirazeny' && (
                         <span><strong>Přiřazeno</strong> {task.assignee.jmeno_plne}</span>
                     )}
+                    {task.skupina_id && (task.spolupracovnici || []).length > 0 && (
+                        <span>
+                            <strong>Společně s</strong>
+                            {' '}
+                            {task.spolupracovnici.map((p) => p.jmeno_plne).filter(Boolean).join(', ')}
+                        </span>
+                    )}
                     {task.stav === 'blokovany' && task.blokovano_duvod && (
                         <span><strong>Blokace</strong> {task.blokovano_duvod}</span>
                     )}

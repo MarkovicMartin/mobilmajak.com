@@ -43,6 +43,7 @@ USER_SAFE_COMPARE_METRICS = frozenset({
     'polozky_nad_100',
     'sluzby_celkem',
     'unikatni_doklady',
+    'odpracovane_hodiny',
 })
 USER_SAFE_TIMELINE_METRICS = USER_SAFE_COMPARE_METRICS | set(COACHING_KATEGORIE_KODY) | {
     'PRISLUSENSTVI_SOUBR',
@@ -649,6 +650,9 @@ def build_timeline(
                     pt['compare_value'] = round(bench_val, 2)
                     pt['compare_month'] = 'prumer_prodejny' if compare == 'store_avg' else 'top_prodejce'
 
+    if compare == 'this_month':
+        _overlay_month_benchmark(series, f'{rok:04d}-{mesic:02d}')
+
     return {
         'metrics': series,
         'start_date': start_m.isoformat(),
@@ -657,18 +661,58 @@ def build_timeline(
     }
 
 
+def _overlay_month_benchmark(series: dict, anchor: str) -> None:
+    """Každý bod srovná s hodnotou vybraného měsíce."""
+    for pts in series.values():
+        if not pts:
+            continue
+        anchor_pt = next((p for p in pts if p.get('month') == anchor), None) or pts[-1]
+        bench = anchor_pt.get('value')
+        month_key = anchor_pt.get('month') or anchor
+        for pt in pts:
+            pt['compare_value'] = bench
+            pt['compare_month'] = month_key
+
+
 def _per_hour_value(total, hours):
     if hours and hours > 0 and total is not None:
         return round(float(total) / float(hours), 2)
     return None
 
 
-def compare_sellers(user_a: int, user_b: int, rok: int, mesic: int, *, kanal='all') -> dict:
+def _parse_iso_date(value):
+    if not value:
+        return None
+    try:
+        return date.fromisoformat(str(value)[:10])
+    except ValueError:
+        return None
+
+
+def compare_sellers(
+    user_a: int,
+    user_b: int,
+    rok: int,
+    mesic: int,
+    *,
+    kanal='all',
+    date_from=None,
+    date_to=None,
+) -> dict:
     users = {u.id: u for u in WebUser.objects.filter(pk__in=[user_a, user_b])}
     if user_a not in users or user_b not in users:
         return {'error': 'Prodejce nenalezen'}
 
     params = _polozky_params_for_month(rok, mesic, None, kanal)
+    sd = _parse_iso_date(date_from)
+    ed = _parse_iso_date(date_to)
+    if sd and ed and sd <= ed:
+        params.start_date = sd.isoformat()
+        params.end_date = ed.isoformat()
+        params.period_start = sd
+        params.period_end = ed
+    else:
+        sd, ed = params.period_start, params.period_end
     params.user_ids = [user_a, user_b]
     params.include_hours = True
     sales_rows = aggregate_polozky_by_salesperson(params, limit=2)
@@ -755,6 +799,7 @@ def compare_sellers(user_a: int, user_b: int, rok: int, mesic: int, *, kanal='al
         'plneni_b': pb.get('plneni'),
         'hodiny_a': hours_a,
         'hodiny_b': hours_b,
+        'obdobi': {'od': sd.isoformat(), 'do': ed.isoformat()},
     }
 
 
@@ -787,6 +832,7 @@ def sanitize_compare_for_user(data: dict) -> dict:
         'prodejce_b': data.get('prodejce_b'),
         'metriky': metriky,
         'kategorie': kategorie,
+        'obdobi': data.get('obdobi'),
     }
 
 

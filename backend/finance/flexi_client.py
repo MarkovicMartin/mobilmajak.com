@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 from urllib.parse import quote
 
@@ -47,6 +48,34 @@ def parse_flexi_create_response(data: dict) -> dict[str, str]:
     return {'flexi_id': flexi_id, 'flexi_kod': kod}
 
 
+def flexi_filter_expr(field: str, value: str, op: str = 'eq') -> str:
+    """Filtr Flexi. like_words = všechna slova jsou v poli, mezery a řádky se ignorují."""
+    field_name = (field or '').strip()
+    op_norm = (op or 'eq').strip().lower()
+    if op_norm == 'like_words':
+        parts: list[str] = []
+        seen: set[str] = set()
+        for raw in re.split(r'\s+', (value or '').strip()):
+            word = raw.strip()
+            key = word.casefold()
+            if not word or key in seen:
+                continue
+            seen.add(key)
+            safe = word.replace("'", "''")
+            parts.append(f"{field_name} like '{safe}'")
+        if not parts:
+            return ''
+        if len(parts) == 1:
+            return parts[0]
+        return ' and '.join(f'({part})' for part in parts)
+    safe = (value or '').replace("'", "''")
+    if op_norm == 'like':
+        return f"{field_name} like '{safe}'"
+    if op_norm in ('like_similar', 'like similar'):
+        return f"{field_name} like similar '{safe}'"
+    return f"{field_name} eq '{safe}'"
+
+
 class FlexiError(Exception):
     def __init__(self, message: str, *, status_code: int | None = None):
         super().__init__(message)
@@ -82,15 +111,9 @@ class FlexiClient:
         value = (value or '').strip()
         if not value:
             return []
-        # Flexi filtr – apostrof v hodnotě escapovat zdvojením
-        safe = value.replace("'", "''")
-        op_norm = (op or 'eq').strip().lower()
-        if op_norm == 'like':
-            expr = f"{field} like '{safe}'"
-        elif op_norm in ('like_similar', 'like similar'):
-            expr = f"{field} like similar '{safe}'"
-        else:
-            expr = f"{field} eq '{safe}'"
+        expr = flexi_filter_expr(field, value, op)
+        if not expr:
+            return []
         firma = (firma_code or '').strip()
         if firma.lower().startswith('code:'):
             firma = firma[5:]
@@ -215,3 +238,37 @@ class FlexiClient:
         if not isinstance(item, dict):
             return ''
         return str(item.get('kod') or '')
+
+    def count_evidence(self, evidence: str, expr: str) -> int | None:
+        """Počet záznamů ve filtru. None = Flexi počet nevrátilo."""
+        expression = (expr or '').strip()
+        evidence_name = (evidence or '').strip('/')
+        if not expression or not evidence_name:
+            return None
+        url = self._url(self._company_path(f'{evidence_name}/({quote(expression, safe="")}).json'))
+        try:
+            resp = self.session.get(
+                url,
+                params={'limit': 0, 'add-row-count': 'true'},
+                timeout=30,
+            )
+        except requests.RequestException as exc:
+            raise FlexiError(f'Flexi počet selhal: {exc}') from exc
+        if resp.status_code >= 400:
+            raise FlexiError(
+                f'Flexi počet HTTP {resp.status_code}: {resp.text[:300]}',
+                status_code=resp.status_code,
+            )
+        try:
+            winstrom = (resp.json().get('winstrom') or {})
+        except ValueError as exc:
+            raise FlexiError('Flexi počet nevrátilo JSON') from exc
+        raw = winstrom.get('@rowCount')
+        if raw is None:
+            raw = winstrom.get('rowCount')
+        if raw is None:
+            return None
+        try:
+            return int(raw)
+        except (TypeError, ValueError):
+            return None

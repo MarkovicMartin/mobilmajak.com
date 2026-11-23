@@ -53,6 +53,14 @@ class Ukol(models.Model):
     id_prodejce_ukol = models.IntegerField(db_column="ID_PRODEJCE_UKOL")
     id_prodejce_zadal = models.IntegerField(db_column="ID_PRODEJCE_ZADAL")
     id_prodejny = models.IntegerField(null=True, blank=True, db_column="ID_PRODEJNY")
+    skupina_id = models.CharField(
+        max_length=32,
+        blank=True,
+        default="",
+        db_column="SKUPINA_ID",
+        db_index=True,
+        help_text="Společná dávka: stejné zadání pro víc lidí, každý má vlastní stav.",
+    )
     vytvoreno = models.DateTimeField(auto_now_add=True, db_column="VYTVORENO")
     upraveno = models.DateTimeField(auto_now=True, db_column="UPRAVENO")
     dokonceno_v = models.DateTimeField(null=True, blank=True, db_column="DOKONCENO_V")

@@ -8,6 +8,7 @@ import FinanceDobropisyPanel from './FinanceDobropisyPanel';
 import FinanceFakturyPanel from './FinanceFakturyPanel';
 import FinancePrehledPanel from './FinancePrehledPanel';
 import FinanceKontrolaPanel from './FinanceKontrolaPanel';
+import FinanceUzaverkaPanel from './FinanceUzaverkaPanel';
 import FinanceDokladUpload from './FinanceDokladUpload';
 import FinanceZdrojFilter from './FinanceZdrojFilter';
 import FinancePravidloDialog from './FinancePravidloDialog';
@@ -37,6 +38,7 @@ const FINANCE_TABS = [
     { id: 'kontrola', label: 'Kontrola FA', to: '/finance/kontrola' },
     { id: 'faktury', label: 'Faktury', to: '/finance/faktury' },
     { id: 'dobropisy', label: 'Dobropisy', to: '/finance/dobropisy' },
+    { id: 'uzaverka', label: 'Uzávěrka', to: '/finance/uzaverka' },
     { id: 'manual', label: 'Ruční náklad', to: '/finance/manual' },
     { id: 'pravidla', label: 'Pravidla', to: '/finance/pravidla' },
     { id: 'kategorie', label: 'Kategorie', to: '/finance/kategorie' },
@@ -657,6 +659,7 @@ const FinanceModule = () => {
             )}
 
             {!loading && tab === 'dobropisy' && <FinanceDobropisyPanel />}
+            {!loading && tab === 'uzaverka' && <FinanceUzaverkaPanel />}
 
             {!loading && tab === 'manual' && (
                 <section className="finance-panel">

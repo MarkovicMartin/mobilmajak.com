@@ -7,6 +7,7 @@
  */
 const fs = require('fs');
 const path = require('path');
+const axios = require('axios');
 const XLSX = require('xlsx');
 const { Builder } = require('selenium-webdriver');
 const chrome = require('selenium-webdriver/chrome');
@@ -38,7 +39,8 @@ function loadPokladny() {
     throw new Error(`Chybí konfigurace: ${POKLADNY_FILE}`);
   }
   const data = JSON.parse(fs.readFileSync(POKLADNY_FILE, 'utf8'));
-  return (data.pokladny || []).filter((p) => p.enabled);
+  const only = (process.env.SYMPLIO_POKLADNA_ONLY || '').split(',').map((s) => s.trim()).filter(Boolean);
+  return (data.pokladny || []).filter((p) => p.enabled && (!only.length || only.includes(p.key)));
 }
 
 function isoDate(d) {
@@ -92,18 +94,62 @@ function clearDownloadDir(dir) {
   }
 }
 
-async function waitForDownload(dir, timeoutMs = 120000) {
+function assertXlsx(buf, outPath) {
+  if (!buf || buf.length < 4 || buf[0] !== 0x50 || buf[1] !== 0x4b) {
+    const preview = Buffer.from(buf || []).slice(0, 100).toString('utf8').replace(/\s+/g, ' ').slice(0, 100);
+    throw new Error(`Stažený soubor není XLSX (${buf ? buf.length : 0} B): ${preview}`);
+  }
+  const rows = XLSX.utils.sheet_to_json(XLSX.read(buf).Sheets.Sheet1, { header: 1 });
+  const headers = (rows[0] || []).map((h) => String(h || '').trim());
+  if (!headers.includes('Datum') || !headers.includes('Částka')) {
+    throw new Error(`XLSX nemá očekávané sloupce: ${headers.join(', ')}`);
+  }
+  fs.mkdirSync(path.dirname(outPath), { recursive: true });
+  fs.writeFileSync(outPath, buf);
+  const count = Math.max(0, rows.length - 1);
+  console.log('Staženo', outPath, buf.length, 'B, řádků', count);
+  return count;
+}
+
+async function cookieHeader(driver) {
+  const cookies = await driver.manage().getCookies();
+  return cookies.map((c) => `${c.name}=${c.value}`).join('; ');
+}
+
+async function downloadXlsxViaHttp(driver, url, outPath) {
+  const response = await axios.get(url, {
+    responseType: 'arraybuffer',
+    timeout: 90000,
+    maxContentLength: 40 * 1024 * 1024,
+    maxBodyLength: 40 * 1024 * 1024,
+    headers: {
+      Cookie: await cookieHeader(driver),
+      Accept: '*/*',
+      'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36',
+    },
+    validateStatus: () => true,
+  });
+  const buf = Buffer.from(response.data || []);
+  if (response.status !== 200) {
+    const html = buf.toString('utf8');
+    const title = (html.match(/<title>([^<]*)/i) || [])[1] || '';
+    throw new Error(`Export HTTP ${response.status} (${buf.length} B) ${title.trim()}`);
+  }
+  return assertXlsx(buf, outPath);
+}
+
+async function waitForDownload(dir, timeoutMs = 20000) {
   const started = Date.now();
   while (Date.now() - started < timeoutMs) {
     const files = fs.readdirSync(dir).filter((f) => f.endsWith('.xlsx'));
     if (files.length) {
       const full = path.join(dir, files[0]);
       const size1 = fs.statSync(full).size;
-      await sleep(1500);
+      await sleep(800);
       const size2 = fs.statSync(full).size;
       if (size1 > 0 && size1 === size2) return full;
     }
-    await sleep(500);
+    await sleep(400);
   }
   throw new Error(`Timeout čekání na XLSX download v ${dir}`);
 }
@@ -112,23 +158,20 @@ async function downloadXlsxViaBrowser(driver, url, outPath) {
   const dlDir = chromeDownloadDir();
   clearDownloadDir(dlDir);
   await driver.get(url);
-  await sleep(2000);
+  await sleep(1500);
   const downloaded = await waitForDownload(dlDir);
-  fs.mkdirSync(path.dirname(outPath), { recursive: true });
-  fs.copyFileSync(downloaded, outPath);
+  const buf = fs.readFileSync(downloaded);
   clearDownloadDir(dlDir);
+  return assertXlsx(buf, outPath);
+}
 
-  const buf = fs.readFileSync(outPath);
-  if (buf[0] !== 0x50 || buf[1] !== 0x4b) {
-    throw new Error(`Stažený soubor není XLSX: ${outPath}`);
+async function downloadXlsx(driver, url, outPath) {
+  try {
+    return await downloadXlsxViaHttp(driver, url, outPath);
+  } catch (err) {
+    console.log('HTTP export selhal, zkouším stažení v prohlížeči:', err && err.message ? err.message : err);
+    return downloadXlsxViaBrowser(driver, url, outPath);
   }
-  const rows = XLSX.utils.sheet_to_json(XLSX.read(buf).Sheets.Sheet1, { header: 1 });
-  const headers = (rows[0] || []).map((h) => String(h || '').trim());
-  if (!headers.includes('Datum') || !headers.includes('Částka')) {
-    throw new Error(`XLSX nemá očekávané sloupce: ${headers.join(', ')}`);
-  }
-  console.log('Staženo', outPath, buf.length, 'B, řádků', Math.max(0, rows.length - 1));
-  return rows.length - 1;
 }
 
 function writeMeta(xlsxPath, pokladna, from, to) {
@@ -163,7 +206,22 @@ async function main() {
   console.log(`Symplio pokladna export ${from} – ${to} (DAYS=${DAYS_BACK}), pokladen: ${pokladny.length}`);
 
   const options = new chrome.Options();
-  options.addArguments('--no-sandbox', '--disable-dev-shm-usage', '--headless=new');
+  const chromeArgs = [
+    '--no-sandbox',
+    '--disable-dev-shm-usage',
+    '--disable-gpu',
+    '--disable-blink-features=AutomationControlled',
+    '--window-size=1920,1080',
+    '--lang=cs-CZ',
+    '--user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.7339.207 Safari/537.36',
+  ];
+  if (process.env.SYMPLIO_POKLADNA_HEADLESS === '1') {
+    chromeArgs.push('--headless=new');
+  }
+  options.addArguments(...chromeArgs);
+  try {
+    options.excludeSwitches('enable-automation');
+  } catch (_) { /* starší selenium */ }
   const dlDir = chromeDownloadDir();
   options.setUserPreferences({
     'download.default_directory': dlDir,
@@ -171,6 +229,11 @@ async function main() {
     'safebrowsing.enabled': false,
   });
   const driver = await new Builder().forBrowser('chrome').setChromeOptions(options).build();
+  try {
+    await driver.pinScript("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})");
+  } catch (err) {
+    console.log('pinScript:', err && err.message ? err.message : err);
+  }
 
   let failed = 0;
   try {
@@ -180,7 +243,7 @@ async function main() {
       try {
         await loginForPokladna(driver, pokladna.store_button);
         const url = buildExportUrl(pokladna.admin_slug, from, to);
-        await downloadXlsxViaBrowser(driver, url, out);
+        await downloadXlsx(driver, url, out);
         writeMeta(out, pokladna, from, to);
       } catch (err) {
         failed += 1;

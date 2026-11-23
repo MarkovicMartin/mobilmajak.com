@@ -914,9 +914,15 @@ def doklady_ke_kontrole(request):
             FinanceDoklad.STAV_NOVA,
         ),
     ).select_related('naklad_polozka').order_by('-vytvoreno')
-    return _no_store_response([
-        serialize_doklad(d, include_polozka=True) for d in qs[:100]
-    ])
+    from .prijata_navrh import sestav_navrh
+
+    rows = []
+    for doklad in qs[:100]:
+        row = serialize_doklad(doklad, include_polozka=True)
+        if doklad.druh != FinanceDoklad.DRUH_DOBROPIS:
+            row['ucetni_navrh'] = sestav_navrh(doklad)
+        rows.append(row)
+    return _no_store_response(rows)
 
 
 @api_view(['POST'])
@@ -1057,6 +1063,8 @@ def doklad_update(request, doklad_id: int):
     match = match_doklad_to_polozka(doklad, doklad.naklad_polozka)
     doklad.match_stav = match['stav']
     doklad.match_detail = match
+    from .prijata_navrh import dopln_ucetni_navrh
+    dopln_ucetni_navrh(doklad)
     doklad.stav = FinanceDoklad.STAV_KE_KONTROLE
     doklad.upraveno = timezone.now()
     doklad.save()
@@ -1065,6 +1073,9 @@ def doklad_update(request, doklad_id: int):
         from .doklady import try_auto_link_doklad
         try_auto_link_doklad(doklad)
         doklad.refresh_from_db()
+
+    from .faktura_process import maybe_auto_schvalit_pokladnu
+    doklad = maybe_auto_schvalit_pokladnu(doklad)
 
     log_finance_audit(request, 'doklad_update', f'id={doklad_id}')
     return _no_store_response(_doklad_response(doklad, request.user, include_polozka=True))
@@ -1199,3 +1210,185 @@ def dobropis_flexi_retry(request, doklad_id: int):
     doklad = odeslat_dobropis_do_flexi(doklad, reuse_existing=True)
     log_finance_audit(request, 'dobropis_flexi_retry', f'doklad={doklad.id} flexi={doklad.flexi_id}')
     return _dobropis_response(doklad, created=False)
+
+
+def _ucetni_obdobi(params) -> tuple[int, int] | None:
+    from datetime import timedelta
+
+    dnes = date.today()
+    predchozi = dnes.replace(day=1) - timedelta(days=1)
+    try:
+        rok = int(params.get('rok') or predchozi.year)
+        mesic = int(params.get('mesic') or predchozi.month)
+    except (TypeError, ValueError):
+        return None
+    if mesic < 1 or mesic > 12 or rok < 2000 or rok > 2100:
+        return None
+    return rok, mesic
+
+
+def _vydane_flexi(rok: int, mesic: int) -> int | None:
+    from .dph_kontrola import posledni_den
+    from .flexi_client import FlexiClient, FlexiError
+    from .secrets import is_flexi_sync_enabled
+
+    if not is_flexi_sync_enabled():
+        return None
+    try:
+        client = FlexiClient()
+    except FlexiError:
+        return None
+    start = date(rok, mesic, 1)
+    end = posledni_den(rok, mesic)
+    expr = f"datVyst >= '{start.isoformat()}' and datVyst <= '{end.isoformat()}'"
+    try:
+        return client.count_evidence('faktura-vydana', expr)
+    except FlexiError:
+        return None
+
+
+def _radky_mesice(rok: int, mesic: int) -> tuple[list, str]:
+    from .vykupy import nacti_radky_prodeje
+
+    try:
+        return nacti_radky_prodeje(rok, mesic), ''
+    except Exception as exc:
+        logger_msg = str(exc)[:200]
+        return [], logger_msg
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@finance_admin_view
+def doklad_zalozit_flexi(request, doklad_id: int):
+    """Po potvrzení založí přijatou FA. Neznámý případ zůstane ve frontě."""
+    from .prijata_navrh import zalozit_prijatou_ve_flexi
+
+    try:
+        doklad = FinanceDoklad.objects.select_related('naklad_polozka').get(pk=doklad_id)
+    except FinanceDoklad.DoesNotExist:
+        return _no_store_response({'error': 'Doklad nenalezen'}, status.HTTP_404_NOT_FOUND)
+    result = zalozit_prijatou_ve_flexi(
+        doklad,
+        firma_kod=str(request.data.get('firma_kod') or ''),
+        popis=str(request.data.get('popis') or ''),
+        user_id=request.user.id,
+    )
+    log_finance_audit(request, 'doklad_zalozit_flexi', f'id={doklad_id} ok={result.get("ok")}')
+    doklad.refresh_from_db()
+    payload = serialize_doklad(doklad, include_polozka=True)
+    payload['flexi'] = result
+    if result.get('ucetni_navrh'):
+        payload['ucetni_navrh'] = result['ucetni_navrh']
+    if result.get('ok'):
+        return _no_store_response(payload)
+    code = status.HTTP_400_BAD_REQUEST if result.get('fronta') else status.HTTP_502_BAD_GATEWAY
+    return _no_store_response(
+        {**payload, 'error': result.get('error') or 'Zápis do Flexi selhal'},
+        code,
+    )
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+@finance_admin_view
+def ucetni_upominka(request):
+    from .prijata_navrh import stav_upominky
+
+    log_finance_audit(request, 'ucetni_upominka')
+    return _no_store_response(stav_upominky(request.query_params.get('vs') or ''))
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+@finance_admin_view
+def ucetni_vykupy(request):
+    from .vykupy import priprav_vykupy
+
+    obdobi = _ucetni_obdobi(request.query_params)
+    if not obdobi:
+        return _no_store_response({'error': 'Neplatné období'}, status.HTTP_400_BAD_REQUEST)
+    rok, mesic = obdobi
+    raw, chyba = _radky_mesice(rok, mesic)
+    data = priprav_vykupy(raw)
+    data['obdobi'] = f'{rok:04d}-{mesic:02d}'
+    data['radky_nula'] = data['radky_nula'][:100]
+    data['bazary'] = data['bazary'][:50]
+    if chyba:
+        data['prodej_chyba'] = chyba
+    log_finance_audit(request, 'ucetni_vykupy', data['obdobi'])
+    return _no_store_response(data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@finance_admin_view
+def ucetni_vykupy_tabulka(request):
+    from .vykupy import zapsat_vykupy
+
+    obdobi = _ucetni_obdobi(request.data)
+    if not obdobi:
+        return _no_store_response({'error': 'Neplatné období'}, status.HTTP_400_BAD_REQUEST)
+    rok, mesic = obdobi
+    raw, chyba = _radky_mesice(rok, mesic)
+    if chyba:
+        return _no_store_response({'error': chyba}, status.HTTP_502_BAD_GATEWAY)
+    data = zapsat_vykupy(raw)
+    data['obdobi'] = f'{rok:04d}-{mesic:02d}'
+    data['radky_nula'] = data['radky_nula'][:20]
+    data['bazary'] = data['bazary'][:20]
+    log_finance_audit(request, 'ucetni_vykupy_tabulka', data['obdobi'])
+    zapis = data.get('zapis') or {}
+    if zapis.get('ok') or zapis.get('skipped'):
+        return _no_store_response(data)
+    return _no_store_response(
+        {**data, 'error': zapis.get('error') or 'Zápis tabulky selhal'},
+        status.HTTP_502_BAD_GATEWAY,
+    )
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+@finance_admin_view
+def ucetni_dph(request):
+    from .dph_kontrola import kontrola_pred_dph, posledni_den
+
+    obdobi = _ucetni_obdobi(request.query_params)
+    if not obdobi:
+        return _no_store_response({'error': 'Neplatné období'}, status.HTTP_400_BAD_REQUEST)
+    rok, mesic = obdobi
+    start = date(rok, mesic, 1)
+    end = posledni_den(rok, mesic)
+    raw, chyba = _radky_mesice(rok, mesic)
+    otevrene = FinanceDoklad.objects.filter(
+        druh=FinanceDoklad.DRUH_FAKTURA,
+        datum_vystaveni__gte=start,
+        datum_vystaveni__lte=end,
+    ).exclude(stav__in=(
+        FinanceDoklad.STAV_ZAMITNUTO,
+        FinanceDoklad.STAV_ODESLANO_FLEXI,
+    )).count()
+    pokladna = NakladPolozka.objects.filter(
+        zdroj=NakladPolozka.ZDROJ_SYMPLIO_POKLADNA,
+        datum__gte=start,
+        datum__lte=end,
+        ignorovat=False,
+    ).count()
+    doklady = {str(row.get('doklad') or '').strip() for row in raw if str(row.get('doklad') or '').strip()}
+    report = kontrola_pred_dph(
+        rok=rok,
+        mesic=mesic,
+        radky=raw,
+        prijate_otevrene=otevrene,
+        pokladna_pohybu=pokladna,
+        vydane_flexi=_vydane_flexi(rok, mesic),
+        prodejnich_dokladu=len(doklady),
+        priznani=request.query_params.get('priznani'),
+        vynosy=request.query_params.get('vynosy'),
+        cisty_zisk=request.query_params.get('cisty_zisk'),
+        allegro=request.query_params.get('allegro') or '',
+    )
+    if chyba:
+        report['prodej_chyba'] = chyba
+    log_finance_audit(request, 'ucetni_dph', report['obdobi'])
+    return _no_store_response(report)

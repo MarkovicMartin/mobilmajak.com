@@ -298,8 +298,38 @@
     align-items: stretch;
 }
 
-.task-form-row--meta {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+.task-form-row--meta,
+.task-form-row--pair {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.task-assignee-multi__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.task-assignee-multi__list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 0.85rem;
+    max-height: 9rem;
+    overflow: auto;
+}
+
+.task-row__shared {
+    margin-left: 0.35rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-muted);
+}
+
+.task-assignee-multi__item {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.9rem;
 }
 
 .task-form-row--bez-pobocky .ui-select:first-child {
@@ -1201,6 +1231,7 @@
 
 @media (max-width: 768px) {
     .task-form-row--meta,
+    .task-form-row--pair,
     .task-form-row--assign,
     .task-form-row--actions,
     .task-form-row--deadlines,

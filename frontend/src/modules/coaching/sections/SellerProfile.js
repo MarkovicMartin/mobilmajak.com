@@ -28,6 +28,7 @@ const METRIC_OPTIONS = [
 
 const COMPARE_OPTS = [
     { value: '', label: 'Bez srovnání' },
+    { value: 'this_month', label: 'vs tento měsíc' },
     { value: 'prev_month', label: 'vs minulý měsíc' },
     { value: 'prev_quarter', label: 'vs minulý kvartál' },
     { value: 'prev_year', label: 'vs minulý rok' },

@@ -68,3 +68,44 @@ class TerminZadaniApiTests(TestCase):
         )
         self.assertEqual(res.status_code, 200, res.data)
         self.assertEqual(res.data["termin_zadani"], new_zadani)
+
+    def test_create_shared_for_two_assignees(self):
+        self.client.force_authenticate(user=self.admin)
+        druhy = _make_user(9103, "PRODEJCE", prodejna_id=201)
+        res = self.client.post(
+            "/api/tasks/",
+            {
+                "vysledek": "Společný úklid",
+                "ukol": "Společný úklid",
+                "dod_polozky": [{"text": "Hotovo", "splneno": False}],
+                "priorita": "stredni",
+                "typ": "prirazeny",
+                "deadline": date.today().isoformat(),
+                "id_prodejny": self.store.id,
+                "assignee_ids": [self.prodejce.id, druhy.id],
+            },
+            format="json",
+        )
+        self.assertEqual(res.status_code, 201, res.data)
+        self.assertEqual(res.data["created_count"], 2)
+        self.assertEqual(len(res.data["created_ids"]), 2)
+        self.assertTrue(res.data["skupina_id"])
+        names = {p["id"] for p in res.data["spolupracovnici"]}
+        self.assertEqual(names, {druhy.id})
+        first_id = res.data["id"]
+        other_id = next(i for i in res.data["created_ids"] if i != first_id)
+
+        self.client.force_authenticate(user=self.prodejce)
+        res = self.client.put(
+            f"/api/tasks/{first_id}/",
+            {
+                "stav": "hotovo",
+                "dod_polozky": [{"text": "Hotovo", "splneno": True}],
+            },
+            format="json",
+        )
+        self.assertEqual(res.status_code, 200, res.data)
+        from tasks.models import Ukol
+        other = Ukol.objects.get(pk=other_id)
+        self.assertEqual(other.stav, "hotovo")
+        self.assertTrue(other.dod_polozky[0]["splneno"])

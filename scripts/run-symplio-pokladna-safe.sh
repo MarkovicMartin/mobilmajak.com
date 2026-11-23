@@ -58,7 +58,11 @@ nice -n 10 timeout "${RUN_TIMEOUT}" bash -c "
     npm install --omit=dev
   fi
   set +e
-  node fetch-pokladna-xlsx.js
+  if [[ -z \"\${DISPLAY:-}\" ]] && command -v xvfb-run >/dev/null; then
+    xvfb-run -a --server-args='-screen 0 1920x1080x24' node fetch-pokladna-xlsx.js
+  else
+    node fetch-pokladna-xlsx.js
+  fi
   FETCH_CODE=\$?
   set -e
   if compgen -G 'reports/inbox/*.xlsx' > /dev/null; then

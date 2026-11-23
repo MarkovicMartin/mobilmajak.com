@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 from django.test import TestCase, override_settings
 
 from finance.faktura_process import schvalit_doklad
+from finance.flexi_client import flexi_filter_expr
 from finance.flexi_sync import resolve_flexi_match_keys, sync_doklad_to_flexi
 from finance.models import FinanceDoklad, NakladPolozka
 
@@ -82,7 +83,7 @@ class FlexiSyncTests(TestCase):
             'field': 'popis',
             'value': 'ASWO Czech - zbozi FA2026/001',
             'source': 'pokladna_popis',
-            'op': 'like',
+            'op': 'like_words',
             'evidence': 'pokladni-pohyb',
         }])
 
@@ -102,6 +103,20 @@ class FlexiSyncTests(TestCase):
         self.sym_polozka.save(update_fields=['popis'])
         keys = resolve_flexi_match_keys(self.sym_doklad, self.sym_polozka)
         self.assertEqual(keys[0]['value'], 'PANFICO - servis 202601234')
+
+    def test_like_words_ignores_gaps_between_words(self):
+        expr = flexi_filter_expr(
+            'popis',
+            'Servisní díly s.r.o. Díly 2026028478',
+            'like_words',
+        )
+        self.assertEqual(expr, (
+            "(popis like 'Servisní') and (popis like 'díly') and "
+            "(popis like 's.r.o.') and (popis like '2026028478')"
+        ))
+        spaced = flexi_filter_expr('popis', 'BAKR, s.r.o. 2126035148', 'like_words')
+        self.assertIn("(popis like 'BAKR,')", spaced)
+        self.assertIn("(popis like '2126035148')", spaced)
 
     @patch('finance.flexi_sync.is_flexi_sync_enabled', return_value=True)
     @patch('finance.flexi_sync.get_flexi_config')
@@ -194,7 +209,12 @@ class FlexiSyncTests(TestCase):
         client_cls.return_value = client
 
         def find(*, field, value, op='eq', limit=5, firma_code=None, evidence='faktura-prijata'):
-            if evidence == 'pokladni-pohyb' and field == 'popis' and value == 'Bakr, s.r.o. Zboží 2126034889':
+            if (
+                evidence == 'pokladni-pohyb'
+                and field == 'popis'
+                and op == 'like_words'
+                and value == 'Bakr, s.r.o. Zboží 2126034889'
+            ):
                 return [{
                     'id': '338687',
                     'kod': 'C1-000871/26',

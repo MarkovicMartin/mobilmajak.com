@@ -11,6 +11,11 @@
     width: 100%;
 }
 
+.coaching-hours-line {
+    margin: 0.75rem 0 0;
+    font-weight: 600;
+}
+
 .coaching-muted {
     color: var(--text-muted, #64748b);
     font-size: 0.9rem;

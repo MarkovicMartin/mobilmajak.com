@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime, timedelta
 
 from django.db.models import Count, Q
@@ -26,6 +27,44 @@ from .permissions import (
 from .serializers import UkolKomentarSerializer, UkolSerializer, serialize_tasks_list
 from .slack_notify import notify_task_comment, notify_task_lifecycle_change
 from .urgency import is_at_risk, notifications_counts_for_user, OPEN_TASK_STATUSES, urgency_for_task
+
+
+def _sync_shared_task(task):
+    """Jeden checklist a stav pro všechny lidi ve společném úkolu."""
+    if not task.skupina_id:
+        return
+    Ukol.objects.filter(skupina_id=task.skupina_id).exclude(pk=task.pk).update(
+        dod_polozky=task.dod_polozky,
+        stav=task.stav,
+        dokonceno_v=task.dokonceno_v,
+        blokovano_duvod=task.blokovano_duvod,
+        schvaleno_v=task.schvaleno_v,
+        schvalil_id=task.schvalil_id,
+        start_potvrzeno_v=task.start_potvrzeno_v,
+        prvni_krok=task.prvni_krok,
+        mid_kontrola_v=task.mid_kontrola_v,
+        posledni_aktivita_v=task.posledni_aktivita_v,
+    )
+
+
+def _assignee_ids_from_data(data) -> list[int]:
+    raw = data.get("assignee_ids")
+    if raw is None:
+        single = data.get("id_prodejce_ukol")
+        if single in (None, ""):
+            return []
+        raw = [single]
+    if isinstance(raw, str):
+        raw = [part for part in raw.split(",") if part.strip()]
+    ids = []
+    for item in raw:
+        try:
+            num = int(item)
+        except (TypeError, ValueError):
+            continue
+        if num not in ids:
+            ids.append(num)
+    return ids
 
 
 def _parse_month(mesic: str):
@@ -90,7 +129,15 @@ def tasks_list_create(request):
         return Response(serialize_tasks_list(tasks, request))
 
     data = request.data.copy()
+    if hasattr(data, "dict"):
+        # QueryDict.copy() drží assignee_ids jako jeden řetězec; JSON list bereme z původních dat.
+        raw_ids = request.data.get("assignee_ids")
+        data = data.dict()
+        if raw_ids is not None:
+            data["assignee_ids"] = raw_ids
     role = getattr(request.user, "role", None)
+    assignee_ids = _assignee_ids_from_data(data)
+    data.pop("assignee_ids", None)
 
     if not is_task_manager(request.user):
         data["typ"] = "osobni"
@@ -98,40 +145,61 @@ def tasks_list_create(request):
         data.setdefault("id_prodejce_zadal", request.user.id)
     else:
         data.setdefault("id_prodejce_zadal", request.user.id)
-        if data.get("typ") == "prirazeny" and not data.get("id_prodejce_ukol"):
+        if data.get("typ") == "prirazeny" and not data.get("id_prodejce_ukol") and assignee_ids:
+            data["id_prodejce_ukol"] = assignee_ids[0]
+        if data.get("typ") == "prirazeny" and not data.get("id_prodejce_ukol") and not assignee_ids:
             return Response(
                 {"error": "U přiřazeného úkolu je povinný přiřazený uživatel."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-    err = validate_task_create(request.user, data)
-    if err:
-        return Response({"error": err}, status=status.HTTP_400_BAD_REQUEST)
+    shared = data.get("typ") == "prirazeny" and len(assignee_ids) > 1
+    targets = assignee_ids if shared else [data.get("id_prodejce_ukol")]
+    skupina = uuid.uuid4().hex if shared else ""
+    created = []
+    warnings = []
 
-    if data.get("typ") != "prirazeny":
-        if not is_task_manager(request.user):
-            data["id_prodejce_ukol"] = request.user.id
-            data["id_prodejce_zadal"] = request.user.id
-            data["id_prodejny"] = None
-        elif role == "VEDOUCI" and not data.get("id_prodejny"):
-            store_ids = vedouci_store_ids(request.user)
-            if len(store_ids) == 1:
-                data["id_prodejny"] = store_ids[0]
+    for aid in targets:
+        payload = dict(data)
+        if aid:
+            payload["id_prodejce_ukol"] = aid
+        err = validate_task_create(request.user, payload)
+        if err:
+            Ukol.objects.filter(pk__in=[t.id for t in created]).delete()
+            return Response({"error": err}, status=status.HTTP_400_BAD_REQUEST)
 
-    serializer = UkolSerializer(data=data, context={"request": request})
-    if serializer.is_valid():
-        task = serializer.save()
+        if payload.get("typ") != "prirazeny":
+            if not is_task_manager(request.user):
+                payload["id_prodejce_ukol"] = request.user.id
+                payload["id_prodejce_zadal"] = request.user.id
+                payload["id_prodejny"] = None
+            elif role == "VEDOUCI" and not payload.get("id_prodejny"):
+                store_ids = vedouci_store_ids(request.user)
+                if len(store_ids) == 1:
+                    payload["id_prodejny"] = store_ids[0]
+
+        serializer = UkolSerializer(data=payload, context={"request": request})
+        if not serializer.is_valid():
+            Ukol.objects.filter(pk__in=[t.id for t in created]).delete()
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        task = serializer.save(skupina_id=skupina)
         if task.typ == "prirazeny" and task.id_prodejce_ukol != request.user.id:
             task.precteno_v = None
             task.save(update_fields=["precteno_v"])
         notify_task_lifecycle_change(task, is_new=True)
-        out = UkolSerializer(task, context={"request": request})
-        response_data = out.data
+        created.append(task)
         wip_warning = wip_warning_on_assign(task.id_prodejce_ukol)
-        if wip_warning:
-            response_data = {**response_data, "wip_warning": wip_warning}
-        return Response(response_data, status=status.HTTP_201_CREATED)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        if wip_warning and wip_warning not in warnings:
+            warnings.append(wip_warning)
+
+    out = UkolSerializer(created[0], context={"request": request})
+    response_data = dict(out.data)
+    if shared:
+        response_data["created_count"] = len(created)
+        response_data["created_ids"] = [t.id for t in created]
+    if warnings:
+        response_data["wip_warning"] = "\n".join(warnings)
+    return Response(response_data, status=status.HTTP_201_CREATED)
 
 
 @api_view(["GET", "PUT", "DELETE"])
@@ -192,6 +260,7 @@ def task_detail(request, task_id: int):
             old_assignee=old_assignee,
             actor_id=getattr(request.user, "id", None),
         )
+        _sync_shared_task(updated)
         return Response(UkolSerializer(updated, context={"request": request}).data)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -250,7 +319,10 @@ def task_comments(request, task_id: int):
         return Response({"error": "Nemáte oprávnění"}, status=status.HTTP_403_FORBIDDEN)
 
     if request.method == "GET":
-        comments = task.komentare.all()
+        if task.skupina_id:
+            comments = UkolKomentar.objects.filter(ukol__skupina_id=task.skupina_id)
+        else:
+            comments = task.komentare.all()
         return Response(UkolKomentarSerializer(comments, many=True).data)
 
     text = (request.data.get("text") or "").strip()
@@ -266,6 +338,7 @@ def task_comments(request, task_id: int):
     )
     task.posledni_aktivita_v = timezone.now()
     task.save(update_fields=["posledni_aktivita_v", "upraveno"])
+    _sync_shared_task(task)
     notify_task_comment(task, comment)
     return Response(UkolKomentarSerializer(comment).data, status=status.HTTP_201_CREATED)
 

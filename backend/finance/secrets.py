@@ -117,3 +117,30 @@ def is_flexi_sync_enabled() -> bool:
     if os.getenv('FINANCE_FLEXI_ENABLED', '1').strip().lower() in ('0', 'false', 'no'):
         return False
     return get_flexi_config() is not None
+
+
+# Tabulka výkupů z účetního manuálu (gid v URL je původní list účetní).
+VYCHOZI_VYKUPY_SPREADSHEET = '14IQ_ud8aakJSA8Ge_WcEQrRDnP-aK4WpnOvq9HFi2xE'
+
+
+def get_ucetni_config() -> dict:
+    """Předpisy a výjimky. Chybějící secrets nechají výchozí hodnoty z manuálu."""
+    raw: dict = {}
+    try:
+        raw = (load_finance_secrets().get('ucetni') or {})
+    except Exception:
+        raw = {}
+    if not isinstance(raw, dict):
+        raw = {}
+    znami = raw.get('znami_dodavatele') or []
+    if not isinstance(znami, list):
+        znami = []
+    credentials = (raw.get('credentials_file') or 'secrets/google-sheets-service-account.json').strip()
+    return {
+        'typ_dokl': (raw.get('typ_dokl') or 'FAKTURA').strip() or 'FAKTURA',
+        'prim_ucet': (raw.get('prim_ucet') or '321001').strip() or '321001',
+        'znami_dodavatele': znami,
+        'spreadsheet_id': (raw.get('vykupy_spreadsheet_id') or VYCHOZI_VYKUPY_SPREADSHEET).strip(),
+        'sheet_name': (raw.get('vykupy_sheet_name') or 'MM výkupy').strip() or 'MM výkupy',
+        'credentials_file': credentials,
+    }

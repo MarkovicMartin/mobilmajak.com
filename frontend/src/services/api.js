@@ -584,6 +584,13 @@ export const financeAPI = {
     },
     odeslatDobropisFlexi: async (id) => (await api.post(`/finance/dobropisy/${id}/flexi/`)).data,
     schvalitDoklad: async (id) => (await api.post(`/finance/doklady/${id}/schvalit/`)).data,
+    zalozitDokladFlexi: async (id, payload = {}) => (
+        await api.post(`/finance/doklady/${id}/zalozit-flexi/`, payload)
+    ).data,
+    getUcetniVykupy: async (params = {}) => (await api.get('/finance/ucetni/vykupy/', { params })).data,
+    zapsatUcetniVykupy: async (payload) => (await api.post('/finance/ucetni/vykupy/tabulka/', payload)).data,
+    getUcetniDph: async (params = {}) => (await api.get('/finance/ucetni/dph/', { params })).data,
+    getUcetniUpominka: async (vs) => (await api.get('/finance/ucetni/upominka/', { params: { vs } })).data,
     odeslatDokladFlexi: async (id) => (await api.post(`/finance/doklady/${id}/odeslat-flexi/`)).data,
     zamitnoutDoklad: async (id, payload = {}) => (
         await api.post(`/finance/doklady/${id}/zamitnout/`, payload)

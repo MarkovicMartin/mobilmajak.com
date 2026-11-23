@@ -5,6 +5,24 @@ from stores.models import Prodejna
 from users.models import WebUser
 
 from .models import Ukol, UkolKomentar
+
+
+def skupina_member_map(tasks) -> dict[str, list[dict]]:
+    """Jména lidí ve společné dávce, klíč = skupina_id."""
+    ids = {t.skupina_id for t in tasks if getattr(t, "skupina_id", "")}
+    if not ids:
+        return {}
+    rows = Ukol.objects.filter(skupina_id__in=ids).values_list(
+        "skupina_id", "id", "id_prodejce_ukol",
+    )
+    user_ids = {uid for _, _, uid in rows}
+    names = _user_name_map(user_ids)
+    out: dict[str, list[dict]] = {}
+    for sid, task_id, uid in rows:
+        person = dict(names.get(uid) or {"id": uid, "jmeno_plne": str(uid)})
+        person["task_id"] = task_id
+        out.setdefault(sid, []).append(person)
+    return out
 from .urgency import is_at_risk, urgency_for_task
 
 
@@ -51,6 +69,7 @@ class UkolSerializer(serializers.ModelSerializer):
     is_unread = serializers.SerializerMethodField()
     komentare_count = serializers.SerializerMethodField()
     schvalil = serializers.SerializerMethodField()
+    spolupracovnici = serializers.SerializerMethodField()
     potvrdit_mid_kontrolu = serializers.BooleanField(write_only=True, required=False, default=False)
 
     class Meta:
@@ -80,6 +99,7 @@ class UkolSerializer(serializers.ModelSerializer):
             "id_prodejce_ukol",
             "id_prodejce_zadal",
             "id_prodejny",
+            "skupina_id",
             "vytvoreno",
             "upraveno",
             "dokonceno_v",
@@ -90,12 +110,14 @@ class UkolSerializer(serializers.ModelSerializer):
             "at_risk",
             "is_unread",
             "komentare_count",
+            "spolupracovnici",
             "potvrdit_mid_kontrolu",
         ]
         read_only_fields = [
             "vytvoreno",
             "upraveno",
             "dokonceno_v",
+            "skupina_id",
             "precteno_v",
             "schvaleno_v",
             "schvalil_id",
@@ -158,6 +180,16 @@ class UkolSerializer(serializers.ModelSerializer):
         from .urgency import is_task_unread
 
         return is_task_unread(obj, request.user)
+
+    def get_spolupracovnici(self, obj):
+        if not getattr(obj, "skupina_id", ""):
+            return []
+        mapping = getattr(self, "_skupina_map", None)
+        if mapping is None:
+            mapping = skupina_member_map([obj])
+            self._skupina_map = mapping
+        people = mapping.get(obj.skupina_id, [])
+        return [p for p in people if p.get("id") != obj.id_prodejce_ukol]
 
     def get_komentare_count(self, obj):
         if hasattr(obj, 'komentare_count'):
@@ -235,4 +267,5 @@ def serialize_tasks_list(tasks, request):
     serializer = UkolSerializer(tasks_list, many=True, context={"request": request})
     if tasks_list:
         serializer.child._prefetch_maps(tasks_list)
+        serializer.child._skupina_map = skupina_member_map(tasks_list)
     return serializer.data

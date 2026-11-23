@@ -8,7 +8,6 @@ import { useTasks } from '../../hooks/useTasks';
 import TaskDetailPanel from './TaskDetailPanel';
 import TaskEditForm from './TaskEditForm';
 import TaskKanbanBoard from './TaskKanbanBoard';
-import { buildAssigneeSelectOptions } from './TaskAssigneeOptions';
 import { parseTaskId, sameTaskId, TASKS_MANAGE_PATH } from '../../utils/taskNavigation';
 import './TasksModule.css';
 
@@ -47,6 +46,7 @@ const TasksManageModule = ({ embedded = false }) => {
         deadline_cas: '',
         id_prodejny: '',
         id_prodejce_ukol: '',
+        assigneeIds: [],
         vyzaduje_schvaleni: false,
         typ: 'prirazeny',
         bezPobocky: false,
@@ -121,11 +121,6 @@ const TasksManageModule = ({ embedded = false }) => {
                 .sort((a, b) => a.label.localeCompare(b.label, 'cs')),
         ];
     }, [tasks]);
-
-    const assigneeFormOptions = useMemo(
-        () => buildAssigneeSelectOptions(formAssignees, 'Přiřadit…'),
-        [formAssignees],
-    );
 
     const fetchAssigneesForStore = useCallback(async (storeId) => {
         if (!storeId) return [];
@@ -291,8 +286,9 @@ const TasksManageModule = ({ embedded = false }) => {
         const dod = form.dod_polozky
             .map((p) => ({ text: p.text.trim(), splneno: false }))
             .filter((p) => p.text);
-        if (!form.vysledek.trim() || !form.id_prodejce_ukol || !form.deadline) {
-            setFormError('Vyplňte výsledek, zaměstnance a termín dokončení.');
+        const assigneeIds = (form.assigneeIds || []).map((id) => Number(id)).filter(Boolean);
+        if (!form.vysledek.trim() || assigneeIds.length < 1 || !form.deadline) {
+            setFormError('Vyplňte výsledek, aspoň jednoho zaměstnance a termín dokončení.');
             return;
         }
         if (!form.bezPobocky && !form.id_prodejny) {
@@ -316,7 +312,8 @@ const TasksManageModule = ({ embedded = false }) => {
                 deadline_cas: form.deadline_cas || null,
                 typ: 'prirazeny',
                 id_prodejny: form.bezPobocky ? null : Number(form.id_prodejny),
-                id_prodejce_ukol: Number(form.id_prodejce_ukol),
+                id_prodejce_ukol: assigneeIds[0],
+                assignee_ids: assigneeIds,
                 vyzaduje_schvaleni: form.vyzaduje_schvaleni,
             });
             if (created?.wip_warning) {
@@ -330,6 +327,7 @@ const TasksManageModule = ({ embedded = false }) => {
                 termin_zadani: '',
                 deadline: '',
                 deadline_cas: '',
+                assigneeIds: [],
                 vyzaduje_schvaleni: false,
             }));
             setFormError('');
@@ -451,7 +449,11 @@ const TasksManageModule = ({ embedded = false }) => {
                                 Zrušit
                             </button>
                             <button type="submit" className="btn btn--primary" disabled={creating}>
-                                {creating ? 'Vytvářím…' : 'Vytvořit úkol'}
+                                {creating
+                                ? 'Vytvářím…'
+                                : ((form.assigneeIds || []).length > 1
+                                    ? `Vytvořit společný úkol (${(form.assigneeIds || []).length})`
+                                    : 'Vytvořit úkol')}
                             </button>
                         </>
                     )}
@@ -520,6 +522,7 @@ const TasksManageModule = ({ embedded = false }) => {
                                             bezPobocky: e.target.checked,
                                             id_prodejny: e.target.checked ? '' : form.id_prodejny,
                                             id_prodejce_ukol: '',
+                                            assigneeIds: [],
                                         })}
                                     />
                                     <span className="task-toggle__track" />
@@ -533,7 +536,7 @@ const TasksManageModule = ({ embedded = false }) => {
                                 </div>
                             </div>
                         )}
-                        <div className={`task-form-row task-form-row--meta${form.bezPobocky ? ' task-form-row--bez-pobocky' : ''}`}>
+                        <div className={`task-form-row task-form-row--pair${form.bezPobocky ? ' task-form-row--bez-pobocky' : ''}`}>
                             {form.bezPobocky ? (
                                 <Select
                                     options={[{ value: '', label: 'Bez pobočky' }]}
@@ -546,17 +549,15 @@ const TasksManageModule = ({ embedded = false }) => {
                                     options={formStoreOptions}
                                     value={form.id_prodejny}
                                     disabled={storeLocked}
-                                    onChange={(v) => setForm({ ...form, id_prodejny: v, id_prodejce_ukol: '' })}
+                                    onChange={(v) => setForm({
+                                        ...form,
+                                        id_prodejny: v,
+                                        id_prodejce_ukol: '',
+                                        assigneeIds: [],
+                                    })}
                                     aria-label="Pobočka"
                                 />
                             )}
-                            <Select
-                                options={assigneeFormOptions}
-                                value={form.id_prodejce_ukol}
-                                onChange={(v) => setForm({ ...form, id_prodejce_ukol: v })}
-                                disabled={!form.bezPobocky && !form.id_prodejny}
-                                aria-label="Přiřadit zaměstnance"
-                            />
                             <Select
                                 className="task-select--prio"
                                 options={PRIORITA_OPTIONS}
@@ -564,6 +565,66 @@ const TasksManageModule = ({ embedded = false }) => {
                                 onChange={(v) => setForm({ ...form, priorita: v })}
                                 aria-label="Priorita"
                             />
+                        </div>
+                        <div className="task-assignee-multi">
+                            <div className="task-assignee-multi__head">
+                                <span className="task-form-section__label">Zaměstnanci</span>
+                                <button
+                                    type="button"
+                                    className="btn btn--ghost btn--sm"
+                                    disabled={!formAssignees.length}
+                                    onClick={() => {
+                                        const all = formAssignees.map((a) => String(a.id));
+                                        const selected = form.assigneeIds || [];
+                                        const every = all.length > 0 && all.every((id) => selected.includes(id));
+                                        setForm({
+                                            ...form,
+                                            assigneeIds: every ? [] : all,
+                                            id_prodejce_ukol: every ? '' : all[0],
+                                        });
+                                    }}
+                                >
+                                    {(form.assigneeIds || []).length === formAssignees.length && formAssignees.length
+                                        ? 'Zrušit výběr'
+                                        : 'Všichni'}
+                                </button>
+                            </div>
+                            {!formAssignees.length && (
+                                <p className="task-toggle-hint">
+                                    {form.bezPobocky || form.id_prodejny
+                                        ? 'Nikdo k přiřazení.'
+                                        : 'Nejdřív vyberte pobočku.'}
+                                </p>
+                            )}
+                            <div className="task-assignee-multi__list">
+                                {formAssignees.map((person) => {
+                                    const id = String(person.id);
+                                    const checked = (form.assigneeIds || []).includes(id);
+                                    return (
+                                        <label key={id} className="task-assignee-multi__item">
+                                            <input
+                                                type="checkbox"
+                                                checked={checked}
+                                                onChange={() => {
+                                                    const current = form.assigneeIds || [];
+                                                    const next = checked
+                                                        ? current.filter((value) => value !== id)
+                                                        : [...current, id];
+                                                    setForm({
+                                                        ...form,
+                                                        assigneeIds: next,
+                                                        id_prodejce_ukol: next[0] || '',
+                                                    });
+                                                }}
+                                            />
+                                            <span>{person.jmeno_plne || person.jmeno}</span>
+                                        </label>
+                                    );
+                                })}
+                            </div>
+                            <p className="task-toggle-hint">
+                                Více lidí = jeden úkol. Krok, který odškrtne jeden, už ostatní neřeší.
+                            </p>
                         </div>
                         <div className="task-form-row task-form-row--deadlines">
                             <label className="task-form-label">

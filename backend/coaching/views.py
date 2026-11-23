@@ -171,7 +171,12 @@ def sellers_compare(request):
     if not user_can_compare_sellers(request.user, sellers[0], sellers[1]):
         return Response({'success': False, 'error': 'Nemáte oprávnění'}, status=403)
     rok, mesic = _month_params(request)
-    data = compare_sellers(int(user_a), int(user_b), rok, mesic, kanal=request.GET.get('kanal', 'all'))
+    data = compare_sellers(
+        int(user_a), int(user_b), rok, mesic,
+        kanal=request.GET.get('kanal', 'all'),
+        date_from=request.GET.get('start_date'),
+        date_to=request.GET.get('end_date'),
+    )
     if not can_access_coaching(request.user):
         data = sanitize_compare_for_user(data)
     return Response({'success': True, **data})

@@ -135,6 +135,7 @@ const TaskRow = ({
                 title={taskDisplayTitle(task)}
             >
                 {taskDisplayTitle(task)}
+                {task.skupina_id ? <span className="task-row__shared"> Společný</span> : null}
                 {task.is_unread && <span className="task-row__unread" title="Nepřečteno" />}
             </div>
             {isManage ? (

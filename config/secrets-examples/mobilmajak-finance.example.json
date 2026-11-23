@@ -40,5 +40,17 @@
     "password": "HESLO_REST_API_UZIVATELE",
     "mode": "priloha",
     "typ_dokl": ""
+  },
+
+  "ucetni": {
+    "_comment": "Známý dodavatel se smí zapsat jako přijatá FA. Neznámý zůstane ve frontě. Výkupy se zapisují na list MM výkupy, původní list účetní se nemaže.",
+    "typ_dokl": "FAKTURA",
+    "prim_ucet": "321001",
+    "znami_dodavatele": [
+      { "ico": "12345678", "nazev": "Dodavatel s.r.o.", "firma_kod": "DODAVATEL" }
+    ],
+    "vykupy_spreadsheet_id": "14IQ_ud8aakJSA8Ge_WcEQrRDnP-aK4WpnOvq9HFi2xE",
+    "vykupy_sheet_name": "MM výkupy",
+    "credentials_file": "secrets/google-sheets-service-account.json"
   }
 }

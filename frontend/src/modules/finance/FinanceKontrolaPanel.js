@@ -26,6 +26,7 @@ const FinanceKontrolaPanel = () => {
     const [error, setError] = useState('');
     const [message, setMessage] = useState('');
     const [busyId, setBusyId] = useState(null);
+    const [firmaKod, setFirmaKod] = useState({});
     const [uploading, setUploading] = useState(false);
 
     const load = useCallback(async () => {
@@ -209,7 +210,41 @@ const FinanceKontrolaPanel = () => {
                                     </tbody>
                                 </table>
                             )}
+                            {d.ucetni_navrh && (
+                                <p className="finance-ucetni-navrh">
+                                    <strong>{d.ucetni_navrh.duvod}</strong>
+                                    {d.ucetni_navrh.ucet_md ? ` MD ${d.ucetni_navrh.ucet_md}.` : ''}
+                                    {d.ucetni_navrh.clen_dph ? ` DPH ${d.ucetni_navrh.clen_dph}.` : ''}
+                                    {d.ucetni_navrh.clen_kon_vyk ? ` KH ${d.ucetni_navrh.clen_kon_vyk}.` : ''}
+                                    {d.ucetni_navrh.popis ? ` Popis: ${d.ucetni_navrh.popis}.` : ''}
+                                </p>
+                            )}
                             <div className="finance-kontrola-actions">
+                                {(d.ucetni_navrh?.lze_zapsat || d.ucetni_navrh?.doplnit?.includes('firma_kod')) && (
+                                    <>
+                                        {d.ucetni_navrh.doplnit?.includes('firma_kod') && (
+                                            <input
+                                                type="text"
+                                                placeholder="Kód firmy ve Flexi"
+                                                value={firmaKod[d.id] || ''}
+                                                onChange={(event) => setFirmaKod((prev) => ({
+                                                    ...prev,
+                                                    [d.id]: event.target.value,
+                                                }))}
+                                            />
+                                        )}
+                                        <button
+                                            type="button"
+                                            className="finance-btn-primary"
+                                            disabled={busyId === d.id}
+                                            onClick={() => act(d.id, () => financeAPI.zalozitDokladFlexi(d.id, {
+                                                firma_kod: firmaKod[d.id] || '',
+                                            }))}
+                                        >
+                                            Založit ve Flexi
+                                        </button>
+                                    </>
+                                )}
                                 <button
                                     type="button"
                                     disabled={busyId === d.id}

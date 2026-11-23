@@ -92,6 +92,8 @@ def process_doklad_ocr(doklad_id: int, *, overwrite_empty: bool = True) -> Finan
     match = match_doklad_to_polozka(doklad, polozka)
     doklad.match_stav = match['stav']
     doklad.match_detail = match
+    from .prijata_navrh import dopln_ucetni_navrh
+    dopln_ucetni_navrh(doklad)
     doklad.ocr_raw = ocr_payload
     doklad.stav = FinanceDoklad.STAV_KE_KONTROLE
     doklad.upraveno = timezone.now()
@@ -116,10 +118,53 @@ def process_doklad_ocr(doklad_id: int, *, overwrite_empty: bool = True) -> Finan
         try_auto_link_doklad(doklad)
         doklad.refresh_from_db()
 
+    return maybe_auto_schvalit_pokladnu(doklad)
+
+
+def _pokladna_shoda_ke_schvaleni(doklad: FinanceDoklad) -> bool:
+    """Pokladna: název i částka sedí na výdej. Účet na schválení čeká."""
+    from .models import is_bank_zdroj
+
+    if doklad.druh == FinanceDoklad.DRUH_DOBROPIS or doklad.flexi_id:
+        return False
+    if doklad.stav not in (
+        FinanceDoklad.STAV_CEKA_NA_OCR,
+        FinanceDoklad.STAV_KE_KONTROLE,
+        FinanceDoklad.STAV_NOVA,
+    ):
+        return False
+    polozka = doklad.naklad_polozka
+    if not polozka or is_bank_zdroj(polozka.zdroj):
+        return False
+    if polozka.zdroj != NakladPolozka.ZDROJ_SYMPLIO_POKLADNA:
+        return False
+    detail = doklad.match_detail or {}
+    if (detail.get('stav') or doklad.match_stav) != FinanceDoklad.MATCH_OK:
+        return False
+    ok_poles = {
+        row.get('pole')
+        for row in (detail.get('checks') or [])
+        if row.get('stav') == FinanceDoklad.MATCH_OK
+    }
+    return 'dodavatel' in ok_poles and 'castka_celkem' in ok_poles
+
+
+def maybe_auto_schvalit_pokladnu(doklad: FinanceDoklad) -> FinanceDoklad:
+    """Sedící pokladní doklad schválí a odešle do Flexi. Pohyb na účtu nechá ve frontě."""
+    doklad.refresh_from_db()
+    if not _pokladna_shoda_ke_schvaleni(doklad):
+        return doklad
+    detail = dict(doklad.match_detail or {})
+    detail['auto_schvaleno'] = True
+    doklad.match_detail = detail
+    doklad.save(update_fields=['match_detail', 'upraveno'])
+    doklad = schvalit_doklad(doklad, None)
+    from .services import log_finance_system
+    log_finance_system('doklad_schvalit', f'id={doklad.id} auto pokladna')
     return doklad
 
 
-def schvalit_doklad(doklad: FinanceDoklad, user_id: int) -> FinanceDoklad:
+def schvalit_doklad(doklad: FinanceDoklad, user_id: int | None) -> FinanceDoklad:
     doklad.stav = FinanceDoklad.STAV_SCHVALENO
     doklad.schvalil_user_id = user_id
     doklad.schvaleno = timezone.now()

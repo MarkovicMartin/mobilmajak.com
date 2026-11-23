@@ -99,17 +99,41 @@ async function selectStore(driver, storeLabel) {
     }
   }
   const url = await driver.getCurrentUrl();
-  if (!url.includes('/admin/login')) {
-    console.log(`Výběr „${storeLabel}“ přeskočen – pravděpodobně už přihlášeno:`, url);
-    return;
+  const stillLogin = (await driver.findElements(By.name('_username'))).length > 0;
+  if (stillLogin || url.includes('/admin/login')) {
+    throw new Error(`Po přihlášení se nepodařilo vybrat: ${storeLabel}`);
   }
-  throw new Error(`Po přihlášení se nepodařilo vybrat: ${storeLabel}`);
+  console.log(`Výběr „${storeLabel}“ přeskočen – pravděpodobně už přihlášeno:`, url);
 }
 
 /**
- * @param {import('selenium-webdriver').WebDriver} driver
- * @param {{ store?: string|null, selectGlobus?: boolean }} [opts]
+ * WAF někdy vrátí /admin bez formuláře. Bez čekání se to tváří jako
+ * přihlášená session a export pokladny pak nic nestáhne.
  */
+async function waitForUsernameField(driver, timeoutMs = 40000) {
+  const deadline = Date.now() + timeoutMs;
+  let wafSlept = false;
+  while (Date.now() < deadline) {
+    let pageText = '';
+    try {
+      pageText = await driver.getPageSource();
+    } catch (_) {
+      pageText = '';
+    }
+    if (!wafSlept && (pageText.includes('WAF') || pageText.includes('Cloudflare') || pageText.includes('DDoS'))) {
+      console.log('Detekována WAF výzva, čekám...');
+      await sleep(5000);
+      wafSlept = true;
+      continue;
+    }
+    const fields = await driver.findElements(By.name('_username'));
+    if (fields.length) return fields;
+    if (pageText.includes('Odhlásit') || pageText.includes('/logout')) return [];
+    await sleep(400);
+  }
+  return driver.findElements(By.name('_username'));
+}
+
 async function loginSymplio(driver, opts = {}) {
   let store = opts.store;
   if (store === undefined) {
@@ -121,7 +145,7 @@ async function loginSymplio(driver, opts = {}) {
   await driver.get('https://www.mobilmajak.cz/admin');
   await handleWafChallenge(driver);
 
-  const usernameFields = await driver.findElements(By.name('_username'));
+  const usernameFields = await waitForUsernameField(driver);
   if (usernameFields.length) {
     const { user, pass } = loadSymplioCredentials();
     await usernameFields[0].sendKeys(user);
@@ -130,7 +154,16 @@ async function loginSymplio(driver, opts = {}) {
     await sleep(3000);
     await handleWafChallenge(driver);
   } else {
-    console.log('Přihlašovací formulář nenalezen – pokračuji (už přihlášeno?).');
+    let url = '';
+    let title = '';
+    try {
+      url = await driver.getCurrentUrl();
+      title = await driver.getTitle();
+    } catch (_) { /* stránka se nestihla načíst */ }
+    console.log('Přihlašovací formulář nenalezen – pokračuji (už přihlášeno?).', url, '|', title);
+    if (/just a moment|cloudflare|attention required/i.test(title)) {
+      throw new Error(`Cloudflare výzva neskončila: ${title}`);
+    }
   }
 
   if (storeLabel) {

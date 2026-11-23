@@ -80,7 +80,7 @@ def resolve_flexi_match_keys(doklad: FinanceDoklad, polozka: NakladPolozka | Non
         if poznamka:
             add(
                 'popis', poznamka, 'pokladna_popis',
-                op='like', evidence='pokladni-pohyb',
+                op='like_words', evidence='pokladni-pohyb',
             )
         return keys
 

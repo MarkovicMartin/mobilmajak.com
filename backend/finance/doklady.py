@@ -350,6 +350,8 @@ def _attach_doklad_to_polozka(
         polozka.dph_stav = NakladPolozka.DPH_STAV_SPAROVANO
         update.extend(['castka_bez_dph', 'dph_castka', 'dph_sazba', 'dph_stav'])
     polozka.save(update_fields=update)
+    from .faktura_process import maybe_auto_schvalit_pokladnu
+    maybe_auto_schvalit_pokladnu(doklad)
     return True
 
 
@@ -394,6 +396,7 @@ def serialize_doklad(d: FinanceDoklad, *, include_polozka: bool = False) -> dict
         'flexi_id': d.flexi_id or None,
         'druh': d.druh or FinanceDoklad.DRUH_FAKTURA,
         'flexi': (d.match_detail or {}).get('flexi'),
+        'ucetni_navrh': (d.match_detail or {}).get('ucetni_navrh'),
         'prirazeno_automaticky': bool(d.prirazeno_automaticky),
         'ceka_na_platbu': d.naklad_polozka_id is None,
     }

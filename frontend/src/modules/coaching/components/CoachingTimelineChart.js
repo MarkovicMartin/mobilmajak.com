@@ -13,6 +13,7 @@ import { coachingAPI } from '../../../services/api';
 import { formatMonthKeyLabel } from '../../analytics/sections/celkovaPeriodUtils';
 
 const COMPARE_LABELS = {
+    this_month: 'Tento měsíc',
     prev_month: 'Předchozí měsíc',
     prev_quarter: 'Předchozí kvartál',
     prev_year: 'Předchozí rok',
