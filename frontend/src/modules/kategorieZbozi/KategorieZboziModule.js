@@ -5,6 +5,7 @@ import Modal from '../../components/Modal';
 import { PageHeader, Tabs } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
 import KategorieZboziAudit from './KategorieZboziAudit';
+import KategorieZboziZakladani from './KategorieZboziZakladani';
 import './KategorieZboziModule.css';
 
 const SYMPLIO_ORDER_URL = (orderId) =>
@@ -89,6 +90,7 @@ export default function KategorieZboziModule() {
     const { isAdmin } = useAuth();
     const location = useLocation();
     const audit = location.pathname.endsWith('/audit');
+    const zakladani = location.pathname.endsWith('/zakladani');
     const today = new Date();
     const [rok, setRok] = useState(today.getFullYear());
     const [mesic, setMesic] = useState(today.getMonth() + 1);
@@ -115,8 +117,8 @@ export default function KategorieZboziModule() {
     }, [rok, mesic]);
 
     useEffect(() => {
-        if (!audit) load();
-    }, [audit, load]);
+        if (!audit && !zakladani) load();
+    }, [audit, zakladani, load]);
 
     const toggle = async (row) => {
         setBusyKod(row.kod);
@@ -161,7 +163,7 @@ export default function KategorieZboziModule() {
     const cizi = radky.filter(jeCizi);
     const moje = radky.filter((row) => !jeCizi(row));
 
-    if (audit && !isAdmin()) {
+    if ((audit || zakladani) && !isAdmin()) {
         return <Navigate to="/kategorie-zbozi" replace />;
     }
 
@@ -169,10 +171,12 @@ export default function KategorieZboziModule() {
         <div className="kz-page">
             <PageHeader
                 title="Kategorie zboží"
-                subtitle={audit
+                subtitle={zakladani
+                    ? 'Chybějící kategorie a další věci, které ve Sympliu není kam zapsat.'
+                    : audit
                     ? 'Odškrtnuté kódy. Kategorie v prodejích se přepíše až po zaškrtnutí kontroly.'
                     : 'Odškrtni kód, až kategorii upravíš v Sympliu. Bod se připíše hned. Když noční kontrola zařazení nepotvrdí, bod se odečte.'}
-                actions={(
+                actions={!zakladani && (
                     <div className="kz-month">
                         <button type="button" onClick={() => move(-1)} aria-label="Předchozí měsíc">‹</button>
                         <span>{mesicLabel(rok, mesic)}</span>
@@ -187,10 +191,13 @@ export default function KategorieZboziModule() {
                     tabs={[
                         { id: 'seznam', label: 'K zařazení', to: '/kategorie-zbozi', end: true },
                         { id: 'audit', label: 'Audit', to: '/kategorie-zbozi/audit' },
+                        { id: 'zakladani', label: 'Zakládání', to: '/kategorie-zbozi/zakladani' },
                     ]}
                 />
             )}
-            {audit ? (
+            {zakladani ? (
+                <KategorieZboziZakladani />
+            ) : audit ? (
                 <KategorieZboziAudit rok={rok} mesic={mesic} />
             ) : (
             <>

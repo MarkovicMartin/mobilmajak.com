@@ -241,3 +241,51 @@ class KategorieZboziClaim(models.Model):
 
     def __str__(self):
         return f'{self.kod} {self.stav}'
+
+
+class ZakladaniNedostatek(models.Model):
+    """Věc, kterou týdenní zakládání karet nemůže zapsat do Symplia."""
+
+    TYP_CHYBEJICI_KATEGORIE = 'chybejici_kategorie'
+    TYP_NEZNAME_CENY = 'nezname_ceny'
+    TYP_CHYBEJICI_FOTKA = 'chybejici_fotka'
+    TYP_NEJASNA_RADA = 'nejasna_rada'
+    TYP_JINE = 'jine'
+    TYP_CHOICES = [
+        (TYP_CHYBEJICI_KATEGORIE, 'Chybějící kategorie'),
+        (TYP_NEZNAME_CENY, 'Neznámé ceny'),
+        (TYP_CHYBEJICI_FOTKA, 'Chybějící fotka'),
+        (TYP_NEJASNA_RADA, 'Nejasná řada'),
+        (TYP_JINE, 'Jiné'),
+    ]
+
+    STAV_OTEVRENO = 'otevreno'
+    STAV_VYRESENO = 'vyreseno'
+    STAV_CHOICES = [
+        (STAV_OTEVRENO, 'Otevřeno'),
+        (STAV_VYRESENO, 'Vyřešeno'),
+    ]
+
+    kod = models.CharField(max_length=100, db_index=True, verbose_name='P kód')
+    zbozi_id = models.PositiveIntegerField(null=True, blank=True, verbose_name='ID zboží')
+    nazev = models.CharField(max_length=255, blank=True, default='', verbose_name='Název')
+    typ = models.CharField(max_length=32, choices=TYP_CHOICES, verbose_name='Typ')
+    text = models.TextField(verbose_name='Co chybí')
+    stav = models.CharField(
+        max_length=16, choices=STAV_CHOICES, default=STAV_OTEVRENO, db_index=True,
+    )
+    vytvoreno = models.DateTimeField(auto_now_add=True)
+    vyreseno = models.DateTimeField(null=True, blank=True)
+    vyresil = models.ForeignKey(
+        WebUser, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='zakladani_nedostatky',
+    )
+
+    class Meta:
+        db_table = 'WEB_ZAKLADANI_NEDOSTATEK'
+        verbose_name = 'Nedostatek zakládání'
+        verbose_name_plural = 'Nedostatky zakládání'
+        ordering = ['-vytvoreno']
+
+    def __str__(self):
+        return f'{self.kod} {self.typ}'

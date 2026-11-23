@@ -59,7 +59,9 @@ Když sourozenec není, použij tabulku. Je z účtenek roku 2026 (nejčastějš
 | Flexible / Nano | 399 | 199 |
 | sklo kamery | 299 | 149 |
 
-Řada v tabulce není a sourozenec chybí: obě ceny nech prázdné a kartu nech v Ke zpracování. Polovinu pokladny jako e-shop nedoplňuj.
+Sklo bez řady v názvu je 9H. 5D a 6D jsou v názvu uvedeny. Zadní kryt, který v tabulce nemá vlastní řadu (K-Look, Smoke Hybrid a další MagSafe kryty), má cenu Mag Cover: pokladna 399, e-shop 199.
+
+Řada v tabulce není, sourozenec chybí a nejde ani o sklo ani o zadní kryt: obě ceny nech prázdné, kartu nech v K založení a zapiš nedostatek `nezname_ceny`. Polovinu pokladny jako e-shop nedoplňuj.
 
 ## Názvy
 
@@ -81,7 +83,7 @@ Popisy skel, když dodavatel žádný nedá:
 
 ## Kategorie
 
-E-shopový list je nejhlubší existující kategorie modelu. Složku značky ber tak, jak už ve stromu je (APPLE, SAMSUNG, XIAOMI, Honor). Novou kategorii nezakládej. Když list modelu není, kartu nech v Ke zpracování a napiš, jaký list chybí.
+E-shopový list je nejhlubší existující kategorie modelu. Složku značky ber tak, jak už ve stromu je (APPLE, SAMSUNG, XIAOMI, Honor). Novou kategorii nezakládej. Když list modelu není a žádný vhodný list neexistuje, kartu nech v K založení a zapiš nedostatek `chybejici_kategorie`. Když název uvádí víc modelů a aspoň jeden list existuje, zařaď do existujících listů, přesuň kartu do Ke kontrole a chybějící list zapiš stejně.
 
 | Zboží | Cesta |
 | --- | --- |
@@ -100,7 +102,7 @@ Jedna karta = jedna barva a jedna paměť. Název opisuj ze sourozence stejného
 
 Cenu ber z karty stejného modelu a paměti. Když taková není, cenu nech prázdnou. Váha je skutečná hmotnost v gramech, stejné číslo jde do parametru Hmotnost.
 
-Kategorie: **NOVÉ TELEFONY → značka → řada → model**. Tlačítková Nokia jde pod `Nokia → Tlačítkové → Nokia 210`. List nezakládej. Když model ve stromu není, nech kartu v Ke zpracování a napiš chybějící list. Puntík ve frontě zůstává Ke kontrole.
+Kategorie: **NOVÉ TELEFONY → značka → řada → model**. Tlačítková Nokia jde pod `Nokia → Tlačítkové → Nokia 210`. List nezakládej. Když model ve stromu není, nech kartu v K založení a zapiš nedostatek `chybejici_kategorie`.
 
 Parametry ber z gsmarena.com a vyplň jen ty, které už na kartách jsou: Barva (česky), Operační paměť RAM, Velikost vnitřního úložiště, Počet SIM, Operační systém, Verze operačního systému, Velikost displeje, Rozlišení displeje, Typ displeje, Kapacita baterie, Hmotnost, Výška, Šířka, Hloubka, Frekvence procesoru, Počet jader procesoru, Rozlišení zadního fotoaparátu, Počet objektivů zadního fotoaparátu, Vlastnosti zadního fotoaparátu, Rozlišení předního fotoaparátu, Nabíjecí konektor, Audio jack, Rozšíření vnitřního úložiště, Maximální kapacita pro rozšíření úložiště, Funkce. Nový název parametru nezakládej. Karta bez těchto parametrů není hotová, i když ji tak někdo uložil.
 
@@ -109,3 +111,15 @@ Parametry ber z gsmarena.com a vyplň jen ty, které už na kartách jsou: Barva
 Karta smí do Ke kontrole, jen když sedí název, výrobce, obě ceny, váha, vlastní fotka, oba popisy a kategorie. U telefonu navíc parametry a jedna karta na barvu a paměť. Hlavní kategorie je Ke kontrole prodejny.
 
 Výstup dávky: u každé karty odkaz do Symplia, nový název, prodejní cena, e-shopová cena, odkud ceny jsou, e-shopové listy, nebo důvod Nezaloženo / ponecháno ve frontě.
+
+## Týdenní běh
+
+Jednou týdně projdi **Automatizace zakládání / K založení** (kategorie 15562). U každé karty použij postup v tomto souboru. Hotovou kartu přesuň do Ke kontrole (15563): puntík tam, e-shopové listy přidané. Do e-shopu jako hlavní kategorii kartu nepřesouvej.
+
+Nedostatek, který ve Sympliu není kam napsat, zapiš do administrace Kategorie zboží → Zakládání:
+
+```
+./scripts/backend-run.sh manage.py zakladani_nedostatek --kod P… --typ chybejici_kategorie --zbozi-id … --nazev "…" --text "…"
+```
+
+Typy: `chybejici_kategorie`, `nezname_ceny`, `chybejici_fotka`, `nejasna_rada`, `jine`. Stejný otevřený kód a typ se nepřidává znovu, doplní se text. Cron ani deploy se nespouští, dokud dávka neprojde kontrolou.

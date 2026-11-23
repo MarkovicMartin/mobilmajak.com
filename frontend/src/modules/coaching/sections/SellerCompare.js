@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DateRangePicker, Select } from '../../../components/ui';
+import { Select } from '../../../components/ui';
 import { coachingAPI } from '../../../services/api';
 import CoachingTimelineChart from '../components/CoachingTimelineChart';
 import CompareRateToggle from '../components/CompareRateToggle';
@@ -32,22 +32,6 @@ const COMPARE_OPTS = [
     { value: 'store_top', label: 'vs top prodejce' },
 ];
 
-const monthRange = (mesic) => {
-    const [year, month] = String(mesic || '').split('-').map(Number);
-    if (!year || !month) return { start_date: '', end_date: '' };
-    const start = `${year}-${String(month).padStart(2, '0')}-01`;
-    const last = new Date(year, month, 0).getDate();
-    const end = `${year}-${String(month).padStart(2, '0')}-${String(last).padStart(2, '0')}`;
-    return { start_date: start, end_date: end };
-};
-
-const formatCzDate = (iso) => {
-    if (!iso) return '';
-    const [year, month, day] = iso.split('-');
-    if (!day) return iso;
-    return `${Number(day)}. ${Number(month)}. ${year}`;
-};
-
 const sellerName = (u) => (u ? `${u.jmeno || ''} ${u.prijmeni || ''}`.trim() : '');
 
 const optionLabel = (u) => {
@@ -70,7 +54,6 @@ const SellerCompare = ({
     const [peerId, setPeerId] = useState('');
     const [metric, setMetric] = useState('polozky_nad_100');
     const [compare, setCompare] = useState('prev_year');
-    const [range, setRange] = useState(() => monthRange(mesic));
     const [rateMode, setRateMode] = useState('total');
     const [compareData, setCompareData] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -78,10 +61,6 @@ const SellerCompare = ({
     useEffect(() => {
         if (lockedPrimaryId) setPrimaryId(String(lockedPrimaryId));
     }, [lockedPrimaryId]);
-
-    useEffect(() => {
-        setRange(monthRange(mesic));
-    }, [mesic]);
 
     const primary = useMemo(
         () => staffUsers.find((u) => String(u.id) === String(primaryId)),
@@ -113,8 +92,6 @@ const SellerCompare = ({
                     mesic,
                     rok,
                     mesic_cislo: m,
-                    start_date: range.start_date || undefined,
-                    end_date: range.end_date || undefined,
                 });
                 if (!cancelled) setCompareData(cmpRes);
             } finally {
@@ -123,7 +100,7 @@ const SellerCompare = ({
         };
         load();
         return () => { cancelled = true; };
-    }, [primaryId, peerId, mesic, range.start_date, range.end_date]);
+    }, [primaryId, peerId, mesic]);
 
     const primarySelectOptions = useMemo(
         () => [
@@ -144,18 +121,7 @@ const SellerCompare = ({
     const visibleMetriky = userSafe
         ? (compareData?.metriky || []).filter((row) => USER_SAFE_METRIC_KEYS.has(row.metric))
         : compareData?.metriky;
-    const hoursRow = (compareData?.metriky || []).find((row) => row.metric === 'odpracovane_hodiny');
-    const periodLabel = compareData?.obdobi?.od && compareData?.obdobi?.do
-        ? `${formatCzDate(compareData.obdobi.od)} – ${formatCzDate(compareData.obdobi.do)}`
-        : (range.start_date && range.end_date
-            ? `${formatCzDate(range.start_date)} – ${formatCzDate(range.end_date)}`
-            : mesic);
-    const fmtHours = (value) => {
-        if (value == null || value === '') return '—';
-        const n = Number(value);
-        if (Number.isNaN(n)) return '—';
-        return n.toLocaleString('cs-CZ', { maximumFractionDigits: 1 });
-    };
+    const periodLabel = monthOptions.find((opt) => opt.value === mesic)?.label || mesic;
 
     return (
         <section className="coaching-panel coaching-analysis">
@@ -219,14 +185,6 @@ const SellerCompare = ({
                 {!userSafe && (
                     <CompareRateToggle value={rateMode} onChange={setRateMode} />
                 )}
-                <label className="coaching-nav-filter">
-                    <span className="coaching-nav-filter-label">Hodiny za období</span>
-                    <DateRangePicker
-                        startDate={range.start_date}
-                        endDate={range.end_date}
-                        onApply={setRange}
-                    />
-                </label>
             </div>
 
             {!primaryId && (
@@ -265,14 +223,6 @@ const SellerCompare = ({
                     />
 
                     {loading && peerId && <p className="coaching-muted">Načítám srovnání…</p>}
-
-                    {hoursRow && peerId && (
-                        <p className="coaching-hours-line">
-                            Odpracované hodiny ({periodLabel}): {primaryName} {fmtHours(hoursRow.a)} h
-                            {' · '}
-                            {peerName} {fmtHours(hoursRow.b)} h
-                        </p>
-                    )}
 
                     {compareData && peerId && (
                         <CompareMetricsTable
