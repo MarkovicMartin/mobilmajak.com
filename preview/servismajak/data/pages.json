@@ -1,0 +1,102 @@
+[
+  {
+    "id": 1,
+    "title": "Kdy přijít s telefonem na výměnu baterie?",
+    "shortTitle": "Servis baterie",
+    "slug": "vymena-baterie-na-iphone",
+    "description": "Vrátíme zpět maximální výkon Vašeho mobilního zařízení. Už žádné otravné neustálé nabíjení telefonu. Baterie do mobilních zařízení jsou složené z Lithiových článků, které používáním a časem ztrácí své fyzikální i chemické vlastnosti, kvůli čemuž dochází ke zhoršenému fungování baterie.",
+    "imageUrl": "https://cdn.apark.cz/storage/big-01/f9ea9476a65787db1e98df749e35b9d82bc67112.webp",
+    "pinned": true,
+    "active": true
+  },
+  {
+    "id": 2,
+    "title": "Jaký vybrat nový displej na iPhone?",
+    "shortTitle": "Prasklý displej",
+    "slug": "praskly-dislej-na-iphone",
+    "description": "",
+    "imageUrl": "https://cdn.apark.cz/storage/big-01/b9011aba45fbb008e32ceb65323ac08e2fa2d198.webp",
+    "pinned": true,
+    "active": true
+  },
+  {
+    "id": 3,
+    "title": "Vyzvednutí kurýrem",
+    "shortTitle": "Prasklé záda",
+    "slug": "vyzvednuti-kuryrem",
+    "description": "Nemáte cestu přes náš servis? Vaše zařízení může zdarma vyzvednout kurýr po celé České republice a doručit k nám na servis.",
+    "imageUrl": "https://cdn.apark.cz/storage/big-01/2ef9e2523e6db850a8b7b60db16d4d2053e9838e.webp",
+    "pinned": true,
+    "active": true
+  },
+  {
+    "id": 6,
+    "title": "Prasklý nebo poškozený displej?",
+    "shortTitle": "",
+    "slug": "praskly-displej",
+    "description": "",
+    "imageUrl": "https://cdn.myrepair.app/clients/mobilmajak/uploads/eb8432c9-3f66-4d15-85cf-6d96854be024-iphone_oprava.jpg",
+    "pinned": false,
+    "active": true
+  },
+  {
+    "id": 7,
+    "title": "Kdy se oprava ještě vyplatí?",
+    "shortTitle": "",
+    "slug": "kdy-se-oprava-jeste-vyplati",
+    "description": "",
+    "imageUrl": "https://files.myrepair.app/public/clients/mobilmajak/files/82d7a45e0281-opreveny.jpg",
+    "pinned": false,
+    "active": true
+  },
+  {
+    "id": 8,
+    "title": "Co dělat s utopeným telefonem?",
+    "shortTitle": "",
+    "slug": "co-delat-s-utopenym-telefonem",
+    "description": "",
+    "imageUrl": "https://files.myrepair.app/public/clients/mobilmajak/files/b35d2bbf1af6-iphone-7-pool-tests-water-splash-0072.jpg",
+    "pinned": false,
+    "active": true
+  },
+  {
+    "id": 9,
+    "title": "Vliv slané vody na mobilní telefony",
+    "shortTitle": "",
+    "slug": "vliv-slane-vody-na-mobilni-telefony",
+    "description": "",
+    "imageUrl": "https://files.myrepair.app/public/clients/mobilmajak/files/6aa24133afc7-iPhone-in-water.jpg",
+    "pinned": false,
+    "active": true
+  },
+  {
+    "id": 10,
+    "title": "Proč a jak zapínat servisní režim při opravě telefonu Samsung?",
+    "shortTitle": "",
+    "slug": "servisni-rezim-samsung",
+    "description": "",
+    "imageUrl": "https://files.myrepair.app/public/clients/mobilmajak/files/18534aa6614a-serviss.png",
+    "pinned": true,
+    "active": true
+  },
+  {
+    "id": 11,
+    "title": "Škodí vysoké letní teploty baterii v telefonu?",
+    "shortTitle": "",
+    "slug": "skodi-vysoke-letni-teploty-baterii-v-telefonu",
+    "description": "",
+    "imageUrl": "https://files.myrepair.app/public/clients/mobilmajak/files/af4f3386262b-hotfoun.jpg",
+    "pinned": false,
+    "active": true
+  },
+  {
+    "id": 12,
+    "title": "Ochrana osobních údajů",
+    "shortTitle": "Ochrana údajů",
+    "slug": "ochrana-osobnich-udaju",
+    "description": "Zásady ochrany osobních údajů webu servismajak.cz. Provozovatel Codaruina s.r.o., IČO 04147537, sídlo Litovelská 118/12, 779 00 Olomouc.",
+    "imageUrl": "https://cdn-g-01.myrepair.app/clients/mobilmajak/website/c4a229311570545e804c91985a18e865.webp",
+    "pinned": false,
+    "active": true
+  }
+]

@@ -9,7 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="modern.css">
 </head>
-<body>
+<body data-page="home">
   <div class="announcement">
     <div class="wrap">
       <span>Opravy telefonů, tabletů a hodinek na 6 pobočkách</span>
@@ -30,8 +30,8 @@
       <a class="is-on" href="#jak-to-funguje">Jak to funguje</a>
       <a href="pobocky-v2.html">Pobočky</a>
       <a href="blog-v2.html">Rady</a>
-      <a class="nav-rating" href="hodnoceni.html">4,9 <small>748 recenzí</small></a>
-      <a class="nav-cta" href="vyber-zarizeni.html">Vybrat zařízení</a>
+      <a class="nav-rating" href="hodnoceni.html">4,9 <small>z 5 · 748 recenzí</small></a>
+      <a class="nav-cta" href="katalog.html">Vybrat zařízení</a>
     </nav>
     </div>
   </header>
@@ -44,29 +44,31 @@
           <h1>Rozbil se?<br><span>My ho opravíme.</span></h1>
           <p class="hero-copy">Vyberte zařízení a závadu. Hned uvidíte cenu, čas opravy i pobočky, kde je oprava dostupná.</p>
           <div class="hero-actions">
-            <a class="btn btn-primary" href="vyber-zarizeni.html">Zjistit cenu opravy</a>
+            <a class="btn btn-primary" href="katalog.html">Zjistit cenu opravy</a>
             <a class="btn btn-secondary" href="#jak-to-funguje">Jak oprava probíhá</a>
           </div>
         </div>
-        <aside class="service-finder">
+        <aside class="service-finder" data-finder>
           <h2>Kolik bude oprava stát?</h2>
-          <p>Tři rychlé kroky. Bez registrace a bez závazku.</p>
-          <div class="finder-step">
+          <p>Vyberte typ, značku, model a závadu — můžete i psát.</p>
+          <div class="finder-step" data-finder-row="type">
             <b class="step-no">1</b>
-            <span><strong>Apple</strong>Vybraná značka</span>
-            <b>změnit</b>
+            <div class="finder-combo" data-combo="type"></div>
           </div>
-          <div class="finder-step">
+          <div class="finder-step" data-finder-row="brand">
             <b class="step-no">2</b>
-            <span><strong>iPhone 7</strong>Vybraný model</span>
-            <b>změnit</b>
+            <div class="finder-combo" data-combo="brand"></div>
           </div>
-          <div class="finder-step">
+          <div class="finder-step" data-finder-row="model">
             <b class="step-no">3</b>
-            <span><strong>Výměna displeje</strong>Na počkání</span>
-            <b class="price-accent">1 700 Kč</b>
+            <div class="finder-combo" data-combo="model"></div>
           </div>
-          <a class="btn btn-primary finder-button" href="oprava-v2.html">Zobrazit detail opravy</a>
+          <div class="finder-step" data-finder-row="service">
+            <b class="step-no">4</b>
+            <div class="finder-combo" data-combo="service"></div>
+            <b class="price-accent" data-finder-price></b>
+          </div>
+          <a class="btn btn-primary finder-button" data-finder-btn href="katalog.html">Zobrazit detail opravy</a>
           <img class="finder-character" src="img/majak-vlna.png" alt="">
         </aside>
       </div>
@@ -127,25 +129,25 @@
           <p>Nevíte, co přesně telefonu je? Vyberte nejbližší problém a na pobočce ho zdarma zkontrolujeme.</p>
         </div>
         <div class="problem-grid">
-          <a class="problem-card" href="telefony.html">
+          <a class="problem-card" href="hledani-v2.html?q=displej">
             <b class="problem-icon">◫</b>
             <h3>Prasklý displej</h3>
             <p>Výměna displeje, skla nebo oprava nefunkčního dotyku.</p>
             <span>Zobrazit opravy →</span>
           </a>
-          <a class="problem-card" href="telefony.html">
+          <a class="problem-card" href="hledani-v2.html?q=baterie">
             <b class="problem-icon">ϟ</b>
             <h3>Slabá baterie</h3>
             <p>Telefon se rychle vybíjí, vypíná nebo se nenabíjí.</p>
             <span>Zobrazit opravy →</span>
           </a>
-          <a class="problem-card" href="telefony.html">
+          <a class="problem-card" href="hledani-v2.html?q=vytopen">
             <b class="problem-icon">≈</b>
             <h3>Telefon po polití</h3>
             <p>Čištění oxidace a diagnostika po kontaktu s kapalinou.</p>
             <span>Zobrazit opravy →</span>
           </a>
-          <a class="problem-card" href="telefony.html">
+          <a class="problem-card" href="hledani-v2.html?q=fotoapar">
             <b class="problem-icon">●</b>
             <h3>Nefunkční kamera</h3>
             <p>Oprava předního i zadního fotoaparátu a ostření.</p>
@@ -161,7 +163,7 @@
           <p class="eyebrow">Servis odkudkoliv</p>
           <h2>Nechcete nikam chodit? Pošlete telefon zdarma.</h2>
           <p>Vygenerujeme vám kód pro zásilkovnu. Zařízení převezmeme, zkontrolujeme, opravíme a pošleme zpět.</p>
-          <a class="btn btn-accent" href="telefony.html">Objednat servis na dálku</a>
+          <a class="btn btn-accent" href="katalog.html">Objednat servis na dálku</a>
         </div>
         <img src="img/prodejce.png" alt="Prodejce Mobil Maják">
       </div>
@@ -176,14 +178,7 @@
           </div>
           <p>Na všech pobočkách přijímáme servisní zakázky. Dostupnost konkrétní opravy uvidíte v detailu.</p>
         </div>
-        <div class="branch-grid">
-          <article class="branch-card"><span class="status">● Otevřeno</span><h3>Globus Olomouc</h3><p>Pražská 248/39, Olomouc</p><a href="pobocky-v2.html">Trasa a otevírací doba <span>→</span></a></article>
-          <article class="branch-card"><span class="status">● Otevřeno</span><h3>Senimo Olomouc</h3><p>Pasteurova 905/10, Olomouc</p><a href="pobocky-v2.html">Trasa a otevírací doba <span>→</span></a></article>
-          <article class="branch-card"><span class="status">● Otevřeno</span><h3>Tesco Šternberk</h3><p>Nádražní 2486/4, Šternberk</p><a href="pobocky-v2.html">Trasa a otevírací doba <span>→</span></a></article>
-          <article class="branch-card"><span class="status">● Otevřeno</span><h3>Čepkov Zlín</h3><p>Tyršovo nábřeží 5496, Zlín</p><a href="pobocky-v2.html">Trasa a otevírací doba <span>→</span></a></article>
-          <article class="branch-card"><span class="status">● Otevřeno</span><h3>Galerie Přerov</h3><p>Čechova 3491/26, Přerov</p><a href="pobocky-v2.html">Trasa a otevírací doba <span>→</span></a></article>
-          <article class="branch-card"><span class="status">● Otevřeno</span><h3>Vsetín</h3><p>Centrum města Vsetín</p><a href="pobocky-v2.html">Trasa a otevírací doba <span>→</span></a></article>
-        </div>
+        <div class="branch-grid" data-home-branches></div>
       </div>
     </section>
 
@@ -191,7 +186,7 @@
       <div class="wrap">
         <div class="section-head">
           <div><p class="eyebrow">Ověřeno zákazníky</p><h2>Co o nás říkají</h2></div>
-          <p>Průměrné hodnocení 4,9 z 5 na základě 748 recenzí.</p>
+          <p>Průměrné hodnocení 4,9 z 5 na základě <span data-rating-count>748</span> recenzí.</p>
         </div>
         <div class="review-grid">
           <article class="review"><span class="stars">★★★★★</span><p>Telefon opravený ještě ten den. Předem jsem věděla cenu a nic se už nezměnilo.</p><strong>Jana K.</strong></article>
@@ -207,11 +202,7 @@
           <div><p class="eyebrow">Rady ze servisu</p><h2>Než telefon přinesete</h2></div>
           <p>Praktické návody od techniků, kteří každý den opravují telefony.</p>
         </div>
-        <div class="article-grid">
-          <article class="article"><small>Displej</small><h3>Prasklý displej: kdy stačí sklo a kdy celý panel?</h3><p>Jak poznat rozsah poškození ještě před návštěvou servisu.</p></article>
-          <article class="article"><small>Voda</small><h3>Co udělat s utopeným telefonem</h3><p>Telefon vypněte, nenabíjejte a nedávejte do rýže.</p></article>
-          <article class="article"><small>Baterie</small><h3>Kdy je čas na výměnu baterie</h3><p>Pět příznaků, že baterie už telefonu nestačí.</p></article>
-        </div>
+        <div class="article-grid" data-home-articles></div>
       </div>
     </section>
 
@@ -228,9 +219,10 @@
   <footer class="site-foot">
     <div class="wrap foot-grid">
       <div><strong>Mobil Maják</strong><p>Codaruina s.r.o., IČO 04147537, DIČ CZ04147537, sídlo Litovelská 118/12, 779 00 Olomouc. Zapsaná u Krajského soudu v Ostravě, oddíl C, vložka 62537.</p></div>
-      <nav><strong>Servis</strong><a href="telefony.html">Mobilní telefony</a><a href="blog-v2.html">Blog</a><a href="sledovani.html">Sledování zakázky</a><a href="pobocky-v2.html">Pobočky</a></nav>
+      <nav><strong>Servis</strong><a href="katalog.html?c=mobilni-telefony">Mobilní telefony</a><a href="blog-v2.html">Blog</a><a href="sledovani.html">Sledování zakázky</a><a href="pobocky-v2.html">Pobočky</a></nav>
       <nav><strong>Kontakt</strong><a href="tel:+420739909190">+420 739 909 190</a><a href="mailto:servis@mobilmajak.cz">servis@mobilmajak.cz</a><a href="hodnoceni.html">Hodnocení</a></nav>
     </div>
   </footer>
+  <script src="js/preview.js"></script>
 </body>
 </html>

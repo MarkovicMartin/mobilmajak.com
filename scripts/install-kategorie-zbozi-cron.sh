@@ -1,5 +1,5 @@
 #!/bin/bash
-# Noční ověření odškrtnutých kategorií zboží. Idempotentní.
+# Noční ověření odškrtnutých kategorií a přesun jistých položek. Idempotentní.
 # Použití: ./scripts/install-kategorie-zbozi-cron.sh
 #          STAGING=1 ./scripts/install-kategorie-zbozi-cron.sh
 set -euo pipefail
@@ -30,12 +30,12 @@ chown webmajak:webmajak "\$APP_PATH/logs"
 MARKER="# mobilmajak-kategorie-zbozi-${LABEL}"
 TMP=/tmp/webmajak-crontab-kategorie-zbozi-${LABEL}.tmp
 
-sudo -u webmajak crontab -l 2>/dev/null | grep -v "\$MARKER" | grep -v 'kategorie_zbozi_kontrola' > "\$TMP" || true
+sudo -u webmajak crontab -l 2>/dev/null | grep -v "\$MARKER" | grep -v 'kategorie_zbozi_kontrola' | grep -v 'kategorie_zbozi_oprava' > "\$TMP" || true
 
 cat >> "\$TMP" <<CRON
 
 \$MARKER
-30 23 * * * /bin/bash -lc 'cd \$APP_PATH && source venv/bin/activate && export DJANGO_SETTINGS_MODULE=webapp.settings_production && python manage.py kategorie_zbozi_kontrola >> logs/kategorie-zbozi.log 2>&1'
+30 23 * * * /bin/bash -lc 'cd \$APP_PATH && source venv/bin/activate && export DJANGO_SETTINGS_MODULE=webapp.settings_production && python manage.py kategorie_zbozi_kontrola >> logs/kategorie-zbozi.log 2>&1; python manage.py kategorie_zbozi_oprava --zapis >> logs/kategorie-zbozi.log 2>&1'
 CRON
 
 sudo -u webmajak crontab "\$TMP"

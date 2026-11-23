@@ -1,0 +1,314 @@
+[
+  {
+    "id": 1,
+    "name": "Mobil Maják - Globus Olomouc",
+    "address": "Pražská 248/39",
+    "city": "Olomouc - Řepčín",
+    "postCode": "779 00",
+    "contact": {
+      "email": "servis@mobilmajak.cz",
+      "phone": "420739909190"
+    },
+    "gps": {
+      "lat": 49.6019525,
+      "lng": 17.2224937
+    },
+    "openingHours": [
+      {
+        "day": 1,
+        "opensAt": "08:00",
+        "closesAt": "20:00"
+      },
+      {
+        "day": 2,
+        "opensAt": "08:00",
+        "closesAt": "20:00"
+      },
+      {
+        "day": 3,
+        "opensAt": "08:00",
+        "closesAt": "20:00"
+      },
+      {
+        "day": 4,
+        "opensAt": "08:00",
+        "closesAt": "20:00"
+      },
+      {
+        "day": 5,
+        "opensAt": "08:00",
+        "closesAt": "20:00"
+      },
+      {
+        "day": 6,
+        "opensAt": "08:00",
+        "closesAt": "20:00"
+      },
+      {
+        "day": 7,
+        "opensAt": "08:00",
+        "closesAt": "20:00"
+      }
+    ]
+  },
+  {
+    "id": 3,
+    "name": "Mobil Maják - Senimo Olomouc",
+    "address": "Pasteurova 905/10",
+    "city": "Olomouc",
+    "postCode": "77900",
+    "contact": {
+      "email": "senimo@mobilmajak.cz",
+      "phone": "420774602211"
+    },
+    "gps": {
+      "lat": 49.599107,
+      "lng": 17.272855
+    },
+    "openingHours": [
+      {
+        "day": 1,
+        "opensAt": "09:00",
+        "closesAt": "18:00"
+      },
+      {
+        "day": 2,
+        "opensAt": "09:00",
+        "closesAt": "18:00"
+      },
+      {
+        "day": 3,
+        "opensAt": "09:00",
+        "closesAt": "18:00"
+      },
+      {
+        "day": 4,
+        "opensAt": "09:00",
+        "closesAt": "18:00"
+      },
+      {
+        "day": 5,
+        "opensAt": "09:00",
+        "closesAt": "18:00"
+      },
+      {
+        "day": 6,
+        "opensAt": "09:00",
+        "closesAt": "12:00"
+      },
+      {
+        "day": 7,
+        "opensAt": "00:00",
+        "closesAt": "00:00"
+      }
+    ]
+  },
+  {
+    "id": 4,
+    "name": "Mobil Maják - Tesco Šternberk",
+    "address": "Obchodní 2554/1",
+    "city": "Šternberk",
+    "postCode": "785 01",
+    "contact": {
+      "email": "sternberk@mobilmajak.cz",
+      "phone": "420722625254"
+    },
+    "gps": {
+      "lat": 49.7205208,
+      "lng": 17.2900096
+    },
+    "openingHours": [
+      {
+        "day": 1,
+        "opensAt": "08:00",
+        "closesAt": "20:00"
+      },
+      {
+        "day": 2,
+        "opensAt": "08:00",
+        "closesAt": "20:00"
+      },
+      {
+        "day": 3,
+        "opensAt": "08:00",
+        "closesAt": "20:00"
+      },
+      {
+        "day": 4,
+        "opensAt": "08:00",
+        "closesAt": "20:00"
+      },
+      {
+        "day": 5,
+        "opensAt": "08:00",
+        "closesAt": "20:00"
+      },
+      {
+        "day": 6,
+        "opensAt": "08:00",
+        "closesAt": "20:00"
+      },
+      {
+        "day": 7,
+        "opensAt": "08:00",
+        "closesAt": "20:00"
+      }
+    ]
+  },
+  {
+    "id": 5,
+    "name": "Mobil Maják - Čepkov Zlín",
+    "address": "Tyršovo nábřeží 5496",
+    "city": "Zlín",
+    "postCode": "760 01",
+    "contact": {
+      "email": "cepkov@mobilmajak.cz",
+      "phone": "420606625258"
+    },
+    "gps": {
+      "lat": 49.2297903,
+      "lng": 17.6622229
+    },
+    "openingHours": [
+      {
+        "day": 1,
+        "opensAt": "08:00",
+        "closesAt": "20:00"
+      },
+      {
+        "day": 2,
+        "opensAt": "08:00",
+        "closesAt": "20:00"
+      },
+      {
+        "day": 3,
+        "opensAt": "08:00",
+        "closesAt": "20:00"
+      },
+      {
+        "day": 4,
+        "opensAt": "08:00",
+        "closesAt": "20:00"
+      },
+      {
+        "day": 5,
+        "opensAt": "08:00",
+        "closesAt": "20:00"
+      },
+      {
+        "day": 6,
+        "opensAt": "08:00",
+        "closesAt": "20:00"
+      },
+      {
+        "day": 7,
+        "opensAt": "08:00",
+        "closesAt": "20:00"
+      }
+    ]
+  },
+  {
+    "id": 6,
+    "name": "Mobil Maják - Galerie Přerov",
+    "address": "Čechova 3491/26",
+    "city": "Přerov",
+    "postCode": "750 02",
+    "contact": {
+      "email": "prerov@mobilmajak.cz",
+      "phone": "420724202448"
+    },
+    "gps": {
+      "lat": 49.4504766,
+      "lng": 17.4564367
+    },
+    "openingHours": [
+      {
+        "day": 1,
+        "opensAt": "08:00",
+        "closesAt": "20:00"
+      },
+      {
+        "day": 2,
+        "opensAt": "08:00",
+        "closesAt": "20:00"
+      },
+      {
+        "day": 3,
+        "opensAt": "08:00",
+        "closesAt": "20:00"
+      },
+      {
+        "day": 4,
+        "opensAt": "08:00",
+        "closesAt": "20:00"
+      },
+      {
+        "day": 5,
+        "opensAt": "08:00",
+        "closesAt": "20:00"
+      },
+      {
+        "day": 6,
+        "opensAt": "08:00",
+        "closesAt": "20:00"
+      },
+      {
+        "day": 7,
+        "opensAt": "08:00",
+        "closesAt": "20:00"
+      }
+    ]
+  },
+  {
+    "id": 7,
+    "name": "Mobil Maják - Vsetín",
+    "address": "Smetanova 2360",
+    "city": "Vsetín",
+    "postCode": "755 01",
+    "contact": {
+      "email": "vsetin@mobilmajak.cz",
+      "phone": "420725585853"
+    },
+    "gps": {
+      "lat": 49.335693,
+      "lng": 17.9944935
+    },
+    "openingHours": [
+      {
+        "day": 1,
+        "opensAt": "08:00",
+        "closesAt": "20:00"
+      },
+      {
+        "day": 2,
+        "opensAt": "08:00",
+        "closesAt": "20:00"
+      },
+      {
+        "day": 3,
+        "opensAt": "08:00",
+        "closesAt": "20:00"
+      },
+      {
+        "day": 4,
+        "opensAt": "08:00",
+        "closesAt": "20:00"
+      },
+      {
+        "day": 5,
+        "opensAt": "08:00",
+        "closesAt": "20:00"
+      },
+      {
+        "day": 6,
+        "opensAt": "08:00",
+        "closesAt": "20:00"
+      },
+      {
+        "day": 7,
+        "opensAt": "08:00",
+        "closesAt": "17:00"
+      }
+    ]
+  }
+]

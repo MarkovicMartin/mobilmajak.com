@@ -1,0 +1,6062 @@
+[
+  {
+    "id": 629,
+    "title": "Xperia XA",
+    "url": "xperia-xa",
+    "brand": "",
+    "img": "",
+    "upCid": 628,
+    "visible": 1,
+    "sortId": 0
+  },
+  {
+    "id": 630,
+    "title": "Xperia XA1",
+    "url": "xperia-xa1",
+    "brand": "",
+    "img": "",
+    "upCid": 629,
+    "visible": 1,
+    "sortId": 0
+  },
+  {
+    "id": 631,
+    "title": "Xperia XA2",
+    "url": "xperia-xa2",
+    "brand": "",
+    "img": "",
+    "upCid": 629,
+    "visible": 1,
+    "sortId": 0
+  },
+  {
+    "id": 632,
+    "title": "Xperia XZ",
+    "url": "xperia-xz",
+    "brand": "",
+    "img": "",
+    "upCid": 628,
+    "visible": 1,
+    "sortId": 0
+  },
+  {
+    "id": 633,
+    "title": "Xperia XZ",
+    "url": "xperia-xz-1",
+    "brand": "",
+    "img": "",
+    "upCid": 632,
+    "visible": 1,
+    "sortId": 0
+  },
+  {
+    "id": 634,
+    "title": "Xperia XZ Premium",
+    "url": "xperia-xz-premium",
+    "brand": "",
+    "img": "",
+    "upCid": 632,
+    "visible": 1,
+    "sortId": 0
+  },
+  {
+    "id": 635,
+    "title": "Xperia XZ1",
+    "url": "xperia-xz1",
+    "brand": "",
+    "img": "",
+    "upCid": 632,
+    "visible": 1,
+    "sortId": 0
+  },
+  {
+    "id": 636,
+    "title": "Xperia XZ1 Compact",
+    "url": "xperia-xz1-compact",
+    "brand": "",
+    "img": "",
+    "upCid": 632,
+    "visible": 1,
+    "sortId": 0
+  },
+  {
+    "id": 657,
+    "title": "Xperia XZ2 Compact",
+    "url": "xperia-xz2-compact",
+    "brand": "",
+    "img": "",
+    "upCid": 632,
+    "visible": 1,
+    "sortId": 0
+  },
+  {
+    "id": 675,
+    "title": "Xperia XA",
+    "url": "xperia-xa-1",
+    "brand": "",
+    "img": "",
+    "upCid": 629,
+    "visible": 1,
+    "sortId": 0
+  },
+  {
+    "id": 683,
+    "title": "Xperia",
+    "url": "xperia",
+    "brand": "",
+    "img": "",
+    "upCid": 628,
+    "visible": 1,
+    "sortId": 0
+  },
+  {
+    "id": 684,
+    "title": "Xperia 1",
+    "url": "xperia-1",
+    "brand": "",
+    "img": "",
+    "upCid": 683,
+    "visible": 1,
+    "sortId": 0
+  },
+  {
+    "id": 691,
+    "title": "Xperia 10 Plus",
+    "url": "xperia-10-plus",
+    "brand": "",
+    "img": "",
+    "upCid": 683,
+    "visible": 1,
+    "sortId": 0
+  },
+  {
+    "id": 1595,
+    "title": "Galaxy A36",
+    "url": "galaxy-a36",
+    "brand": "",
+    "img": "",
+    "upCid": 604,
+    "visible": 1,
+    "sortId": 0
+  },
+  {
+    "id": 1596,
+    "title": "Galaxy A56",
+    "url": "galaxy-a56",
+    "brand": "",
+    "img": "",
+    "upCid": 604,
+    "visible": 1,
+    "sortId": 0
+  },
+  {
+    "id": 1597,
+    "title": "Galaxy A17",
+    "url": "galaxy-a17",
+    "brand": "",
+    "img": "",
+    "upCid": 604,
+    "visible": 1,
+    "sortId": 0
+  },
+  {
+    "id": 1598,
+    "title": "Galaxy S25+",
+    "url": "galaxy-s25-1",
+    "brand": "",
+    "img": "",
+    "upCid": 618,
+    "visible": 1,
+    "sortId": 0
+  },
+  {
+    "id": 1599,
+    "title": "Galaxy S25",
+    "url": "galaxy-s25",
+    "brand": "",
+    "img": "",
+    "upCid": 618,
+    "visible": 1,
+    "sortId": 0
+  },
+  {
+    "id": 1600,
+    "title": "Galaxy S25 FE",
+    "url": "galaxy-s25-fe",
+    "brand": "",
+    "img": "",
+    "upCid": 618,
+    "visible": 1,
+    "sortId": 0
+  },
+  {
+    "id": 1601,
+    "title": "Galaxy S25 Edge",
+    "url": "galaxy-s25-edge",
+    "brand": "",
+    "img": "",
+    "upCid": 618,
+    "visible": 1,
+    "sortId": 0
+  },
+  {
+    "id": 1602,
+    "title": "Galaxy S25 Ultra",
+    "url": "galaxy-s25-ultra",
+    "brand": "",
+    "img": "",
+    "upCid": 618,
+    "visible": 1,
+    "sortId": 0
+  },
+  {
+    "id": 1603,
+    "title": "Galaxy Z",
+    "url": "galaxy-z",
+    "brand": "",
+    "img": "",
+    "upCid": 603,
+    "visible": 1,
+    "sortId": 0
+  },
+  {
+    "id": 1604,
+    "title": "Samsung Galaxy Z Flip4",
+    "url": "samsung-galaxy-z-flip4",
+    "brand": "",
+    "img": "",
+    "upCid": 1603,
+    "visible": 1,
+    "sortId": 0
+  },
+  {
+    "id": 1605,
+    "title": "Samsung Galaxy Z Flip5",
+    "url": "samsung-galaxy-z-flip5",
+    "brand": "",
+    "img": "",
+    "upCid": 1603,
+    "visible": 1,
+    "sortId": 0
+  },
+  {
+    "id": 1606,
+    "title": "Samsung Galaxy Z Flip6",
+    "url": "samsung-galaxy-z-flip6",
+    "brand": "",
+    "img": "",
+    "upCid": 1603,
+    "visible": 1,
+    "sortId": 0
+  },
+  {
+    "id": 1607,
+    "title": "Samsung Galaxy Z Flip7",
+    "url": "samsung-galaxy-z-flip7",
+    "brand": "",
+    "img": "",
+    "upCid": 1603,
+    "visible": 1,
+    "sortId": 0
+  },
+  {
+    "id": 1608,
+    "title": "Samsung Galaxy Z Fold4",
+    "url": "samsung-galaxy-z-fold4",
+    "brand": "",
+    "img": "",
+    "upCid": 1603,
+    "visible": 1,
+    "sortId": 0
+  },
+  {
+    "id": 1609,
+    "title": "Samsung Galaxy Z Fold5",
+    "url": "samsung-galaxy-z-fold5",
+    "brand": "",
+    "img": "",
+    "upCid": 1603,
+    "visible": 1,
+    "sortId": 0
+  },
+  {
+    "id": 1610,
+    "title": "Samsung Galaxy Z Fold6",
+    "url": "samsung-galaxy-z-fold6",
+    "brand": "",
+    "img": "",
+    "upCid": 1603,
+    "visible": 1,
+    "sortId": 0
+  },
+  {
+    "id": 1611,
+    "title": "Samsung Galaxy Z Fold7",
+    "url": "samsung-galaxy-z-fold7",
+    "brand": "",
+    "img": "",
+    "upCid": 1603,
+    "visible": 1,
+    "sortId": 0
+  },
+  {
+    "id": 500,
+    "title": "Mobilní telefony",
+    "url": "mobilni-telefony",
+    "brand": "",
+    "img": "https://cdn.myrepair.app/clients/mobilmajak/img/8V2S2TAZQT7L-s24.jpg",
+    "upCid": 0,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 516,
+    "title": "Honor",
+    "url": "honor",
+    "brand": "",
+    "img": "https://cdn.myrepair.app/clients/mobilmajak/img/3JNMWRWYG2BB-Honor-logo.jpg",
+    "upCid": 500,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 517,
+    "title": "Honor 10",
+    "url": "honor-10",
+    "brand": "",
+    "img": "",
+    "upCid": 516,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 518,
+    "title": "Honor 10 Lite",
+    "url": "honor-10-lite",
+    "brand": "",
+    "img": "",
+    "upCid": 517,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 521,
+    "title": "Honor 20 Lite",
+    "url": "honor-20-lite",
+    "brand": "",
+    "img": "",
+    "upCid": 520,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 525,
+    "title": "Honor 6X",
+    "url": "honor-6x",
+    "brand": "",
+    "img": "",
+    "upCid": 524,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 527,
+    "title": "Honor 7",
+    "url": "honor-7-1",
+    "brand": "",
+    "img": "",
+    "upCid": 526,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 535,
+    "title": "Honor 8",
+    "url": "honor-8-1",
+    "brand": "",
+    "img": "",
+    "upCid": 534,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 542,
+    "title": "Honor 9",
+    "url": "honor-9-1",
+    "brand": "",
+    "img": "",
+    "upCid": 541,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 545,
+    "title": "Honor Play",
+    "url": "honor-play-1",
+    "brand": "",
+    "img": "",
+    "upCid": 544,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 547,
+    "title": "Honor View 10",
+    "url": "honor-view-10",
+    "brand": "",
+    "img": "",
+    "upCid": 546,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 550,
+    "title": "Mate",
+    "url": "mate",
+    "brand": "",
+    "img": "",
+    "upCid": 549,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 551,
+    "title": "Mate 10 Lite",
+    "url": "mate-10-lite",
+    "brand": "",
+    "img": "",
+    "upCid": 550,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 554,
+    "title": "Nova",
+    "url": "nova-1",
+    "brand": "",
+    "img": "",
+    "upCid": 553,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 559,
+    "title": "P Smart 2019",
+    "url": "p-smart-2019",
+    "brand": "",
+    "img": "",
+    "upCid": 558,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 576,
+    "title": "Y5 2019",
+    "url": "y5-2019",
+    "brand": "",
+    "img": "",
+    "upCid": 575,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 586,
+    "title": "Nokia 3",
+    "url": "nokia-3",
+    "brand": "",
+    "img": "",
+    "upCid": 585,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 587,
+    "title": "Nokia 3",
+    "url": "nokia-3-1",
+    "brand": "",
+    "img": "",
+    "upCid": 586,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 590,
+    "title": "Nokia 4.2",
+    "url": "nokia-42",
+    "brand": "",
+    "img": "",
+    "upCid": 589,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 592,
+    "title": "Nokia 5",
+    "url": "nokia-5-1",
+    "brand": "",
+    "img": "",
+    "upCid": 591,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 594,
+    "title": "Nokia 6.1",
+    "url": "nokia-61",
+    "brand": "",
+    "img": "",
+    "upCid": 593,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 597,
+    "title": "Nokia 7 Plus",
+    "url": "nokia-7-plus",
+    "brand": "",
+    "img": "",
+    "upCid": 596,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 601,
+    "title": "Nokia 8",
+    "url": "nokia-8-1",
+    "brand": "",
+    "img": "",
+    "upCid": 600,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 604,
+    "title": "Galaxy A",
+    "url": "galaxy-a",
+    "brand": "",
+    "img": "",
+    "upCid": 603,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 609,
+    "title": "Galaxy J3 2017",
+    "url": "galaxy-j3-2017",
+    "brand": "",
+    "img": "",
+    "upCid": 608,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 614,
+    "title": "Galaxy Note 10",
+    "url": "galaxy-note-10",
+    "brand": "",
+    "img": "",
+    "upCid": 613,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 638,
+    "title": "Mi",
+    "url": "mi",
+    "brand": "",
+    "img": "",
+    "upCid": 637,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 639,
+    "title": "Mi 8 Lite",
+    "url": "mi-8-lite",
+    "brand": "",
+    "img": "",
+    "upCid": 638,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 770,
+    "title": "Redmi Note 12S",
+    "url": "redmi-note-12s",
+    "brand": "",
+    "img": "",
+    "upCid": 650,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 771,
+    "title": "Galaxy M23 5G",
+    "url": "galaxy-m23-5g",
+    "brand": "",
+    "img": "",
+    "upCid": 687,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 773,
+    "title": "Y Series",
+    "url": "y-series",
+    "brand": "",
+    "img": "",
+    "upCid": 772,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 774,
+    "title": "Y100",
+    "url": "y100",
+    "brand": "",
+    "img": "",
+    "upCid": 773,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 807,
+    "title": "V40 SE",
+    "url": "v40-se",
+    "brand": "",
+    "img": "",
+    "upCid": 806,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 813,
+    "title": "X100",
+    "url": "x100",
+    "brand": "",
+    "img": "",
+    "upCid": 812,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 822,
+    "title": "Apple iPad",
+    "url": "apple-ipad",
+    "brand": "",
+    "img": "https://cdn.myrepair.app/clients/mobilmajak/img/A2875RAQWQJI-Apple-Logo.png",
+    "upCid": 821,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 823,
+    "title": "iPad",
+    "url": "ipad",
+    "brand": "",
+    "img": "",
+    "upCid": 822,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 824,
+    "title": "iPad 2",
+    "url": "ipad-2",
+    "brand": "",
+    "img": "",
+    "upCid": 823,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 834,
+    "title": "Samsung Watch",
+    "url": "samsung-watch",
+    "brand": "",
+    "img": "https://cdn.myrepair.app/clients/mobilmajak/img/I9CYZ36LXHD8-samsung watch.webp",
+    "upCid": 833,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 835,
+    "title": "Samsung Galaxy Watch5 44mm",
+    "url": "samsung-galaxy-watch5-44mm",
+    "brand": "",
+    "img": "",
+    "upCid": 834,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 846,
+    "title": "Redmi A3",
+    "url": "redmi-a3",
+    "brand": "",
+    "img": "",
+    "upCid": 671,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 868,
+    "title": "Honor 70 Lite 5G",
+    "url": "honor-70-lite-5g",
+    "brand": "",
+    "img": "",
+    "upCid": 867,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 871,
+    "title": "Honor 50 Lite",
+    "url": "honor-50-lite",
+    "brand": "",
+    "img": "",
+    "upCid": 870,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 874,
+    "title": "Honor 90",
+    "url": "honor-90-1",
+    "brand": "",
+    "img": "",
+    "upCid": 873,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 877,
+    "title": "Honor Magic4 Lite",
+    "url": "honor-magic4-lite",
+    "brand": "",
+    "img": "",
+    "upCid": 876,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 883,
+    "title": "Honor 200 Lite",
+    "url": "honor-200-lite",
+    "brand": "",
+    "img": "",
+    "upCid": 882,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 918,
+    "title": "iPad Air",
+    "url": "ipad-air-1",
+    "brand": "",
+    "img": "",
+    "upCid": 917,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 924,
+    "title": "iPad Mini 1",
+    "url": "ipad-mini-1",
+    "brand": "",
+    "img": "",
+    "upCid": 923,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 1422,
+    "title": "iPad Pro 11\" (2018)",
+    "url": "ipad-pro-11-2018",
+    "brand": "",
+    "img": "",
+    "upCid": 930,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 1424,
+    "title": "Řada Galaxy Tab A",
+    "url": "rada-galaxy-tab-a",
+    "brand": "",
+    "img": "",
+    "upCid": 1423,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 1425,
+    "title": "Samsung Galaxy Tab A7 (2020)",
+    "url": "samsung-galaxy-tab-a7-2020",
+    "brand": "",
+    "img": "",
+    "upCid": 1424,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 1476,
+    "title": "Samsung Galaxy Tab S4",
+    "url": "samsung-galaxy-tab-s4",
+    "brand": "",
+    "img": "",
+    "upCid": 1475,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 1490,
+    "title": "Edge",
+    "url": "edge",
+    "brand": "",
+    "img": "",
+    "upCid": 1489,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 1505,
+    "title": "E7/E7i/E7i Power",
+    "url": "e7e7ie7i-power",
+    "brand": "",
+    "img": "",
+    "upCid": 1504,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 1509,
+    "title": "Moto G10",
+    "url": "moto-g10",
+    "brand": "",
+    "img": "",
+    "upCid": 1508,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 1513,
+    "title": "Moto G20",
+    "url": "moto-g20",
+    "brand": "",
+    "img": "",
+    "upCid": 1512,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 1518,
+    "title": "Moto G30",
+    "url": "moto-g30",
+    "brand": "",
+    "img": "",
+    "upCid": 1517,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 1523,
+    "title": "Moto G54/G54 Power",
+    "url": "moto-g54g54-power",
+    "brand": "",
+    "img": "",
+    "upCid": 1522,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 1529,
+    "title": "Moto G62",
+    "url": "moto-g62",
+    "brand": "",
+    "img": "",
+    "upCid": 1528,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 1533,
+    "title": "Moto G73",
+    "url": "moto-g73",
+    "brand": "",
+    "img": "",
+    "upCid": 1532,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 1536,
+    "title": "Moto G85",
+    "url": "moto-g85",
+    "brand": "",
+    "img": "",
+    "upCid": 1535,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 1539,
+    "title": "G4X",
+    "url": "g4x",
+    "brand": "",
+    "img": "",
+    "upCid": 1507,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 1540,
+    "title": "Moto G42",
+    "url": "moto-g42",
+    "brand": "",
+    "img": "",
+    "upCid": 1539,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 1542,
+    "title": "Moto G9 Plus",
+    "url": "moto-g9-plus",
+    "brand": "",
+    "img": "",
+    "upCid": 1541,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 1544,
+    "title": "Edge 50 Ultra",
+    "url": "edge-50-ultra",
+    "brand": "",
+    "img": "",
+    "upCid": 1490,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 1546,
+    "title": "Galaxy A16",
+    "url": "galaxy-a16",
+    "brand": "",
+    "img": "",
+    "upCid": 604,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 1548,
+    "title": "F",
+    "url": "f",
+    "brand": "",
+    "img": "",
+    "upCid": 896,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 1549,
+    "title": "F2 Pro",
+    "url": "f2-pro-1",
+    "brand": "",
+    "img": "",
+    "upCid": 1548,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 1552,
+    "title": "M3 Pro",
+    "url": "m3-pro-1",
+    "brand": "",
+    "img": "",
+    "upCid": 1551,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 1554,
+    "title": "C40",
+    "url": "c40-1",
+    "brand": "",
+    "img": "",
+    "upCid": 1553,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 1560,
+    "title": "X4 GT",
+    "url": "x4-gt-1",
+    "brand": "",
+    "img": "",
+    "upCid": 1559,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 1574,
+    "title": "Apple Watch S9 41mm",
+    "url": "apple-watch-s9-41mm",
+    "brand": "",
+    "img": "",
+    "upCid": 1437,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 1576,
+    "title": "Galaxy S24 FE",
+    "url": "galaxy-s24-fe",
+    "brand": "",
+    "img": "",
+    "upCid": 618,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 1592,
+    "title": "Prachuvzdorné lepení - originální",
+    "url": "prachuvzdorne-lepeni-originalni",
+    "brand": "",
+    "img": "",
+    "upCid": 903,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 1593,
+    "title": "iPhone 16e",
+    "url": "iphone-16e",
+    "brand": "",
+    "img": "",
+    "upCid": 501,
+    "visible": 1,
+    "sortId": 1
+  },
+  {
+    "id": 519,
+    "title": "Honor 10",
+    "url": "honor-10-1",
+    "brand": "",
+    "img": "",
+    "upCid": 517,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 520,
+    "title": "Honor 20",
+    "url": "honor-20",
+    "brand": "",
+    "img": "",
+    "upCid": 516,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 522,
+    "title": "Honor 20 Pro",
+    "url": "honor-20-pro",
+    "brand": "",
+    "img": "",
+    "upCid": 520,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 528,
+    "title": "Honor 7 Lite",
+    "url": "honor-7-lite",
+    "brand": "",
+    "img": "",
+    "upCid": 526,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 536,
+    "title": "Honor 8 Premium",
+    "url": "honor-8-premium",
+    "brand": "",
+    "img": "",
+    "upCid": 534,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 543,
+    "title": "Honor 9 Lite",
+    "url": "honor-9-lite",
+    "brand": "",
+    "img": "",
+    "upCid": 541,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 548,
+    "title": "Honor View 20",
+    "url": "honor-view-20",
+    "brand": "",
+    "img": "",
+    "upCid": 546,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 552,
+    "title": "Mate 20 Pro",
+    "url": "mate-20-pro",
+    "brand": "",
+    "img": "",
+    "upCid": 550,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 553,
+    "title": "Nova",
+    "url": "nova",
+    "brand": "",
+    "img": "",
+    "upCid": 549,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 555,
+    "title": "Nova 3",
+    "url": "nova-3",
+    "brand": "",
+    "img": "",
+    "upCid": 553,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 560,
+    "title": "P Smart Z",
+    "url": "p-smart-z",
+    "brand": "",
+    "img": "",
+    "upCid": 558,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 577,
+    "title": "Y5 2018",
+    "url": "y5-2018",
+    "brand": "",
+    "img": "",
+    "upCid": 575,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 588,
+    "title": "Nokia 3.1",
+    "url": "nokia-31",
+    "brand": "",
+    "img": "",
+    "upCid": 586,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 589,
+    "title": "Nokia 4",
+    "url": "nokia-4",
+    "brand": "",
+    "img": "",
+    "upCid": 585,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 595,
+    "title": "Nokia 6.2",
+    "url": "nokia-62",
+    "brand": "",
+    "img": "",
+    "upCid": 593,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 598,
+    "title": "Nokia 7.1",
+    "url": "nokia-71",
+    "brand": "",
+    "img": "",
+    "upCid": 596,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 602,
+    "title": "Nokia 8.1",
+    "url": "nokia-81",
+    "brand": "",
+    "img": "",
+    "upCid": 600,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 608,
+    "title": "Galaxy J",
+    "url": "galaxy-j",
+    "brand": "",
+    "img": "",
+    "upCid": 603,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 610,
+    "title": "Galaxy J5 2017",
+    "url": "galaxy-j5-2017",
+    "brand": "",
+    "img": "",
+    "upCid": 608,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 615,
+    "title": "Galaxy Note 10 Plus",
+    "url": "galaxy-note-10-plus",
+    "brand": "",
+    "img": "",
+    "upCid": 613,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 640,
+    "title": "Mi 8",
+    "url": "mi-8",
+    "brand": "",
+    "img": "",
+    "upCid": 638,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 650,
+    "title": "Redmi Note",
+    "url": "redmi-note",
+    "brand": "",
+    "img": "",
+    "upCid": 637,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 654,
+    "title": "Galaxy S24 Ultra",
+    "url": "galaxy-s24-ultra",
+    "brand": "",
+    "img": "",
+    "upCid": 618,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 772,
+    "title": "Vivo",
+    "url": "vivo",
+    "brand": "",
+    "img": "https://cdn.myrepair.app/clients/mobilmajak/img/RJMVX5N3QTHE-vivolog.png",
+    "upCid": 500,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 775,
+    "title": "Y02",
+    "url": "y02",
+    "brand": "",
+    "img": "",
+    "upCid": 773,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 806,
+    "title": "V Series",
+    "url": "v-series",
+    "brand": "",
+    "img": "",
+    "upCid": 772,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 808,
+    "title": "V29 Lite 5G",
+    "url": "v29-lite-5g",
+    "brand": "",
+    "img": "",
+    "upCid": 806,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 814,
+    "title": "X100 Pro",
+    "url": "x100-pro",
+    "brand": "",
+    "img": "",
+    "upCid": 812,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 819,
+    "title": "Galaxy M12",
+    "url": "galaxy-m12",
+    "brand": "",
+    "img": "",
+    "upCid": 687,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 821,
+    "title": "Tablety",
+    "url": "tablety",
+    "brand": "",
+    "img": "https://cdn.myrepair.app/clients/mobilmajak/img/W8YG9NRK2NF3-xun_3.webp",
+    "upCid": 0,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 825,
+    "title": "iPad 3/4",
+    "url": "ipad-34",
+    "brand": "",
+    "img": "",
+    "upCid": 823,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 836,
+    "title": "Samsung Galaxy Watch5 40mm",
+    "url": "samsung-galaxy-watch5-40mm",
+    "brand": "",
+    "img": "",
+    "upCid": 834,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 847,
+    "title": "Redmi 13C",
+    "url": "redmi-13c",
+    "brand": "",
+    "img": "",
+    "upCid": 671,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 869,
+    "title": "Honor 70",
+    "url": "honor-70-1",
+    "brand": "",
+    "img": "",
+    "upCid": 867,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 872,
+    "title": "Honor 50",
+    "url": "honor-50-1",
+    "brand": "",
+    "img": "",
+    "upCid": 870,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 875,
+    "title": "Honor 90 Lite 5G",
+    "url": "honor-90-lite-5g",
+    "brand": "",
+    "img": "",
+    "upCid": 873,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 878,
+    "title": "Honor Magic4 Pro",
+    "url": "honor-magic4-pro",
+    "brand": "",
+    "img": "",
+    "upCid": 876,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 884,
+    "title": "Honor 200 Pro",
+    "url": "honor-200-pro",
+    "brand": "",
+    "img": "",
+    "upCid": 882,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 917,
+    "title": "iPad Air",
+    "url": "ipad-air",
+    "brand": "",
+    "img": "",
+    "upCid": 822,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 919,
+    "title": "iPad Air 2",
+    "url": "ipad-air-2",
+    "brand": "",
+    "img": "",
+    "upCid": 917,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 925,
+    "title": "iPad Mini 2",
+    "url": "ipad-mini-2",
+    "brand": "",
+    "img": "",
+    "upCid": 923,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 1423,
+    "title": "Samsung Tab",
+    "url": "samsung-tab",
+    "brand": "",
+    "img": "",
+    "upCid": 821,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 1426,
+    "title": "Samsung Galaxy Tab A7 Lite",
+    "url": "samsung-galaxy-tab-a7-lite",
+    "brand": "",
+    "img": "",
+    "upCid": 1424,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 1429,
+    "title": "iPad Pro 11\" (2021)",
+    "url": "ipad-pro-11-2021",
+    "brand": "",
+    "img": "",
+    "upCid": 930,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 1437,
+    "title": "Apple Watch",
+    "url": "apple-watch",
+    "brand": "",
+    "img": "https://cdn.myrepair.app/clients/mobilmajak/img/2D8HGITF2TPX-SWY7MZF5XIHV-Apple-Logo.png",
+    "upCid": 833,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 1475,
+    "title": "Řada Galaxy Tab S",
+    "url": "rada-galaxy-tab-s",
+    "brand": "",
+    "img": "",
+    "upCid": 1423,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 1477,
+    "title": "Samsung Galaxy Tab S5e",
+    "url": "samsung-galaxy-tab-s5e",
+    "brand": "",
+    "img": "",
+    "upCid": 1475,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 1488,
+    "title": "Nokia 5.1",
+    "url": "nokia-51",
+    "brand": "",
+    "img": "",
+    "upCid": 591,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 1504,
+    "title": "E",
+    "url": "e",
+    "brand": "",
+    "img": "",
+    "upCid": 1489,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 1506,
+    "title": "E13",
+    "url": "e13",
+    "brand": "",
+    "img": "",
+    "upCid": 1504,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 1510,
+    "title": "Moto G13",
+    "url": "moto-g13",
+    "brand": "",
+    "img": "",
+    "upCid": 1508,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 1514,
+    "title": "Moto G22",
+    "url": "moto-g22",
+    "brand": "",
+    "img": "",
+    "upCid": 1512,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 1519,
+    "title": "Moto G31",
+    "url": "moto-g31",
+    "brand": "",
+    "img": "",
+    "upCid": 1517,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 1524,
+    "title": "Moto G53",
+    "url": "moto-g53",
+    "brand": "",
+    "img": "",
+    "upCid": 1522,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 1530,
+    "title": "Moto G60s",
+    "url": "moto-g60s",
+    "brand": "",
+    "img": "",
+    "upCid": 1528,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 1534,
+    "title": "Moto G72",
+    "url": "moto-g72",
+    "brand": "",
+    "img": "",
+    "upCid": 1532,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 1537,
+    "title": "Moto G84",
+    "url": "moto-g84",
+    "brand": "",
+    "img": "",
+    "upCid": 1535,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 1541,
+    "title": "G",
+    "url": "g-1",
+    "brand": "",
+    "img": "",
+    "upCid": 1507,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 1543,
+    "title": "Moto G9 Play",
+    "url": "moto-g9-play",
+    "brand": "",
+    "img": "",
+    "upCid": 1541,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 1545,
+    "title": "Edge 50 Fusion",
+    "url": "edge-50-fusion",
+    "brand": "",
+    "img": "",
+    "upCid": 1490,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 1547,
+    "title": "Galaxy A16 5G",
+    "url": "galaxy-a16-5g",
+    "brand": "",
+    "img": "",
+    "upCid": 604,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 1550,
+    "title": "F3",
+    "url": "f3-1",
+    "brand": "",
+    "img": "",
+    "upCid": 1548,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 1551,
+    "title": "M",
+    "url": "m",
+    "brand": "",
+    "img": "",
+    "upCid": 896,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 1555,
+    "title": "M3",
+    "url": "m3-1",
+    "brand": "",
+    "img": "",
+    "upCid": 1551,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 1561,
+    "title": "X4 Pro",
+    "url": "x4-pro-1",
+    "brand": "",
+    "img": "",
+    "upCid": 1559,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 1573,
+    "title": "iPhone 16 Pro Max",
+    "url": "iphone-16-pro-max",
+    "brand": "",
+    "img": "",
+    "upCid": 501,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 1575,
+    "title": "Apple Watch S9 45mm",
+    "url": "apple-watch-s9-45mm",
+    "brand": "",
+    "img": "",
+    "upCid": 1437,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 1577,
+    "title": "C65",
+    "url": "c65-1",
+    "brand": "",
+    "img": "",
+    "upCid": 1553,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 1587,
+    "title": "Redmi Note 14",
+    "url": "redmi-note-14",
+    "brand": "",
+    "img": "",
+    "upCid": 650,
+    "visible": 1,
+    "sortId": 2
+  },
+  {
+    "id": 523,
+    "title": "Honor 20",
+    "url": "honor-20-1",
+    "brand": "",
+    "img": "",
+    "upCid": 520,
+    "visible": 1,
+    "sortId": 3
+  },
+  {
+    "id": 524,
+    "title": "Honor 6",
+    "url": "honor-6",
+    "brand": "",
+    "img": "",
+    "upCid": 516,
+    "visible": 1,
+    "sortId": 3
+  },
+  {
+    "id": 529,
+    "title": "Honor 7 Premium",
+    "url": "honor-7-premium",
+    "brand": "",
+    "img": "",
+    "upCid": 526,
+    "visible": 1,
+    "sortId": 3
+  },
+  {
+    "id": 537,
+    "title": "Honor 8 Pro",
+    "url": "honor-8-pro",
+    "brand": "",
+    "img": "",
+    "upCid": 534,
+    "visible": 1,
+    "sortId": 3
+  },
+  {
+    "id": 549,
+    "title": "Huawei",
+    "url": "huawei",
+    "brand": "",
+    "img": "https://cdn.myrepair.app/clients/mobilmajak/img/BNLEIZK5QAYZ-Huawei-Logo.png",
+    "upCid": 500,
+    "visible": 1,
+    "sortId": 3
+  },
+  {
+    "id": 556,
+    "title": "Nova 3i",
+    "url": "nova-3i",
+    "brand": "",
+    "img": "",
+    "upCid": 553,
+    "visible": 1,
+    "sortId": 3
+  },
+  {
+    "id": 558,
+    "title": "Řada P",
+    "url": "rada-p",
+    "brand": "",
+    "img": "",
+    "upCid": 549,
+    "visible": 1,
+    "sortId": 3
+  },
+  {
+    "id": 561,
+    "title": "P Smart",
+    "url": "p-smart",
+    "brand": "",
+    "img": "",
+    "upCid": 558,
+    "visible": 1,
+    "sortId": 3
+  },
+  {
+    "id": 578,
+    "title": "Y6 2019",
+    "url": "y6-2019",
+    "brand": "",
+    "img": "",
+    "upCid": 575,
+    "visible": 1,
+    "sortId": 3
+  },
+  {
+    "id": 591,
+    "title": "Nokia 5",
+    "url": "nokia-5",
+    "brand": "",
+    "img": "",
+    "upCid": 585,
+    "visible": 1,
+    "sortId": 3
+  },
+  {
+    "id": 599,
+    "title": "Nokia 7.2",
+    "url": "nokia-72",
+    "brand": "",
+    "img": "",
+    "upCid": 596,
+    "visible": 1,
+    "sortId": 3
+  },
+  {
+    "id": 611,
+    "title": "Galaxy J6",
+    "url": "galaxy-j6",
+    "brand": "",
+    "img": "",
+    "upCid": 608,
+    "visible": 1,
+    "sortId": 3
+  },
+  {
+    "id": 613,
+    "title": "Galaxy Note",
+    "url": "galaxy-note",
+    "brand": "",
+    "img": "",
+    "upCid": 603,
+    "visible": 1,
+    "sortId": 3
+  },
+  {
+    "id": 616,
+    "title": "Galaxy Note 8",
+    "url": "galaxy-note-8",
+    "brand": "",
+    "img": "",
+    "upCid": 613,
+    "visible": 1,
+    "sortId": 3
+  },
+  {
+    "id": 641,
+    "title": "Mi 9 Lite",
+    "url": "mi-9-lite",
+    "brand": "",
+    "img": "",
+    "upCid": 638,
+    "visible": 1,
+    "sortId": 3
+  },
+  {
+    "id": 671,
+    "title": "Redmi",
+    "url": "redmi",
+    "brand": "",
+    "img": "",
+    "upCid": 637,
+    "visible": 1,
+    "sortId": 3
+  },
+  {
+    "id": 676,
+    "title": "Honor 9A",
+    "url": "honor-9a",
+    "brand": "",
+    "img": "",
+    "upCid": 541,
+    "visible": 1,
+    "sortId": 3
+  },
+  {
+    "id": 694,
+    "title": "Honor 10X Lite",
+    "url": "honor-10x-lite",
+    "brand": "",
+    "img": "",
+    "upCid": 517,
+    "visible": 1,
+    "sortId": 3
+  },
+  {
+    "id": 776,
+    "title": "Y16",
+    "url": "y16",
+    "brand": "",
+    "img": "",
+    "upCid": 773,
+    "visible": 1,
+    "sortId": 3
+  },
+  {
+    "id": 809,
+    "title": "V29 5G",
+    "url": "v29-5g",
+    "brand": "",
+    "img": "",
+    "upCid": 806,
+    "visible": 1,
+    "sortId": 3
+  },
+  {
+    "id": 812,
+    "title": "X Series",
+    "url": "x-series",
+    "brand": "",
+    "img": "",
+    "upCid": 772,
+    "visible": 1,
+    "sortId": 3
+  },
+  {
+    "id": 815,
+    "title": "X80 Pro",
+    "url": "x80-pro",
+    "brand": "",
+    "img": "",
+    "upCid": 812,
+    "visible": 1,
+    "sortId": 3
+  },
+  {
+    "id": 826,
+    "title": "iPad 5 (2017)",
+    "url": "ipad-5-2017",
+    "brand": "",
+    "img": "",
+    "upCid": 823,
+    "visible": 1,
+    "sortId": 3
+  },
+  {
+    "id": 832,
+    "title": "Galaxy A12 (A125F)",
+    "url": "galaxy-a12-a125f",
+    "brand": "",
+    "img": "",
+    "upCid": 604,
+    "visible": 1,
+    "sortId": 3
+  },
+  {
+    "id": 833,
+    "title": "Chytré hodinky",
+    "url": "chytre-hodinky",
+    "brand": "",
+    "img": "https://cdn.myrepair.app/clients/mobilmajak/img/3L6SD3KKVH5K-applewatch.png",
+    "upCid": 0,
+    "visible": 1,
+    "sortId": 3
+  },
+  {
+    "id": 837,
+    "title": "Samsung Galaxy Watch5 Pro 45mm",
+    "url": "samsung-galaxy-watch5-pro-45mm",
+    "brand": "",
+    "img": "",
+    "upCid": 834,
+    "visible": 1,
+    "sortId": 3
+  },
+  {
+    "id": 848,
+    "title": "Redmi 9T",
+    "url": "redmi-9t",
+    "brand": "",
+    "img": "",
+    "upCid": 671,
+    "visible": 1,
+    "sortId": 3
+  },
+  {
+    "id": 879,
+    "title": "Honor Magic5 Lite",
+    "url": "honor-magic5-lite",
+    "brand": "",
+    "img": "",
+    "upCid": 876,
+    "visible": 1,
+    "sortId": 3
+  },
+  {
+    "id": 885,
+    "title": "Honor 200",
+    "url": "honor-200-1",
+    "brand": "",
+    "img": "",
+    "upCid": 882,
+    "visible": 1,
+    "sortId": 3
+  },
+  {
+    "id": 920,
+    "title": "iPad Air 3",
+    "url": "ipad-air-3",
+    "brand": "",
+    "img": "",
+    "upCid": 917,
+    "visible": 1,
+    "sortId": 3
+  },
+  {
+    "id": 923,
+    "title": "iPad Mini",
+    "url": "ipad-mini",
+    "brand": "",
+    "img": "",
+    "upCid": 822,
+    "visible": 1,
+    "sortId": 3
+  },
+  {
+    "id": 926,
+    "title": "iPad Mini 3",
+    "url": "ipad-mini-3",
+    "brand": "",
+    "img": "",
+    "upCid": 923,
+    "visible": 1,
+    "sortId": 3
+  },
+  {
+    "id": 941,
+    "title": "Galaxy S24+",
+    "url": "galaxy-s24-1",
+    "brand": "",
+    "img": "",
+    "upCid": 618,
+    "visible": 1,
+    "sortId": 3
+  },
+  {
+    "id": 1427,
+    "title": "Samsung Galaxy Tab A8",
+    "url": "samsung-galaxy-tab-a8",
+    "brand": "",
+    "img": "",
+    "upCid": 1424,
+    "visible": 1,
+    "sortId": 3
+  },
+  {
+    "id": 1430,
+    "title": "iPad Pro 11\" (2022)",
+    "url": "ipad-pro-11-2022",
+    "brand": "",
+    "img": "",
+    "upCid": 930,
+    "visible": 1,
+    "sortId": 3
+  },
+  {
+    "id": 1435,
+    "title": "Galaxy M11",
+    "url": "galaxy-m11",
+    "brand": "",
+    "img": "",
+    "upCid": 687,
+    "visible": 1,
+    "sortId": 3
+  },
+  {
+    "id": 1438,
+    "title": "Apple Watch S5 40mm",
+    "url": "apple-watch-s5-40mm",
+    "brand": "",
+    "img": "",
+    "upCid": 1437,
+    "visible": 1,
+    "sortId": 3
+  },
+  {
+    "id": 1478,
+    "title": "Samsung Galaxy Tab S6",
+    "url": "samsung-galaxy-tab-s6",
+    "brand": "",
+    "img": "",
+    "upCid": 1475,
+    "visible": 1,
+    "sortId": 3
+  },
+  {
+    "id": 1491,
+    "title": "Edge 20",
+    "url": "edge-20",
+    "brand": "",
+    "img": "",
+    "upCid": 1490,
+    "visible": 1,
+    "sortId": 3
+  },
+  {
+    "id": 1507,
+    "title": "G",
+    "url": "g",
+    "brand": "",
+    "img": "",
+    "upCid": 1489,
+    "visible": 1,
+    "sortId": 3
+  },
+  {
+    "id": 1508,
+    "title": "G1X",
+    "url": "g1x",
+    "brand": "",
+    "img": "",
+    "upCid": 1507,
+    "visible": 1,
+    "sortId": 3
+  },
+  {
+    "id": 1511,
+    "title": "Moto G14",
+    "url": "moto-g14",
+    "brand": "",
+    "img": "",
+    "upCid": 1508,
+    "visible": 1,
+    "sortId": 3
+  },
+  {
+    "id": 1515,
+    "title": "Moto G23",
+    "url": "moto-g23",
+    "brand": "",
+    "img": "",
+    "upCid": 1512,
+    "visible": 1,
+    "sortId": 3
+  },
+  {
+    "id": 1520,
+    "title": "Moto G32",
+    "url": "moto-g32",
+    "brand": "",
+    "img": "",
+    "upCid": 1517,
+    "visible": 1,
+    "sortId": 3
+  },
+  {
+    "id": 1525,
+    "title": "E14",
+    "url": "e14",
+    "brand": "",
+    "img": "",
+    "upCid": 1504,
+    "visible": 1,
+    "sortId": 3
+  },
+  {
+    "id": 1526,
+    "title": "Moto G52",
+    "url": "moto-g52",
+    "brand": "",
+    "img": "",
+    "upCid": 1522,
+    "visible": 1,
+    "sortId": 3
+  },
+  {
+    "id": 1531,
+    "title": "Moto G60",
+    "url": "moto-g60",
+    "brand": "",
+    "img": "",
+    "upCid": 1528,
+    "visible": 1,
+    "sortId": 3
+  },
+  {
+    "id": 1538,
+    "title": "Moto G82",
+    "url": "moto-g82",
+    "brand": "",
+    "img": "",
+    "upCid": 1535,
+    "visible": 1,
+    "sortId": 3
+  },
+  {
+    "id": 1553,
+    "title": "C",
+    "url": "c",
+    "brand": "",
+    "img": "",
+    "upCid": 896,
+    "visible": 1,
+    "sortId": 3
+  },
+  {
+    "id": 1556,
+    "title": "M4",
+    "url": "m4-1",
+    "brand": "",
+    "img": "",
+    "upCid": 1551,
+    "visible": 1,
+    "sortId": 3
+  },
+  {
+    "id": 1562,
+    "title": "X5 Pro 5G",
+    "url": "x5-pro-5g-1",
+    "brand": "",
+    "img": "",
+    "upCid": 1559,
+    "visible": 1,
+    "sortId": 3
+  },
+  {
+    "id": 1563,
+    "title": "F5",
+    "url": "f5-1",
+    "brand": "",
+    "img": "",
+    "upCid": 1548,
+    "visible": 1,
+    "sortId": 3
+  },
+  {
+    "id": 1572,
+    "title": "iPhone 16 Pro",
+    "url": "iphone-16-pro",
+    "brand": "",
+    "img": "",
+    "upCid": 501,
+    "visible": 1,
+    "sortId": 3
+  },
+  {
+    "id": 1578,
+    "title": "C75",
+    "url": "c75",
+    "brand": "",
+    "img": "",
+    "upCid": 1553,
+    "visible": 1,
+    "sortId": 3
+  },
+  {
+    "id": 1588,
+    "title": "Redmi Note 14 5G",
+    "url": "redmi-note-14-5g",
+    "brand": "",
+    "img": "",
+    "upCid": 650,
+    "visible": 1,
+    "sortId": 3
+  },
+  {
+    "id": 526,
+    "title": "Honor 7",
+    "url": "honor-7",
+    "brand": "",
+    "img": "",
+    "upCid": 516,
+    "visible": 1,
+    "sortId": 4
+  },
+  {
+    "id": 530,
+    "title": "Honor 7A",
+    "url": "honor-7a",
+    "brand": "",
+    "img": "",
+    "upCid": 526,
+    "visible": 1,
+    "sortId": 4
+  },
+  {
+    "id": 538,
+    "title": "Honor 8A",
+    "url": "honor-8a",
+    "brand": "",
+    "img": "",
+    "upCid": 534,
+    "visible": 1,
+    "sortId": 4
+  },
+  {
+    "id": 557,
+    "title": "Nova 5T",
+    "url": "nova-5t",
+    "brand": "",
+    "img": "",
+    "upCid": 553,
+    "visible": 1,
+    "sortId": 4
+  },
+  {
+    "id": 562,
+    "title": "P10 Lite",
+    "url": "p10-lite",
+    "brand": "",
+    "img": "",
+    "upCid": 558,
+    "visible": 1,
+    "sortId": 4
+  },
+  {
+    "id": 575,
+    "title": "Řada Y",
+    "url": "rada-y",
+    "brand": "",
+    "img": "",
+    "upCid": 549,
+    "visible": 1,
+    "sortId": 4
+  },
+  {
+    "id": 579,
+    "title": "Y6 2017",
+    "url": "y6-2017",
+    "brand": "",
+    "img": "",
+    "upCid": 575,
+    "visible": 1,
+    "sortId": 4
+  },
+  {
+    "id": 585,
+    "title": "Nokia",
+    "url": "nokia",
+    "brand": "",
+    "img": "https://cdn.myrepair.app/clients/mobilmajak/img/2AKNB8MIC5UQ-Nokia-new-logo-transparent-background.png",
+    "upCid": 500,
+    "visible": 1,
+    "sortId": 4
+  },
+  {
+    "id": 593,
+    "title": "Nokia 6",
+    "url": "nokia-6",
+    "brand": "",
+    "img": "",
+    "upCid": 585,
+    "visible": 1,
+    "sortId": 4
+  },
+  {
+    "id": 612,
+    "title": "Galaxy J6 Plus",
+    "url": "galaxy-j6-plus",
+    "brand": "",
+    "img": "",
+    "upCid": 608,
+    "visible": 1,
+    "sortId": 4
+  },
+  {
+    "id": 617,
+    "title": "Galaxy Note 9",
+    "url": "galaxy-note-9",
+    "brand": "",
+    "img": "",
+    "upCid": 613,
+    "visible": 1,
+    "sortId": 4
+  },
+  {
+    "id": 618,
+    "title": "Galaxy S",
+    "url": "galaxy-s-1",
+    "brand": "",
+    "img": "",
+    "upCid": 603,
+    "visible": 1,
+    "sortId": 4
+  },
+  {
+    "id": 622,
+    "title": "Galaxy S24",
+    "url": "galaxy-s24",
+    "brand": "",
+    "img": "",
+    "upCid": 618,
+    "visible": 1,
+    "sortId": 4
+  },
+  {
+    "id": 642,
+    "title": "Mi 9 SE",
+    "url": "mi-9-se",
+    "brand": "",
+    "img": "",
+    "upCid": 638,
+    "visible": 1,
+    "sortId": 4
+  },
+  {
+    "id": 672,
+    "title": "Redmi 9A",
+    "url": "redmi-9a",
+    "brand": "",
+    "img": "",
+    "upCid": 671,
+    "visible": 1,
+    "sortId": 4
+  },
+  {
+    "id": 677,
+    "title": "Honor 9S",
+    "url": "honor-9s",
+    "brand": "",
+    "img": "",
+    "upCid": 541,
+    "visible": 1,
+    "sortId": 4
+  },
+  {
+    "id": 688,
+    "title": "Galaxy M21",
+    "url": "galaxy-m21",
+    "brand": "",
+    "img": "",
+    "upCid": 687,
+    "visible": 1,
+    "sortId": 4
+  },
+  {
+    "id": 695,
+    "title": "Honor 20e",
+    "url": "honor-20e",
+    "brand": "",
+    "img": "",
+    "upCid": 520,
+    "visible": 1,
+    "sortId": 4
+  },
+  {
+    "id": 777,
+    "title": "Y22",
+    "url": "y22",
+    "brand": "",
+    "img": "",
+    "upCid": 773,
+    "visible": 1,
+    "sortId": 4
+  },
+  {
+    "id": 810,
+    "title": "V21 5G",
+    "url": "v21-5g",
+    "brand": "",
+    "img": "",
+    "upCid": 806,
+    "visible": 1,
+    "sortId": 4
+  },
+  {
+    "id": 816,
+    "title": "X80 Lite 5G",
+    "url": "x80-lite-5g",
+    "brand": "",
+    "img": "",
+    "upCid": 812,
+    "visible": 1,
+    "sortId": 4
+  },
+  {
+    "id": 827,
+    "title": "iPad 6 (2018)",
+    "url": "ipad-6-2018",
+    "brand": "",
+    "img": "",
+    "upCid": 823,
+    "visible": 1,
+    "sortId": 4
+  },
+  {
+    "id": 838,
+    "title": "Samsung Galaxy Watch4 Classic 42mm",
+    "url": "samsung-galaxy-watch4-classic-42mm",
+    "brand": "",
+    "img": "",
+    "upCid": 834,
+    "visible": 1,
+    "sortId": 4
+  },
+  {
+    "id": 851,
+    "title": "Galaxy A72",
+    "url": "galaxy-a72",
+    "brand": "",
+    "img": "",
+    "upCid": 604,
+    "visible": 1,
+    "sortId": 4
+  },
+  {
+    "id": 880,
+    "title": "Honor Magic 5 Pro",
+    "url": "honor-magic-5-pro",
+    "brand": "",
+    "img": "",
+    "upCid": 876,
+    "visible": 1,
+    "sortId": 4
+  },
+  {
+    "id": 903,
+    "title": "Doporučené produkty",
+    "url": "doporucene-produkty",
+    "brand": "",
+    "img": "https://cdn.myrepair.app/clients/mobilmajak/img/HGEL3W6V5JAK-recom.png",
+    "upCid": 0,
+    "visible": 0,
+    "sortId": 4
+  },
+  {
+    "id": 921,
+    "title": "iPad Air 4",
+    "url": "ipad-air-4",
+    "brand": "",
+    "img": "",
+    "upCid": 917,
+    "visible": 1,
+    "sortId": 4
+  },
+  {
+    "id": 927,
+    "title": "iPad Mini 4",
+    "url": "ipad-mini-4",
+    "brand": "",
+    "img": "",
+    "upCid": 923,
+    "visible": 1,
+    "sortId": 4
+  },
+  {
+    "id": 930,
+    "title": "iPad Pro",
+    "url": "ipad-pro",
+    "brand": "",
+    "img": "",
+    "upCid": 822,
+    "visible": 1,
+    "sortId": 4
+  },
+  {
+    "id": 1428,
+    "title": "Samsung Galaxy Tab A9 Plus",
+    "url": "samsung-galaxy-tab-a9-plus",
+    "brand": "",
+    "img": "",
+    "upCid": 1424,
+    "visible": 1,
+    "sortId": 4
+  },
+  {
+    "id": 1431,
+    "title": "iPad Pro 12,9\" (2018)",
+    "url": "ipad-pro-129-2018",
+    "brand": "",
+    "img": "",
+    "upCid": 930,
+    "visible": 1,
+    "sortId": 4
+  },
+  {
+    "id": 1439,
+    "title": "Apple Watch S5 44mm",
+    "url": "apple-watch-s5-44mm",
+    "brand": "",
+    "img": "",
+    "upCid": 1437,
+    "visible": 1,
+    "sortId": 4
+  },
+  {
+    "id": 1479,
+    "title": "Samsung Galaxy Tab S6 Lite",
+    "url": "samsung-galaxy-tab-s6-lite",
+    "brand": "",
+    "img": "",
+    "upCid": 1475,
+    "visible": 1,
+    "sortId": 4
+  },
+  {
+    "id": 1492,
+    "title": "Edge 20 Lite",
+    "url": "edge-20-lite",
+    "brand": "",
+    "img": "",
+    "upCid": 1490,
+    "visible": 1,
+    "sortId": 4
+  },
+  {
+    "id": 1512,
+    "title": "G2X",
+    "url": "g2x",
+    "brand": "",
+    "img": "",
+    "upCid": 1507,
+    "visible": 1,
+    "sortId": 4
+  },
+  {
+    "id": 1516,
+    "title": "Moto G24/G24 Power",
+    "url": "moto-g24g24-power",
+    "brand": "",
+    "img": "",
+    "upCid": 1512,
+    "visible": 1,
+    "sortId": 4
+  },
+  {
+    "id": 1521,
+    "title": "Moto G34",
+    "url": "moto-g34",
+    "brand": "",
+    "img": "",
+    "upCid": 1517,
+    "visible": 1,
+    "sortId": 4
+  },
+  {
+    "id": 1527,
+    "title": "Moto G50",
+    "url": "moto-g50",
+    "brand": "",
+    "img": "",
+    "upCid": 1522,
+    "visible": 1,
+    "sortId": 4
+  },
+  {
+    "id": 1557,
+    "title": "M5s",
+    "url": "m5s-1",
+    "brand": "",
+    "img": "",
+    "upCid": 1551,
+    "visible": 1,
+    "sortId": 4
+  },
+  {
+    "id": 1559,
+    "title": "X",
+    "url": "x",
+    "brand": "",
+    "img": "",
+    "upCid": 896,
+    "visible": 1,
+    "sortId": 4
+  },
+  {
+    "id": 1564,
+    "title": "F5 Pro",
+    "url": "f5-pro-1",
+    "brand": "",
+    "img": "",
+    "upCid": 1548,
+    "visible": 1,
+    "sortId": 4
+  },
+  {
+    "id": 1567,
+    "title": "X5",
+    "url": "x5-1",
+    "brand": "",
+    "img": "",
+    "upCid": 1559,
+    "visible": 1,
+    "sortId": 4
+  },
+  {
+    "id": 1571,
+    "title": "iPhone 16 Plus",
+    "url": "iphone-16-plus",
+    "brand": "",
+    "img": "",
+    "upCid": 501,
+    "visible": 1,
+    "sortId": 4
+  },
+  {
+    "id": 1589,
+    "title": "Redmi Note 14 Pro 5G",
+    "url": "redmi-note-14-pro-5g",
+    "brand": "",
+    "img": "",
+    "upCid": 650,
+    "visible": 1,
+    "sortId": 4
+  },
+  {
+    "id": 531,
+    "title": "Honor 7C",
+    "url": "honor-7c",
+    "brand": "",
+    "img": "",
+    "upCid": 526,
+    "visible": 1,
+    "sortId": 5
+  },
+  {
+    "id": 534,
+    "title": "Honor 8",
+    "url": "honor-8",
+    "brand": "",
+    "img": "",
+    "upCid": 516,
+    "visible": 1,
+    "sortId": 5
+  },
+  {
+    "id": 539,
+    "title": "Honor 8S",
+    "url": "honor-8s",
+    "brand": "",
+    "img": "",
+    "upCid": 534,
+    "visible": 1,
+    "sortId": 5
+  },
+  {
+    "id": 563,
+    "title": "P10",
+    "url": "p10",
+    "brand": "",
+    "img": "",
+    "upCid": 558,
+    "visible": 1,
+    "sortId": 5
+  },
+  {
+    "id": 580,
+    "title": "Y6 2018",
+    "url": "y6-2018",
+    "brand": "",
+    "img": "",
+    "upCid": 575,
+    "visible": 1,
+    "sortId": 5
+  },
+  {
+    "id": 596,
+    "title": "Nokia 7",
+    "url": "nokia-7",
+    "brand": "",
+    "img": "",
+    "upCid": 585,
+    "visible": 1,
+    "sortId": 5
+  },
+  {
+    "id": 603,
+    "title": "Samsung",
+    "url": "samsung",
+    "brand": "",
+    "img": "https://cdn.myrepair.app/clients/mobilmajak/img/4MUDEC9Y3NXD-samsung logo.png",
+    "upCid": 500,
+    "visible": 1,
+    "sortId": 5
+  },
+  {
+    "id": 643,
+    "title": "Mi 9",
+    "url": "mi-9",
+    "brand": "",
+    "img": "",
+    "upCid": 638,
+    "visible": 1,
+    "sortId": 5
+  },
+  {
+    "id": 673,
+    "title": "Redmi 9C NFC",
+    "url": "redmi-9c-nfc",
+    "brand": "",
+    "img": "",
+    "upCid": 671,
+    "visible": 1,
+    "sortId": 5
+  },
+  {
+    "id": 678,
+    "title": "Honor 9X Lite",
+    "url": "honor-9x-lite",
+    "brand": "",
+    "img": "",
+    "upCid": 541,
+    "visible": 1,
+    "sortId": 5
+  },
+  {
+    "id": 687,
+    "title": "Galaxy M",
+    "url": "galaxy-m",
+    "brand": "",
+    "img": "",
+    "upCid": 603,
+    "visible": 1,
+    "sortId": 5
+  },
+  {
+    "id": 703,
+    "title": "Galaxy Note 10 Lite",
+    "url": "galaxy-note-10-lite",
+    "brand": "",
+    "img": "",
+    "upCid": 613,
+    "visible": 1,
+    "sortId": 5
+  },
+  {
+    "id": 706,
+    "title": "Galaxy M51",
+    "url": "galaxy-m51",
+    "brand": "",
+    "img": "",
+    "upCid": 687,
+    "visible": 1,
+    "sortId": 5
+  },
+  {
+    "id": 778,
+    "title": "Y22s",
+    "url": "y22s",
+    "brand": "",
+    "img": "",
+    "upCid": 773,
+    "visible": 1,
+    "sortId": 5
+  },
+  {
+    "id": 811,
+    "title": "V23 5G",
+    "url": "v23-5g",
+    "brand": "",
+    "img": "",
+    "upCid": 806,
+    "visible": 1,
+    "sortId": 5
+  },
+  {
+    "id": 817,
+    "title": "X60 Pro 5G",
+    "url": "x60-pro-5g",
+    "brand": "",
+    "img": "",
+    "upCid": 812,
+    "visible": 0,
+    "sortId": 5
+  },
+  {
+    "id": 820,
+    "title": "Galaxy S23 FE",
+    "url": "galaxy-s23-fe",
+    "brand": "",
+    "img": "",
+    "upCid": 618,
+    "visible": 1,
+    "sortId": 5
+  },
+  {
+    "id": 828,
+    "title": "iPad 7 (2019)",
+    "url": "ipad-7-2019",
+    "brand": "",
+    "img": "",
+    "upCid": 823,
+    "visible": 1,
+    "sortId": 5
+  },
+  {
+    "id": 839,
+    "title": "Samsung Galaxy Watch4 Classic 46mm",
+    "url": "samsung-galaxy-watch4-classic-46mm",
+    "brand": "",
+    "img": "",
+    "upCid": 834,
+    "visible": 1,
+    "sortId": 5
+  },
+  {
+    "id": 852,
+    "title": "Galaxy A54",
+    "url": "galaxy-a54",
+    "brand": "",
+    "img": "",
+    "upCid": 604,
+    "visible": 1,
+    "sortId": 5
+  },
+  {
+    "id": 881,
+    "title": "Honor Magic6 Lite",
+    "url": "honor-magic6-lite",
+    "brand": "",
+    "img": "",
+    "upCid": 876,
+    "visible": 1,
+    "sortId": 5
+  },
+  {
+    "id": 886,
+    "title": "Nova 9",
+    "url": "nova-9",
+    "brand": "",
+    "img": "",
+    "upCid": 553,
+    "visible": 1,
+    "sortId": 5
+  },
+  {
+    "id": 922,
+    "title": "iPad Air 5",
+    "url": "ipad-air-5",
+    "brand": "",
+    "img": "",
+    "upCid": 917,
+    "visible": 1,
+    "sortId": 5
+  },
+  {
+    "id": 928,
+    "title": "iPad Mini 5",
+    "url": "ipad-mini-5",
+    "brand": "",
+    "img": "",
+    "upCid": 923,
+    "visible": 1,
+    "sortId": 5
+  },
+  {
+    "id": 1432,
+    "title": "iPad Pro 12,9\" (2020)",
+    "url": "ipad-pro-129-2020",
+    "brand": "",
+    "img": "",
+    "upCid": 930,
+    "visible": 1,
+    "sortId": 5
+  },
+  {
+    "id": 1440,
+    "title": "Apple Watch SE (2020) 40mm",
+    "url": "apple-watch-se-2020-40mm",
+    "brand": "",
+    "img": "",
+    "upCid": 1437,
+    "visible": 1,
+    "sortId": 5
+  },
+  {
+    "id": 1480,
+    "title": "Samsung Galaxy Tab S7+",
+    "url": "samsung-galaxy-tab-s7",
+    "brand": "",
+    "img": "",
+    "upCid": 1475,
+    "visible": 1,
+    "sortId": 5
+  },
+  {
+    "id": 1493,
+    "title": "Edge 20 Pro",
+    "url": "edge-20-pro",
+    "brand": "",
+    "img": "",
+    "upCid": 1490,
+    "visible": 1,
+    "sortId": 5
+  },
+  {
+    "id": 1517,
+    "title": "G3X",
+    "url": "g3x",
+    "brand": "",
+    "img": "",
+    "upCid": 1507,
+    "visible": 1,
+    "sortId": 5
+  },
+  {
+    "id": 1558,
+    "title": "M5",
+    "url": "m5-1",
+    "brand": "",
+    "img": "",
+    "upCid": 1551,
+    "visible": 1,
+    "sortId": 5
+  },
+  {
+    "id": 1565,
+    "title": "F6",
+    "url": "f6-1",
+    "brand": "",
+    "img": "",
+    "upCid": 1548,
+    "visible": 1,
+    "sortId": 5
+  },
+  {
+    "id": 1568,
+    "title": "X6",
+    "url": "x6-1",
+    "brand": "",
+    "img": "",
+    "upCid": 1559,
+    "visible": 1,
+    "sortId": 5
+  },
+  {
+    "id": 1570,
+    "title": "iPhone 16",
+    "url": "iphone-16",
+    "brand": "",
+    "img": "",
+    "upCid": 501,
+    "visible": 1,
+    "sortId": 5
+  },
+  {
+    "id": 1590,
+    "title": "Redmi Note 14 Pro+ 5G",
+    "url": "redmi-note-14-pro-5g-1",
+    "brand": "",
+    "img": "",
+    "upCid": 650,
+    "visible": 1,
+    "sortId": 5
+  },
+  {
+    "id": 532,
+    "title": "Honor 7S",
+    "url": "honor-7s",
+    "brand": "",
+    "img": "",
+    "upCid": 526,
+    "visible": 1,
+    "sortId": 6
+  },
+  {
+    "id": 540,
+    "title": "Honor 8X",
+    "url": "honor-8x",
+    "brand": "",
+    "img": "",
+    "upCid": 534,
+    "visible": 1,
+    "sortId": 6
+  },
+  {
+    "id": 541,
+    "title": "Honor 9",
+    "url": "honor-9",
+    "brand": "",
+    "img": "",
+    "upCid": 516,
+    "visible": 1,
+    "sortId": 6
+  },
+  {
+    "id": 564,
+    "title": "P20 Lite",
+    "url": "p20-lite",
+    "brand": "",
+    "img": "",
+    "upCid": 558,
+    "visible": 1,
+    "sortId": 6
+  },
+  {
+    "id": 581,
+    "title": "Y6 Prime 2018",
+    "url": "y6-prime-2018",
+    "brand": "",
+    "img": "",
+    "upCid": 575,
+    "visible": 1,
+    "sortId": 6
+  },
+  {
+    "id": 600,
+    "title": "Nokia 8",
+    "url": "nokia-8",
+    "brand": "",
+    "img": "",
+    "upCid": 585,
+    "visible": 1,
+    "sortId": 6
+  },
+  {
+    "id": 637,
+    "title": "Xiaomi",
+    "url": "xiaomi",
+    "brand": "",
+    "img": "https://cdn.myrepair.app/clients/mobilmajak/img/4BA2UGD2QCAH-xiaomi logo.png",
+    "upCid": 500,
+    "visible": 1,
+    "sortId": 6
+  },
+  {
+    "id": 644,
+    "title": "Mi 9T Pro",
+    "url": "mi-9t-pro",
+    "brand": "",
+    "img": "",
+    "upCid": 638,
+    "visible": 1,
+    "sortId": 6
+  },
+  {
+    "id": 674,
+    "title": "Redmi 9",
+    "url": "redmi-9",
+    "brand": "",
+    "img": "",
+    "upCid": 671,
+    "visible": 1,
+    "sortId": 6
+  },
+  {
+    "id": 679,
+    "title": "Honor 9X",
+    "url": "honor-9x",
+    "brand": "",
+    "img": "",
+    "upCid": 541,
+    "visible": 1,
+    "sortId": 6
+  },
+  {
+    "id": 707,
+    "title": "Galaxy M22",
+    "url": "galaxy-m22",
+    "brand": "",
+    "img": "",
+    "upCid": 687,
+    "visible": 1,
+    "sortId": 6
+  },
+  {
+    "id": 760,
+    "title": "Galaxy Note 20",
+    "url": "galaxy-note-20",
+    "brand": "",
+    "img": "",
+    "upCid": 613,
+    "visible": 1,
+    "sortId": 6
+  },
+  {
+    "id": 764,
+    "title": "Galaxy S23 Ultra",
+    "url": "galaxy-s23-ultra",
+    "brand": "",
+    "img": "",
+    "upCid": 618,
+    "visible": 1,
+    "sortId": 6
+  },
+  {
+    "id": 769,
+    "title": "iPhone 15 Pro Max",
+    "url": "iphone-15-pro-max",
+    "brand": "",
+    "img": "",
+    "upCid": 501,
+    "visible": 1,
+    "sortId": 6
+  },
+  {
+    "id": 779,
+    "title": "Y35",
+    "url": "y35",
+    "brand": "",
+    "img": "",
+    "upCid": 773,
+    "visible": 1,
+    "sortId": 6
+  },
+  {
+    "id": 818,
+    "title": "X90 Pro",
+    "url": "x90-pro",
+    "brand": "",
+    "img": "",
+    "upCid": 812,
+    "visible": 1,
+    "sortId": 6
+  },
+  {
+    "id": 829,
+    "title": "iPad 8 (2020)",
+    "url": "ipad-8-2020",
+    "brand": "",
+    "img": "",
+    "upCid": 823,
+    "visible": 1,
+    "sortId": 6
+  },
+  {
+    "id": 840,
+    "title": "Samsung Galaxy Watch3 45mm",
+    "url": "samsung-galaxy-watch3-45mm",
+    "brand": "",
+    "img": "",
+    "upCid": 834,
+    "visible": 1,
+    "sortId": 6
+  },
+  {
+    "id": 853,
+    "title": "Galaxy A70",
+    "url": "galaxy-a70",
+    "brand": "",
+    "img": "",
+    "upCid": 604,
+    "visible": 1,
+    "sortId": 6
+  },
+  {
+    "id": 887,
+    "title": "Nova 9 SE",
+    "url": "nova-9-se",
+    "brand": "",
+    "img": "",
+    "upCid": 553,
+    "visible": 1,
+    "sortId": 6
+  },
+  {
+    "id": 929,
+    "title": "iPad Mini 6",
+    "url": "ipad-mini-6",
+    "brand": "",
+    "img": "",
+    "upCid": 923,
+    "visible": 1,
+    "sortId": 6
+  },
+  {
+    "id": 1433,
+    "title": "iPad Pro 12,9\" (2021)",
+    "url": "ipad-pro-129-2021",
+    "brand": "",
+    "img": "",
+    "upCid": 930,
+    "visible": 1,
+    "sortId": 6
+  },
+  {
+    "id": 1441,
+    "title": "Apple Watch SE (2020) 44mm",
+    "url": "apple-watch-se-2020-44mm",
+    "brand": "",
+    "img": "",
+    "upCid": 1437,
+    "visible": 1,
+    "sortId": 6
+  },
+  {
+    "id": 1481,
+    "title": "Samsung Galaxy Tab S7 FE",
+    "url": "samsung-galaxy-tab-s7-fe",
+    "brand": "",
+    "img": "",
+    "upCid": 1475,
+    "visible": 1,
+    "sortId": 6
+  },
+  {
+    "id": 1494,
+    "title": "Edge 30",
+    "url": "edge-30",
+    "brand": "",
+    "img": "",
+    "upCid": 1490,
+    "visible": 1,
+    "sortId": 6
+  },
+  {
+    "id": 1522,
+    "title": "G5X",
+    "url": "g5x",
+    "brand": "",
+    "img": "",
+    "upCid": 1507,
+    "visible": 1,
+    "sortId": 6
+  },
+  {
+    "id": 1566,
+    "title": "F6 Pro",
+    "url": "f6-pro-1",
+    "brand": "",
+    "img": "",
+    "upCid": 1548,
+    "visible": 1,
+    "sortId": 6
+  },
+  {
+    "id": 1569,
+    "title": "X6 Pro",
+    "url": "x6-pro-1",
+    "brand": "",
+    "img": "",
+    "upCid": 1559,
+    "visible": 1,
+    "sortId": 6
+  },
+  {
+    "id": 1582,
+    "title": "M4 Pro",
+    "url": "m4-pro",
+    "brand": "",
+    "img": "",
+    "upCid": 1551,
+    "visible": 1,
+    "sortId": 6
+  },
+  {
+    "id": 1591,
+    "title": "Redmi Note 14 Pro",
+    "url": "redmi-note-14-pro",
+    "brand": "",
+    "img": "",
+    "upCid": 650,
+    "visible": 1,
+    "sortId": 6
+  },
+  {
+    "id": 533,
+    "title": "Honor 7X",
+    "url": "honor-7x",
+    "brand": "",
+    "img": "",
+    "upCid": 526,
+    "visible": 1,
+    "sortId": 7
+  },
+  {
+    "id": 544,
+    "title": "Honor Play",
+    "url": "honor-play",
+    "brand": "",
+    "img": "",
+    "upCid": 516,
+    "visible": 1,
+    "sortId": 7
+  },
+  {
+    "id": 565,
+    "title": "P20 Pro",
+    "url": "p20-pro",
+    "brand": "",
+    "img": "",
+    "upCid": 558,
+    "visible": 1,
+    "sortId": 7
+  },
+  {
+    "id": 582,
+    "title": "Y7 2019",
+    "url": "y7-2019",
+    "brand": "",
+    "img": "",
+    "upCid": 575,
+    "visible": 1,
+    "sortId": 7
+  },
+  {
+    "id": 645,
+    "title": "Mi 9T",
+    "url": "mi-9t",
+    "brand": "",
+    "img": "",
+    "upCid": 638,
+    "visible": 1,
+    "sortId": 7
+  },
+  {
+    "id": 680,
+    "title": "Honor 9X Pro",
+    "url": "honor-9x-pro",
+    "brand": "",
+    "img": "",
+    "upCid": 541,
+    "visible": 1,
+    "sortId": 7
+  },
+  {
+    "id": 708,
+    "title": "Galaxy M13",
+    "url": "galaxy-m13",
+    "brand": "",
+    "img": "",
+    "upCid": 687,
+    "visible": 1,
+    "sortId": 7
+  },
+  {
+    "id": 722,
+    "title": "Redmi 10",
+    "url": "redmi-10",
+    "brand": "",
+    "img": "",
+    "upCid": 671,
+    "visible": 1,
+    "sortId": 7
+  },
+  {
+    "id": 761,
+    "title": "Galaxy Note 20 Ultra 5G",
+    "url": "galaxy-note-20-ultra-5g",
+    "brand": "",
+    "img": "",
+    "upCid": 613,
+    "visible": 1,
+    "sortId": 7
+  },
+  {
+    "id": 768,
+    "title": "iPhone 15 Pro",
+    "url": "iphone-15-pro",
+    "brand": "",
+    "img": "",
+    "upCid": 501,
+    "visible": 1,
+    "sortId": 7
+  },
+  {
+    "id": 780,
+    "title": "Y02s",
+    "url": "y02s",
+    "brand": "",
+    "img": "",
+    "upCid": 773,
+    "visible": 1,
+    "sortId": 7
+  },
+  {
+    "id": 830,
+    "title": "iPad 9 (2021)",
+    "url": "ipad-9-2021",
+    "brand": "",
+    "img": "",
+    "upCid": 823,
+    "visible": 1,
+    "sortId": 7
+  },
+  {
+    "id": 841,
+    "title": "Samsung Galaxy Watch2 Active 40mm",
+    "url": "samsung-galaxy-watch2-active-40mm",
+    "brand": "",
+    "img": "",
+    "upCid": 834,
+    "visible": 1,
+    "sortId": 7
+  },
+  {
+    "id": 849,
+    "title": "Redmi Note 13",
+    "url": "redmi-note-13",
+    "brand": "",
+    "img": "",
+    "upCid": 650,
+    "visible": 1,
+    "sortId": 7
+  },
+  {
+    "id": 854,
+    "title": "Galaxy A41",
+    "url": "galaxy-a41",
+    "brand": "",
+    "img": "",
+    "upCid": 604,
+    "visible": 1,
+    "sortId": 7
+  },
+  {
+    "id": 888,
+    "title": "Nova 10",
+    "url": "nova-10",
+    "brand": "",
+    "img": "",
+    "upCid": 553,
+    "visible": 1,
+    "sortId": 7
+  },
+  {
+    "id": 896,
+    "title": "Poco",
+    "url": "poco",
+    "brand": "",
+    "img": "https://cdn.myrepair.app/clients/mobilmajak/img/SQGKRZU33TJB-pocologo.png",
+    "upCid": 500,
+    "visible": 1,
+    "sortId": 7
+  },
+  {
+    "id": 944,
+    "title": "Galaxy S23+",
+    "url": "galaxy-s23",
+    "brand": "",
+    "img": "",
+    "upCid": 618,
+    "visible": 1,
+    "sortId": 7
+  },
+  {
+    "id": 1434,
+    "title": "iPad Pro 12,9\" (2022)",
+    "url": "ipad-pro-129-2022",
+    "brand": "",
+    "img": "",
+    "upCid": 930,
+    "visible": 1,
+    "sortId": 7
+  },
+  {
+    "id": 1442,
+    "title": "Apple Watch SE (2022) 40mm",
+    "url": "apple-watch-se-2022-40mm",
+    "brand": "",
+    "img": "",
+    "upCid": 1437,
+    "visible": 1,
+    "sortId": 7
+  },
+  {
+    "id": 1482,
+    "title": "Samsung Galaxy Tab S8",
+    "url": "samsung-galaxy-tab-s8",
+    "brand": "",
+    "img": "",
+    "upCid": 1475,
+    "visible": 1,
+    "sortId": 7
+  },
+  {
+    "id": 1495,
+    "title": "Edge 30 Neo",
+    "url": "edge-30-neo",
+    "brand": "",
+    "img": "",
+    "upCid": 1490,
+    "visible": 1,
+    "sortId": 7
+  },
+  {
+    "id": 1528,
+    "title": "G6X",
+    "url": "g6x",
+    "brand": "",
+    "img": "",
+    "upCid": 1507,
+    "visible": 1,
+    "sortId": 7
+  },
+  {
+    "id": 1579,
+    "title": "X7",
+    "url": "x7",
+    "brand": "",
+    "img": "",
+    "upCid": 1559,
+    "visible": 1,
+    "sortId": 7
+  },
+  {
+    "id": 1581,
+    "title": "F4",
+    "url": "f4-1",
+    "brand": "",
+    "img": "",
+    "upCid": 1548,
+    "visible": 1,
+    "sortId": 7
+  },
+  {
+    "id": 1585,
+    "title": "M6",
+    "url": "m6",
+    "brand": "",
+    "img": "",
+    "upCid": 1551,
+    "visible": 1,
+    "sortId": 7
+  },
+  {
+    "id": 546,
+    "title": "Honor View",
+    "url": "honor-view",
+    "brand": "",
+    "img": "",
+    "upCid": 516,
+    "visible": 1,
+    "sortId": 8
+  },
+  {
+    "id": 566,
+    "title": "P20",
+    "url": "p20",
+    "brand": "",
+    "img": "",
+    "upCid": 558,
+    "visible": 1,
+    "sortId": 8
+  },
+  {
+    "id": 583,
+    "title": "Y7 Prime 2018",
+    "url": "y7-prime-2018",
+    "brand": "",
+    "img": "",
+    "upCid": 575,
+    "visible": 1,
+    "sortId": 8
+  },
+  {
+    "id": 646,
+    "title": "Mi A1",
+    "url": "mi-a1",
+    "brand": "",
+    "img": "",
+    "upCid": 638,
+    "visible": 1,
+    "sortId": 8
+  },
+  {
+    "id": 709,
+    "title": "Galaxy M52 5G",
+    "url": "galaxy-m52-5g",
+    "brand": "",
+    "img": "",
+    "upCid": 687,
+    "visible": 1,
+    "sortId": 8
+  },
+  {
+    "id": 723,
+    "title": "Redmi 10 5G",
+    "url": "redmi-10-5g",
+    "brand": "",
+    "img": "",
+    "upCid": 671,
+    "visible": 1,
+    "sortId": 8
+  },
+  {
+    "id": 762,
+    "title": "Galaxy S23",
+    "url": "galaxy-s23-1",
+    "brand": "",
+    "img": "",
+    "upCid": 618,
+    "visible": 1,
+    "sortId": 8
+  },
+  {
+    "id": 767,
+    "title": "iPhone 15 Plus",
+    "url": "iphone-15-plus",
+    "brand": "",
+    "img": "",
+    "upCid": 501,
+    "visible": 1,
+    "sortId": 8
+  },
+  {
+    "id": 781,
+    "title": "Y77 5G",
+    "url": "y77-5g",
+    "brand": "",
+    "img": "",
+    "upCid": 773,
+    "visible": 1,
+    "sortId": 8
+  },
+  {
+    "id": 831,
+    "title": "iPad 10 (2022)",
+    "url": "ipad-10-2022",
+    "brand": "",
+    "img": "",
+    "upCid": 823,
+    "visible": 1,
+    "sortId": 8
+  },
+  {
+    "id": 842,
+    "title": "Samsung Galaxy Watch2 Active 44mm",
+    "url": "samsung-galaxy-watch2-active-44mm",
+    "brand": "",
+    "img": "",
+    "upCid": 834,
+    "visible": 1,
+    "sortId": 8
+  },
+  {
+    "id": 855,
+    "title": "Galaxy A71",
+    "url": "galaxy-a71",
+    "brand": "",
+    "img": "",
+    "upCid": 604,
+    "visible": 1,
+    "sortId": 8
+  },
+  {
+    "id": 862,
+    "title": "Redmi Note 13 5G",
+    "url": "redmi-note-13-5g",
+    "brand": "",
+    "img": "",
+    "upCid": 650,
+    "visible": 1,
+    "sortId": 8
+  },
+  {
+    "id": 889,
+    "title": "Nova 10 SE",
+    "url": "nova-10-se",
+    "brand": "",
+    "img": "",
+    "upCid": 553,
+    "visible": 1,
+    "sortId": 8
+  },
+  {
+    "id": 1436,
+    "title": "iPad Pro 11\" (2020)",
+    "url": "ipad-pro-11-2020",
+    "brand": "",
+    "img": "",
+    "upCid": 930,
+    "visible": 1,
+    "sortId": 8
+  },
+  {
+    "id": 1443,
+    "title": "Apple Watch SE (2022) 44mm",
+    "url": "apple-watch-se-2022-44mm",
+    "brand": "",
+    "img": "",
+    "upCid": 1437,
+    "visible": 1,
+    "sortId": 8
+  },
+  {
+    "id": 1483,
+    "title": "Samsung Galaxy Tab S8+",
+    "url": "samsung-galaxy-tab-s8-1",
+    "brand": "",
+    "img": "",
+    "upCid": 1475,
+    "visible": 1,
+    "sortId": 8
+  },
+  {
+    "id": 1489,
+    "title": "Motorola",
+    "url": "motorola",
+    "brand": "",
+    "img": "",
+    "upCid": 500,
+    "visible": 1,
+    "sortId": 8
+  },
+  {
+    "id": 1496,
+    "title": "Edge 30 Fusion",
+    "url": "edge-30-fusion",
+    "brand": "",
+    "img": "",
+    "upCid": 1490,
+    "visible": 1,
+    "sortId": 8
+  },
+  {
+    "id": 1532,
+    "title": "G7X",
+    "url": "g7x",
+    "brand": "",
+    "img": "",
+    "upCid": 1507,
+    "visible": 1,
+    "sortId": 8
+  },
+  {
+    "id": 1580,
+    "title": "X7 Pro",
+    "url": "x7-pro",
+    "brand": "",
+    "img": "",
+    "upCid": 1559,
+    "visible": 1,
+    "sortId": 8
+  },
+  {
+    "id": 1586,
+    "title": "M6 Pro",
+    "url": "m6-pro",
+    "brand": "",
+    "img": "",
+    "upCid": 1551,
+    "visible": 1,
+    "sortId": 8
+  },
+  {
+    "id": 501,
+    "title": "Apple",
+    "url": "apple",
+    "brand": "",
+    "img": "https://cdn.myrepair.app/clients/mobilmajak/img/SWY7MZF5XIHV-Apple-Logo.png",
+    "upCid": 500,
+    "visible": 1,
+    "sortId": 9
+  },
+  {
+    "id": 567,
+    "title": "P30 Lite",
+    "url": "p30-lite",
+    "brand": "",
+    "img": "",
+    "upCid": 558,
+    "visible": 1,
+    "sortId": 9
+  },
+  {
+    "id": 584,
+    "title": "Y7",
+    "url": "y7",
+    "brand": "",
+    "img": "",
+    "upCid": 575,
+    "visible": 1,
+    "sortId": 9
+  },
+  {
+    "id": 647,
+    "title": "Mi A2 Lite",
+    "url": "mi-a2-lite",
+    "brand": "",
+    "img": "",
+    "upCid": 638,
+    "visible": 1,
+    "sortId": 9
+  },
+  {
+    "id": 710,
+    "title": "Galaxy M31s",
+    "url": "galaxy-m31s",
+    "brand": "",
+    "img": "",
+    "upCid": 687,
+    "visible": 1,
+    "sortId": 9
+  },
+  {
+    "id": 724,
+    "title": "Redmi 10 2022",
+    "url": "redmi-10-2022",
+    "brand": "",
+    "img": "",
+    "upCid": 671,
+    "visible": 1,
+    "sortId": 9
+  },
+  {
+    "id": 732,
+    "title": "Galaxy S22 Ultra 5G",
+    "url": "galaxy-s22-ultra-5g",
+    "brand": "",
+    "img": "",
+    "upCid": 618,
+    "visible": 1,
+    "sortId": 9
+  },
+  {
+    "id": 766,
+    "title": "iPhone 15",
+    "url": "iphone-15",
+    "brand": "",
+    "img": "",
+    "upCid": 501,
+    "visible": 1,
+    "sortId": 9
+  },
+  {
+    "id": 782,
+    "title": "Y30 5G",
+    "url": "y30-5g",
+    "brand": "",
+    "img": "",
+    "upCid": 773,
+    "visible": 1,
+    "sortId": 9
+  },
+  {
+    "id": 843,
+    "title": "Samsung Galaxy Watch6 40mm",
+    "url": "samsung-galaxy-watch6-40mm",
+    "brand": "",
+    "img": "",
+    "upCid": 834,
+    "visible": 1,
+    "sortId": 9
+  },
+  {
+    "id": 856,
+    "title": "Galaxy A52",
+    "url": "galaxy-a52",
+    "brand": "",
+    "img": "",
+    "upCid": 604,
+    "visible": 1,
+    "sortId": 9
+  },
+  {
+    "id": 863,
+    "title": "Redmi Note 13 Pro",
+    "url": "redmi-note-13-pro",
+    "brand": "",
+    "img": "",
+    "upCid": 650,
+    "visible": 1,
+    "sortId": 9
+  },
+  {
+    "id": 867,
+    "title": "Honor 70",
+    "url": "honor-70",
+    "brand": "",
+    "img": "",
+    "upCid": 516,
+    "visible": 1,
+    "sortId": 9
+  },
+  {
+    "id": 890,
+    "title": "Nova 10 Pro",
+    "url": "nova-10-pro",
+    "brand": "",
+    "img": "",
+    "upCid": 553,
+    "visible": 1,
+    "sortId": 9
+  },
+  {
+    "id": 931,
+    "title": "iPad Pro 9,7\"",
+    "url": "ipad-pro-97",
+    "brand": "",
+    "img": "",
+    "upCid": 930,
+    "visible": 1,
+    "sortId": 9
+  },
+  {
+    "id": 1444,
+    "title": "Apple Watch S6 40mm",
+    "url": "apple-watch-s6-40mm",
+    "brand": "",
+    "img": "",
+    "upCid": 1437,
+    "visible": 1,
+    "sortId": 9
+  },
+  {
+    "id": 1484,
+    "title": "Samsung Galaxy Tab S8 Ultra",
+    "url": "samsung-galaxy-tab-s8-ultra",
+    "brand": "",
+    "img": "",
+    "upCid": 1475,
+    "visible": 1,
+    "sortId": 9
+  },
+  {
+    "id": 1497,
+    "title": "Edge 30 Pro 5G",
+    "url": "edge-30-pro-5g",
+    "brand": "",
+    "img": "",
+    "upCid": 1490,
+    "visible": 1,
+    "sortId": 9
+  },
+  {
+    "id": 1535,
+    "title": "G8X",
+    "url": "g8x",
+    "brand": "",
+    "img": "",
+    "upCid": 1507,
+    "visible": 1,
+    "sortId": 9
+  },
+  {
+    "id": 1583,
+    "title": "X3",
+    "url": "x3-1",
+    "brand": "",
+    "img": "",
+    "upCid": 1559,
+    "visible": 1,
+    "sortId": 9
+  },
+  {
+    "id": 568,
+    "title": "P30 Pro",
+    "url": "p30-pro",
+    "brand": "",
+    "img": "",
+    "upCid": 558,
+    "visible": 1,
+    "sortId": 10
+  },
+  {
+    "id": 648,
+    "title": "Mi A2",
+    "url": "mi-a2",
+    "brand": "",
+    "img": "",
+    "upCid": 638,
+    "visible": 1,
+    "sortId": 10
+  },
+  {
+    "id": 725,
+    "title": "Redmi 10C",
+    "url": "redmi-10c",
+    "brand": "",
+    "img": "",
+    "upCid": 671,
+    "visible": 1,
+    "sortId": 10
+  },
+  {
+    "id": 740,
+    "title": "iPhone 14 Pro Max",
+    "url": "iphone-14-pro-max",
+    "brand": "",
+    "img": "",
+    "upCid": 501,
+    "visible": 1,
+    "sortId": 10
+  },
+  {
+    "id": 759,
+    "title": "Galaxy M53 5G",
+    "url": "galaxy-m53-5g",
+    "brand": "",
+    "img": "",
+    "upCid": 687,
+    "visible": 1,
+    "sortId": 10
+  },
+  {
+    "id": 783,
+    "title": "Y55",
+    "url": "y55",
+    "brand": "",
+    "img": "",
+    "upCid": 773,
+    "visible": 1,
+    "sortId": 10
+  },
+  {
+    "id": 844,
+    "title": "Samsung Galaxy Watch6 44mm",
+    "url": "samsung-galaxy-watch6-44mm",
+    "brand": "",
+    "img": "",
+    "upCid": 834,
+    "visible": 1,
+    "sortId": 10
+  },
+  {
+    "id": 857,
+    "title": "Galaxy A42",
+    "url": "galaxy-a42",
+    "brand": "",
+    "img": "",
+    "upCid": 604,
+    "visible": 1,
+    "sortId": 10
+  },
+  {
+    "id": 864,
+    "title": "Redmi Note 13 Pro 5G",
+    "url": "redmi-note-13-pro-5g",
+    "brand": "",
+    "img": "",
+    "upCid": 650,
+    "visible": 1,
+    "sortId": 10
+  },
+  {
+    "id": 870,
+    "title": "Honor 50",
+    "url": "honor-50",
+    "brand": "",
+    "img": "",
+    "upCid": 516,
+    "visible": 1,
+    "sortId": 10
+  },
+  {
+    "id": 891,
+    "title": "Nova Y70",
+    "url": "nova-y70",
+    "brand": "",
+    "img": "",
+    "upCid": 553,
+    "visible": 1,
+    "sortId": 10
+  },
+  {
+    "id": 932,
+    "title": "iPad Pro 10,5\"",
+    "url": "ipad-pro-105",
+    "brand": "",
+    "img": "",
+    "upCid": 930,
+    "visible": 1,
+    "sortId": 10
+  },
+  {
+    "id": 943,
+    "title": "Galaxy S22+ 5G",
+    "url": "galaxy-s22-5g",
+    "brand": "",
+    "img": "",
+    "upCid": 618,
+    "visible": 1,
+    "sortId": 10
+  },
+  {
+    "id": 1445,
+    "title": "Apple Watch S6 44mm",
+    "url": "apple-watch-s6-44mm",
+    "brand": "",
+    "img": "",
+    "upCid": 1437,
+    "visible": 1,
+    "sortId": 10
+  },
+  {
+    "id": 1485,
+    "title": "Samsung Galaxy Tab S9 FE+",
+    "url": "samsung-galaxy-tab-s9-fe",
+    "brand": "",
+    "img": "",
+    "upCid": 1475,
+    "visible": 1,
+    "sortId": 10
+  },
+  {
+    "id": 1498,
+    "title": "Edge 30 Ultra",
+    "url": "edge-30-ultra",
+    "brand": "",
+    "img": "",
+    "upCid": 1490,
+    "visible": 1,
+    "sortId": 10
+  },
+  {
+    "id": 1584,
+    "title": "X3 Pro",
+    "url": "x3-pro-1",
+    "brand": "",
+    "img": "",
+    "upCid": 1559,
+    "visible": 1,
+    "sortId": 10
+  },
+  {
+    "id": 569,
+    "title": "P30",
+    "url": "p30",
+    "brand": "",
+    "img": "",
+    "upCid": 558,
+    "visible": 1,
+    "sortId": 11
+  },
+  {
+    "id": 649,
+    "title": "Mi A3",
+    "url": "mi-a3",
+    "brand": "",
+    "img": "",
+    "upCid": 638,
+    "visible": 1,
+    "sortId": 11
+  },
+  {
+    "id": 730,
+    "title": "Galaxy S22 5G",
+    "url": "galaxy-s22-5g-1",
+    "brand": "",
+    "img": "",
+    "upCid": 618,
+    "visible": 1,
+    "sortId": 11
+  },
+  {
+    "id": 739,
+    "title": "iPhone 14 Pro",
+    "url": "iphone-14-pro",
+    "brand": "",
+    "img": "",
+    "upCid": 501,
+    "visible": 1,
+    "sortId": 11
+  },
+  {
+    "id": 746,
+    "title": "Redmi A2",
+    "url": "redmi-a2",
+    "brand": "",
+    "img": "",
+    "upCid": 671,
+    "visible": 1,
+    "sortId": 11
+  },
+  {
+    "id": 784,
+    "title": "Y75 5G",
+    "url": "y75-5g",
+    "brand": "",
+    "img": "",
+    "upCid": 773,
+    "visible": 1,
+    "sortId": 11
+  },
+  {
+    "id": 845,
+    "title": "Samsung Galaxy Watch6 Classic 47mm",
+    "url": "samsung-galaxy-watch6-classic-47mm",
+    "brand": "",
+    "img": "",
+    "upCid": 834,
+    "visible": 1,
+    "sortId": 11
+  },
+  {
+    "id": 858,
+    "title": "Galaxy A52s",
+    "url": "galaxy-a52s",
+    "brand": "",
+    "img": "",
+    "upCid": 604,
+    "visible": 1,
+    "sortId": 11
+  },
+  {
+    "id": 865,
+    "title": "Redmi Note 13 Pro+",
+    "url": "redmi-note-13-pro-1",
+    "brand": "",
+    "img": "",
+    "upCid": 650,
+    "visible": 1,
+    "sortId": 11
+  },
+  {
+    "id": 873,
+    "title": "Honor 90",
+    "url": "honor-90",
+    "brand": "",
+    "img": "",
+    "upCid": 516,
+    "visible": 1,
+    "sortId": 11
+  },
+  {
+    "id": 892,
+    "title": "Nova Y61",
+    "url": "nova-y61",
+    "brand": "",
+    "img": "",
+    "upCid": 553,
+    "visible": 1,
+    "sortId": 11
+  },
+  {
+    "id": 1446,
+    "title": "Apple Watch S7 41mm",
+    "url": "apple-watch-s7-41mm",
+    "brand": "",
+    "img": "",
+    "upCid": 1437,
+    "visible": 1,
+    "sortId": 11
+  },
+  {
+    "id": 1486,
+    "title": "Samsung Galaxy Tab S9 Ultra",
+    "url": "samsung-galaxy-tab-s9-ultra",
+    "brand": "",
+    "img": "",
+    "upCid": 1475,
+    "visible": 1,
+    "sortId": 11
+  },
+  {
+    "id": 1499,
+    "title": "Edge 40",
+    "url": "edge-40",
+    "brand": "",
+    "img": "",
+    "upCid": 1490,
+    "visible": 1,
+    "sortId": 11
+  },
+  {
+    "id": 570,
+    "title": "P8 Lite",
+    "url": "p8-lite",
+    "brand": "",
+    "img": "",
+    "upCid": 558,
+    "visible": 1,
+    "sortId": 12
+  },
+  {
+    "id": 701,
+    "title": "Galaxy S21 Ultra 5G",
+    "url": "galaxy-s21-ultra-5g",
+    "brand": "",
+    "img": "",
+    "upCid": 618,
+    "visible": 1,
+    "sortId": 12
+  },
+  {
+    "id": 738,
+    "title": "iPhone 14 Plus",
+    "url": "iphone-14-plus",
+    "brand": "",
+    "img": "",
+    "upCid": 501,
+    "visible": 1,
+    "sortId": 12
+  },
+  {
+    "id": 747,
+    "title": "Redmi 12C",
+    "url": "redmi-12c",
+    "brand": "",
+    "img": "",
+    "upCid": 671,
+    "visible": 1,
+    "sortId": 12
+  },
+  {
+    "id": 785,
+    "title": "Y56 5G",
+    "url": "y56-5g",
+    "brand": "",
+    "img": "",
+    "upCid": 773,
+    "visible": 1,
+    "sortId": 12
+  },
+  {
+    "id": 859,
+    "title": "Galaxy A53",
+    "url": "galaxy-a53",
+    "brand": "",
+    "img": "",
+    "upCid": 604,
+    "visible": 1,
+    "sortId": 12
+  },
+  {
+    "id": 866,
+    "title": "Redmi Note 13 Pro+ 5G",
+    "url": "redmi-note-13-pro-5g-1",
+    "brand": "",
+    "img": "",
+    "upCid": 650,
+    "visible": 1,
+    "sortId": 12
+  },
+  {
+    "id": 876,
+    "title": "Honor Magic",
+    "url": "honor-magic",
+    "brand": "",
+    "img": "",
+    "upCid": 516,
+    "visible": 1,
+    "sortId": 12
+  },
+  {
+    "id": 893,
+    "title": "Nova Y90",
+    "url": "nova-y90",
+    "brand": "",
+    "img": "",
+    "upCid": 553,
+    "visible": 1,
+    "sortId": 12
+  },
+  {
+    "id": 1419,
+    "title": "Mi Note 10 Pro",
+    "url": "mi-note-10-pro",
+    "brand": "",
+    "img": "",
+    "upCid": 638,
+    "visible": 1,
+    "sortId": 12
+  },
+  {
+    "id": 1447,
+    "title": "Apple Watch S7 45mm",
+    "url": "apple-watch-s7-45mm",
+    "brand": "",
+    "img": "",
+    "upCid": 1437,
+    "visible": 1,
+    "sortId": 12
+  },
+  {
+    "id": 1487,
+    "title": "Samsung Galaxy Tab S9 FE",
+    "url": "samsung-galaxy-tab-s9-fe-1",
+    "brand": "",
+    "img": "",
+    "upCid": 1475,
+    "visible": 1,
+    "sortId": 12
+  },
+  {
+    "id": 1500,
+    "title": "Edge 40 Neo",
+    "url": "edge-40-neo",
+    "brand": "",
+    "img": "",
+    "upCid": 1490,
+    "visible": 1,
+    "sortId": 12
+  },
+  {
+    "id": 571,
+    "title": "P9 Lite 2017",
+    "url": "p9-lite-2017",
+    "brand": "",
+    "img": "",
+    "upCid": 558,
+    "visible": 1,
+    "sortId": 13
+  },
+  {
+    "id": 651,
+    "title": "Redmi Note 7",
+    "url": "redmi-note-7",
+    "brand": "",
+    "img": "",
+    "upCid": 650,
+    "visible": 1,
+    "sortId": 13
+  },
+  {
+    "id": 663,
+    "title": "Note 10 Lite",
+    "url": "note-10-lite",
+    "brand": "",
+    "img": "",
+    "upCid": 638,
+    "visible": 1,
+    "sortId": 13
+  },
+  {
+    "id": 737,
+    "title": "iPhone 14",
+    "url": "iphone-14",
+    "brand": "",
+    "img": "",
+    "upCid": 501,
+    "visible": 1,
+    "sortId": 13
+  },
+  {
+    "id": 748,
+    "title": "Redmi 12",
+    "url": "redmi-12",
+    "brand": "",
+    "img": "",
+    "upCid": 671,
+    "visible": 1,
+    "sortId": 13
+  },
+  {
+    "id": 765,
+    "title": "Galaxy S21 FE 5G",
+    "url": "galaxy-s21-fe-5g",
+    "brand": "",
+    "img": "",
+    "upCid": 618,
+    "visible": 1,
+    "sortId": 13
+  },
+  {
+    "id": 786,
+    "title": "Y100A",
+    "url": "y100a",
+    "brand": "",
+    "img": "",
+    "upCid": 773,
+    "visible": 1,
+    "sortId": 13
+  },
+  {
+    "id": 860,
+    "title": "Galaxy A35",
+    "url": "galaxy-a35",
+    "brand": "",
+    "img": "",
+    "upCid": 604,
+    "visible": 1,
+    "sortId": 13
+  },
+  {
+    "id": 882,
+    "title": "Honor 200",
+    "url": "honor-200",
+    "brand": "",
+    "img": "",
+    "upCid": 516,
+    "visible": 1,
+    "sortId": 13
+  },
+  {
+    "id": 894,
+    "title": "Nova 11i",
+    "url": "nova-11i",
+    "brand": "",
+    "img": "",
+    "upCid": 553,
+    "visible": 1,
+    "sortId": 13
+  },
+  {
+    "id": 1448,
+    "title": "Apple Watch S8 41mm",
+    "url": "apple-watch-s8-41mm",
+    "brand": "",
+    "img": "",
+    "upCid": 1437,
+    "visible": 1,
+    "sortId": 13
+  },
+  {
+    "id": 1501,
+    "title": "Edge 40 Pro",
+    "url": "edge-40-pro",
+    "brand": "",
+    "img": "",
+    "upCid": 1490,
+    "visible": 1,
+    "sortId": 13
+  },
+  {
+    "id": 572,
+    "title": "P9 Lite mini",
+    "url": "p9-lite-mini",
+    "brand": "",
+    "img": "",
+    "upCid": 558,
+    "visible": 1,
+    "sortId": 14
+  },
+  {
+    "id": 605,
+    "title": "Galaxy A10",
+    "url": "galaxy-a10",
+    "brand": "",
+    "img": "",
+    "upCid": 604,
+    "visible": 1,
+    "sortId": 14
+  },
+  {
+    "id": 652,
+    "title": "Redmi Note 8 Pro",
+    "url": "redmi-note-8-pro",
+    "brand": "",
+    "img": "",
+    "upCid": 650,
+    "visible": 1,
+    "sortId": 14
+  },
+  {
+    "id": 664,
+    "title": "Note 10 Pro",
+    "url": "note-10-pro",
+    "brand": "",
+    "img": "",
+    "upCid": 638,
+    "visible": 1,
+    "sortId": 14
+  },
+  {
+    "id": 736,
+    "title": "iPhone 13 Pro Max",
+    "url": "iphone-13-pro-max",
+    "brand": "",
+    "img": "",
+    "upCid": 501,
+    "visible": 1,
+    "sortId": 14
+  },
+  {
+    "id": 787,
+    "title": "Y02t",
+    "url": "y02t",
+    "brand": "",
+    "img": "",
+    "upCid": 773,
+    "visible": 1,
+    "sortId": 14
+  },
+  {
+    "id": 942,
+    "title": "Galaxy S21+",
+    "url": "galaxy-s21",
+    "brand": "",
+    "img": "",
+    "upCid": 618,
+    "visible": 1,
+    "sortId": 14
+  },
+  {
+    "id": 1449,
+    "title": "Apple Watch S8 45mm",
+    "url": "apple-watch-s8-45mm",
+    "brand": "",
+    "img": "",
+    "upCid": 1437,
+    "visible": 1,
+    "sortId": 14
+  },
+  {
+    "id": 1502,
+    "title": "Edge 50 Neo",
+    "url": "edge-50-neo",
+    "brand": "",
+    "img": "",
+    "upCid": 1490,
+    "visible": 1,
+    "sortId": 14
+  },
+  {
+    "id": 573,
+    "title": "P9 Lite",
+    "url": "p9-lite",
+    "brand": "",
+    "img": "",
+    "upCid": 558,
+    "visible": 1,
+    "sortId": 15
+  },
+  {
+    "id": 665,
+    "title": "Note 10",
+    "url": "note-10",
+    "brand": "",
+    "img": "",
+    "upCid": 638,
+    "visible": 1,
+    "sortId": 15
+  },
+  {
+    "id": 668,
+    "title": "Redmi Note 8T",
+    "url": "redmi-note-8t",
+    "brand": "",
+    "img": "",
+    "upCid": 650,
+    "visible": 1,
+    "sortId": 15
+  },
+  {
+    "id": 702,
+    "title": "Galaxy S21 5G",
+    "url": "galaxy-s21-5g",
+    "brand": "",
+    "img": "",
+    "upCid": 618,
+    "visible": 1,
+    "sortId": 15
+  },
+  {
+    "id": 735,
+    "title": "iPhone 13 Pro",
+    "url": "iphone-13-pro",
+    "brand": "",
+    "img": "",
+    "upCid": 501,
+    "visible": 1,
+    "sortId": 15
+  },
+  {
+    "id": 788,
+    "title": "Y03",
+    "url": "y03",
+    "brand": "",
+    "img": "",
+    "upCid": 773,
+    "visible": 1,
+    "sortId": 15
+  },
+  {
+    "id": 861,
+    "title": "Galaxy A52 5G",
+    "url": "galaxy-a52-5g",
+    "brand": "",
+    "img": "",
+    "upCid": 604,
+    "visible": 1,
+    "sortId": 15
+  },
+  {
+    "id": 1503,
+    "title": "Edge 50 Pro",
+    "url": "edge-50-pro",
+    "brand": "",
+    "img": "",
+    "upCid": 1490,
+    "visible": 1,
+    "sortId": 15
+  },
+  {
+    "id": 574,
+    "title": "P9",
+    "url": "p9",
+    "brand": "",
+    "img": "",
+    "upCid": 558,
+    "visible": 1,
+    "sortId": 16
+  },
+  {
+    "id": 606,
+    "title": "Galaxy A04s",
+    "url": "galaxy-a04s",
+    "brand": "",
+    "img": "",
+    "upCid": 604,
+    "visible": 1,
+    "sortId": 16
+  },
+  {
+    "id": 666,
+    "title": "Mi 10T Pro",
+    "url": "mi-10t-pro",
+    "brand": "",
+    "img": "",
+    "upCid": 638,
+    "visible": 1,
+    "sortId": 16
+  },
+  {
+    "id": 669,
+    "title": "Redmi Note 9S/9 Pro",
+    "url": "redmi-note-9s9-pro",
+    "brand": "",
+    "img": "",
+    "upCid": 650,
+    "visible": 1,
+    "sortId": 16
+  },
+  {
+    "id": 734,
+    "title": "iPhone 13 mini",
+    "url": "iphone-13-mini",
+    "brand": "",
+    "img": "",
+    "upCid": 501,
+    "visible": 1,
+    "sortId": 16
+  },
+  {
+    "id": 789,
+    "title": "Y100 5G",
+    "url": "y100-5g",
+    "brand": "",
+    "img": "",
+    "upCid": 773,
+    "visible": 1,
+    "sortId": 16
+  },
+  {
+    "id": 945,
+    "title": "Galaxy S20 FE 5G",
+    "url": "galaxy-s20-fe-5g",
+    "brand": "",
+    "img": "",
+    "upCid": 618,
+    "visible": 1,
+    "sortId": 16
+  },
+  {
+    "id": 607,
+    "title": "Galaxy A03s",
+    "url": "galaxy-a03s",
+    "brand": "",
+    "img": "",
+    "upCid": 604,
+    "visible": 1,
+    "sortId": 17
+  },
+  {
+    "id": 667,
+    "title": "Mi 10T",
+    "url": "mi-10t",
+    "brand": "",
+    "img": "",
+    "upCid": 638,
+    "visible": 1,
+    "sortId": 17
+  },
+  {
+    "id": 670,
+    "title": "Redmi Note 9",
+    "url": "redmi-note-9",
+    "brand": "",
+    "img": "",
+    "upCid": 650,
+    "visible": 1,
+    "sortId": 17
+  },
+  {
+    "id": 692,
+    "title": "Galaxy S20 FE",
+    "url": "galaxy-s20-fe",
+    "brand": "",
+    "img": "",
+    "upCid": 618,
+    "visible": 1,
+    "sortId": 17
+  },
+  {
+    "id": 733,
+    "title": "iPhone 13",
+    "url": "iphone-13",
+    "brand": "",
+    "img": "",
+    "upCid": 501,
+    "visible": 1,
+    "sortId": 17
+  },
+  {
+    "id": 790,
+    "title": "Y27s",
+    "url": "y27s",
+    "brand": "",
+    "img": "",
+    "upCid": 773,
+    "visible": 1,
+    "sortId": 17
+  },
+  {
+    "id": 895,
+    "title": "P Smart 2021",
+    "url": "p-smart-2021",
+    "brand": "",
+    "img": "",
+    "upCid": 558,
+    "visible": 1,
+    "sortId": 17
+  },
+  {
+    "id": 689,
+    "title": "Galaxy S20 Ultra 5G",
+    "url": "galaxy-s20-ultra-5g",
+    "brand": "",
+    "img": "",
+    "upCid": 618,
+    "visible": 1,
+    "sortId": 18
+  },
+  {
+    "id": 696,
+    "title": "P40 Lite E",
+    "url": "p40-lite-e",
+    "brand": "",
+    "img": "",
+    "upCid": 558,
+    "visible": 1,
+    "sortId": 18
+  },
+  {
+    "id": 705,
+    "title": "Redmi Note 8",
+    "url": "redmi-note-8",
+    "brand": "",
+    "img": "",
+    "upCid": 650,
+    "visible": 1,
+    "sortId": 18
+  },
+  {
+    "id": 729,
+    "title": "iPhone 12 pro max",
+    "url": "iphone-12-pro-max",
+    "brand": "",
+    "img": "",
+    "upCid": 501,
+    "visible": 1,
+    "sortId": 18
+  },
+  {
+    "id": 791,
+    "title": "Y200 5G",
+    "url": "y200-5g",
+    "brand": "",
+    "img": "",
+    "upCid": 773,
+    "visible": 1,
+    "sortId": 18
+  },
+  {
+    "id": 897,
+    "title": "Galaxy A30S",
+    "url": "galaxy-a30s",
+    "brand": "",
+    "img": "",
+    "upCid": 604,
+    "visible": 1,
+    "sortId": 18
+  },
+  {
+    "id": 1450,
+    "title": "12",
+    "url": "12",
+    "brand": "",
+    "img": "",
+    "upCid": 638,
+    "visible": 1,
+    "sortId": 18
+  },
+  {
+    "id": 697,
+    "title": "P40 Lite",
+    "url": "p40-lite",
+    "brand": "",
+    "img": "",
+    "upCid": 558,
+    "visible": 1,
+    "sortId": 19
+  },
+  {
+    "id": 728,
+    "title": "iPhone 12 pro",
+    "url": "iphone-12-pro",
+    "brand": "",
+    "img": "",
+    "upCid": 501,
+    "visible": 1,
+    "sortId": 19
+  },
+  {
+    "id": 792,
+    "title": "Y17s",
+    "url": "y17s",
+    "brand": "",
+    "img": "",
+    "upCid": 773,
+    "visible": 1,
+    "sortId": 19
+  },
+  {
+    "id": 898,
+    "title": "Galaxy A31",
+    "url": "galaxy-a31",
+    "brand": "",
+    "img": "",
+    "upCid": 604,
+    "visible": 1,
+    "sortId": 19
+  },
+  {
+    "id": 940,
+    "title": "Galaxy S20+",
+    "url": "galaxy-s20",
+    "brand": "",
+    "img": "",
+    "upCid": 618,
+    "visible": 1,
+    "sortId": 19
+  },
+  {
+    "id": 1451,
+    "title": "12X",
+    "url": "12x",
+    "brand": "",
+    "img": "",
+    "upCid": 638,
+    "visible": 1,
+    "sortId": 19
+  },
+  {
+    "id": 1474,
+    "title": "Redmi Note 9T",
+    "url": "redmi-note-9t",
+    "brand": "",
+    "img": "",
+    "upCid": 650,
+    "visible": 1,
+    "sortId": 19
+  },
+  {
+    "id": 693,
+    "title": "Galaxy S20",
+    "url": "galaxy-s20-1",
+    "brand": "",
+    "img": "",
+    "upCid": 618,
+    "visible": 1,
+    "sortId": 20
+  },
+  {
+    "id": 698,
+    "title": "P40 Pro 5G",
+    "url": "p40-pro-5g",
+    "brand": "",
+    "img": "",
+    "upCid": 558,
+    "visible": 1,
+    "sortId": 20
+  },
+  {
+    "id": 713,
+    "title": "Redmi Note 10",
+    "url": "redmi-note-10",
+    "brand": "",
+    "img": "",
+    "upCid": 650,
+    "visible": 1,
+    "sortId": 20
+  },
+  {
+    "id": 726,
+    "title": "iPhone 12 mini",
+    "url": "iphone-12-mini",
+    "brand": "",
+    "img": "",
+    "upCid": 501,
+    "visible": 1,
+    "sortId": 20
+  },
+  {
+    "id": 793,
+    "title": "Y27 5G",
+    "url": "y27-5g",
+    "brand": "",
+    "img": "",
+    "upCid": 773,
+    "visible": 1,
+    "sortId": 20
+  },
+  {
+    "id": 899,
+    "title": "Galaxy A32",
+    "url": "galaxy-a32",
+    "brand": "",
+    "img": "",
+    "upCid": 604,
+    "visible": 1,
+    "sortId": 20
+  },
+  {
+    "id": 1452,
+    "title": "12 Lite",
+    "url": "12-lite",
+    "brand": "",
+    "img": "",
+    "upCid": 638,
+    "visible": 1,
+    "sortId": 20
+  },
+  {
+    "id": 621,
+    "title": "Galaxy S10e",
+    "url": "galaxy-s10e",
+    "brand": "",
+    "img": "",
+    "upCid": 618,
+    "visible": 1,
+    "sortId": 21
+  },
+  {
+    "id": 699,
+    "title": "P40 5G",
+    "url": "p40-5g",
+    "brand": "",
+    "img": "",
+    "upCid": 558,
+    "visible": 1,
+    "sortId": 21
+  },
+  {
+    "id": 714,
+    "title": "Redmi Note 10S",
+    "url": "redmi-note-10s",
+    "brand": "",
+    "img": "",
+    "upCid": 650,
+    "visible": 1,
+    "sortId": 21
+  },
+  {
+    "id": 727,
+    "title": "iPhone 12",
+    "url": "iphone-12",
+    "brand": "",
+    "img": "",
+    "upCid": 501,
+    "visible": 1,
+    "sortId": 21
+  },
+  {
+    "id": 794,
+    "title": "Y27",
+    "url": "y27",
+    "brand": "",
+    "img": "",
+    "upCid": 773,
+    "visible": 1,
+    "sortId": 21
+  },
+  {
+    "id": 900,
+    "title": "Galaxy A34",
+    "url": "galaxy-a34",
+    "brand": "",
+    "img": "",
+    "upCid": 604,
+    "visible": 1,
+    "sortId": 21
+  },
+  {
+    "id": 1453,
+    "title": "12 Pro",
+    "url": "12-pro",
+    "brand": "",
+    "img": "",
+    "upCid": 638,
+    "visible": 1,
+    "sortId": 21
+  },
+  {
+    "id": 661,
+    "title": "iPhone 11 Pro Max",
+    "url": "iphone-11-pro-max",
+    "brand": "",
+    "img": "",
+    "upCid": 501,
+    "visible": 1,
+    "sortId": 22
+  },
+  {
+    "id": 715,
+    "title": "Redmi Note 10 Pro",
+    "url": "redmi-note-10-pro",
+    "brand": "",
+    "img": "",
+    "upCid": 650,
+    "visible": 1,
+    "sortId": 22
+  },
+  {
+    "id": 795,
+    "title": "Y78 5G",
+    "url": "y78-5g",
+    "brand": "",
+    "img": "",
+    "upCid": 773,
+    "visible": 1,
+    "sortId": 22
+  },
+  {
+    "id": 901,
+    "title": "Galaxy A25",
+    "url": "galaxy-a25",
+    "brand": "",
+    "img": "",
+    "upCid": 604,
+    "visible": 1,
+    "sortId": 22
+  },
+  {
+    "id": 937,
+    "title": "Galaxy S10+",
+    "url": "galaxy-s10-1",
+    "brand": "",
+    "img": "",
+    "upCid": 618,
+    "visible": 1,
+    "sortId": 22
+  },
+  {
+    "id": 1454,
+    "title": "12T",
+    "url": "12t",
+    "brand": "",
+    "img": "",
+    "upCid": 638,
+    "visible": 1,
+    "sortId": 22
+  },
+  {
+    "id": 619,
+    "title": "Galaxy S10",
+    "url": "galaxy-s10",
+    "brand": "",
+    "img": "",
+    "upCid": 618,
+    "visible": 1,
+    "sortId": 23
+  },
+  {
+    "id": 660,
+    "title": "iPhone 11 Pro",
+    "url": "iphone-11-pro",
+    "brand": "",
+    "img": "",
+    "upCid": 501,
+    "visible": 1,
+    "sortId": 23
+  },
+  {
+    "id": 716,
+    "title": "Redmi Note 11",
+    "url": "redmi-note-11",
+    "brand": "",
+    "img": "",
+    "upCid": 650,
+    "visible": 1,
+    "sortId": 23
+  },
+  {
+    "id": 796,
+    "title": "Y36",
+    "url": "y36",
+    "brand": "",
+    "img": "",
+    "upCid": 773,
+    "visible": 1,
+    "sortId": 23
+  },
+  {
+    "id": 902,
+    "title": "Galaxy A32 5G",
+    "url": "galaxy-a32-5g",
+    "brand": "",
+    "img": "",
+    "upCid": 604,
+    "visible": 1,
+    "sortId": 23
+  },
+  {
+    "id": 1455,
+    "title": "12T Pro",
+    "url": "12t-pro",
+    "brand": "",
+    "img": "",
+    "upCid": 638,
+    "visible": 1,
+    "sortId": 23
+  },
+  {
+    "id": 653,
+    "title": "Galaxy A15 5G",
+    "url": "galaxy-a15-5g",
+    "brand": "",
+    "img": "",
+    "upCid": 604,
+    "visible": 1,
+    "sortId": 24
+  },
+  {
+    "id": 659,
+    "title": "iPhone 11",
+    "url": "iphone-11",
+    "brand": "",
+    "img": "",
+    "upCid": 501,
+    "visible": 1,
+    "sortId": 24
+  },
+  {
+    "id": 717,
+    "title": "Redmi Note 11S",
+    "url": "redmi-note-11s",
+    "brand": "",
+    "img": "",
+    "upCid": 650,
+    "visible": 1,
+    "sortId": 24
+  },
+  {
+    "id": 797,
+    "title": "Y33s",
+    "url": "y33s",
+    "brand": "",
+    "img": "",
+    "upCid": 773,
+    "visible": 1,
+    "sortId": 24
+  },
+  {
+    "id": 939,
+    "title": "Galaxy S9+",
+    "url": "galaxy-s9-1",
+    "brand": "",
+    "img": "",
+    "upCid": 618,
+    "visible": 1,
+    "sortId": 24
+  },
+  {
+    "id": 1456,
+    "title": "13",
+    "url": "13",
+    "brand": "",
+    "img": "",
+    "upCid": 638,
+    "visible": 1,
+    "sortId": 24
+  },
+  {
+    "id": 514,
+    "title": "iPhone XS Max",
+    "url": "iphone-xs-max",
+    "brand": "",
+    "img": "",
+    "upCid": 501,
+    "visible": 1,
+    "sortId": 25
+  },
+  {
+    "id": 626,
+    "title": "Galaxy S9",
+    "url": "galaxy-s9",
+    "brand": "",
+    "img": "",
+    "upCid": 618,
+    "visible": 1,
+    "sortId": 25
+  },
+  {
+    "id": 655,
+    "title": "Galaxy A20e",
+    "url": "galaxy-a20e",
+    "brand": "",
+    "img": "",
+    "upCid": 604,
+    "visible": 1,
+    "sortId": 25
+  },
+  {
+    "id": 718,
+    "title": "Redmi Note 11S 5G",
+    "url": "redmi-note-11s-5g",
+    "brand": "",
+    "img": "",
+    "upCid": 650,
+    "visible": 1,
+    "sortId": 25
+  },
+  {
+    "id": 798,
+    "title": "Y70",
+    "url": "y70",
+    "brand": "",
+    "img": "",
+    "upCid": 773,
+    "visible": 1,
+    "sortId": 25
+  },
+  {
+    "id": 1457,
+    "title": "13 Lite",
+    "url": "13-lite",
+    "brand": "",
+    "img": "",
+    "upCid": 638,
+    "visible": 1,
+    "sortId": 25
+  },
+  {
+    "id": 515,
+    "title": "iPhone XS",
+    "url": "iphone-xs",
+    "brand": "",
+    "img": "",
+    "upCid": 501,
+    "visible": 1,
+    "sortId": 26
+  },
+  {
+    "id": 656,
+    "title": "Galaxy A55",
+    "url": "galaxy-a55",
+    "brand": "",
+    "img": "",
+    "upCid": 604,
+    "visible": 1,
+    "sortId": 26
+  },
+  {
+    "id": 719,
+    "title": "Redmi Note 11 Pro",
+    "url": "redmi-note-11-pro",
+    "brand": "",
+    "img": "",
+    "upCid": 650,
+    "visible": 1,
+    "sortId": 26
+  },
+  {
+    "id": 799,
+    "title": "Y52 5G",
+    "url": "y52-5g",
+    "brand": "",
+    "img": "",
+    "upCid": 773,
+    "visible": 1,
+    "sortId": 26
+  },
+  {
+    "id": 938,
+    "title": "Galaxy S8+",
+    "url": "galaxy-s8-1",
+    "brand": "",
+    "img": "",
+    "upCid": 618,
+    "visible": 1,
+    "sortId": 26
+  },
+  {
+    "id": 1458,
+    "title": "13T",
+    "url": "13t",
+    "brand": "",
+    "img": "",
+    "upCid": 638,
+    "visible": 1,
+    "sortId": 26
+  },
+  {
+    "id": 512,
+    "title": "iPhone X",
+    "url": "iphone-x",
+    "brand": "",
+    "img": "",
+    "upCid": 501,
+    "visible": 1,
+    "sortId": 27
+  },
+  {
+    "id": 624,
+    "title": "Galaxy S8",
+    "url": "galaxy-s8",
+    "brand": "",
+    "img": "",
+    "upCid": 618,
+    "visible": 1,
+    "sortId": 27
+  },
+  {
+    "id": 658,
+    "title": "Galaxy A40",
+    "url": "galaxy-a40",
+    "brand": "",
+    "img": "",
+    "upCid": 604,
+    "visible": 1,
+    "sortId": 27
+  },
+  {
+    "id": 720,
+    "title": "Redmi Note 11 Pro 5G",
+    "url": "redmi-note-11-pro-5g",
+    "brand": "",
+    "img": "",
+    "upCid": 650,
+    "visible": 1,
+    "sortId": 27
+  },
+  {
+    "id": 800,
+    "title": "Y21s",
+    "url": "y21s",
+    "brand": "",
+    "img": "",
+    "upCid": 773,
+    "visible": 1,
+    "sortId": 27
+  },
+  {
+    "id": 1459,
+    "title": "13T Pro",
+    "url": "13t-pro",
+    "brand": "",
+    "img": "",
+    "upCid": 638,
+    "visible": 1,
+    "sortId": 27
+  },
+  {
+    "id": 513,
+    "title": "iPhone XR",
+    "url": "iphone-xr",
+    "brand": "",
+    "img": "",
+    "upCid": 501,
+    "visible": 1,
+    "sortId": 28
+  },
+  {
+    "id": 721,
+    "title": "Redmi Note 11 Pro+ 5G",
+    "url": "redmi-note-11-pro-5g-1",
+    "brand": "",
+    "img": "",
+    "upCid": 650,
+    "visible": 1,
+    "sortId": 28
+  },
+  {
+    "id": 801,
+    "title": "Y21",
+    "url": "y21",
+    "brand": "",
+    "img": "",
+    "upCid": 773,
+    "visible": 1,
+    "sortId": 28
+  },
+  {
+    "id": 933,
+    "title": "Galaxy A05s",
+    "url": "galaxy-a05s",
+    "brand": "",
+    "img": "",
+    "upCid": 604,
+    "visible": 1,
+    "sortId": 28
+  },
+  {
+    "id": 1460,
+    "title": "14",
+    "url": "14",
+    "brand": "",
+    "img": "",
+    "upCid": 638,
+    "visible": 1,
+    "sortId": 28
+  },
+  {
+    "id": 741,
+    "title": "Redmi Note 12",
+    "url": "redmi-note-12",
+    "brand": "",
+    "img": "",
+    "upCid": 650,
+    "visible": 1,
+    "sortId": 29
+  },
+  {
+    "id": 802,
+    "title": "Y01",
+    "url": "y01",
+    "brand": "",
+    "img": "",
+    "upCid": 773,
+    "visible": 1,
+    "sortId": 29
+  },
+  {
+    "id": 850,
+    "title": "iPhone SE (2022)",
+    "url": "iphone-se-2022",
+    "brand": "",
+    "img": "",
+    "upCid": 501,
+    "visible": 1,
+    "sortId": 29
+  },
+  {
+    "id": 934,
+    "title": "Galaxy A7",
+    "url": "galaxy-a7",
+    "brand": "",
+    "img": "",
+    "upCid": 604,
+    "visible": 1,
+    "sortId": 29
+  },
+  {
+    "id": 1461,
+    "title": "14 Ultra",
+    "url": "14-ultra",
+    "brand": "",
+    "img": "",
+    "upCid": 638,
+    "visible": 1,
+    "sortId": 29
+  },
+  {
+    "id": 662,
+    "title": "iPhone SE (2020)",
+    "url": "iphone-se-2020",
+    "brand": "",
+    "img": "",
+    "upCid": 501,
+    "visible": 1,
+    "sortId": 30
+  },
+  {
+    "id": 742,
+    "title": "Redmi Note 10 5G",
+    "url": "redmi-note-10-5g",
+    "brand": "",
+    "img": "",
+    "upCid": 650,
+    "visible": 1,
+    "sortId": 30
+  },
+  {
+    "id": 803,
+    "title": "Y20s",
+    "url": "y20s",
+    "brand": "",
+    "img": "",
+    "upCid": 773,
+    "visible": 1,
+    "sortId": 30
+  },
+  {
+    "id": 935,
+    "title": "Galaxy A8 2018",
+    "url": "galaxy-a8-2018",
+    "brand": "",
+    "img": "",
+    "upCid": 604,
+    "visible": 1,
+    "sortId": 30
+  },
+  {
+    "id": 1462,
+    "title": "14T",
+    "url": "14t",
+    "brand": "",
+    "img": "",
+    "upCid": 638,
+    "visible": 1,
+    "sortId": 30
+  },
+  {
+    "id": 509,
+    "title": "iPhone 8 Plus",
+    "url": "iphone-8-plus",
+    "brand": "",
+    "img": "",
+    "upCid": 501,
+    "visible": 1,
+    "sortId": 31
+  },
+  {
+    "id": 743,
+    "title": "Redmi Note 12 5G",
+    "url": "redmi-note-12-5g",
+    "brand": "",
+    "img": "",
+    "upCid": 650,
+    "visible": 1,
+    "sortId": 31
+  },
+  {
+    "id": 804,
+    "title": "Y76 5G",
+    "url": "y76-5g",
+    "brand": "",
+    "img": "",
+    "upCid": 773,
+    "visible": 1,
+    "sortId": 31
+  },
+  {
+    "id": 936,
+    "title": "Galaxy A9",
+    "url": "galaxy-a9",
+    "brand": "",
+    "img": "",
+    "upCid": 604,
+    "visible": 1,
+    "sortId": 31
+  },
+  {
+    "id": 1463,
+    "title": "14T Pro",
+    "url": "14t-pro",
+    "brand": "",
+    "img": "",
+    "upCid": 638,
+    "visible": 1,
+    "sortId": 31
+  },
+  {
+    "id": 510,
+    "title": "iPhone 8",
+    "url": "iphone-8",
+    "brand": "",
+    "img": "",
+    "upCid": 501,
+    "visible": 1,
+    "sortId": 32
+  },
+  {
+    "id": 681,
+    "title": "Galaxy A50",
+    "url": "galaxy-a50",
+    "brand": "",
+    "img": "",
+    "upCid": 604,
+    "visible": 1,
+    "sortId": 32
+  },
+  {
+    "id": 744,
+    "title": "Redmi Note 12 Pro 5G",
+    "url": "redmi-note-12-pro-5g",
+    "brand": "",
+    "img": "",
+    "upCid": 650,
+    "visible": 1,
+    "sortId": 32
+  },
+  {
+    "id": 805,
+    "title": "Y11s",
+    "url": "y11s",
+    "brand": "",
+    "img": "",
+    "upCid": 773,
+    "visible": 1,
+    "sortId": 32
+  },
+  {
+    "id": 1464,
+    "title": "11T",
+    "url": "11t",
+    "brand": "",
+    "img": "",
+    "upCid": 638,
+    "visible": 1,
+    "sortId": 32
+  },
+  {
+    "id": 508,
+    "title": "iPhone 7 Plus",
+    "url": "iphone-7-plus",
+    "brand": "",
+    "img": "",
+    "upCid": 501,
+    "visible": 1,
+    "sortId": 33
+  },
+  {
+    "id": 682,
+    "title": "Galaxy A51",
+    "url": "galaxy-a51",
+    "brand": "",
+    "img": "",
+    "upCid": 604,
+    "visible": 1,
+    "sortId": 33
+  },
+  {
+    "id": 745,
+    "title": "Redmi Note 12 Pro+ 5G",
+    "url": "redmi-note-12-pro-5g-1",
+    "brand": "",
+    "img": "",
+    "upCid": 650,
+    "visible": 1,
+    "sortId": 33
+  },
+  {
+    "id": 1465,
+    "title": "11T Pro",
+    "url": "11t-pro",
+    "brand": "",
+    "img": "",
+    "upCid": 638,
+    "visible": 1,
+    "sortId": 33
+  },
+  {
+    "id": 502,
+    "title": "iPhone 7",
+    "url": "iphone-7",
+    "brand": "",
+    "img": "",
+    "upCid": 501,
+    "visible": 1,
+    "sortId": 34
+  },
+  {
+    "id": 685,
+    "title": "Galaxy A21s",
+    "url": "galaxy-a21s",
+    "brand": "",
+    "img": "",
+    "upCid": 604,
+    "visible": 1,
+    "sortId": 34
+  },
+  {
+    "id": 749,
+    "title": "Mi 11",
+    "url": "mi-11",
+    "brand": "",
+    "img": "",
+    "upCid": 638,
+    "visible": 1,
+    "sortId": 34
+  },
+  {
+    "id": 506,
+    "title": "iPhone 6S Plus",
+    "url": "iphone-6s-plus",
+    "brand": "",
+    "img": "",
+    "upCid": 501,
+    "visible": 1,
+    "sortId": 35
+  },
+  {
+    "id": 686,
+    "title": "Galaxy A20s",
+    "url": "galaxy-a20s",
+    "brand": "",
+    "img": "",
+    "upCid": 604,
+    "visible": 1,
+    "sortId": 35
+  },
+  {
+    "id": 750,
+    "title": "Mi 11 Lite 5G",
+    "url": "mi-11-lite-5g",
+    "brand": "",
+    "img": "",
+    "upCid": 638,
+    "visible": 1,
+    "sortId": 35
+  },
+  {
+    "id": 507,
+    "title": "iPhone 6S",
+    "url": "iphone-6s",
+    "brand": "",
+    "img": "",
+    "upCid": 501,
+    "visible": 1,
+    "sortId": 36
+  },
+  {
+    "id": 704,
+    "title": "Galaxy A02s",
+    "url": "galaxy-a02s",
+    "brand": "",
+    "img": "",
+    "upCid": 604,
+    "visible": 1,
+    "sortId": 36
+  },
+  {
+    "id": 751,
+    "title": "Mi 11 Lite",
+    "url": "mi-11-lite",
+    "brand": "",
+    "img": "",
+    "upCid": 638,
+    "visible": 1,
+    "sortId": 36
+  },
+  {
+    "id": 504,
+    "title": "iPhone 6 Plus",
+    "url": "iphone-6-plus",
+    "brand": "",
+    "img": "",
+    "upCid": 501,
+    "visible": 1,
+    "sortId": 37
+  },
+  {
+    "id": 711,
+    "title": "Galaxy A22",
+    "url": "galaxy-a22",
+    "brand": "",
+    "img": "",
+    "upCid": 604,
+    "visible": 1,
+    "sortId": 37
+  },
+  {
+    "id": 505,
+    "title": "iPhone 6",
+    "url": "iphone-6",
+    "brand": "",
+    "img": "",
+    "upCid": 501,
+    "visible": 1,
+    "sortId": 38
+  },
+  {
+    "id": 712,
+    "title": "Galaxy A12 (A127F)",
+    "url": "galaxy-a12-a127f",
+    "brand": "",
+    "img": "",
+    "upCid": 604,
+    "visible": 1,
+    "sortId": 38
+  },
+  {
+    "id": 503,
+    "title": "iPhone 5S",
+    "url": "iphone-5s",
+    "brand": "",
+    "img": "",
+    "upCid": 501,
+    "visible": 1,
+    "sortId": 39
+  },
+  {
+    "id": 752,
+    "title": "Galaxy A33",
+    "url": "galaxy-a33",
+    "brand": "",
+    "img": "",
+    "upCid": 604,
+    "visible": 1,
+    "sortId": 39
+  },
+  {
+    "id": 511,
+    "title": "iPhone SE",
+    "url": "iphone-se",
+    "brand": "",
+    "img": "",
+    "upCid": 501,
+    "visible": 1,
+    "sortId": 40
+  },
+  {
+    "id": 753,
+    "title": "Galaxy A13",
+    "url": "galaxy-a13",
+    "brand": "",
+    "img": "",
+    "upCid": 604,
+    "visible": 1,
+    "sortId": 40
+  },
+  {
+    "id": 754,
+    "title": "Galaxy A13 5G",
+    "url": "galaxy-a13-5g",
+    "brand": "",
+    "img": "",
+    "upCid": 604,
+    "visible": 1,
+    "sortId": 41
+  },
+  {
+    "id": 755,
+    "title": "Galaxy A23",
+    "url": "galaxy-a23",
+    "brand": "",
+    "img": "",
+    "upCid": 604,
+    "visible": 1,
+    "sortId": 42
+  },
+  {
+    "id": 756,
+    "title": "Galaxy A22 5G",
+    "url": "galaxy-a22-5g",
+    "brand": "",
+    "img": "",
+    "upCid": 604,
+    "visible": 1,
+    "sortId": 43
+  },
+  {
+    "id": 757,
+    "title": "Galaxy A14",
+    "url": "galaxy-a14",
+    "brand": "",
+    "img": "",
+    "upCid": 604,
+    "visible": 1,
+    "sortId": 44
+  },
+  {
+    "id": 758,
+    "title": "Galaxy A14 5G",
+    "url": "galaxy-a14-5g",
+    "brand": "",
+    "img": "",
+    "upCid": 604,
+    "visible": 1,
+    "sortId": 45
+  }
+]

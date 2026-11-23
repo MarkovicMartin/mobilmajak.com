@@ -1,0 +1,17 @@
+{
+  "exportedAt": "2026-11-23T10:50:30Z",
+  "liveBase": "https://servismajak.cz",
+  "rating": {
+    "score": "4,9",
+    "count": 748
+  },
+  "counts": {
+    "categories": 606,
+    "locations": 6,
+    "pages": 10,
+    "services": 5988,
+    "categorizedServices": 5357,
+    "serviceCategories": 529,
+    "uncategorizedServices": 631
+  }
+}

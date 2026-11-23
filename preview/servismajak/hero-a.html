@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Varianta A — Hero search</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="modern.css">
+</head>
+<body data-page="hero-a">
+  <div class="variant-bar">
+    <div class="wrap">
+      <strong>Náhled A</strong>
+      <span>Hero search · live data přes /ajax/search</span>
+      <nav>
+        <a class="is-on" href="hero-a.html">A · Search</a>
+        <a href="hero-b.html">B · Karty</a>
+        <a href="novy-navrh.html">Původní finder</a>
+      </nav>
+    </div>
+  </div>
+  <div class="announcement">
+    <div class="wrap">
+      <span>Opravy telefonů, tabletů a hodinek na 6 pobočkách</span>
+      <span>Většinu oprav zvládneme <strong>na počkání</strong></span>
+    </div>
+  </div>
+  <header class="site-head">
+    <div class="wrap head-main">
+      <a class="brand" href="hero-a.html">
+        <img src="https://files.myrepair.app/public/clients/mobilmajak/files/f3581dd17281-MM_SERVIS_logo_horizontalni_barva.png" alt="Mobil Maják">
+      </a>
+      <form class="top-search" action="hledani-v2.html">
+        <label class="sr" for="q">Hledat</label>
+        <input id="q" name="q" placeholder="Co potřebujete opravit?">
+        <button>Hledat</button>
+      </form>
+      <nav class="main-nav">
+        <a href="#jak-to-funguje">Jak to funguje</a>
+        <a href="pobocky-v2.html">Pobočky</a>
+        <a href="blog-v2.html">Rady</a>
+        <a class="nav-rating" href="hodnoceni.html">4,9 <small>z 5 · 748 recenzí</small></a>
+        <a class="nav-cta" href="katalog.html">Vybrat zařízení</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="wrap hero-grid">
+        <div>
+          <p class="eyebrow">Servis, který vás nezdrží</p>
+          <h1>Rozbil se?<br><span>My ho opravíme.</span></h1>
+          <p class="hero-copy">Napište model a závadu. Hned uvidíte cenu a přejdete na rezervaci.</p>
+          <div class="hero-actions">
+            <a class="btn btn-secondary" href="#jak-to-funguje">Jak oprava probíhá</a>
+          </div>
+        </div>
+        <aside class="hero-panel hero-search-panel" data-hero-search>
+          <h2>Kolik bude oprava stát?</h2>
+          <p>Výsledek otevře konkrétní opravu (ne celý model) — cena a rezervace hned.</p>
+          <label class="sr" for="hero-q">Hledat opravu</label>
+          <div class="hero-search-box">
+            <input id="hero-q" type="search" autocomplete="off" placeholder="např. iPhone 13 displej">
+            <button type="button" data-hero-go>Hledat</button>
+          </div>
+          <div class="hero-chips">
+            <button type="button" data-chip="iPhone 13 displej">iPhone 13 displej</button>
+            <button type="button" data-chip="Samsung baterie">Samsung baterie</button>
+            <button type="button" data-chip="Apple Watch sklo">Apple Watch sklo</button>
+          </div>
+          <div class="hero-search-results" data-hero-results hidden></div>
+          <img class="finder-character" src="img/majak-vlna.png" alt="">
+        </aside>
+      </div>
+    </section>
+
+    <div class="wrap trust-row">
+      <div class="metric"><strong>Do 1 hodiny</strong><span>nejčastější opravy</span></div>
+      <div class="metric"><strong>10 000+</strong><span>opravených zařízení</span></div>
+      <div class="metric"><strong>6 000+</strong><span>vyměněných baterií</span></div>
+      <div class="metric"><strong>4,9 / 5</strong><span>hodnocení zákazníků</span></div>
+    </div>
+
+    <section id="jak-to-funguje" class="section">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Jednoduchý servis</p>
+            <h2>Jak u nás probíhá oprava</h2>
+          </div>
+          <p>Vyberte si cestu, která vám vyhovuje. Cenu a průběh opravy znáte předem.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+  <script src="js/preview.js"></script>
+</body>
+</html>
