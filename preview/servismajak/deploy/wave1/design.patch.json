@@ -1,0 +1,15 @@
+{
+  "resource": "design",
+  "note": "Barvy manuálu Mobil Maják Servis. Hex bez #.",
+  "data": {
+    "button": "2F5BFF",
+    "buttonText": "FFFFFF",
+    "buttonHover": "E40B4D",
+    "buttonTextHover": "FFFFFF",
+    "softButton": "E8EEFF",
+    "softButtonText": "1B2848",
+    "softButtonHover": "2F5BFF",
+    "softButtonTextHover": "FFFFFF",
+    "link": "2F5BFF"
+  }
+}

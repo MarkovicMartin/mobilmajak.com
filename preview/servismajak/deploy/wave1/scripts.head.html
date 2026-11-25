@@ -1,0 +1,54 @@
+<a class="js-go-to go-to position-fixed animated hs-go-to-prevent-event fadeInUp bg-success text-white" href="https://wa.me/420739909190" target="_blank" style="right: 2rem; bottom: 2rem;"><i class="fa-brands fa-whatsapp"></i></a>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style id="mm-brand-overlay">
+  /* Wave 1 — brand overlay, scoped; reservation/forms untouched */
+  :root {
+    --mm-navy: #1B2848;
+    --mm-blue: #2F5BFF;
+    --mm-pink: #E40B4D;
+  }
+  body {
+    font-family: "Open Sans", system-ui, -apple-system, sans-serif;
+  }
+  .navbar-brand-logo {
+    width: 100%;
+    max-width: 7.5rem;
+  }
+  .btn-primary,
+  .btn-soft-primary {
+    border-radius: 11px !important;
+    font-weight: 700 !important;
+  }
+  .btn-primary:hover,
+  .btn-primary:focus {
+    background-color: var(--mm-pink) !important;
+    border-color: var(--mm-pink) !important;
+  }
+  a.text-primary,
+  .text-primary {
+    color: var(--mm-blue) !important;
+  }
+  .card {
+    border-radius: 1.15rem !important;
+  }
+  /* rating cue in header if stars missing */
+  .navbar .js-hs-nav-rating::before,
+  a[href*="/hodnoceni"] .rating-stars:empty::before {
+    content: "★";
+    color: #E8B923;
+    margin-right: .2rem;
+  }
+</style>
+<script>
+  $(document).ready(function() {
+    $('img.img-fluid').each(function() {
+      if ($(this).attr('src') === "") {
+        $(this).hide();
+      }
+    });
+    $('#myrepair-nav-chooseDevice').html('<a href="https://www.servismajak.cz/zarizeni/" class="btn btn-primary btn-sm">Vyberte zařízení</a>');
+    $('#myrepair-nav-main').html('');
+  });
+</script>
