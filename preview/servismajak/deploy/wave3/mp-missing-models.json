@@ -1,0 +1,1578 @@
+{
+  "note": "Chybějící modely dle mp.cz /api/new/service/meta-master-selector vs naše kategorie (finder-data). Jen značky které už máme. Notebooky vynechány. Matching heuristický — ambiguous zkontrolovat.",
+  "phones": {
+    "Apple": {
+      "mp_count": 42,
+      "our_count": 40,
+      "matched": 35,
+      "ambiguous": [
+        {
+          "mp": "Apple iPhone 17 Pro Max",
+          "guess": "iPhone 16 Pro Max",
+          "score": 60,
+          "seo": "apple-iphone-17-pro-max-mm-9041"
+        },
+        {
+          "mp": "Apple iPhone 18 Pro Max",
+          "guess": "iPhone 16 Pro Max",
+          "score": 60,
+          "seo": "apple-iphone-18-pro-max-mm-11803"
+        }
+      ],
+      "missing": [
+        {
+          "name": "Apple iPhone Air",
+          "seo": "apple-iphone-air-mm-9055"
+        },
+        {
+          "name": "Apple iPhone 17",
+          "seo": "apple-iphone-17-mm-9050"
+        },
+        {
+          "name": "Apple iPhone 17e",
+          "seo": "apple-iphone-17e-mm-10347"
+        },
+        {
+          "name": "Apple iPhone 17 Pro",
+          "seo": "apple-iphone-17-pro-mm-9045"
+        },
+        {
+          "name": "Apple iPhone 18 Pro",
+          "seo": "apple-iphone-18-pro-mm-11802"
+        }
+      ]
+    },
+    "Samsung": {
+      "mp_count": 127,
+      "our_count": 109,
+      "matched": 100,
+      "ambiguous": [],
+      "missing": [
+        {
+          "name": "Samsung Galaxy A03 (SM-A035G)",
+          "seo": "samsung-galaxy-a03-sm-a035g-mm-1164"
+        },
+        {
+          "name": "Samsung Galaxy A26 5G",
+          "seo": "samsung-galaxy-a26-5g-mm-7380"
+        },
+        {
+          "name": "Samsung Galaxy A27 5G",
+          "seo": "samsung-galaxy-a27-5g-mm-11150"
+        },
+        {
+          "name": "Samsung Galaxy A37",
+          "seo": "samsung-galaxy-a37-mm-10504"
+        },
+        {
+          "name": "Samsung Galaxy A57",
+          "seo": "samsung-galaxy-a57-mm-10503"
+        },
+        {
+          "name": "Samsung Galaxy Fresh (S7390)",
+          "seo": "samsung-galaxy-fresh-s7390-mm-3910"
+        },
+        {
+          "name": "Samsung Galaxy J1 (2016) (J120)",
+          "seo": "samsung-galaxy-j1-2016-j120-mm-1235"
+        },
+        {
+          "name": "Samsung Galaxy Note10 Lite (N770F), Dual SIM",
+          "seo": "samsung-galaxy-note10-lite-n770f-dual-sim-mm-1274"
+        },
+        {
+          "name": "Samsung Galaxy Note10 (N970FZ), Dual SIM",
+          "seo": "samsung-galaxy-note10-n970fz-dual-sim-mm-1273"
+        },
+        {
+          "name": "Samsung Galaxy Note10+ (N975FZ), Dual SIM",
+          "seo": "samsung-galaxy-note10-n975fz-dual-sim-mm-1275"
+        },
+        {
+          "name": "Samsung Galaxy Note20 (N980F)",
+          "seo": "samsung-galaxy-note20-n980f-mm-1276"
+        },
+        {
+          "name": "Samsung Galaxy Note20 Ultra 5G (N986B)",
+          "seo": "samsung-galaxy-note20-ultra-5g-n986b-mm-1277"
+        },
+        {
+          "name": "Samsung Galaxy Note9 (N960FZ)",
+          "seo": "samsung-galaxy-note9-n960fz-mm-1281"
+        },
+        {
+          "name": "Samsung Galaxy S (i9000)",
+          "seo": "samsung-galaxy-s-i9000-mm-3940"
+        },
+        {
+          "name": "Samsung Galaxy S26",
+          "seo": "samsung-galaxy-s26-mm-10179"
+        },
+        {
+          "name": "Samsung Galaxy S26+",
+          "seo": "samsung-galaxy-s26-mm-10161"
+        },
+        {
+          "name": "Samsung Galaxy S26 Ultra",
+          "seo": "samsung-galaxy-s26-ultra-mm-10137"
+        },
+        {
+          "name": "Samsung Galaxy S4 mini (i9192), Duos",
+          "seo": "samsung-galaxy-s4-mini-i9192-duos-mm-1303"
+        },
+        {
+          "name": "Samsung Galaxy S4 mini (i9195)",
+          "seo": "samsung-galaxy-s4-mini-i9195-mm-1304"
+        },
+        {
+          "name": "Samsung Galaxy S4 mini VE (i9195i)",
+          "seo": "samsung-galaxy-s4-mini-ve-i9195i-mm-1305"
+        },
+        {
+          "name": "Samsung Galaxy Xcover7 (G556B)",
+          "seo": "samsung-galaxy-xcover7-g556b-mm-4974"
+        },
+        {
+          "name": "Samsung Galaxy Xcover7 Pro",
+          "seo": "samsung-galaxy-xcover7-pro-mm-10460"
+        },
+        {
+          "name": "Samsung Galaxy Z Flip3 5G (F711B)",
+          "seo": "samsung-galaxy-z-flip3-5g-f711b-mm-63"
+        },
+        {
+          "name": "Samsung Galaxy Z Flip8",
+          "seo": "samsung-galaxy-z-flip8-mm-11245"
+        },
+        {
+          "name": "Samsung Galaxy Z Fold3 5G (F926B)",
+          "seo": "samsung-galaxy-z-fold3-5g-f926b-mm-64"
+        },
+        {
+          "name": "Samsung Galaxy Z Fold8",
+          "seo": "samsung-galaxy-z-fold8-mm-11246"
+        },
+        {
+          "name": "Samsung Galaxy Z Fold8 Ultra",
+          "seo": "samsung-galaxy-z-fold8-ultra-mm-11247"
+        }
+      ]
+    },
+    "Xiaomi": {
+      "mp_count": 119,
+      "our_count": 82,
+      "matched": 88,
+      "ambiguous": [],
+      "missing": [
+        {
+          "name": "Xiaomi Mi Mix 2",
+          "seo": "xiaomi-mi-mix-2-mm-4153"
+        },
+        {
+          "name": "Xiaomi MIX Flip",
+          "seo": "xiaomi-mix-flip-mm-6190"
+        },
+        {
+          "name": "Xiaomi Mi3",
+          "seo": "xiaomi-mi3-mm-4156"
+        },
+        {
+          "name": "Xiaomi Mi4, 64GB",
+          "seo": "xiaomi-mi4-64gb-mm-1568"
+        },
+        {
+          "name": "Xiaomi Poco X3 NFC",
+          "seo": "xiaomi-poco-x3-nfc-mm-1581"
+        },
+        {
+          "name": "Xiaomi Redmi A5",
+          "seo": "xiaomi-redmi-a5-mm-7666"
+        },
+        {
+          "name": "Xiaomi Redmi A7 Pro",
+          "seo": "xiaomi-redmi-a7-pro-mm-10766"
+        },
+        {
+          "name": "Xiaomi Redmi Note 15",
+          "seo": "xiaomi-redmi-note-15-mm-9909"
+        },
+        {
+          "name": "Xiaomi Redmi Note 15 Pro",
+          "seo": "xiaomi-redmi-note-15-pro-mm-9911"
+        },
+        {
+          "name": "Xiaomi Redmi Note 15 Pro 5G",
+          "seo": "xiaomi-redmi-note-15-pro-5g-mm-9912"
+        },
+        {
+          "name": "Xiaomi Redmi Note 15 Pro+ 5G",
+          "seo": "xiaomi-redmi-note-15-pro-5g-mm-9919"
+        },
+        {
+          "name": "Xiaomi Redmi Note 15 5G",
+          "seo": "xiaomi-redmi-note-15-5g-mm-9910"
+        },
+        {
+          "name": "Xiaomi Redmi Note 17",
+          "seo": "xiaomi-redmi-note-17-mm-11630"
+        },
+        {
+          "name": "Xiaomi Redmi Note 17 Pro Max 5G",
+          "seo": "xiaomi-redmi-note-17-pro-max-5g-mm-11649"
+        },
+        {
+          "name": "Xiaomi Redmi Note 17 Pro 5G",
+          "seo": "xiaomi-redmi-note-17-pro-5g-mm-11645"
+        },
+        {
+          "name": "Xiaomi Redmi Note 17 5G",
+          "seo": "xiaomi-redmi-note-17-5g-mm-11631"
+        },
+        {
+          "name": "Xiaomi Redmi Note 2, Dual SIM",
+          "seo": "xiaomi-redmi-note-2-dual-sim-mm-1633"
+        },
+        {
+          "name": "Xiaomi Redmi Note 5",
+          "seo": "xiaomi-redmi-note-5-mm-1643"
+        },
+        {
+          "name": "Xiaomi Redmi 15",
+          "seo": "xiaomi-redmi-15-mm-8552"
+        },
+        {
+          "name": "Xiaomi Redmi 15C",
+          "seo": "xiaomi-redmi-15c-mm-8547"
+        },
+        {
+          "name": "Xiaomi Redmi 15C 5G",
+          "seo": "xiaomi-redmi-15c-5g-mm-9543"
+        },
+        {
+          "name": "Xiaomi Redmi 15 5G",
+          "seo": "xiaomi-redmi-15-5g-mm-8554"
+        },
+        {
+          "name": "Xiaomi Redmi 17",
+          "seo": "xiaomi-redmi-17-mm-11296"
+        },
+        {
+          "name": "Xiaomi 15T",
+          "seo": "xiaomi-15t-mm-9020"
+        },
+        {
+          "name": "Xiaomi 15T Pro",
+          "seo": "xiaomi-15t-pro-mm-9021"
+        },
+        {
+          "name": "Xiaomi 15 Ultra 5G",
+          "seo": "xiaomi-15-ultra-5g-mm-7344"
+        },
+        {
+          "name": "Xiaomi 15 5G",
+          "seo": "xiaomi-15-5g-mm-7343"
+        },
+        {
+          "name": "Xiaomi 17",
+          "seo": "xiaomi-17-mm-10259"
+        },
+        {
+          "name": "Xiaomi 17T",
+          "seo": "xiaomi-17t-mm-10813"
+        },
+        {
+          "name": "Xiaomi 17T Pro",
+          "seo": "xiaomi-17t-pro-mm-10814"
+        },
+        {
+          "name": "Xiaomi 17 Ultra",
+          "seo": "xiaomi-17-ultra-mm-10258"
+        }
+      ]
+    },
+    "Honor": {
+      "mp_count": 51,
+      "our_count": 45,
+      "matched": 35,
+      "ambiguous": [],
+      "missing": [
+        {
+          "name": "Honor Magic V2",
+          "seo": "honor-magic-v2-mm-4882"
+        },
+        {
+          "name": "Honor Magic 4 lite 5G",
+          "seo": "honor-magic-4-lite-5g-mm-504"
+        },
+        {
+          "name": "Honor Magic 4 Pro",
+          "seo": "honor-magic-4-pro-mm-505"
+        },
+        {
+          "name": "Honor Magic5 Pro",
+          "seo": "honor-magic5-pro-mm-506"
+        },
+        {
+          "name": "Honor Magic6 Pro",
+          "seo": "honor-magic6-pro-mm-5081"
+        },
+        {
+          "name": "Honor X 5c Plus",
+          "seo": "honor-x-5c-plus-mm-9501"
+        },
+        {
+          "name": "Honor X6a",
+          "seo": "honor-x6a-mm-3194"
+        },
+        {
+          "name": "Honor X6b",
+          "seo": "honor-x6b-mm-6065"
+        },
+        {
+          "name": "Honor 400 Lite",
+          "seo": "honor-400-lite-mm-7937"
+        },
+        {
+          "name": "Honor 400 Pro 5G",
+          "seo": "honor-400-pro-5g-mm-8096"
+        },
+        {
+          "name": "Honor 400 Smart 5G",
+          "seo": "honor-400-smart-5g-mm-11287"
+        },
+        {
+          "name": "Honor 400 5G",
+          "seo": "honor-400-5g-mm-8097"
+        },
+        {
+          "name": "Honor 600 Lite",
+          "seo": "honor-600-lite-mm-10660"
+        },
+        {
+          "name": "Honor 600 Pro",
+          "seo": "honor-600-pro-mm-10664"
+        },
+        {
+          "name": "Honor 600 Smart 5G",
+          "seo": "honor-600-smart-5g-mm-11628"
+        },
+        {
+          "name": "Honor 600 5G",
+          "seo": "honor-600-5g-mm-10661"
+        }
+      ]
+    },
+    "Huawei": {
+      "mp_count": 42,
+      "our_count": 45,
+      "matched": 37,
+      "ambiguous": [],
+      "missing": [
+        {
+          "name": "Huawei G8",
+          "seo": "huawei-g8-mm-3275"
+        },
+        {
+          "name": "Huawei Mate 20 Lite",
+          "seo": "huawei-mate-20-lite-mm-555"
+        },
+        {
+          "name": "Huawei P50 Pocket",
+          "seo": "huawei-p50-pocket-mm-629"
+        },
+        {
+          "name": "Huawei P50 Pro",
+          "seo": "huawei-p50-pro-mm-630"
+        },
+        {
+          "name": "Huawei P60 Pro, 8GB/256GB",
+          "seo": "huawei-p60-pro-8gb-256gb-mm-631"
+        }
+      ]
+    },
+    "Nokia": {
+      "mp_count": 19,
+      "our_count": 12,
+      "matched": 13,
+      "ambiguous": [],
+      "missing": [
+        {
+          "name": "Nokia G22, 4GB/64GB",
+          "seo": "nokia-g22-4gb-64gb-mm-971"
+        },
+        {
+          "name": "Nokia XR20, 6GB/128GB",
+          "seo": "nokia-xr20-6gb-128gb-mm-981"
+        },
+        {
+          "name": "Nokia 210 4G",
+          "seo": "nokia-210-4g-mm-11292"
+        },
+        {
+          "name": "Nokia 216",
+          "seo": "nokia-216-mm-3701"
+        },
+        {
+          "name": "Nokia 2660 Flip 4G",
+          "seo": "nokia-2660-flip-4g-mm-952"
+        },
+        {
+          "name": "Nokia 2720 Flip",
+          "seo": "nokia-2720-flip-mm-3720"
+        }
+      ]
+    },
+    "Vivo": {
+      "mp_count": 43,
+      "our_count": 42,
+      "matched": 25,
+      "ambiguous": [],
+      "missing": [
+        {
+          "name": "vivo V40 Lite",
+          "seo": "vivo-v40-lite-mm-5808"
+        },
+        {
+          "name": "Vivo V50",
+          "seo": "vivo-v50-mm-7442"
+        },
+        {
+          "name": "Vivo V 50 Lite",
+          "seo": "vivo-v-50-lite-mm-7538"
+        },
+        {
+          "name": "Vivo V 70",
+          "seo": "vivo-v-70-mm-10548"
+        },
+        {
+          "name": "Vivo V 70 FE",
+          "seo": "vivo-v-70-fe-mm-10549"
+        },
+        {
+          "name": "Vivo V 70 Lite",
+          "seo": "vivo-v-70-lite-mm-11205"
+        },
+        {
+          "name": "Vivo X200",
+          "seo": "vivo-x200-mm-6972"
+        },
+        {
+          "name": "Vivo X200 Pro",
+          "seo": "vivo-x200-pro-mm-6971"
+        },
+        {
+          "name": "Vivo X 300",
+          "seo": "vivo-x-300-mm-9602"
+        },
+        {
+          "name": "Vivo X 300 Pro",
+          "seo": "vivo-x-300-pro-mm-9886"
+        },
+        {
+          "name": "Vivo X300 Pro",
+          "seo": "vivo-x300-pro-mm-9601"
+        },
+        {
+          "name": "Vivo X 300 Ultra",
+          "seo": "vivo-x-300-ultra-mm-10582"
+        },
+        {
+          "name": "vivo X60 Pro 5G",
+          "seo": "vivo-x60-pro-5g-mm-1506"
+        },
+        {
+          "name": "Vivo Y 19s",
+          "seo": "vivo-y-19s-mm-7539"
+        },
+        {
+          "name": "Vivo Y 21d",
+          "seo": "vivo-y-21d-mm-10599"
+        },
+        {
+          "name": "Vivo Y28",
+          "seo": "vivo-y28-mm-5993"
+        },
+        {
+          "name": "Vivo Y 31 5G",
+          "seo": "vivo-y-31-5g-mm-10598"
+        },
+        {
+          "name": "vivo Y72 5G",
+          "seo": "vivo-y72-5g-mm-1519"
+        }
+      ]
+    },
+    "Poco": {
+      "mp_count": 37,
+      "our_count": 28,
+      "matched": 24,
+      "ambiguous": [],
+      "missing": [
+        {
+          "name": "POCO C 85",
+          "seo": "poco-c-85-mm-8971"
+        },
+        {
+          "name": "POCO F7",
+          "seo": "poco-f7-mm-8213"
+        },
+        {
+          "name": "POCO F7 Pro",
+          "seo": "poco-f7-pro-mm-7529"
+        },
+        {
+          "name": "POCO F7 Ultra",
+          "seo": "poco-f7-ultra-mm-7535"
+        },
+        {
+          "name": "POCO F8 Pro",
+          "seo": "poco-f8-pro-mm-9790"
+        },
+        {
+          "name": "POCO F8 Ultra",
+          "seo": "poco-f8-ultra-mm-9789"
+        },
+        {
+          "name": "POCO F 9 Pro",
+          "seo": "poco-f-9-pro-mm-11505"
+        },
+        {
+          "name": "POCO F 9 Ultra",
+          "seo": "poco-f-9-ultra-mm-11506"
+        },
+        {
+          "name": "POCO M 7 Pro 5G",
+          "seo": "poco-m-7-pro-5g-mm-7675"
+        },
+        {
+          "name": "POCO M 8 Pro 5G",
+          "seo": "poco-m-8-pro-5g-mm-9871"
+        },
+        {
+          "name": "POCO M 8 5G",
+          "seo": "poco-m-8-5g-mm-9872"
+        },
+        {
+          "name": "POCO X8 Pro",
+          "seo": "poco-x8-pro-mm-10422"
+        },
+        {
+          "name": "POCO X8 Pro Max",
+          "seo": "poco-x8-pro-max-mm-10438"
+        }
+      ]
+    },
+    "Motorola": {
+      "mp_count": 96,
+      "our_count": 44,
+      "matched": 47,
+      "ambiguous": [
+        {
+          "mp": "Motorola Moto G24 Power",
+          "guess": "Moto G24/G24 Power",
+          "score": 80,
+          "seo": "motorola-moto-g24-power-mm-5025"
+        },
+        {
+          "mp": "Motorola Moto G54 5G Power Edition",
+          "guess": "Moto G54/G54 Power",
+          "score": 60,
+          "seo": "motorola-moto-g54-5g-power-edition-mm-3526"
+        }
+      ],
+      "missing": [
+        {
+          "name": "Motorola Edge 60",
+          "seo": "motorola-edge-60-mm-10879"
+        },
+        {
+          "name": "Motorola Edge 60 Fusion",
+          "seo": "motorola-edge-60-fusion-mm-9197"
+        },
+        {
+          "name": "Motorola Edge 60 Neo",
+          "seo": "motorola-edge-60-neo-mm-9702"
+        },
+        {
+          "name": "Motorola Edge 60 Pro",
+          "seo": "motorola-edge-60-pro-mm-7770"
+        },
+        {
+          "name": "Motorola Edge 70",
+          "seo": "motorola-edge-70-mm-9711"
+        },
+        {
+          "name": "Motorola Edge 70 Fusion",
+          "seo": "motorola-edge-70-fusion-mm-10794"
+        },
+        {
+          "name": "Motorola Edge 70 Pro",
+          "seo": "motorola-edge-70-pro-mm-10936"
+        },
+        {
+          "name": "Motorola Moto E15",
+          "seo": "motorola-moto-e15-mm-8577"
+        },
+        {
+          "name": "Motorola Moto E20",
+          "seo": "motorola-moto-e20-mm-875"
+        },
+        {
+          "name": "Motorola Moto E6s (2020), Dual SIM",
+          "seo": "motorola-moto-e6s-2020-dual-sim-mm-884"
+        },
+        {
+          "name": "Motorola Moto E7 Power",
+          "seo": "motorola-moto-e7-power-mm-887"
+        },
+        {
+          "name": "Motorola Moto G04",
+          "seo": "motorola-moto-g04-mm-5045"
+        },
+        {
+          "name": "Motorola Moto G05",
+          "seo": "motorola-moto-g05-mm-6979"
+        },
+        {
+          "name": "Motorola Moto G06",
+          "seo": "motorola-moto-g06-mm-9457"
+        },
+        {
+          "name": "Motorola Moto G06 Power",
+          "seo": "motorola-moto-g06-power-mm-9458"
+        },
+        {
+          "name": "Motorola Moto G15 Power",
+          "seo": "motorola-moto-g15-power-mm-6980"
+        },
+        {
+          "name": "Motorola Moto G35 5G",
+          "seo": "motorola-moto-g35-5g-mm-10829"
+        },
+        {
+          "name": "Motorola Moto G37 Power 5G",
+          "seo": "motorola-moto-g37-power-5g-mm-11629"
+        },
+        {
+          "name": "Motorola Moto G41",
+          "seo": "motorola-moto-g41-mm-903"
+        },
+        {
+          "name": "Motorola Moto G 5G Plus, Dual SIM",
+          "seo": "motorola-moto-g-5g-plus-dual-sim-mm-890"
+        },
+        {
+          "name": "Motorola Moto G51 5G",
+          "seo": "motorola-moto-g51-5g-mm-906"
+        },
+        {
+          "name": "Motorola Moto G55 5G",
+          "seo": "motorola-moto-g55-5g-mm-6975"
+        },
+        {
+          "name": "Motorola Moto G56 5G",
+          "seo": "motorola-moto-g56-5g-mm-8910"
+        },
+        {
+          "name": "Motorola Moto G57 Power",
+          "seo": "motorola-moto-g57-power-mm-9823"
+        },
+        {
+          "name": "Motorola Moto G71 5G",
+          "seo": "motorola-moto-g71-5g-mm-914"
+        },
+        {
+          "name": "Motorola Moto G75",
+          "seo": "motorola-moto-g75-mm-6886"
+        },
+        {
+          "name": "Motorola Moto G77",
+          "seo": "motorola-moto-g77-mm-11285"
+        },
+        {
+          "name": "Motorola Moto G86 Power 5G",
+          "seo": "motorola-moto-g86-power-5g-mm-8911"
+        },
+        {
+          "name": "Motorola Moto G86 5G",
+          "seo": "motorola-moto-g86-5g-mm-8434"
+        },
+        {
+          "name": "Motorola Moto G87",
+          "seo": "motorola-moto-g87-mm-11425"
+        },
+        {
+          "name": "Motorola Moto G9 Power",
+          "seo": "motorola-moto-g9-power-mm-922"
+        },
+        {
+          "name": "Motorola One, Dual SIM",
+          "seo": "motorola-one-dual-sim-mm-926"
+        },
+        {
+          "name": "Motorola One Fusion+, Dual SIM",
+          "seo": "motorola-one-fusion-dual-sim-mm-928"
+        },
+        {
+          "name": "Motorola RAZR Fold",
+          "seo": "motorola-razr-fold-mm-10600"
+        },
+        {
+          "name": "Motorola RAZR 2022",
+          "seo": "motorola-razr-2022-mm-933"
+        },
+        {
+          "name": "Motorola RAZR 40",
+          "seo": "motorola-razr-40-mm-934"
+        },
+        {
+          "name": "Motorola RAZR 40 Ultra",
+          "seo": "motorola-razr-40-ultra-mm-935"
+        },
+        {
+          "name": "Motorola RAZR 50",
+          "seo": "motorola-razr-50-mm-8343"
+        },
+        {
+          "name": "Motorola RAZR 50",
+          "seo": "motorola-razr-50-mm-5840"
+        },
+        {
+          "name": "Motorola RAZR 50 Ultra",
+          "seo": "motorola-razr-50-ultra-mm-5839"
+        },
+        {
+          "name": "Motorola Razr 60 collections Crystals by Swarovski",
+          "seo": "motorola-razr-60-collections-crystals-by-swarovski-mm-8947"
+        },
+        {
+          "name": "Motorola Razr 60 Ultra",
+          "seo": "motorola-razr-60-ultra-mm-7771"
+        },
+        {
+          "name": "Motorola Razr 70 Ultra",
+          "seo": "motorola-razr-70-ultra-mm-10714"
+        },
+        {
+          "name": "Motorola Signature",
+          "seo": "motorola-signature-mm-10055"
+        },
+        {
+          "name": "Motorola Signature Crystals by Swarovski",
+          "seo": "motorola-signature-crystals-by-swarovski-mm-10824"
+        },
+        {
+          "name": "Motorola ThinkPhone",
+          "seo": "motorola-thinkphone-mm-937"
+        },
+        {
+          "name": "Motorola ThinkPhone 25",
+          "seo": "motorola-thinkphone-25-mm-6904"
+        }
+      ]
+    }
+  },
+  "tablets": {
+    "Apple": {
+      "mp_count": 25,
+      "our_count": 29,
+      "matched": 13,
+      "ambiguous": [
+        {
+          "mp": "Apple iPad Pro 11 (2024) Cellular",
+          "guess": "iPad Pro 11\" (2018)",
+          "score": 60,
+          "seo": "apple-ipad-pro-11-2024-cellular-mm-5716"
+        },
+        {
+          "mp": "Apple iPad Pro 11 (2024) WiFi",
+          "guess": "iPad Pro 11\" (2018)",
+          "score": 60,
+          "seo": "apple-ipad-pro-11-2024-wifi-mm-5293"
+        },
+        {
+          "mp": "Apple iPad Pro 11 (2025) Wi-Fi",
+          "guess": "iPad Pro 11\" (2018)",
+          "score": 60,
+          "seo": "apple-ipad-pro-11-2025-wi-fi-mm-9550"
+        },
+        {
+          "mp": "Apple iPad Pro 11 (2025) Wi-Fi + Cellular",
+          "guess": "iPad Pro 11\" (2018)",
+          "score": 60,
+          "seo": "apple-ipad-pro-11-2025-wi-fi-cellular-mm-9552"
+        }
+      ],
+      "missing": [
+        {
+          "name": "Apple iPad Pro 11 (2025) Wi-Fi + Cellular Nanotextura",
+          "seo": "apple-ipad-pro-11-2025-wi-fi-cellular-nanotextura-mm-9553"
+        },
+        {
+          "name": "Apple iPad Pro 11 (2025) Wi-Fi Nanotextura",
+          "seo": "apple-ipad-pro-11-2025-wi-fi-nanotextura-mm-9551"
+        },
+        {
+          "name": "Apple iPad Pro 13 (2024) Cellular",
+          "seo": "apple-ipad-pro-13-2024-cellular-mm-5717"
+        },
+        {
+          "name": "Apple iPad Pro 13 (2024) WiFi",
+          "seo": "apple-ipad-pro-13-2024-wifi-mm-5294"
+        },
+        {
+          "name": "Apple iPad Pro 13 (2025) Wi-Fi",
+          "seo": "apple-ipad-pro-13-2025-wi-fi-mm-9554"
+        },
+        {
+          "name": "Apple iPad Pro 13 (2025) Wi-Fi + Cellular",
+          "seo": "apple-ipad-pro-13-2025-wi-fi-cellular-mm-9555"
+        },
+        {
+          "name": "Apple iPad 11 (2025) Wi-Fi",
+          "seo": "apple-ipad-11-2025-wi-fi-mm-7418"
+        },
+        {
+          "name": "Apple iPad 11 (2025) Wi-Fi + Cellular",
+          "seo": "apple-ipad-11-2025-wi-fi-cellular-mm-7419"
+        }
+      ]
+    },
+    "Samsung": {
+      "mp_count": 36,
+      "our_count": 16,
+      "matched": 12,
+      "ambiguous": [],
+      "missing": [
+        {
+          "name": "Samsung Galaxy Tab A11",
+          "seo": "samsung-galaxy-tab-a11-mm-9488"
+        },
+        {
+          "name": "Samsung Galaxy Tab A11+",
+          "seo": "samsung-galaxy-tab-a11-mm-9490"
+        },
+        {
+          "name": "Samsung Galaxy Tab A11 LTE",
+          "seo": "samsung-galaxy-tab-a11-lte-mm-9489"
+        },
+        {
+          "name": "Samsung Galaxy Tab A11+ 5G",
+          "seo": "samsung-galaxy-tab-a11-5g-mm-9491"
+        },
+        {
+          "name": "Samsung Galaxy Tab A9 (X110N)",
+          "seo": "samsung-galaxy-tab-a9-x110n-mm-8199"
+        },
+        {
+          "name": "Samsung Galaxy Tab A9 (X110N), Wi-Fi, 4GB",
+          "seo": "samsung-galaxy-tab-a9-x110n-wi-fi-4gb-mm-6178"
+        },
+        {
+          "name": "Samsung Galaxy Tab A9 (X115N)",
+          "seo": "samsung-galaxy-tab-a9-x115n-mm-8201"
+        },
+        {
+          "name": "Samsung Galaxy Tab A9+ (X216N), 5G",
+          "seo": "samsung-galaxy-tab-a9-x216n-5g-mm-4816"
+        },
+        {
+          "name": "Samsung Galaxy Tab S10 FE Wi-Fi (X520)",
+          "seo": "samsung-galaxy-tab-s10-fe-wi-fi-x520-mm-7574"
+        },
+        {
+          "name": "Samsung Galaxy Tab S10 FE+ Wi-Fi (X620)",
+          "seo": "samsung-galaxy-tab-s10-fe-wi-fi-x620-mm-7576"
+        },
+        {
+          "name": "Samsung Galaxy Tab S10 FE 5G (X526)",
+          "seo": "samsung-galaxy-tab-s10-fe-5g-x526-mm-7575"
+        },
+        {
+          "name": "Samsung Galaxy Tab S10 FE+ 5G (X626)",
+          "seo": "samsung-galaxy-tab-s10-fe-5g-x626-mm-7577"
+        },
+        {
+          "name": "Samsung Galaxy Tab S10 Lite",
+          "seo": "samsung-galaxy-tab-s10-lite-mm-8934"
+        },
+        {
+          "name": "Samsung Galaxy Tab S10 Lite 5G",
+          "seo": "samsung-galaxy-tab-s10-lite-5g-mm-8935"
+        },
+        {
+          "name": "Samsung Galaxy Tab S10 Ultra (X920N), Wi-Fi",
+          "seo": "samsung-galaxy-tab-s10-ultra-x920n-wi-fi-mm-6219"
+        },
+        {
+          "name": "Samsung Galaxy Tab S10 Ultra (X926N) 5G",
+          "seo": "samsung-galaxy-tab-s10-ultra-x926n-5g-mm-6220"
+        },
+        {
+          "name": "Samsung Galaxy Tab S10 Ultra 5G",
+          "seo": "samsung-galaxy-tab-s10-ultra-5g-mm-10805"
+        },
+        {
+          "name": "Samsung Galaxy Tab S10+ (X820N) Wi-Fi",
+          "seo": "samsung-galaxy-tab-s10-x820n-wi-fi-mm-6221"
+        },
+        {
+          "name": "Samsung Galaxy Tab S10+ (X826N) 5G",
+          "seo": "samsung-galaxy-tab-s10-x826n-5g-mm-6222"
+        },
+        {
+          "name": "Samsung Galaxy Tab S11",
+          "seo": "samsung-galaxy-tab-s11-mm-8937"
+        },
+        {
+          "name": "Samsung Galaxy Tab S11 Ultra",
+          "seo": "samsung-galaxy-tab-s11-ultra-mm-8939"
+        },
+        {
+          "name": "Samsung Galaxy Tab S11 Ultra 5G",
+          "seo": "samsung-galaxy-tab-s11-ultra-5g-mm-8940"
+        },
+        {
+          "name": "Samsung Galaxy Tab S11 5G",
+          "seo": "samsung-galaxy-tab-s11-5g-mm-8938"
+        },
+        {
+          "name": "Samsung Galaxy Tab S9 (SM-X710N), WiFi",
+          "seo": "samsung-galaxy-tab-s9-sm-x710n-wifi-mm-164"
+        }
+      ]
+    }
+  },
+  "watches": {
+    "Apple": {
+      "mp_count": 7,
+      "our_count": 14,
+      "matched": 1,
+      "ambiguous": [],
+      "missing": [
+        {
+          "name": "Apple Watch Series 10",
+          "seo": "apple-watch-series-10-mm-6183"
+        },
+        {
+          "name": "Apple Watch Series 10 Cellular",
+          "seo": "apple-watch-series-10-cellular-mm-6184"
+        },
+        {
+          "name": "Apple Watch Series 10 Cellular Titan",
+          "seo": "apple-watch-series-10-cellular-titan-mm-6185"
+        },
+        {
+          "name": "Apple Watch Series 4",
+          "seo": "apple-watch-series-4-mm-1703"
+        },
+        {
+          "name": "Apple Watch Series 9",
+          "seo": "apple-watch-series-9-mm-2117"
+        },
+        {
+          "name": "Apple Watch Ultra 2 49mm",
+          "seo": "apple-watch-ultra-2-49mm-mm-2630"
+        }
+      ]
+    },
+    "Samsung": {
+      "mp_count": 9,
+      "our_count": 11,
+      "matched": 4,
+      "ambiguous": [],
+      "missing": [
+        {
+          "name": "Samsung Galaxy Watch Ultra/Ultra2",
+          "seo": "samsung-galaxy-watch-ultra-ultra2-mm-8235"
+        },
+        {
+          "name": "Samsung Galaxy Watch7",
+          "seo": "samsung-galaxy-watch7-mm-5982"
+        },
+        {
+          "name": "Samsung Galaxy Watch7 LTE",
+          "seo": "samsung-galaxy-watch7-lte-mm-5983"
+        },
+        {
+          "name": "Samsung Galaxy Watch8 Classic 46mm",
+          "seo": "samsung-galaxy-watch8-classic-46mm-mm-8236"
+        },
+        {
+          "name": "Samsung Galaxy Watch8 40mm/44mm",
+          "seo": "samsung-galaxy-watch8-40mm-44mm-mm-8238"
+        }
+      ]
+    }
+  },
+  "summary": {
+    "phones:Apple": {
+      "missing": 5,
+      "ambiguous": 2,
+      "matched": 35,
+      "mp": 42,
+      "ours": 40
+    },
+    "phones:Samsung": {
+      "missing": 27,
+      "ambiguous": 0,
+      "matched": 100,
+      "mp": 127,
+      "ours": 109
+    },
+    "phones:Xiaomi": {
+      "missing": 31,
+      "ambiguous": 0,
+      "matched": 88,
+      "mp": 119,
+      "ours": 82
+    },
+    "phones:Honor": {
+      "missing": 16,
+      "ambiguous": 0,
+      "matched": 35,
+      "mp": 51,
+      "ours": 45
+    },
+    "phones:Huawei": {
+      "missing": 5,
+      "ambiguous": 0,
+      "matched": 37,
+      "mp": 42,
+      "ours": 45
+    },
+    "phones:Nokia": {
+      "missing": 6,
+      "ambiguous": 0,
+      "matched": 13,
+      "mp": 19,
+      "ours": 12
+    },
+    "phones:Vivo": {
+      "missing": 18,
+      "ambiguous": 0,
+      "matched": 25,
+      "mp": 43,
+      "ours": 42
+    },
+    "phones:Poco": {
+      "missing": 13,
+      "ambiguous": 0,
+      "matched": 24,
+      "mp": 37,
+      "ours": 28
+    },
+    "phones:Motorola": {
+      "missing": 47,
+      "ambiguous": 2,
+      "matched": 47,
+      "mp": 96,
+      "ours": 44
+    },
+    "tablets:Apple": {
+      "missing": 8,
+      "ambiguous": 4,
+      "matched": 13,
+      "mp": 25,
+      "ours": 29
+    },
+    "tablets:Samsung": {
+      "missing": 24,
+      "ambiguous": 0,
+      "matched": 12,
+      "mp": 36,
+      "ours": 16
+    },
+    "watches:Apple": {
+      "missing": 6,
+      "ambiguous": 0,
+      "matched": 1,
+      "mp": 7,
+      "ours": 14
+    },
+    "watches:Samsung": {
+      "missing": 5,
+      "ambiguous": 0,
+      "matched": 4,
+      "mp": 9,
+      "ours": 11
+    },
+    "total_missing_strict": 211
+  },
+  "priority_recentish": [
+    {
+      "section": "phones",
+      "brand": "Apple",
+      "name": "Apple iPhone Air",
+      "seo": "apple-iphone-air-mm-9055"
+    },
+    {
+      "section": "phones",
+      "brand": "Apple",
+      "name": "Apple iPhone 17",
+      "seo": "apple-iphone-17-mm-9050"
+    },
+    {
+      "section": "phones",
+      "brand": "Apple",
+      "name": "Apple iPhone 17 Pro",
+      "seo": "apple-iphone-17-pro-mm-9045"
+    },
+    {
+      "section": "phones",
+      "brand": "Samsung",
+      "name": "Samsung Galaxy A26 5G",
+      "seo": "samsung-galaxy-a26-5g-mm-7380"
+    },
+    {
+      "section": "phones",
+      "brand": "Samsung",
+      "name": "Samsung Galaxy A27 5G",
+      "seo": "samsung-galaxy-a27-5g-mm-11150"
+    },
+    {
+      "section": "phones",
+      "brand": "Samsung",
+      "name": "Samsung Galaxy A37",
+      "seo": "samsung-galaxy-a37-mm-10504"
+    },
+    {
+      "section": "phones",
+      "brand": "Samsung",
+      "name": "Samsung Galaxy A57",
+      "seo": "samsung-galaxy-a57-mm-10503"
+    },
+    {
+      "section": "phones",
+      "brand": "Samsung",
+      "name": "Samsung Galaxy S26",
+      "seo": "samsung-galaxy-s26-mm-10179"
+    },
+    {
+      "section": "phones",
+      "brand": "Samsung",
+      "name": "Samsung Galaxy S26+",
+      "seo": "samsung-galaxy-s26-mm-10161"
+    },
+    {
+      "section": "phones",
+      "brand": "Samsung",
+      "name": "Samsung Galaxy S26 Ultra",
+      "seo": "samsung-galaxy-s26-ultra-mm-10137"
+    },
+    {
+      "section": "phones",
+      "brand": "Xiaomi",
+      "name": "Xiaomi Redmi Note 15",
+      "seo": "xiaomi-redmi-note-15-mm-9909"
+    },
+    {
+      "section": "phones",
+      "brand": "Xiaomi",
+      "name": "Xiaomi Redmi Note 15 Pro",
+      "seo": "xiaomi-redmi-note-15-pro-mm-9911"
+    },
+    {
+      "section": "phones",
+      "brand": "Xiaomi",
+      "name": "Xiaomi Redmi Note 15 Pro 5G",
+      "seo": "xiaomi-redmi-note-15-pro-5g-mm-9912"
+    },
+    {
+      "section": "phones",
+      "brand": "Xiaomi",
+      "name": "Xiaomi Redmi Note 15 Pro+ 5G",
+      "seo": "xiaomi-redmi-note-15-pro-5g-mm-9919"
+    },
+    {
+      "section": "phones",
+      "brand": "Xiaomi",
+      "name": "Xiaomi Redmi Note 15 5G",
+      "seo": "xiaomi-redmi-note-15-5g-mm-9910"
+    },
+    {
+      "section": "phones",
+      "brand": "Xiaomi",
+      "name": "Xiaomi Redmi Note 17",
+      "seo": "xiaomi-redmi-note-17-mm-11630"
+    },
+    {
+      "section": "phones",
+      "brand": "Xiaomi",
+      "name": "Xiaomi Redmi Note 17 Pro Max 5G",
+      "seo": "xiaomi-redmi-note-17-pro-max-5g-mm-11649"
+    },
+    {
+      "section": "phones",
+      "brand": "Xiaomi",
+      "name": "Xiaomi Redmi Note 17 Pro 5G",
+      "seo": "xiaomi-redmi-note-17-pro-5g-mm-11645"
+    },
+    {
+      "section": "phones",
+      "brand": "Xiaomi",
+      "name": "Xiaomi Redmi Note 17 5G",
+      "seo": "xiaomi-redmi-note-17-5g-mm-11631"
+    },
+    {
+      "section": "phones",
+      "brand": "Xiaomi",
+      "name": "Xiaomi Redmi 15",
+      "seo": "xiaomi-redmi-15-mm-8552"
+    },
+    {
+      "section": "phones",
+      "brand": "Xiaomi",
+      "name": "Xiaomi Redmi 15 5G",
+      "seo": "xiaomi-redmi-15-5g-mm-8554"
+    },
+    {
+      "section": "phones",
+      "brand": "Xiaomi",
+      "name": "Xiaomi Redmi 17",
+      "seo": "xiaomi-redmi-17-mm-11296"
+    },
+    {
+      "section": "phones",
+      "brand": "Xiaomi",
+      "name": "Xiaomi 15 Ultra 5G",
+      "seo": "xiaomi-15-ultra-5g-mm-7344"
+    },
+    {
+      "section": "phones",
+      "brand": "Xiaomi",
+      "name": "Xiaomi 15 5G",
+      "seo": "xiaomi-15-5g-mm-7343"
+    },
+    {
+      "section": "phones",
+      "brand": "Xiaomi",
+      "name": "Xiaomi 17",
+      "seo": "xiaomi-17-mm-10259"
+    },
+    {
+      "section": "phones",
+      "brand": "Xiaomi",
+      "name": "Xiaomi 17 Ultra",
+      "seo": "xiaomi-17-ultra-mm-10258"
+    },
+    {
+      "section": "phones",
+      "brand": "Honor",
+      "name": "Honor Magic5 Pro",
+      "seo": "honor-magic5-pro-mm-506"
+    },
+    {
+      "section": "phones",
+      "brand": "Honor",
+      "name": "Honor Magic6 Pro",
+      "seo": "honor-magic6-pro-mm-5081"
+    },
+    {
+      "section": "phones",
+      "brand": "Honor",
+      "name": "Honor 400 Lite",
+      "seo": "honor-400-lite-mm-7937"
+    },
+    {
+      "section": "phones",
+      "brand": "Honor",
+      "name": "Honor 400 Pro 5G",
+      "seo": "honor-400-pro-5g-mm-8096"
+    },
+    {
+      "section": "phones",
+      "brand": "Honor",
+      "name": "Honor 400 Smart 5G",
+      "seo": "honor-400-smart-5g-mm-11287"
+    },
+    {
+      "section": "phones",
+      "brand": "Honor",
+      "name": "Honor 400 5G",
+      "seo": "honor-400-5g-mm-8097"
+    },
+    {
+      "section": "phones",
+      "brand": "Honor",
+      "name": "Honor 600 Lite",
+      "seo": "honor-600-lite-mm-10660"
+    },
+    {
+      "section": "phones",
+      "brand": "Honor",
+      "name": "Honor 600 Pro",
+      "seo": "honor-600-pro-mm-10664"
+    },
+    {
+      "section": "phones",
+      "brand": "Honor",
+      "name": "Honor 600 Smart 5G",
+      "seo": "honor-600-smart-5g-mm-11628"
+    },
+    {
+      "section": "phones",
+      "brand": "Honor",
+      "name": "Honor 600 5G",
+      "seo": "honor-600-5g-mm-10661"
+    },
+    {
+      "section": "phones",
+      "brand": "Poco",
+      "name": "POCO F7",
+      "seo": "poco-f7-mm-8213"
+    },
+    {
+      "section": "phones",
+      "brand": "Poco",
+      "name": "POCO F7 Pro",
+      "seo": "poco-f7-pro-mm-7529"
+    },
+    {
+      "section": "phones",
+      "brand": "Poco",
+      "name": "POCO F7 Ultra",
+      "seo": "poco-f7-ultra-mm-7535"
+    },
+    {
+      "section": "phones",
+      "brand": "Poco",
+      "name": "POCO F8 Pro",
+      "seo": "poco-f8-pro-mm-9790"
+    },
+    {
+      "section": "phones",
+      "brand": "Poco",
+      "name": "POCO F8 Ultra",
+      "seo": "poco-f8-ultra-mm-9789"
+    },
+    {
+      "section": "phones",
+      "brand": "Poco",
+      "name": "POCO X8 Pro",
+      "seo": "poco-x8-pro-mm-10422"
+    },
+    {
+      "section": "phones",
+      "brand": "Poco",
+      "name": "POCO X8 Pro Max",
+      "seo": "poco-x8-pro-max-mm-10438"
+    },
+    {
+      "section": "tablets",
+      "brand": "Apple",
+      "name": "Apple iPad Pro 11 (2025) Wi-Fi + Cellular Nanotextura",
+      "seo": "apple-ipad-pro-11-2025-wi-fi-cellular-nanotextura-mm-9553"
+    },
+    {
+      "section": "tablets",
+      "brand": "Apple",
+      "name": "Apple iPad Pro 11 (2025) Wi-Fi Nanotextura",
+      "seo": "apple-ipad-pro-11-2025-wi-fi-nanotextura-mm-9551"
+    },
+    {
+      "section": "tablets",
+      "brand": "Apple",
+      "name": "Apple iPad Pro 13 (2024) Cellular",
+      "seo": "apple-ipad-pro-13-2024-cellular-mm-5717"
+    },
+    {
+      "section": "tablets",
+      "brand": "Apple",
+      "name": "Apple iPad Pro 13 (2024) WiFi",
+      "seo": "apple-ipad-pro-13-2024-wifi-mm-5294"
+    },
+    {
+      "section": "tablets",
+      "brand": "Apple",
+      "name": "Apple iPad Pro 13 (2025) Wi-Fi",
+      "seo": "apple-ipad-pro-13-2025-wi-fi-mm-9554"
+    },
+    {
+      "section": "tablets",
+      "brand": "Apple",
+      "name": "Apple iPad Pro 13 (2025) Wi-Fi + Cellular",
+      "seo": "apple-ipad-pro-13-2025-wi-fi-cellular-mm-9555"
+    },
+    {
+      "section": "tablets",
+      "brand": "Apple",
+      "name": "Apple iPad 11 (2025) Wi-Fi",
+      "seo": "apple-ipad-11-2025-wi-fi-mm-7418"
+    },
+    {
+      "section": "tablets",
+      "brand": "Apple",
+      "name": "Apple iPad 11 (2025) Wi-Fi + Cellular",
+      "seo": "apple-ipad-11-2025-wi-fi-cellular-mm-7419"
+    },
+    {
+      "section": "tablets",
+      "brand": "Samsung",
+      "name": "Samsung Galaxy Tab A11",
+      "seo": "samsung-galaxy-tab-a11-mm-9488"
+    },
+    {
+      "section": "tablets",
+      "brand": "Samsung",
+      "name": "Samsung Galaxy Tab A11+",
+      "seo": "samsung-galaxy-tab-a11-mm-9490"
+    },
+    {
+      "section": "tablets",
+      "brand": "Samsung",
+      "name": "Samsung Galaxy Tab A11 LTE",
+      "seo": "samsung-galaxy-tab-a11-lte-mm-9489"
+    },
+    {
+      "section": "tablets",
+      "brand": "Samsung",
+      "name": "Samsung Galaxy Tab A11+ 5G",
+      "seo": "samsung-galaxy-tab-a11-5g-mm-9491"
+    },
+    {
+      "section": "tablets",
+      "brand": "Samsung",
+      "name": "Samsung Galaxy Tab S10 FE Wi-Fi (X520)",
+      "seo": "samsung-galaxy-tab-s10-fe-wi-fi-x520-mm-7574"
+    },
+    {
+      "section": "tablets",
+      "brand": "Samsung",
+      "name": "Samsung Galaxy Tab S10 FE+ Wi-Fi (X620)",
+      "seo": "samsung-galaxy-tab-s10-fe-wi-fi-x620-mm-7576"
+    },
+    {
+      "section": "tablets",
+      "brand": "Samsung",
+      "name": "Samsung Galaxy Tab S10 FE 5G (X526)",
+      "seo": "samsung-galaxy-tab-s10-fe-5g-x526-mm-7575"
+    },
+    {
+      "section": "tablets",
+      "brand": "Samsung",
+      "name": "Samsung Galaxy Tab S10 FE+ 5G (X626)",
+      "seo": "samsung-galaxy-tab-s10-fe-5g-x626-mm-7577"
+    },
+    {
+      "section": "tablets",
+      "brand": "Samsung",
+      "name": "Samsung Galaxy Tab S10 Lite",
+      "seo": "samsung-galaxy-tab-s10-lite-mm-8934"
+    },
+    {
+      "section": "tablets",
+      "brand": "Samsung",
+      "name": "Samsung Galaxy Tab S10 Lite 5G",
+      "seo": "samsung-galaxy-tab-s10-lite-5g-mm-8935"
+    },
+    {
+      "section": "tablets",
+      "brand": "Samsung",
+      "name": "Samsung Galaxy Tab S10 Ultra (X920N), Wi-Fi",
+      "seo": "samsung-galaxy-tab-s10-ultra-x920n-wi-fi-mm-6219"
+    },
+    {
+      "section": "tablets",
+      "brand": "Samsung",
+      "name": "Samsung Galaxy Tab S10 Ultra (X926N) 5G",
+      "seo": "samsung-galaxy-tab-s10-ultra-x926n-5g-mm-6220"
+    },
+    {
+      "section": "tablets",
+      "brand": "Samsung",
+      "name": "Samsung Galaxy Tab S10 Ultra 5G",
+      "seo": "samsung-galaxy-tab-s10-ultra-5g-mm-10805"
+    },
+    {
+      "section": "tablets",
+      "brand": "Samsung",
+      "name": "Samsung Galaxy Tab S10+ (X820N) Wi-Fi",
+      "seo": "samsung-galaxy-tab-s10-x820n-wi-fi-mm-6221"
+    },
+    {
+      "section": "tablets",
+      "brand": "Samsung",
+      "name": "Samsung Galaxy Tab S10+ (X826N) 5G",
+      "seo": "samsung-galaxy-tab-s10-x826n-5g-mm-6222"
+    },
+    {
+      "section": "tablets",
+      "brand": "Samsung",
+      "name": "Samsung Galaxy Tab S11",
+      "seo": "samsung-galaxy-tab-s11-mm-8937"
+    },
+    {
+      "section": "tablets",
+      "brand": "Samsung",
+      "name": "Samsung Galaxy Tab S11 Ultra",
+      "seo": "samsung-galaxy-tab-s11-ultra-mm-8939"
+    },
+    {
+      "section": "tablets",
+      "brand": "Samsung",
+      "name": "Samsung Galaxy Tab S11 Ultra 5G",
+      "seo": "samsung-galaxy-tab-s11-ultra-5g-mm-8940"
+    },
+    {
+      "section": "tablets",
+      "brand": "Samsung",
+      "name": "Samsung Galaxy Tab S11 5G",
+      "seo": "samsung-galaxy-tab-s11-5g-mm-8938"
+    },
+    {
+      "section": "watches",
+      "brand": "Apple",
+      "name": "Apple Watch Series 10",
+      "seo": "apple-watch-series-10-mm-6183"
+    },
+    {
+      "section": "watches",
+      "brand": "Apple",
+      "name": "Apple Watch Series 10 Cellular",
+      "seo": "apple-watch-series-10-cellular-mm-6184"
+    },
+    {
+      "section": "watches",
+      "brand": "Apple",
+      "name": "Apple Watch Series 10 Cellular Titan",
+      "seo": "apple-watch-series-10-cellular-titan-mm-6185"
+    },
+    {
+      "section": "watches",
+      "brand": "Apple",
+      "name": "Apple Watch Ultra 2 49mm",
+      "seo": "apple-watch-ultra-2-49mm-mm-2630"
+    },
+    {
+      "section": "watches",
+      "brand": "Samsung",
+      "name": "Samsung Galaxy Watch Ultra/Ultra2",
+      "seo": "samsung-galaxy-watch-ultra-ultra2-mm-8235"
+    },
+    {
+      "section": "watches",
+      "brand": "Samsung",
+      "name": "Samsung Galaxy Watch7",
+      "seo": "samsung-galaxy-watch7-mm-5982"
+    },
+    {
+      "section": "watches",
+      "brand": "Samsung",
+      "name": "Samsung Galaxy Watch7 LTE",
+      "seo": "samsung-galaxy-watch7-lte-mm-5983"
+    },
+    {
+      "section": "watches",
+      "brand": "Samsung",
+      "name": "Samsung Galaxy Watch8 Classic 46mm",
+      "seo": "samsung-galaxy-watch8-classic-46mm-mm-8236"
+    },
+    {
+      "section": "watches",
+      "brand": "Samsung",
+      "name": "Samsung Galaxy Watch8 40mm/44mm",
+      "seo": "samsung-galaxy-watch8-40mm-44mm-mm-8238"
+    }
+  ]
+}

@@ -1,0 +1,990 @@
+{
+ "succeeded": 191,
+ "failed": 2,
+ "failures": [
+  {
+   "requestId": "cat-105-96ceaa83",
+   "title": "X60 Pro 5G",
+   "error": "already exists id=817 under upCid=812 (url x60-pro-5g)"
+  },
+  {
+   "requestId": "cat-164-07a469b0",
+   "title": "Samsung Galaxy Tab A9+",
+   "error": "already exists id=1428 Samsung Galaxy Tab A9 Plus under upCid=1424"
+  }
+ ],
+ "created": [
+  {
+   "id": 1614,
+   "title": "iPhone Air",
+   "upCid": 501
+  },
+  {
+   "id": 1615,
+   "title": "iPhone 17",
+   "upCid": 501
+  },
+  {
+   "id": 1616,
+   "title": "iPhone 17e",
+   "upCid": 501
+  },
+  {
+   "id": 1617,
+   "title": "iPhone 17 Pro",
+   "upCid": 501
+  },
+  {
+   "id": 1618,
+   "title": "iPhone 18 Pro",
+   "upCid": 501
+  },
+  {
+   "id": 1619,
+   "title": "Galaxy A03 (SM-A035G)",
+   "upCid": 604
+  },
+  {
+   "id": 1620,
+   "title": "Galaxy A26 5G",
+   "upCid": 604
+  },
+  {
+   "id": 1621,
+   "title": "Galaxy A27 5G",
+   "upCid": 604
+  },
+  {
+   "id": 1622,
+   "title": "Galaxy A37",
+   "upCid": 604
+  },
+  {
+   "id": 1623,
+   "title": "Galaxy A57",
+   "upCid": 604
+  },
+  {
+   "id": 1624,
+   "title": "Galaxy Fresh (S7390)",
+   "upCid": 603
+  },
+  {
+   "id": 1625,
+   "title": "Galaxy J1 (2016) (J120)",
+   "upCid": 608
+  },
+  {
+   "id": 1626,
+   "title": "Galaxy Note10 Lite (N770F)",
+   "upCid": 613
+  },
+  {
+   "id": 1627,
+   "title": "Galaxy Note10 (N970FZ)",
+   "upCid": 613
+  },
+  {
+   "id": 1628,
+   "title": "Galaxy Note10+ (N975FZ)",
+   "upCid": 613
+  },
+  {
+   "id": 1629,
+   "title": "Galaxy Note20 (N980F)",
+   "upCid": 613
+  },
+  {
+   "id": 1630,
+   "title": "Galaxy Note20 Ultra 5G (N986B)",
+   "upCid": 613
+  },
+  {
+   "id": 1631,
+   "title": "Galaxy Note9 (N960FZ)",
+   "upCid": 613
+  },
+  {
+   "id": 1632,
+   "title": "Galaxy S26",
+   "upCid": 618
+  },
+  {
+   "id": 1633,
+   "title": "Galaxy S26 Ultra",
+   "upCid": 618
+  },
+  {
+   "id": 1634,
+   "title": "Galaxy S4 mini (i9192), Duos",
+   "upCid": 618
+  },
+  {
+   "id": 1635,
+   "title": "Galaxy S4 mini (i9195)",
+   "upCid": 618
+  },
+  {
+   "id": 1636,
+   "title": "Galaxy S4 mini VE (i9195i)",
+   "upCid": 618
+  },
+  {
+   "id": 1637,
+   "title": "Galaxy Xcover7 (G556B)",
+   "upCid": 603
+  },
+  {
+   "id": 1638,
+   "title": "Galaxy Xcover7 Pro",
+   "upCid": 603
+  },
+  {
+   "id": 1639,
+   "title": "Galaxy Z Flip3 5G (F711B)",
+   "upCid": 1603
+  },
+  {
+   "id": 1640,
+   "title": "Galaxy Z Flip8",
+   "upCid": 1603
+  },
+  {
+   "id": 1641,
+   "title": "Galaxy Z Fold3 5G (F926B)",
+   "upCid": 1603
+  },
+  {
+   "id": 1642,
+   "title": "Galaxy Z Fold8",
+   "upCid": 1603
+  },
+  {
+   "id": 1643,
+   "title": "Galaxy Z Fold8 Ultra",
+   "upCid": 1603
+  },
+  {
+   "id": 1644,
+   "title": "Mi Mix 2",
+   "upCid": 638
+  },
+  {
+   "id": 1645,
+   "title": "MIX Flip",
+   "upCid": 638
+  },
+  {
+   "id": 1646,
+   "title": "Mi3",
+   "upCid": 638
+  },
+  {
+   "id": 1647,
+   "title": "Mi4",
+   "upCid": 638
+  },
+  {
+   "id": 1648,
+   "title": "X3 NFC",
+   "upCid": 1559
+  },
+  {
+   "id": 1649,
+   "title": "Redmi A5",
+   "upCid": 671
+  },
+  {
+   "id": 1650,
+   "title": "Redmi A7 Pro",
+   "upCid": 671
+  },
+  {
+   "id": 1651,
+   "title": "Redmi Note 15",
+   "upCid": 650
+  },
+  {
+   "id": 1652,
+   "title": "Redmi Note 15 Pro",
+   "upCid": 650
+  },
+  {
+   "id": 1653,
+   "title": "Redmi Note 15 Pro 5G",
+   "upCid": 650
+  },
+  {
+   "id": 1654,
+   "title": "Redmi Note 15 Pro+ 5G",
+   "upCid": 650
+  },
+  {
+   "id": 1655,
+   "title": "Redmi Note 15 5G",
+   "upCid": 650
+  },
+  {
+   "id": 1656,
+   "title": "Redmi Note 17",
+   "upCid": 650
+  },
+  {
+   "id": 1657,
+   "title": "Redmi Note 17 Pro Max 5G",
+   "upCid": 650
+  },
+  {
+   "id": 1658,
+   "title": "Redmi Note 17 Pro 5G",
+   "upCid": 650
+  },
+  {
+   "id": 1659,
+   "title": "Redmi Note 17 5G",
+   "upCid": 650
+  },
+  {
+   "id": 1660,
+   "title": "Redmi Note 2",
+   "upCid": 650
+  },
+  {
+   "id": 1661,
+   "title": "Redmi Note 5",
+   "upCid": 650
+  },
+  {
+   "id": 1662,
+   "title": "Redmi 15",
+   "upCid": 671
+  },
+  {
+   "id": 1663,
+   "title": "Redmi 15C",
+   "upCid": 671
+  },
+  {
+   "id": 1664,
+   "title": "Redmi 15C 5G",
+   "upCid": 671
+  },
+  {
+   "id": 1665,
+   "title": "Redmi 15 5G",
+   "upCid": 671
+  },
+  {
+   "id": 1666,
+   "title": "Redmi 17",
+   "upCid": 671
+  },
+  {
+   "id": 1667,
+   "title": "15T",
+   "upCid": 638
+  },
+  {
+   "id": 1668,
+   "title": "15T Pro",
+   "upCid": 638
+  },
+  {
+   "id": 1669,
+   "title": "15 Ultra",
+   "upCid": 638
+  },
+  {
+   "id": 1670,
+   "title": "15",
+   "upCid": 638
+  },
+  {
+   "id": 1671,
+   "title": "17",
+   "upCid": 638
+  },
+  {
+   "id": 1672,
+   "title": "17T",
+   "upCid": 638
+  },
+  {
+   "id": 1673,
+   "title": "17T Pro",
+   "upCid": 638
+  },
+  {
+   "id": 1674,
+   "title": "17 Ultra",
+   "upCid": 638
+  },
+  {
+   "id": 1675,
+   "title": "C85",
+   "upCid": 1553
+  },
+  {
+   "id": 1676,
+   "title": "F7",
+   "upCid": 1548
+  },
+  {
+   "id": 1677,
+   "title": "F7 Pro",
+   "upCid": 1548
+  },
+  {
+   "id": 1678,
+   "title": "F7 Ultra",
+   "upCid": 1548
+  },
+  {
+   "id": 1679,
+   "title": "F8 Pro",
+   "upCid": 1548
+  },
+  {
+   "id": 1680,
+   "title": "F8 Ultra",
+   "upCid": 1548
+  },
+  {
+   "id": 1681,
+   "title": "F9 Pro",
+   "upCid": 1548
+  },
+  {
+   "id": 1682,
+   "title": "F9 Ultra",
+   "upCid": 1548
+  },
+  {
+   "id": 1683,
+   "title": "M7 Pro 5G",
+   "upCid": 1551
+  },
+  {
+   "id": 1684,
+   "title": "M8 Pro 5G",
+   "upCid": 1551
+  },
+  {
+   "id": 1685,
+   "title": "M8 5G",
+   "upCid": 1551
+  },
+  {
+   "id": 1686,
+   "title": "X8 Pro",
+   "upCid": 1559
+  },
+  {
+   "id": 1687,
+   "title": "X8 Pro Max",
+   "upCid": 1559
+  },
+  {
+   "id": 1688,
+   "title": "Magic V2",
+   "upCid": 876
+  },
+  {
+   "id": 1689,
+   "title": "Magic 4 lite 5G",
+   "upCid": 876
+  },
+  {
+   "id": 1690,
+   "title": "Magic 4 Pro",
+   "upCid": 876
+  },
+  {
+   "id": 1691,
+   "title": "Magic5 Pro",
+   "upCid": 876
+  },
+  {
+   "id": 1692,
+   "title": "Magic6 Pro",
+   "upCid": 876
+  },
+  {
+   "id": 1693,
+   "title": "X 5c Plus",
+   "upCid": 516
+  },
+  {
+   "id": 1694,
+   "title": "X6a",
+   "upCid": 516
+  },
+  {
+   "id": 1695,
+   "title": "X6b",
+   "upCid": 516
+  },
+  {
+   "id": 1696,
+   "title": "G8",
+   "upCid": 549
+  },
+  {
+   "id": 1697,
+   "title": "Mate 20 Lite",
+   "upCid": 549
+  },
+  {
+   "id": 1698,
+   "title": "P50 Pocket",
+   "upCid": 549
+  },
+  {
+   "id": 1699,
+   "title": "P50 Pro",
+   "upCid": 549
+  },
+  {
+   "id": 1700,
+   "title": "P60 Pro",
+   "upCid": 549
+  },
+  {
+   "id": 1701,
+   "title": "Nokia G22",
+   "upCid": 585
+  },
+  {
+   "id": 1702,
+   "title": "Nokia XR20",
+   "upCid": 585
+  },
+  {
+   "id": 1703,
+   "title": "Nokia 210 4G",
+   "upCid": 585
+  },
+  {
+   "id": 1704,
+   "title": "Nokia 216",
+   "upCid": 585
+  },
+  {
+   "id": 1705,
+   "title": "Nokia 2660 Flip 4G",
+   "upCid": 585
+  },
+  {
+   "id": 1706,
+   "title": "Nokia 2720 Flip",
+   "upCid": 585
+  },
+  {
+   "id": 1707,
+   "title": "V40 Lite",
+   "upCid": 772
+  },
+  {
+   "id": 1708,
+   "title": "V50",
+   "upCid": 772
+  },
+  {
+   "id": 1709,
+   "title": "V50 Lite",
+   "upCid": 772
+  },
+  {
+   "id": 1710,
+   "title": "V70",
+   "upCid": 772
+  },
+  {
+   "id": 1711,
+   "title": "V70 FE",
+   "upCid": 772
+  },
+  {
+   "id": 1712,
+   "title": "V70 Lite",
+   "upCid": 772
+  },
+  {
+   "id": 1713,
+   "title": "X200",
+   "upCid": 772
+  },
+  {
+   "id": 1714,
+   "title": "X200 Pro",
+   "upCid": 772
+  },
+  {
+   "id": 1715,
+   "title": "X300",
+   "upCid": 772
+  },
+  {
+   "id": 1716,
+   "title": "X300 Pro",
+   "upCid": 772
+  },
+  {
+   "id": 1717,
+   "title": "X300 Ultra",
+   "upCid": 772
+  },
+  {
+   "id": 1718,
+   "title": "Y19s",
+   "upCid": 772
+  },
+  {
+   "id": 1719,
+   "title": "Y21d",
+   "upCid": 772
+  },
+  {
+   "id": 1720,
+   "title": "Y28",
+   "upCid": 772
+  },
+  {
+   "id": 1721,
+   "title": "Y31 5G",
+   "upCid": 772
+  },
+  {
+   "id": 1722,
+   "title": "Y72 5G",
+   "upCid": 772
+  },
+  {
+   "id": 1723,
+   "title": "Edge 60",
+   "upCid": 1490
+  },
+  {
+   "id": 1724,
+   "title": "Edge 60 Fusion",
+   "upCid": 1490
+  },
+  {
+   "id": 1725,
+   "title": "Edge 60 Neo",
+   "upCid": 1490
+  },
+  {
+   "id": 1726,
+   "title": "Edge 60 Pro",
+   "upCid": 1490
+  },
+  {
+   "id": 1727,
+   "title": "Edge 70",
+   "upCid": 1490
+  },
+  {
+   "id": 1728,
+   "title": "Edge 70 Fusion",
+   "upCid": 1490
+  },
+  {
+   "id": 1729,
+   "title": "Edge 70 Pro",
+   "upCid": 1490
+  },
+  {
+   "id": 1730,
+   "title": "E15",
+   "upCid": 1504
+  },
+  {
+   "id": 1731,
+   "title": "E20",
+   "upCid": 1504
+  },
+  {
+   "id": 1732,
+   "title": "E6s (2020)",
+   "upCid": 1504
+  },
+  {
+   "id": 1733,
+   "title": "E7 Power",
+   "upCid": 1504
+  },
+  {
+   "id": 1734,
+   "title": "G04",
+   "upCid": 1507
+  },
+  {
+   "id": 1735,
+   "title": "G05",
+   "upCid": 1507
+  },
+  {
+   "id": 1736,
+   "title": "G06",
+   "upCid": 1507
+  },
+  {
+   "id": 1737,
+   "title": "G06 Power",
+   "upCid": 1507
+  },
+  {
+   "id": 1738,
+   "title": "G15 Power",
+   "upCid": 1507
+  },
+  {
+   "id": 1739,
+   "title": "G35 5G",
+   "upCid": 1507
+  },
+  {
+   "id": 1740,
+   "title": "G37 Power 5G",
+   "upCid": 1507
+  },
+  {
+   "id": 1741,
+   "title": "G41",
+   "upCid": 1507
+  },
+  {
+   "id": 1742,
+   "title": "G 5G Plus",
+   "upCid": 1507
+  },
+  {
+   "id": 1743,
+   "title": "G51 5G",
+   "upCid": 1507
+  },
+  {
+   "id": 1744,
+   "title": "G55 5G",
+   "upCid": 1507
+  },
+  {
+   "id": 1745,
+   "title": "G56 5G",
+   "upCid": 1507
+  },
+  {
+   "id": 1746,
+   "title": "G57 Power",
+   "upCid": 1507
+  },
+  {
+   "id": 1747,
+   "title": "G71 5G",
+   "upCid": 1507
+  },
+  {
+   "id": 1748,
+   "title": "G75",
+   "upCid": 1507
+  },
+  {
+   "id": 1749,
+   "title": "G77",
+   "upCid": 1507
+  },
+  {
+   "id": 1750,
+   "title": "G86 Power 5G",
+   "upCid": 1507
+  },
+  {
+   "id": 1751,
+   "title": "G86 5G",
+   "upCid": 1507
+  },
+  {
+   "id": 1752,
+   "title": "G87",
+   "upCid": 1507
+  },
+  {
+   "id": 1753,
+   "title": "G9 Power",
+   "upCid": 1507
+  },
+  {
+   "id": 1754,
+   "title": "One",
+   "upCid": 1489
+  },
+  {
+   "id": 1755,
+   "title": "One Fusion+",
+   "upCid": 1489
+  },
+  {
+   "id": 1756,
+   "title": "RAZR Fold",
+   "upCid": 1489
+  },
+  {
+   "id": 1757,
+   "title": "RAZR 2022",
+   "upCid": 1489
+  },
+  {
+   "id": 1758,
+   "title": "RAZR 40",
+   "upCid": 1489
+  },
+  {
+   "id": 1759,
+   "title": "RAZR 40 Ultra",
+   "upCid": 1489
+  },
+  {
+   "id": 1760,
+   "title": "RAZR 50",
+   "upCid": 1489
+  },
+  {
+   "id": 1761,
+   "title": "RAZR 50 Ultra",
+   "upCid": 1489
+  },
+  {
+   "id": 1762,
+   "title": "Razr 60 collections Crystals by Swarovski",
+   "upCid": 1489
+  },
+  {
+   "id": 1763,
+   "title": "Razr 60 Ultra",
+   "upCid": 1489
+  },
+  {
+   "id": 1764,
+   "title": "Razr 70 Ultra",
+   "upCid": 1489
+  },
+  {
+   "id": 1765,
+   "title": "Signature",
+   "upCid": 1489
+  },
+  {
+   "id": 1766,
+   "title": "Signature Crystals by Swarovski",
+   "upCid": 1489
+  },
+  {
+   "id": 1767,
+   "title": "ThinkPhone",
+   "upCid": 1489
+  },
+  {
+   "id": 1768,
+   "title": "ThinkPhone 25",
+   "upCid": 1489
+  },
+  {
+   "id": 1769,
+   "title": "iPad Pro 13 (2024)",
+   "upCid": 822
+  },
+  {
+   "id": 1770,
+   "title": "iPad Pro 13 (2025)",
+   "upCid": 822
+  },
+  {
+   "id": 1771,
+   "title": "iPad 11 (2025)",
+   "upCid": 822
+  },
+  {
+   "id": 1772,
+   "title": "Samsung Galaxy Tab A11",
+   "upCid": 1423
+  },
+  {
+   "id": 1773,
+   "title": "Samsung Galaxy Tab A11+",
+   "upCid": 1423
+  },
+  {
+   "id": 1774,
+   "title": "Samsung Galaxy Tab A9",
+   "upCid": 1423
+  },
+  {
+   "id": 1775,
+   "title": "Samsung Galaxy Tab A9,",
+   "upCid": 1423
+  },
+  {
+   "id": 1776,
+   "title": "Samsung Galaxy Tab S10 FE",
+   "upCid": 1423
+  },
+  {
+   "id": 1777,
+   "title": "Samsung Galaxy Tab S10 FE+",
+   "upCid": 1423
+  },
+  {
+   "id": 1778,
+   "title": "Samsung Galaxy Tab S10 Lite",
+   "upCid": 1423
+  },
+  {
+   "id": 1779,
+   "title": "Samsung Galaxy Tab S10 Ultra,",
+   "upCid": 1423
+  },
+  {
+   "id": 1780,
+   "title": "Samsung Galaxy Tab S10 Ultra",
+   "upCid": 1423
+  },
+  {
+   "id": 1781,
+   "title": "Samsung Galaxy Tab S10+",
+   "upCid": 1423
+  },
+  {
+   "id": 1782,
+   "title": "Samsung Galaxy Tab S11",
+   "upCid": 1423
+  },
+  {
+   "id": 1783,
+   "title": "Samsung Galaxy Tab S11 Ultra",
+   "upCid": 1423
+  },
+  {
+   "id": 1784,
+   "title": "Samsung Galaxy Tab S9 (SM-,",
+   "upCid": 1423
+  },
+  {
+   "id": 1785,
+   "title": "Apple Watch S10 42mm",
+   "upCid": 1437
+  },
+  {
+   "id": 1786,
+   "title": "Apple Watch S10 46mm",
+   "upCid": 1437
+  },
+  {
+   "id": 1787,
+   "title": "Apple Watch S4 40mm",
+   "upCid": 1437
+  },
+  {
+   "id": 1788,
+   "title": "Apple Watch S4 44mm",
+   "upCid": 1437
+  },
+  {
+   "id": 1789,
+   "title": "Apple Watch Ultra 2 49mm",
+   "upCid": 1437
+  },
+  {
+   "id": 1790,
+   "title": "Samsung Galaxy Watch Ultra",
+   "upCid": 834
+  },
+  {
+   "id": 1791,
+   "title": "Samsung Galaxy Watch7 40mm",
+   "upCid": 834
+  },
+  {
+   "id": 1792,
+   "title": "Samsung Galaxy Watch7 44mm",
+   "upCid": 834
+  },
+  {
+   "id": 1793,
+   "title": "Samsung Galaxy Watch8 Classic 46mm",
+   "upCid": 834
+  },
+  {
+   "id": 1794,
+   "title": "Samsung Galaxy Watch8 40mm",
+   "upCid": 834
+  },
+  {
+   "id": 1795,
+   "title": "Samsung Galaxy Watch8 44mm",
+   "upCid": 834
+  },
+  {
+   "id": 1796,
+   "title": "Honor 400 Lite",
+   "upCid": 1612
+  },
+  {
+   "id": 1797,
+   "title": "Honor 400 Pro",
+   "upCid": 1612
+  },
+  {
+   "id": 1798,
+   "title": "Honor 400 Smart",
+   "upCid": 1612
+  },
+  {
+   "id": 1799,
+   "title": "Honor 600 Lite",
+   "upCid": 1613
+  },
+  {
+   "id": 1800,
+   "title": "Honor 600 Pro",
+   "upCid": 1613
+  },
+  {
+   "id": 1801,
+   "title": "Honor 600 Smart",
+   "upCid": 1613
+  },
+  {
+   "id": 1802,
+   "title": "Galaxy S26+",
+   "upCid": 618
+  },
+  {
+   "id": 1803,
+   "title": "Honor 400",
+   "upCid": 1612
+  },
+  {
+   "id": 1804,
+   "title": "Honor 600",
+   "upCid": 1613
+  }
+ ],
+ "skipped_existing": [
+  {
+   "requestId": "cat-105-96ceaa83",
+   "title": "X60 Pro 5G",
+   "error": "already exists id=817 under upCid=812 (url x60-pro-5g)"
+  },
+  {
+   "requestId": "cat-164-07a469b0",
+   "title": "Samsung Galaxy Tab A9+",
+   "error": "already exists id=1428 Samsung Galaxy Tab A9 Plus under upCid=1424"
+  }
+ ],
+ "followup": {
+  "honor_400_base": 1803,
+  "honor_600_base": 1804,
+  "note": "Honor leaf models created with urls honor-400-5g / honor-600-5g under series parents"
+ }
+}

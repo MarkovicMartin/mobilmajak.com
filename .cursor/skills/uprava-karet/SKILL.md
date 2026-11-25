@@ -125,7 +125,7 @@ Takový problém zapiš do Kategorie zboží → Automatizace karet, ne do chatu
 ./scripts/backend-run.sh manage.py automatizace_karet --kod P… --typ chybejici_fotka --zbozi-id … --nazev "…" --text "…"
 ```
 
-Nedostatek starší fronty Zakládání, který ve Sympliu není kam napsat, zůstává v Kategorie zboží → Zakládání:
+Starší fronta zakládání zapisuje do stejné záložky:
 
 ```
 ./scripts/backend-run.sh manage.py zakladani_nedostatek --kod P… --typ chybejici_kategorie --zbozi-id … --nazev "…" --text "…"

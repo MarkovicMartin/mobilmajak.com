@@ -30,6 +30,11 @@ a.text-primary,.text-primary{color:var(--mm-blue)!important;}
 .mm-service-main{min-width:0;text-decoration:none!important;color:inherit;}
 .mm-service-main strong{display:block;color:var(--mm-navy)!important;font-size:.95rem;font-weight:800;}
 .mm-service-main span{display:block;color:var(--mm-muted)!important;font-size:.8rem;font-weight:600;margin-top:.15rem;}
+.mm-service-main span:empty,.mm-service-main span[hidden]{display:none!important;}
+span.site-search-result-title{display:flex!important;flex-direction:column;align-items:flex-start;gap:.08rem;line-height:1.25;white-space:normal!important;}
+span.site-search-result-title .mm-t-model{font-weight:800;color:var(--mm-navy);}
+span.site-search-result-title .mm-t-svc{font-weight:600;color:var(--mm-muted);font-size:.8rem;}
+.p-detail h1 .mm-t-svc{display:block;margin-top:.15rem;color:var(--mm-muted);font-size:.95rem;font-weight:600!important;}
 .mm-service-price{color:var(--mm-navy)!important;font-weight:800;white-space:nowrap;font-size:1rem;}
 .mm-service-time{min-width:4.2rem;padding:.28rem .55rem;border-radius:999px;background:#eef2fb;color:var(--mm-navy)!important;font-size:.75rem;font-weight:700;text-align:center;white-space:nowrap;}
 .mm-service-time .badge,.mm-service-time .bg-dark{background:transparent!important;color:inherit!important;padding:0!important;font-size:inherit!important;font-weight:inherit!important;}
@@ -46,13 +51,7 @@ a.text-primary,.text-primary{color:var(--mm-blue)!important;}
 a[href*="/hodnoceni"]{white-space:nowrap;}
 a[href*="/hodnoceni"] .rating-stars,.navbar .js-hs-nav-rating{color:#E8B923!important;}
 .navbar .js-hs-nav-rating::before,a[href*="/hodnoceni"] .rating-stars:empty::before{content:"★★★★★";color:#E8B923;margin-right:.35rem;font-size:.85em;}
-.mm-search-suggest{position:absolute;left:0;right:0;top:calc(100% + .35rem);z-index:1080;background:#fff;border:1px solid var(--mm-line);border-radius:12px;box-shadow:0 16px 40px rgba(27,40,72,.14);overflow:hidden;display:none;}
-.mm-search-suggest.is-open{display:block;}
-.mm-search-suggest a{display:flex;justify-content:space-between;gap:.75rem;padding:.7rem 1rem;text-decoration:none;color:var(--mm-navy);border-bottom:1px solid #f0f1f5;font-weight:600;font-size:.92rem;}
-.mm-search-suggest a:last-child{border-bottom:0;}
-.mm-search-suggest a:hover{background:rgba(47,91,255,.06);}
-.mm-search-suggest .mm-price{color:var(--mm-blue);font-weight:800;white-space:nowrap;}
-.site-search{position:relative;}
+.mm-search-suggest{display:none!important;}
 #mm-announce{display:none!important;}
 body.mm-is-home #header{box-shadow:0 1px 0 rgba(229,230,239,.9);backdrop-filter:blur(12px);background:rgba(255,255,255,.96)!important;}
 body.mm-is-home #content,
@@ -168,6 +167,83 @@ a.mm-btn,a.mm-btn:visited,a.mm-btn:hover,a.mm-btn:focus,a.mm-btn:active{text-dec
 (function(){
   function norm(s){return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'');}
   function el(html){var d=document.createElement('div');d.innerHTML=html.trim();return d.firstChild;}
+  function mmSplitTitle(raw){
+    var text=String(raw||"").replace(/\s+/g," ").trim();
+    if(!text) return null;
+    var hint="";
+    var glued=text.match(/^(.*?)\s+Servis na\s+(.+)$/i);
+    if(glued && glued[1].trim()){ text=glued[1].trim(); hint=glued[2].trim(); }
+    text=text.replace(/^Servis na\s+.+?\s+[–—-]\s+/i,"");
+    var parts=text.split(/\s+[–—-]\s+/);
+    if(parts.length<2){
+      var tight=text.match(/^(.*?\S)\s*-\s+(\S.*)$/);
+      if(tight) parts=[tight[1].trim(), tight[2].trim()];
+    }
+    if(parts.length>=2){
+      var left=parts[0].trim(), right=parts.slice(1).join(" - ").trim();
+      var h=hint.toLowerCase();
+      if(h && right.toLowerCase().indexOf(h)>=0 && left.toLowerCase().indexOf(h)<0) return {model:right, service:left};
+      var svc=/^(oprava|výměna|čištění|cisteni|nefunkční|nefunkcni|odstranění|odstraneni|diagnostika|záloha|zaloha|přehrání|prehrani)/i;
+      if(svc.test(left) && !svc.test(right)) return {model:right, service:left};
+      return {model:left, service:right};
+    }
+    if(hint){
+      var idx=text.toLowerCase().indexOf(hint.toLowerCase());
+      if(idx>=0){
+        var model=text.slice(0, idx+hint.length).replace(/[\s\-–—:]+$/,"").trim();
+        var rest=text.slice(idx+hint.length).replace(/^[\s\-–—:]+/,"").trim();
+        if(rest) return {model:model, service:rest};
+      }
+      return {model:hint, service:text};
+    }
+    return {model:"", service:text};
+  }
+  function mmEsc(s){ return String(s).replace(/[&<>]/g, function(c){ return c==="&"?"&amp;":c==="<"?"&lt;":"&gt;"; }); }
+  function mmPaintNode(node){
+    if(!node || node.nodeType!==1) return;
+    if(node.matches(".site-search-result-title")){
+      if(node.dataset.mmSplit) return;
+      var split=mmSplitTitle(node.textContent);
+      if(!split) return;
+      if(split.model && split.service) node.innerHTML='<span class="mm-t-model">'+mmEsc(split.model)+'</span><span class="mm-t-svc">'+mmEsc(split.service)+'</span>';
+      else node.textContent=split.service || split.model;
+      var img=node.closest("a"); if(img){ var im=img.querySelector("img"); if(im) im.alt=(split.model?split.model+" — ":"")+(split.service||""); }
+      node.dataset.mmSplit="1";
+      return;
+    }
+    if(node.matches(".mm-service-main")){
+      if(node.dataset.mmSplit) return;
+      var strong=node.querySelector("strong");
+      var span=node.querySelector("span");
+      if(!strong) return;
+      var name=strong.textContent.trim();
+      var append=span?span.textContent.trim():"";
+      var split=mmSplitTitle(append?name+" "+append:name);
+      if(!split) return;
+      strong.textContent=split.service || split.model || name;
+      if(span){ span.textContent=""; span.hidden=true; }
+      node.dataset.mmSplit="1";
+      return;
+    }
+    if(node.matches("h1")){
+      if(node.dataset.mmSplit) return;
+      var b=node.querySelector("b");
+      var span=node.querySelector("span");
+      if(!b) return;
+      var append=b.textContent.trim();
+      var name=span?span.textContent.trim():"";
+      var split=mmSplitTitle(name?(name+" "+append):append);
+      if(!split) return;
+      b.textContent=split.model || split.service || append;
+      b.classList.add("mm-t-model");
+      if(span){ span.textContent=split.model?split.service:""; span.classList.add("mm-t-svc"); }
+      node.dataset.mmSplit="1";
+    }
+  }
+  function mmPaintAll(root){
+    var scope=root&&root.querySelectorAll?root:document;
+    scope.querySelectorAll(".site-search-result-title, .mm-service-main, .p-detail h1").forEach(mmPaintNode);
+  }
   function formatPrice(p){
     if(p==null||p==='')return '';
     var n=Number(p); if(!isFinite(n)) return String(p);
@@ -236,7 +312,12 @@ a.mm-btn,a.mm-btn:visited,a.mm-btn:hover,a.mm-btn:focus,a.mm-btn:active{text-dec
       if(/\/(pobocky|vyhledavani|hodnoceni|blog|vyzvednuti)/i.test(path)) return;
       var card=a.closest('.mm-service-row, .mm-svc-card, .card');
       if(!card) return;
-      var title=(card.querySelector('.mm-service-main strong, h4,h3,.card-title')||a).textContent.trim();
+      var strongEl=card.querySelector('.mm-service-main strong, h4,h3,.card-title');
+      var appendEl=card.querySelector('.mm-service-main span');
+      var title=((strongEl||a).textContent||'').trim();
+      var append=appendEl?appendEl.textContent.trim():'';
+      var split=mmSplitTitle(append?title+' '+append:title);
+      title=(split&&(split.service||split.model))||title;
       if(!title || title.length<4) return;
       var priceEl=card.querySelector('.mm-service-price, [style*="font-weight: 800"], .mm-svc-price, .card-body span');
       var priceTxt='';
@@ -265,7 +346,12 @@ a.mm-btn,a.mm-btn:visited,a.mm-btn:hover,a.mm-btn:focus,a.mm-btn:active{text-dec
         if(!a) return;
         var href=a.href;
         if(/\/zarizeni\//i.test(href)) return;
-        var title=(card.querySelector('.mm-service-main strong, h4,h3')||a).textContent.trim();
+        var strongEl=card.querySelector('.mm-service-main strong, h4,h3');
+        var appendEl=card.querySelector('.mm-service-main span');
+        var title=((strongEl||a).textContent||'').trim();
+        var append=appendEl?appendEl.textContent.trim():'';
+        var split=mmSplitTitle(append?title+' '+append:title);
+        title=(split&&(split.service||split.model))||title;
         var m=card.textContent.match(/(\d[\d\s]*\d|\d)\s*Kč/);
         out.push({value:href,label:title,href:href,price:m?m[0]:'',rawPrice:m?m[0]:''});
       });
@@ -377,40 +463,22 @@ a.mm-btn,a.mm-btn:visited,a.mm-btn:hover,a.mm-btn:focus,a.mm-btn:active{text-dec
     $('#myrepair-nav-chooseDevice').html('<a href="https://servismajak.cz/zarizeni/" class="btn btn-primary btn-sm">Vybrat zařízení</a>');
     $('#myrepair-nav-main').html('');
     $('img.img-fluid').each(function(){ if($(this).attr('src')==='') $(this).hide(); });
-
-    // top search product suggest
-    (function(){
-      var $input=$('.js-form-search').first(); if(!$input.length) return;
-      var $form=$input.closest('form.site-search'); if(!$form.length) return;
-      var $box=$('<div class="mm-search-suggest" role="listbox"></div>'); $form.append($box);
-      var timer=null,lastQ='';
-      function parseProducts(html){
-        var doc=document.implementation.createHTMLDocument(''); doc.documentElement.innerHTML=html; var out=[];
-        doc.querySelectorAll('[data-search-section="products"] a.site-search-result').forEach(function(a){
-          var titleEl=a.querySelector('.site-search-result-title'); var metaEl=a.querySelector('.site-search-result-meta');
-          var title=titleEl?titleEl.textContent.trim():(a.textContent||'').trim();
-          var price=metaEl?metaEl.textContent.trim():'';
-          if(title&&a.href) out.push({title:title,price:price,href:a.href});
-        }); return out;
-      }
-      function render(items){
-        if(!items.length){$box.removeClass('is-open').empty();return;}
-        $box.html(items.slice(0,7).map(function(p){
-          return '<a href="'+p.href+'"><span>'+$('<div>').text(p.title).html()+'</span>'+(p.price?'<span class="mm-price">'+$('<div>').text(p.price).html()+'</span>':'')+'</a>';
-        }).join('')).addClass('is-open');
-      }
-      $input.on('input', function(){
-        var q=($input.val()||'').trim(); clearTimeout(timer);
-        timer=setTimeout(function(){
-          if(q.length<2){render([]);return;} if(q===lastQ)return; lastQ=q;
-          $.get('/ajax/search',{q:q}).done(function(html){render(parseProducts(html));}).fail(function(){render([]);});
-        },220);
-      });
-      $input.on('focus', function(){ if($box.children().length) $box.addClass('is-open'); });
-      $(document).on('click', function(e){ if(!$(e.target).closest($form).length) $box.removeClass('is-open'); });
-    })();
+    document.querySelectorAll('.mm-search-suggest').forEach(function(n){ n.remove(); });
 
     initFinder();
+    mmPaintAll();
+    if(!window.__mmTitleObs && document.body){
+      window.__mmTitleObs=new MutationObserver(function(muts){
+        muts.forEach(function(mu){
+          Array.prototype.forEach.call(mu.addedNodes, function(n){
+            if(!n || n.nodeType!==1) return;
+            if(n.matches && n.matches(".site-search-result-title, .mm-service-main, h1")) mmPaintNode(n);
+            if(n.querySelectorAll) n.querySelectorAll(".site-search-result-title, .mm-service-main, .p-detail h1").forEach(mmPaintNode);
+          });
+        });
+      });
+      window.__mmTitleObs.observe(document.body,{childList:true,subtree:true});
+    }
   }
 
   if(window.jQuery){ jQuery(document).ready(initChrome); }

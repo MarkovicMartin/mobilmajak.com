@@ -6,7 +6,6 @@ import { PageHeader, Tabs } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
 import KategorieZboziAudit from './KategorieZboziAudit';
 import KategorieZboziAutomatizace from './KategorieZboziAutomatizace';
-import KategorieZboziZakladani from './KategorieZboziZakladani';
 import './KategorieZboziModule.css';
 
 const SYMPLIO_ORDER_URL = (orderId) =>
@@ -92,8 +91,8 @@ export default function KategorieZboziModule() {
     const location = useLocation();
     const audit = location.pathname.endsWith('/audit');
     const zakladani = location.pathname.endsWith('/zakladani');
-    const automatizace = location.pathname.endsWith('/automatizace');
-    const bezMesice = zakladani || automatizace;
+    const automatizace = location.pathname.endsWith('/automatizace') || zakladani;
+    const bezMesice = automatizace;
     const today = new Date();
     const [rok, setRok] = useState(today.getFullYear());
     const [mesic, setMesic] = useState(today.getMonth() + 1);
@@ -169,15 +168,16 @@ export default function KategorieZboziModule() {
     if ((audit || bezMesice) && !isAdmin()) {
         return <Navigate to="/kategorie-zbozi" replace />;
     }
+    if (zakladani) {
+        return <Navigate to="/kategorie-zbozi/automatizace" replace />;
+    }
 
     return (
         <div className="kz-page">
             <PageHeader
                 title="Kategorie zboží"
                 subtitle={automatizace
-                    ? 'Problémy sobotního zpracování karet z !Import / PARTNER PL, jen zboží skladem.'
-                    : zakladani
-                    ? 'Chybějící kategorie a další věci, které ve Sympliu není kam zapsat.'
+                    ? 'Vše, co u karty nejde doplnit samo: PARTNER PL skladem i starší fronta zakládání.'
                     : audit
                     ? 'Odškrtnuté kódy. Kategorie v prodejích se přepíše až po zaškrtnutí kontroly.'
                     : 'Odškrtni kód, až kategorii upravíš v Sympliu. Bod se připíše hned. Když noční kontrola zařazení nepotvrdí, bod se odečte.'}
@@ -196,15 +196,12 @@ export default function KategorieZboziModule() {
                     tabs={[
                         { id: 'seznam', label: 'K zařazení', to: '/kategorie-zbozi', end: true },
                         { id: 'audit', label: 'Audit', to: '/kategorie-zbozi/audit' },
-                        { id: 'zakladani', label: 'Zakládání', to: '/kategorie-zbozi/zakladani' },
                         { id: 'automatizace', label: 'Automatizace karet', to: '/kategorie-zbozi/automatizace' },
                     ]}
                 />
             )}
             {automatizace ? (
                 <KategorieZboziAutomatizace />
-            ) : zakladani ? (
-                <KategorieZboziZakladani />
             ) : audit ? (
                 <KategorieZboziAudit rok={rok} mesic={mesic} />
             ) : (

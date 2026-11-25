@@ -2,7 +2,7 @@
 from django.test import TestCase
 from rest_framework.test import APIClient
 
-from plans.models import ZakladaniNedostatek
+from plans.models import AutomatizaceKaretProblem
 from plans.zakladani import zapis_nedostatek
 from users.models import WebUser
 
@@ -20,11 +20,11 @@ class ZapisTests(TestCase):
         self.assertEqual(prvni.id, druhy.id)
         self.assertEqual(druhy.text, 'Chybí list A a B.')
         self.assertEqual(druhy.nazev, 'Sklo')
-        self.assertEqual(ZakladaniNedostatek.objects.count(), 1)
+        self.assertEqual(AutomatizaceKaretProblem.objects.count(), 1)
 
     def test_vyreseny_se_neznovu_otevira_novym_radkem(self):
         row, _ = zapis_nedostatek(kod='P1', typ='nezname_ceny', text='Není řada.')
-        row.stav = ZakladaniNedostatek.STAV_VYRESENO
+        row.stav = AutomatizaceKaretProblem.STAV_VYRESENO
         row.save(update_fields=['stav'])
         dalsi, novy = zapis_nedostatek(kod='P1', typ='nezname_ceny', text='Pořád není řada.')
         self.assertTrue(novy)
@@ -56,7 +56,7 @@ class ApiTests(TestCase):
         res = self.client.post(f'/api/kategorie-zbozi/zakladani/{row.id}/vyresit/')
         self.assertEqual(res.status_code, 200)
         row.refresh_from_db()
-        self.assertEqual(row.stav, ZakladaniNedostatek.STAV_VYRESENO)
+        self.assertEqual(row.stav, AutomatizaceKaretProblem.STAV_VYRESENO)
         self.assertEqual(row.vyresil_id, self.admin.id)
         otevrene = self.client.get('/api/kategorie-zbozi/zakladani/')
         self.assertEqual(otevrene.json()['radky'], [])

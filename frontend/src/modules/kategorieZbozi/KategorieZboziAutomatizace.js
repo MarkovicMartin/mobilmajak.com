@@ -52,9 +52,9 @@ export default function KategorieZboziAutomatizace() {
     return (
         <div>
             <p className="kz-note">
-                Sobotní zpracování bere jen skladem z Katalog / !Import / PARTNER PL
-                a prázdného dodavatele nastaví na PARTNER PL.
-                Sem padá to, co automat sám nedoplní: fotka, cena, popis, chybějící list.
+                Jedno místo pro nedodělky karet. Sobotní běh bere skladem z Katalog / !Import / PARTNER PL
+                a prázdného dodavatele nastaví na PARTNER PL. Sem patří i starší fronta zakládání:
+                fotka, cena, popis, chybějící list, nejasná řada.
             </p>
             <div className="kz-month kz-filter">
                 <button type="button" onClick={() => setStav('otevreno')} disabled={stav === 'otevreno'}>
