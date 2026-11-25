@@ -1,7 +1,7 @@
 #!/bin/bash
 # Nainstaluje cron pro finance importy na VPS.
-# Symplio pokladna: denní výdeje 8:30–21:00 (mimo Packeta/Symplio notes),
-#                   večerní full catch-up 22:00; Fio 22:30.
+# Symplio pokladna: dnešek každých 15 min 8:00–20:45 (strop 20 min),
+#                   včerejšek + dnešek ráno v 6:40; Fio 3 dny denně ve 22:30.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -16,8 +16,10 @@ CRON_FILE="/etc/cron.d/mobilmajak-finance"
 WEBAPP_PATH="${WEBAPP_PATH:-/home/webmajak/webapp}"
 CRON_ENV="WEBAPP_PATH=${WEBAPP_PATH}"
 
-# Denní běhy: jen dnešek, kratší timeout (méně zátěže vedle Packety).
-DAY_ENV="${CRON_ENV} SYMPLIO_POKLADNA_DAYS=1 SYMPLIO_POKLADNA_TIMEOUT=600"
+# Denní běhy: jen dnešek. 8 pokladen se do 10 minut nevejde, strop je 20 min.
+DAY_ENV="${CRON_ENV} SYMPLIO_POKLADNA_DAYS=1 SYMPLIO_POKLADNA_TIMEOUT=1200"
+# Ráno po Packetě: včerejšek a dnešek. Dohání pohyb po posledním večerním běhu.
+MORNING_ENV="${CRON_ENV} SYMPLIO_POKLADNA_DAYS=2 SYMPLIO_POKLADNA_TIMEOUT=1200"
 
 echo "Kopíruji finance skripty do /opt/scripts"
 sudo mkdir -p /opt/scripts
@@ -29,16 +31,15 @@ sudo chmod +x "$SYMPLIO_SCRIPT_DST"
 
 {
   echo "# Finance modul – cron (Symplio pokladna + Fio)"
-  echo "# Slotyminuty :10/:40 (a 8:30, 21:00) – mimo Packeta :00/:15/:30/:45"
-  echo "# a mimo Symplio doklad-notes (:15/:45 před Packeta vlnami)."
+  echo "# Dnešek každých 15 min. Ráno v 6:40 včerejšek a dnešek. Fio denně 22:30."
   echo "#"
-  echo "# Denní výdeje → finance (jen dnešek), 8:30–21:00"
-  echo "30 8 * * * root ${DAY_ENV} $SYMPLIO_SCRIPT_DST"
-  echo "10,40 9-20 * * * root ${DAY_ENV} $SYMPLIO_SCRIPT_DST"
-  echo "0 21 * * * root ${DAY_ENV} $SYMPLIO_SCRIPT_DST"
+  echo "# Pohyby pokladen, jen dnešek, každých 15 min mezi 8:00 a 20:45"
+  echo "*/15 8-20 * * * root ${DAY_ENV} $SYMPLIO_SCRIPT_DST"
   echo "#"
-  echo "# Večerní full catch-up (7 dní default) + Fio"
-  echo "0 22 * * * root ${CRON_ENV} $SYMPLIO_SCRIPT_DST"
+  echo "# Po Packetě: dohnání včerejšího pohybu, který přišel po 20:45"
+  echo "40 6 * * * root ${MORNING_ENV} $SYMPLIO_SCRIPT_DST"
+  echo "#"
+  echo "# Fio a Raiffeisen každý den za 3 dny"
   echo "30 22 * * * root ${CRON_ENV} FINANCE_IMPORT_DAYS=3 $FIO_SCRIPT_DST"
 } | sudo tee "$CRON_FILE" > /dev/null
 sudo chmod 644 "$CRON_FILE"

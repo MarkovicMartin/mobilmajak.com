@@ -52,22 +52,9 @@ _symplio_cron_line() {
   echo "# Globus=1 Senimo=2 Zlín=3 Přerov=4 Vsetín=5 Šternberk=6"
   echo "# Sloty: packeta-cron-schedule.sh"
   echo "#"
-  echo "# Včera – vlna ${PACKETA_CRON_YESTERDAY_HOUR}:$(printf '%02d' "${PACKETA_CRON_YESTERDAY_MIN}")–…"
+  echo "# Včera – jednou denně ${PACKETA_CRON_YESTERDAY_HOUR}:$(printf '%02d' "${PACKETA_CRON_YESTERDAY_MIN}")–…"
   for pid in 1 2 3 4 5 6; do
     _packeta_cron_line yesterday "$PACKETA_CRON_YESTERDAY_HOUR" "$PACKETA_CRON_YESTERDAY_MIN" "$PACKETA_CRON_STAGGER_MIN" "$pid"
-  done
-  echo "#"
-  echo "# Dnes – vlny ${PACKETA_CRON_TODAY_SLOTS[*]}"
-  for slot in "${PACKETA_CRON_TODAY_SLOTS[@]}"; do
-    parse_cron_slot "$slot"
-    for pid in 1 2 3 4 5 6; do
-      _packeta_cron_line today "$_SLOT_H" "$_SLOT_M" "$PACKETA_CRON_STAGGER_MIN" "$pid"
-    done
-  done
-  echo "#"
-  echo "# Audit 7 dní – neděle ${PACKETA_CRON_AUDIT_HOUR}:$(printf '%02d' "${PACKETA_CRON_AUDIT_MIN}")–…"
-  for pid in 1 2 3 4 5 6; do
-    _packeta_cron_line audit "$PACKETA_CRON_AUDIT_HOUR" "$PACKETA_CRON_AUDIT_MIN" "$PACKETA_CRON_AUDIT_STAGGER_MIN" "$pid" "$PACKETA_CRON_AUDIT_DOW"
   done
 } | sudo tee "$PACKETA_CRON_FILE" > /dev/null
 
@@ -77,33 +64,22 @@ sudo chmod 644 "$PACKETA_CRON_FILE"
   echo "# Symplio poznámky dokladů – 1 běh / vlna, ${SYMPLIO_DOKLAD_NOTES_OFFSET_MIN} min před Packeta"
   echo "# Sloty: packeta-cron-schedule.sh (offset SYMPLIO_DOKLAD_NOTES_OFFSET_MIN)"
   echo "#"
-  echo "# Včera"
+  echo "# Včera, 15 min před Packetou"
   _symplio_cron_line yesterday "$PACKETA_CRON_YESTERDAY_HOUR" "$PACKETA_CRON_YESTERDAY_MIN"
-  echo "#"
-  echo "# Dnes – před vlnami Packety"
-  for slot in "${PACKETA_CRON_TODAY_SLOTS[@]}"; do
-    parse_cron_slot "$slot"
-    _symplio_cron_line today "$_SLOT_H" "$_SLOT_M"
-  done
-  echo "#"
-  echo "# Audit 7 dní – neděle"
-  _symplio_cron_line audit "$PACKETA_CRON_AUDIT_HOUR" "$PACKETA_CRON_AUDIT_MIN" "$PACKETA_CRON_AUDIT_DOW"
 } | sudo tee "$SYMPLIO_CRON_FILE" > /dev/null
 
 sudo chmod 644 "$SYMPLIO_CRON_FILE"
 
 echo ""
 echo "Packeta cron ($PACKETA_CRON_FILE):"
-echo "  Rozestup poboček: ${PACKETA_CRON_STAGGER_MIN} min (audit ${PACKETA_CRON_AUDIT_STAGGER_MIN} min)"
+echo "  Rozestup poboček: ${PACKETA_CRON_STAGGER_MIN} min"
 echo "  Timeout běhu: \${PACKETA_RUN_TIMEOUT:-600}s (10 min)"
-echo "  Včera: ${PACKETA_CRON_YESTERDAY_HOUR}:$(printf '%02d' "${PACKETA_CRON_YESTERDAY_MIN}") + stagger"
-echo "  Dnes:  ${PACKETA_CRON_TODAY_SLOTS[*]}"
-echo "  Audit: dow=${PACKETA_CRON_AUDIT_DOW} ${PACKETA_CRON_AUDIT_HOUR}:$(printf '%02d' "${PACKETA_CRON_AUDIT_MIN}")"
+echo "  Jednou denně, včerejšek: ${PACKETA_CRON_YESTERDAY_HOUR}:$(printf '%02d' "${PACKETA_CRON_YESTERDAY_MIN}") + stagger"
 echo "  Log: /var/log/packeta-import.log"
 echo ""
 echo "Symplio doklad notes cron ($SYMPLIO_CRON_FILE):"
 echo "  Offset před Packeta: ${SYMPLIO_DOKLAD_NOTES_OFFSET_MIN} min"
-echo "  Režimy: yesterday, today (×${#PACKETA_CRON_TODAY_SLOTS[@]}), audit"
+echo "  Režim: yesterday, 15 min před Packetou"
 echo "  Log: /var/log/symplio-doklad-notes.log"
 echo ""
 echo "Úprava rozvrhu: edituj scripts/packeta-cron-schedule.sh a znovu spusť tento skript."

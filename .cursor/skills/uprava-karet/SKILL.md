@@ -31,12 +31,13 @@ Samostatný strom **Automatizace zakládání** má **K založení** a **Ke kont
 
 1. **Název** — šablona níže. Dodavatelský název v angličtině převeď na šablonu.
 2. **Výrobce** — stejný jako u existující karty stejné řady (Tactical, Fixed, Swissten, OBAL:ME, MobilMajak, Forcell, Roar, OEM, PARTNER PL, MG). Forcell a Roar nech. `MG` jen když stejná řada už `MG` má, nebo značka v manuálu spadá pod zkratku a sourozenec neexistuje.
-3. **Ceny** — prodejní (pokladna) a e-shopová. E-shop je u příslušenství obvykle kolem poloviny pokladny, dopočet polovinou nepoužívej. Obě vezmi z tabulky nebo ze sourozence.
-4. **Váha** — ze sourozence stejné řady. Když není: kryt a knížka 100 g, sklo a fólie 50 g. Tactical a část DUX DUCIS má 50 g, sourozenec má přednost.
-5. **Obrázky** — jen z webu dodavatele, bílé pozadí, přesně ten výrobek. U krytu a knížky musí výřez kamery sedět na daný model. Ilustrační foto je důvod pro Nezaloženo.
-6. **Krátký popis** — první věty popisu. Kryty, knížky a skla: text z webu dodavatele. Cizí jazyk přelož.
-7. **Popis** — věty z krátkého popisu a pak celý text.
-8. **Parametry** — jen u telefonů (gsmarena.com, případně Alza nebo CZC). U pouzdra a krytu jen BARVA a TYP.
+3. **Dodavatel** — jen u složky, která je ve zpracování. Teď je to Katalog / !Import / PARTNER PL (201): prázdné pole Dodavatel nastav na PARTNER PL (`CZbozi.dodavatel_id` 2). Vyplněného jiného dodavatele nepřepisuj. Výrobce tím neměň. Další složky se doplní, až budou zadané.
+4. **Ceny** — prodejní (pokladna) a e-shopová. E-shop je u příslušenství obvykle kolem poloviny pokladny, dopočet polovinou nepoužívej. Obě vezmi z tabulky nebo ze sourozence.
+5. **Váha** — ze sourozence stejné řady. Když není: kryt a knížka 100 g, sklo a fólie 50 g. Tactical a část DUX DUCIS má 50 g, sourozenec má přednost.
+6. **Obrázky** — jen z webu dodavatele, bílé pozadí, přesně ten výrobek. U krytu a knížky musí výřez kamery sedět na daný model. Ilustrační foto je důvod pro Nezaloženo.
+7. **Krátký popis** — první věty popisu. Kryty, knížky a skla: text z webu dodavatele. Cizí jazyk přelož.
+8. **Popis** — věty z krátkého popisu a pak celý text.
+9. **Parametry** — jen u telefonů (gsmarena.com, případně Alza nebo CZC). U pouzdra a krytu jen BARVA a TYP.
 
 ## Ceny
 
@@ -108,15 +109,23 @@ Parametry ber z gsmarena.com a vyplň jen ty, které už na kartách jsou: Barva
 
 ## Kontrola před přesunem
 
-Karta smí do Ke kontrole, jen když sedí název, výrobce, obě ceny, váha, vlastní fotka, oba popisy a kategorie. U telefonu navíc parametry a jedna karta na barvu a paměť. Hlavní kategorie je Ke kontrole prodejny.
+Karta smí do Ke kontrole, jen když sedí název, výrobce, dodavatel dané složky, obě ceny, váha, vlastní fotka, oba popisy a kategorie. U telefonu navíc parametry a jedna karta na barvu a paměť. Hlavní kategorie je Ke kontrole prodejny.
 
 Výstup dávky: u každé karty odkaz do Symplia, nový název, prodejní cena, e-shopová cena, odkud ceny jsou, e-shopové listy, nebo důvod Nezaloženo / ponecháno ve frontě.
 
 ## Týdenní běh
 
-Jednou týdně projdi **Automatizace zakládání / K založení** (kategorie 15562). U každé karty použij postup v tomto souboru. Hotovou kartu přesuň do Ke kontrole (15563): puntík tam, e-shopové listy přidané. Do e-shopu jako hlavní kategorii kartu nepřesouvej.
+Jednou týdně, v sobotu večer po zavření prodejen, projdi jen **Katalog / !Import / PARTNER PL** (kategorie 201) a jen karty skladem. Ostatní složky a karty bez skladu nech. U karty skladem nastav prázdného dodavatele na PARTNER PL a dál použij postup v tomto souboru. Hotovou kartu přesuň do Ke kontrole (15563): puntík tam, e-shopové listy přidané. Do e-shopu jako hlavní kategorii kartu nepřesouvej.
 
-Nedostatek, který ve Sympliu není kam napsat, zapiš do administrace Kategorie zboží → Zakládání:
+Přihlášení do Symplia běží na serveru stejným Chrome jako noční importy. Fotku z webu dodavatele, volný popis a kartu, u které řada nebo list není jistý, automat nedoplňuje a kartu ve složce nechá.
+
+Takový problém zapiš do Kategorie zboží → Automatizace karet, ne do chatu:
+
+```
+./scripts/backend-run.sh manage.py automatizace_karet --kod P… --typ chybejici_fotka --zbozi-id … --nazev "…" --text "…"
+```
+
+Nedostatek starší fronty Zakládání, který ve Sympliu není kam napsat, zůstává v Kategorie zboží → Zakládání:
 
 ```
 ./scripts/backend-run.sh manage.py zakladani_nedostatek --kod P… --typ chybejici_kategorie --zbozi-id … --nazev "…" --text "…"

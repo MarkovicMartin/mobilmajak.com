@@ -41,19 +41,9 @@ _cron_line() {
 }
 
 {
-  echo "# Packeta staging – rozestup ${STAGGER_MIN} min"
+  echo "# Packeta staging – jednou denně, včerejšek, rozestup ${STAGGER_MIN} min"
   for pid in 1 2 3 4 5 6; do
     _cron_line yesterday 5 0 ${STAGGER_MIN} "\$pid"
-  done
-  for slot in "12:0" "18:0"; do
-    base_h=\${slot%%:*}
-    base_m=\${slot##*:}
-    for pid in 1 2 3 4 5 6; do
-      _cron_line today "\$base_h" "\$base_m" ${STAGGER_MIN} "\$pid"
-    done
-  done
-  for pid in 1 2 3 4 5 6; do
-    _cron_line audit 22 0 ${AUDIT_STAGGER_MIN} "\$pid" 0
   done
 } > "$CRON_FILE"
 chmod 644 "$CRON_FILE"

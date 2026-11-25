@@ -235,7 +235,7 @@ async function main() {
     console.log('pinScript:', err && err.message ? err.message : err);
   }
 
-  let failed = 0;
+  const failed = [];
   try {
     for (const pokladna of pokladny) {
       console.log(`\n→ ${pokladna.label} (${pokladna.admin_slug}, prodejna_id=${pokladna.prodejna_id})`);
@@ -246,15 +246,28 @@ async function main() {
         await downloadXlsx(driver, url, out);
         writeMeta(out, pokladna, from, to);
       } catch (err) {
-        failed += 1;
+        failed.push(pokladna);
         console.error(`Selhalo ${pokladna.label}:`, err && err.message ? err.message : err);
+      }
+    }
+    for (const pokladna of failed.splice(0)) {
+      console.log(`\n→ znovu ${pokladna.label}`);
+      const out = path.join(INBOX_DIR, `uhrady_${pokladna.key}.xlsx`);
+      try {
+        await loginForPokladna(driver, pokladna.store_button);
+        const url = buildExportUrl(pokladna.admin_slug, from, to);
+        await downloadXlsx(driver, url, out);
+        writeMeta(out, pokladna, from, to);
+      } catch (err) {
+        failed.push(pokladna);
+        console.error(`Znovu selhalo ${pokladna.label}:`, err && err.message ? err.message : err);
       }
     }
   } finally {
     await driver.quit();
   }
-  if (failed) {
-    console.error(`Selhalo pokladen: ${failed}/${pokladny.length}`);
+  if (failed.length) {
+    console.error(`Selhalo pokladen: ${failed.length}/${pokladny.length}`);
     process.exitCode = 1;
   }
 }

@@ -35,7 +35,8 @@ sudo -u webmajak crontab -l 2>/dev/null | grep -v "\$MARKER" | grep -v "cd \$APP
 cat >> "\$TMP" <<CRON
 
 \$MARKER
-10 6 * * * /bin/bash -lc 'cd \$APP_PATH && source venv/bin/activate && export DJANGO_SETTINGS_MODULE=webapp.settings_production && python manage.py navrhni_vyjezdy >> logs/vyjezd-navrh.log 2>&1'
+20 6 * * 0 /bin/bash -lc 'd=\$(TZ=Europe/Prague date +%d); [ "\$d" -le 7 ] || exit 0; cd \$APP_PATH && source venv/bin/activate && export DJANGO_SETTINGS_MODULE=webapp.settings_production && python manage.py navrhni_vyjezdy >> logs/vyjezd-navrh.log 2>&1'
+30 7 * * 0 /bin/bash -lc 'd=\$(TZ=Europe/Prague date +%d); [ "\$d" -le 7 ] || exit 0; cd \$APP_PATH && source venv/bin/activate && export DJANGO_SETTINGS_MODULE=webapp.settings_production && python manage.py navrhni_vyjezdy >> logs/vyjezd-navrh.log 2>&1'
 CRON
 
 sudo -u webmajak crontab "\$TMP"
@@ -45,4 +46,4 @@ echo "=== webmajak crontab (vyjezd navrh ${LABEL}) ==="
 sudo -u webmajak crontab -l | grep -E 'navrhni_vyjezdy|mobilmajak-vyjezd-navrh' || true
 EOF
 
-echo "Cron návrhů výjezdů nastaven (${LABEL}, 6:10 denně)."
+echo "Cron návrhů výjezdů nastaven (${LABEL}, první neděle 6:20 a kontrola 7:30)."

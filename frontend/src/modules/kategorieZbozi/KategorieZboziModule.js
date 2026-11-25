@@ -5,6 +5,7 @@ import Modal from '../../components/Modal';
 import { PageHeader, Tabs } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
 import KategorieZboziAudit from './KategorieZboziAudit';
+import KategorieZboziAutomatizace from './KategorieZboziAutomatizace';
 import KategorieZboziZakladani from './KategorieZboziZakladani';
 import './KategorieZboziModule.css';
 
@@ -91,6 +92,8 @@ export default function KategorieZboziModule() {
     const location = useLocation();
     const audit = location.pathname.endsWith('/audit');
     const zakladani = location.pathname.endsWith('/zakladani');
+    const automatizace = location.pathname.endsWith('/automatizace');
+    const bezMesice = zakladani || automatizace;
     const today = new Date();
     const [rok, setRok] = useState(today.getFullYear());
     const [mesic, setMesic] = useState(today.getMonth() + 1);
@@ -117,8 +120,8 @@ export default function KategorieZboziModule() {
     }, [rok, mesic]);
 
     useEffect(() => {
-        if (!audit && !zakladani) load();
-    }, [audit, zakladani, load]);
+        if (!audit && !bezMesice) load();
+    }, [audit, bezMesice, load]);
 
     const toggle = async (row) => {
         setBusyKod(row.kod);
@@ -163,7 +166,7 @@ export default function KategorieZboziModule() {
     const cizi = radky.filter(jeCizi);
     const moje = radky.filter((row) => !jeCizi(row));
 
-    if ((audit || zakladani) && !isAdmin()) {
+    if ((audit || bezMesice) && !isAdmin()) {
         return <Navigate to="/kategorie-zbozi" replace />;
     }
 
@@ -171,12 +174,14 @@ export default function KategorieZboziModule() {
         <div className="kz-page">
             <PageHeader
                 title="Kategorie zboží"
-                subtitle={zakladani
+                subtitle={automatizace
+                    ? 'Problémy sobotního zpracování karet z !Import / PARTNER PL, jen zboží skladem.'
+                    : zakladani
                     ? 'Chybějící kategorie a další věci, které ve Sympliu není kam zapsat.'
                     : audit
                     ? 'Odškrtnuté kódy. Kategorie v prodejích se přepíše až po zaškrtnutí kontroly.'
                     : 'Odškrtni kód, až kategorii upravíš v Sympliu. Bod se připíše hned. Když noční kontrola zařazení nepotvrdí, bod se odečte.'}
-                actions={!zakladani && (
+                actions={!bezMesice && (
                     <div className="kz-month">
                         <button type="button" onClick={() => move(-1)} aria-label="Předchozí měsíc">‹</button>
                         <span>{mesicLabel(rok, mesic)}</span>
@@ -192,10 +197,13 @@ export default function KategorieZboziModule() {
                         { id: 'seznam', label: 'K zařazení', to: '/kategorie-zbozi', end: true },
                         { id: 'audit', label: 'Audit', to: '/kategorie-zbozi/audit' },
                         { id: 'zakladani', label: 'Zakládání', to: '/kategorie-zbozi/zakladani' },
+                        { id: 'automatizace', label: 'Automatizace karet', to: '/kategorie-zbozi/automatizace' },
                     ]}
                 />
             )}
-            {zakladani ? (
+            {automatizace ? (
+                <KategorieZboziAutomatizace />
+            ) : zakladani ? (
                 <KategorieZboziZakladani />
             ) : audit ? (
                 <KategorieZboziAudit rok={rok} mesic={mesic} />

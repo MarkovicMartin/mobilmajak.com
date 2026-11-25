@@ -289,3 +289,36 @@ class ZakladaniNedostatek(models.Model):
 
     def __str__(self):
         return f'{self.kod} {self.typ}'
+
+
+class AutomatizaceKaretProblem(models.Model):
+    """Problém sobotního zpracování karet z !Import / PARTNER PL, který automat nezapisuje."""
+
+    TYP_CHOICES = ZakladaniNedostatek.TYP_CHOICES
+    STAV_OTEVRENO = 'otevreno'
+    STAV_VYRESENO = 'vyreseno'
+    STAV_CHOICES = ZakladaniNedostatek.STAV_CHOICES
+
+    kod = models.CharField(max_length=100, db_index=True, verbose_name='P kód')
+    zbozi_id = models.PositiveIntegerField(null=True, blank=True, verbose_name='ID zboží')
+    nazev = models.CharField(max_length=255, blank=True, default='', verbose_name='Název')
+    typ = models.CharField(max_length=32, choices=TYP_CHOICES, verbose_name='Typ')
+    text = models.TextField(verbose_name='Problém')
+    stav = models.CharField(
+        max_length=16, choices=STAV_CHOICES, default=STAV_OTEVRENO, db_index=True,
+    )
+    vytvoreno = models.DateTimeField(auto_now_add=True)
+    vyreseno = models.DateTimeField(null=True, blank=True)
+    vyresil = models.ForeignKey(
+        WebUser, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='automatizace_karet_problemy',
+    )
+
+    class Meta:
+        db_table = 'WEB_AUTOMATIZACE_KARET'
+        verbose_name = 'Problém automatizace karet'
+        verbose_name_plural = 'Problémy automatizace karet'
+        ordering = ['-vytvoreno']
+
+    def __str__(self):
+        return f'{self.kod} {self.typ}'

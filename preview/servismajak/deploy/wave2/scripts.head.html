@@ -1,0 +1,176 @@
+<a class="js-go-to go-to position-fixed animated hs-go-to-prevent-event fadeInUp bg-success text-white" href="https://wa.me/420739909190" target="_blank" style="right: 2rem; bottom: 2rem;"><i class="fa-brands fa-whatsapp"></i></a>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style id="mm-brand-overlay">
+  /* Wave 1+2 — brand overlay; reservation/forms untouched */
+  :root {
+    --mm-navy: #1B2848;
+    --mm-blue: #2F5BFF;
+    --mm-pink: #E40B4D;
+  }
+  body {
+    font-family: "Open Sans", system-ui, -apple-system, sans-serif;
+  }
+  .navbar-brand-logo {
+    width: 100%;
+    max-width: 7.5rem;
+  }
+  .btn-primary,
+  .btn-soft-primary {
+    border-radius: 11px !important;
+    font-weight: 700 !important;
+  }
+  .btn-primary:hover,
+  .btn-primary:focus {
+    background-color: var(--mm-pink) !important;
+    border-color: var(--mm-pink) !important;
+  }
+  .btn-soft-primary {
+    color: var(--mm-blue) !important;
+    background-color: rgba(47, 91, 255, .12) !important;
+    border-color: transparent !important;
+  }
+  .btn-soft-primary:hover,
+  .btn-soft-primary:focus {
+    color: #fff !important;
+    background-color: var(--mm-blue) !important;
+  }
+  a.text-primary,
+  .text-primary {
+    color: var(--mm-blue) !important;
+  }
+  .card {
+    border-radius: 1.15rem !important;
+  }
+  .mm-svc-card,
+  .mm-cat-card {
+    transition: box-shadow .2s ease, transform .2s ease;
+  }
+  .mm-svc-card:hover,
+  .mm-cat-card:hover {
+    box-shadow: 0 10px 28px rgba(27, 40, 72, .1);
+    transform: translateY(-2px);
+  }
+  /* rating in header */
+  a[href*="/hodnoceni"] {
+    white-space: nowrap;
+  }
+  a[href*="/hodnoceni"] .rating-stars,
+  .navbar .js-hs-nav-rating {
+    color: #E8B923 !important;
+    letter-spacing: .05em;
+  }
+  .navbar .js-hs-nav-rating::before,
+  a[href*="/hodnoceni"] .rating-stars:empty::before {
+    content: "★★★★★";
+    color: #E8B923;
+    margin-right: .35rem;
+    font-size: .85em;
+  }
+  /* top search product suggest */
+  .mm-search-suggest {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(100% + .35rem);
+    z-index: 1080;
+    background: #fff;
+    border: 1px solid #e5e6ef;
+    border-radius: 12px;
+    box-shadow: 0 16px 40px rgba(27, 40, 72, .14);
+    overflow: hidden;
+    display: none;
+  }
+  .mm-search-suggest.is-open { display: block; }
+  .mm-search-suggest a {
+    display: flex;
+    justify-content: space-between;
+    gap: .75rem;
+    padding: .7rem 1rem;
+    text-decoration: none;
+    color: var(--mm-navy);
+    border-bottom: 1px solid #f0f1f5;
+    font-weight: 600;
+    font-size: .92rem;
+  }
+  .mm-search-suggest a:last-child { border-bottom: 0; }
+  .mm-search-suggest a:hover { background: rgba(47, 91, 255, .06); }
+  .mm-search-suggest .mm-price {
+    color: var(--mm-blue);
+    font-weight: 800;
+    white-space: nowrap;
+  }
+  .site-search { position: relative; }
+</style>
+<script>
+  $(document).ready(function() {
+    $('img.img-fluid').each(function() {
+      if ($(this).attr('src') === "") {
+        $(this).hide();
+      }
+    });
+    $('#myrepair-nav-chooseDevice').html('<a href="https://servismajak.cz/zarizeni/" class="btn btn-primary btn-sm">Vybrat zařízení</a>');
+    $('#myrepair-nav-main').html('');
+
+    // Prefer product hits under top search (native MyRepair /ajax/search)
+    (function initMmProductSuggest() {
+      var $input = $('.js-form-search').first();
+      if (!$input.length) return;
+      var $form = $input.closest('form.site-search');
+      if (!$form.length) return;
+      var $box = $('<div class="mm-search-suggest" role="listbox" aria-label="Návrhy oprav"></div>');
+      $form.append($box);
+      var timer = null;
+      var lastQ = '';
+
+      function parseProducts(html) {
+        var doc = document.implementation.createHTMLDocument('');
+        doc.documentElement.innerHTML = html;
+        var out = [];
+        doc.querySelectorAll('[data-search-section="products"] a.site-search-result').forEach(function(a) {
+          var titleEl = a.querySelector('.site-search-result-title');
+          var metaEl = a.querySelector('.site-search-result-meta');
+          var title = titleEl ? titleEl.textContent.trim() : (a.textContent || '').trim();
+          var price = metaEl ? metaEl.textContent.trim() : '';
+          if (!title || !a.href) return;
+          out.push({ title: title, price: price, href: a.href });
+        });
+        return out;
+      }
+
+      function render(items) {
+        if (!items.length) {
+          $box.removeClass('is-open').empty();
+          return;
+        }
+        var html = items.slice(0, 7).map(function(p) {
+          return '<a href="' + p.href + '"><span>' + $('<div>').text(p.title).html() + '</span>' +
+            (p.price ? '<span class="mm-price">' + $('<div>').text(p.price).html() + '</span>' : '') + '</a>';
+        }).join('');
+        $box.html(html).addClass('is-open');
+      }
+
+      function search(q) {
+        if (q.length < 2) { render([]); return; }
+        if (q === lastQ) return;
+        lastQ = q;
+        $.get('/ajax/search', { q: q }).done(function(html) {
+          render(parseProducts(html));
+        }).fail(function() { render([]); });
+      }
+
+      $input.on('input', function() {
+        var q = ($input.val() || '').trim();
+        clearTimeout(timer);
+        timer = setTimeout(function() { search(q); }, 220);
+      });
+      $input.on('focus', function() {
+        if ($box.children().length) $box.addClass('is-open');
+      });
+      $(document).on('click', function(e) {
+        if (!$(e.target).closest($form).length) $box.removeClass('is-open');
+      });
+    })();
+  });
+</script>

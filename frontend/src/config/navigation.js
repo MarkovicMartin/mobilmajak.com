@@ -181,6 +181,9 @@ export const getRouteLabel = (pathname) => {
     if (pathname.startsWith('/kategorie-zbozi/zakladani')) {
         return 'Kategorie zboží – Zakládání';
     }
+    if (pathname.startsWith('/kategorie-zbozi/automatizace')) {
+        return 'Kategorie zboží – Automatizace karet';
+    }
     if (pathname.startsWith('/kategorie-zbozi')) {
         return 'Kategorie zboží';
     }

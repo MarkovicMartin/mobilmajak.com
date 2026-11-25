@@ -6,6 +6,12 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from .automatizace_karet import (
+    NeplatnyProblem,
+    oznac_vyreseno as oznac_problem_vyreseno,
+    radky as problemy,
+    zapis_problem,
+)
 from .zakladani import NeplatnyNedostatek, oznac_vyreseno, radky as nedostatky, zapis_nedostatek
 from .kategorie_zbozi import (
     BODY_ZA_KATEGORII,
@@ -140,6 +146,44 @@ def kategorie_zbozi_zakladani_vyresit(request, nedostatek_id):
     if zakaz:
         return zakaz
     row = oznac_vyreseno(nedostatek_id, request.user)
+    if not row:
+        return Response({'error': 'Záznam neexistuje.'}, status=status.HTTP_404_NOT_FOUND)
+    return Response({'ok': True, 'id': row.id, 'stav': row.stav})
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def kategorie_zbozi_automatizace(request):
+    zakaz = _jen_admin(request)
+    if zakaz:
+        return zakaz
+    if request.method == 'GET':
+        stav = (request.GET.get('stav') or 'otevreno').strip()
+        if stav not in ('otevreno', 'vyreseno', 'vse'):
+            return Response({'error': 'Neplatný stav.'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'stav': stav, 'radky': problemy(stav)})
+    try:
+        row, novy = zapis_problem(
+            kod=request.data.get('kod'),
+            typ=request.data.get('typ'),
+            text=request.data.get('text'),
+            nazev=request.data.get('nazev') or '',
+            zbozi_id=request.data.get('zbozi_id'),
+        )
+    except (NeplatnyProblem, ValueError, TypeError) as exc:
+        return Response({'error': str(exc) or 'Neplatný záznam.'}, status=status.HTTP_400_BAD_REQUEST)
+    return Response({'novy': novy, 'radek': {
+        'id': row.id, 'kod': row.kod, 'typ': row.typ, 'text': row.text,
+    }}, status=status.HTTP_201_CREATED if novy else status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def kategorie_zbozi_automatizace_vyresit(request, problem_id):
+    zakaz = _jen_admin(request)
+    if zakaz:
+        return zakaz
+    row = oznac_problem_vyreseno(problem_id, request.user)
     if not row:
         return Response({'error': 'Záznam neexistuje.'}, status=status.HTTP_404_NOT_FOUND)
     return Response({'ok': True, 'id': row.id, 'stav': row.stav})

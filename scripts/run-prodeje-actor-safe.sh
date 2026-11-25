@@ -1,7 +1,12 @@
 #!/bin/bash
 
 # WRAPPER PRO PRODEJNÍ ACTOR - ochrana proti paralelnímu běhu
-# Actor běží každé 2 minuty, ale spustí se pouze pokud není již spuštěn
+# Cron zůstává */2. Mimo 8:00–20:30 (30 min po nejpozdější zavíračce 20:00) hned skončí.
+
+HM=$(TZ=Europe/Prague date +%H%M)
+if [ "$HM" -lt 800 ] || [ "$HM" -ge 2030 ]; then
+  exit 0
+fi
 
 ACTOR_DIR="/opt/actor/ACTOR_FINALL_WEB_PRODEJE_ALL"
 LOCK_FILE="/tmp/prodeje-actor.lock"
