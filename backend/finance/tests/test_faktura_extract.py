@@ -91,6 +91,37 @@ class FakturaExtractTests(TestCase):
         self.assertEqual(r.castka_bez_dph, '593.39')
         self.assertEqual(r.dph_castka, '124.61')
 
+    def test_parse_shoptet_recap_ignores_model_code_and_rounding(self):
+        """G981 je kód modelu, ne DPH. Zaokrouhlení 0,02 Kč zůstane mimo daň."""
+        text = """
+        Jablečné díly s.r.o.
+        IČ (CIN): 06888844
+        DIČ (VAT number): CZ06888844
+        Datum vystavení: 22.10.2026 16:09:23
+        Variabilní symbol: 2026019344
+        Faktura - Daňový doklad č. 2026019344
+        Položky dodávky Množství Cena DPH % DPH Celková cena vč. DPH
+        Baterie Samsung Galaxy S20 (G981)
+        1 ks 443,80 Kč 3 % 430,49 Kč 430,49 Kč 21 % 90,40 Kč 520,89 Kč
+        Displej iPhone 11
+        3 ks 557,02 Kč 3 % 540,31 Kč 1 620,94 Kč 21 % 340,40 Kč 1 961,34 Kč
+        Zaokrouhlení
+        K ZAPLACENÍ
+        3 508,24 Kč 736,74 Kč 4 244,98 Kč
+        0,02 Kč
+        4 245,00 Kč
+        Součet DPH: Cena bez DPH Sazba DPH Celková cena vč. DPH
+        3 508,24 Kč 21 % 736,74 Kč 4 244,98 Kč
+        """
+        r = _parse_text_fields(text)
+        self.assertEqual(r.dodavatel_ico, '06888844')
+        self.assertEqual(r.dodavatel_dic, 'CZ06888844')
+        self.assertEqual(r.datum_vystaveni, '2026-10-22')
+        self.assertEqual(r.castka_bez_dph, '3508.24')
+        self.assertEqual(r.dph_castka, '736.74')
+        self.assertEqual(r.dph_sazba, 21)
+        self.assertEqual(r.castka_celkem, '4244.98')
+
     def test_parse_amount_thousand_dots(self):
         from finance.faktura_extract import _normalize_amount_str
         self.assertEqual(_normalize_amount_str('1.210,50'), '1210.50')

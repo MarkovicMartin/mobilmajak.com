@@ -85,12 +85,33 @@ def _download_period_http(token: str, date_from: date, date_to: date) -> tuple[l
         info['accountId'] = statement.get('accountId')
     if not info.get('bankId') and statement.get('bankId'):
         info['bankId'] = statement.get('bankId')
+    for key in ('closingBalance', 'closingbalance', 'dateEnd', 'dateStart', 'currency'):
+        if info.get(key) in (None, '') and statement.get(key) not in (None, ''):
+            info[key] = statement.get(key)
     return [r for r in rows if r['fio_id']], info
 
 
 def _download_period(token: str, date_from: date, date_to: date) -> tuple[list, dict]:
     ensure_fio_available()
     return _download_period_http(token, date_from, date_to)
+
+
+def balance_from_info(info: dict, label: str) -> dict | None:
+    """Konečný zůstatek z výpisu, který už import stáhl. Další request Fio nepustí."""
+    raw = info.get('closingBalance')
+    if raw is None:
+        raw = info.get('closingbalance')
+    if raw is None:
+        return None
+    stmt_date = info.get('dateEnd') or info.get('dateStart') or ''
+    datum = _parse_fio_date(str(stmt_date)) if stmt_date else date.today()
+    mena = str(info.get('currency') or 'CZK')[:8]
+    return {
+        'datum': datum,
+        'castka': _parse_amount(str(raw)),
+        'mena': mena if mena.isalpha() else 'CZK',
+        'account_label': label,
+    }
 
 
 def _identity_from_info(info: dict, label: str) -> dict | None:
@@ -144,11 +165,12 @@ def fetch_account_balance(token: str) -> dict:
     }
 
 
-def fetch_fio_periods(date_from: date, date_to: date) -> tuple[list[dict], list[dict]]:
-    """Pohyby a identita účtů z jednoho stažení (kvůli limitu Fio API)."""
+def fetch_fio_periods(date_from: date, date_to: date) -> tuple[list[dict], list[dict], list[dict]]:
+    """Pohyby, identita a konečný zůstatek z jednoho stažení (limit Fio je jeden request)."""
     ensure_fio_available()
     all_rows = []
     identities = []
+    balances = []
     for account in get_fio_accounts():
         token = account['token']
         label = account.get('label', 'fio')
@@ -160,14 +182,17 @@ def fetch_fio_periods(date_from: date, date_to: date) -> tuple[list[dict], list[
         ident = _identity_from_info(info, label)
         if ident:
             identities.append(ident)
+        bal = balance_from_info(info, label)
+        if bal:
+            balances.append(bal)
         for row in rows:
             row['account_label'] = label
         all_rows.extend(rows)
-    return all_rows, identities
+    return all_rows, identities, balances
 
 
 def fetch_all_accounts(date_from: date, date_to: date) -> list[dict]:
-    rows, _identities = fetch_fio_periods(date_from, date_to)
+    rows, _identities, _balances = fetch_fio_periods(date_from, date_to)
     return rows
 
 

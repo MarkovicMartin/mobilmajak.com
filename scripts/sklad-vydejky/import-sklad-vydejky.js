@@ -131,33 +131,46 @@ function parseDokladRow(row) {
 
 async function createDriver(downloadDir) {
   const options = new chrome.Options();
-  options.addArguments('--headless=new', '--no-sandbox', '--disable-dev-shm-usage');
+  options.addArguments(
+    '--no-sandbox',
+    '--disable-dev-shm-usage',
+    '--disable-gpu',
+    '--disable-blink-features=AutomationControlled',
+    '--window-size=1920,1080',
+    '--lang=cs-CZ',
+    '--user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.7339.207 Safari/537.36',
+  );
+  if (process.env.HEADLESS !== '0') {
+    options.addArguments('--headless=new');
+  }
+  if (process.env.CHROME_BIN) {
+    options.setChromeBinaryPath(process.env.CHROME_BIN);
+  }
+  try {
+    options.excludeSwitches('enable-automation');
+  } catch (_) { /* starší selenium */ }
   options.setUserPreferences({
     'download.default_directory': downloadDir,
     'download.prompt_for_download': false,
     'download.directory_upgrade': true,
   });
-  return new Builder().forBrowser('chrome').setChromeOptions(options).build();
+  const driver = await new Builder().forBrowser('chrome').setChromeOptions(options).build();
+  try {
+    await driver.pinScript("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})");
+  } catch (err) {
+    console.log('pinScript:', err && err.message ? err.message : err);
+  }
+  return driver;
 }
 
 async function symplioLogin(driver) {
   await loginSymplio(driver, { store: 'hlavni_sklad' });
 }
 
-function eachDayIso(from, to) {
-  const days = [];
-  const cur = new Date(`${from}T12:00:00`);
-  const end = new Date(`${to}T12:00:00`);
-  while (cur <= end) {
-    days.push(cur.toISOString().slice(0, 10));
-    cur.setDate(cur.getDate() + 1);
-  }
-  return days;
-}
-
-function buildUrl(basePath, from, to, subtype = null) {
+function buildUrl(basePath, from, to, subtype = null, page = 1) {
   let url = `https://www.mobilmajak.cz${basePath}?type%5B0%5D=sklad-vydejka&date_range%5Bfrom%5D=${from}&date_range%5Bto%5D=${to}`;
   if (subtype != null) url += `&subtype=${subtype}`;
+  if (page > 1) url += `&strana=${page}`;
   return url;
 }
 
@@ -188,20 +201,26 @@ async function scrapePolozkyFromPage(driver) {
 }
 
 async function scrapePolozkyForSubtype(driver, from, to, subtype) {
-  await driver.get(buildUrl('/admin/sklady/doklady/polozky', from, to, subtype));
-  await sleep(2500);
-  let rows = await scrapePolozkyFromPage(driver);
-  if (rows.length >= 30) {
-    console.warn(`Subtype ${subtype}: ${rows.length} řádků – doplňuji po dnech`);
-    const byDay = [];
-    for (const day of eachDayIso(from, to)) {
-      await driver.get(buildUrl('/admin/sklady/doklady/polozky', day, day, subtype));
-      await sleep(2000);
-      byDay.push(...await scrapePolozkyFromPage(driver));
+  const out = [];
+  let page = 1;
+  while (page <= 40) {
+    await driver.get(buildUrl('/admin/sklady/doklady/polozky', from, to, subtype, page));
+    await sleep(2000);
+    const rows = await scrapePolozkyFromPage(driver);
+    out.push(...rows);
+    const nextLinks = await driver.findElements(
+      By.xpath(`//a[contains(@href,'strana=${page + 1}')]`),
+    );
+    if (!nextLinks.length || !rows.length) {
+      if (rows.length >= 30 && !nextLinks.length) {
+        console.warn(`Subtype ${subtype} strana ${page}: ${rows.length} řádků a žádná další strana`);
+      }
+      break;
     }
-    rows = byDay;
+    page += 1;
   }
-  return rows;
+  if (page > 1) console.log(`Subtype ${subtype}: ${page} stran`);
+  return out;
 }
 
 async function scrapePolozky(driver, from, to) {

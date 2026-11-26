@@ -40,6 +40,7 @@ from .dobropis_flexi import (
     vytvor_dobropis_partnertele,
 )
 from .faktura_process import process_doklad_ocr, schvalit_doklad, zamitnout_doklad, odeslat_doklad_do_flexi
+from .zustatky import period_zustatky
 from .services import (
     apply_all_pravidla_to_nezarazene,
     apply_pravidlo_to_nezarazene,
@@ -451,6 +452,7 @@ def naklady_analytika(request):
         'stav_rozdilu': stav,
         'kategorie': kategorie_rows,
         'polozky': polozky,
+        'zustatky': period_zustatky(sd or start_date, ed or end_date),
     })
 
 

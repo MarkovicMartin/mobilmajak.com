@@ -1,6 +1,6 @@
 from django.test import SimpleTestCase
 
-from plans.kategorie_zbozi_zarazeni import nacti_katalog, rozhodni
+from plans.kategorie_zbozi_zarazeni import je_k_zapisu, nacti_katalog, rozhodni
 
 KATALOG = [
     {'id': 15555, 'v': 's', 'n': 'iPhone 18 Pro Max'},
@@ -54,6 +54,20 @@ class RozhodniTests(SimpleTestCase):
         ):
             r = rozhodni(nazev, 'P1', KATALOG)
             self.assertEqual(r['stav'], 'nejiste', nazev)
+
+    def test_zapis_jen_sklo_a_kryt(self):
+        sklo = rozhodni(
+            'Tvrzené / ochranné sklo Apple iPhone 18 Pro Max černé - 5D Mr. Monkey Glass',
+            'P154391', KATALOG,
+        )
+        telefon = rozhodni(
+            'Apple iPhone 12 Mini 128GB modrý - použitý (C)',
+            'V26110031', KATALOG,
+        )
+        kabel = rozhodni('EP-DG980BWE Samsung USB-C/USB-C Datový Kabel 3A 1m White', 'P1', KATALOG)
+        self.assertTrue(je_k_zapisu(sklo))
+        self.assertFalse(je_k_zapisu(telefon))
+        self.assertFalse(je_k_zapisu(kabel))
 
     def test_pouzity_telefon_do_kose(self):
         r = rozhodni(

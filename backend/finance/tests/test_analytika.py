@@ -7,7 +7,14 @@ from rest_framework.test import APIRequestFactory, force_authenticate
 
 from analytics.models import WebProdejeAll
 from finance import views
-from finance.models import FinanceDoklad, FioKategorizacniPravidlo, NakladKategorie, NakladPolozka
+from finance.models import (
+    FinanceDoklad,
+    FinanceZustatek,
+    FioKategorizacniPravidlo,
+    NakladKategorie,
+    NakladPolozka,
+)
+from finance.zustatky import period_zustatky
 from finance.services import (
     _matches_rule,
     compute_stav_rozdilu,
@@ -329,3 +336,77 @@ class FinanceAnalytikaApiTests(TestCase):
         get_resp = views.doklady_ke_kontrole(get_req)
         found = next(x for x in get_resp.data if x['id'] == d.id)
         self.assertEqual(found['cislo_faktury'], 'FA2026/001')
+
+    def test_analytika_vraci_zustatky(self):
+        FinanceZustatek.objects.create(
+            datum=date(2026, 7, 31),
+            typ=FinanceZustatek.TYP_RAIFFEISEN,
+            label='0155',
+            castka=Decimal('50'),
+        )
+        FinanceZustatek.objects.create(
+            datum=date(2026, 8, 31),
+            typ=FinanceZustatek.TYP_RAIFFEISEN,
+            label='0155',
+            castka=Decimal('70'),
+        )
+        request = self._auth(self.factory.get(
+            '/finance/naklady/analytika/',
+            {'start_date': '2026-08-01', 'end_date': '2026-08-31'},
+        ))
+        resp = views.naklady_analytika(request)
+        self.assertEqual(resp.status_code, 200)
+        ucty = resp.data['zustatky']['ucty']
+        self.assertEqual(ucty[0]['zacatek']['castka'], 50.0)
+        self.assertEqual(ucty[0]['konec']['castka'], 70.0)
+
+
+class PeriodZustatkyTests(TestCase):
+    def _row(self, *, typ, label, datum, castka):
+        return FinanceZustatek.objects.create(
+            datum=datum,
+            typ=typ,
+            label=label,
+            castka=Decimal(castka),
+        )
+
+    def test_uzavreny_mesic_bere_snimek_pred_zacatkem_a_posledni_v_mesici(self):
+        self._row(typ='raiffeisen', label='0155', datum=date(2026, 10, 31), castka='1000')
+        self._row(typ='raiffeisen', label='0155', datum=date(2026, 11, 15), castka='1100')
+        self._row(typ='raiffeisen', label='0155', datum=date(2026, 11, 30), castka='1200')
+        self._row(typ='raiffeisen', label='0155', datum=date(2026, 12, 1), castka='1300')
+        self._row(typ='pokladna', label='Šternberk', datum=date(2026, 10, 31), castka='400')
+        self._row(typ='pokladna', label='Šternberk', datum=date(2026, 11, 30), castka='250')
+
+        data = period_zustatky(date(2026, 11, 1), date(2026, 11, 30))
+
+        self.assertEqual(data['ucty'][0]['nazev'], 'Raiffeisen 0155')
+        self.assertEqual(data['ucty'][0]['zacatek']['castka'], 1000.0)
+        self.assertEqual(data['ucty'][0]['zacatek']['datum'], '2026-10-31')
+        self.assertEqual(data['ucty'][0]['konec']['castka'], 1200.0)
+        self.assertEqual(data['ucty'][0]['konec']['datum'], '2026-11-30')
+        self.assertEqual(data['pokladny'][0]['nazev'], 'Šternberk')
+        self.assertEqual(data['pokladny'][0]['konec']['castka'], 250.0)
+        self.assertEqual(data['ucty_zacatek'], 1000.0)
+        self.assertEqual(data['pokladny_konec'], 250.0)
+
+    def test_rozpracovany_mesic_bere_posledni_ulozeny_den(self):
+        self._row(typ='fio', label='Majak', datum=date(2026, 10, 31), castka='500')
+        self._row(typ='fio', label='Majak', datum=date(2026, 11, 25), castka='800')
+        data = period_zustatky(date(2026, 11, 1), date(2026, 11, 30))
+        self.assertEqual(data['ucty'][0]['zacatek']['castka'], 500.0)
+        self.assertEqual(data['ucty'][0]['konec']['castka'], 800.0)
+        self.assertEqual(data['ucty'][0]['konec']['datum'], '2026-11-25')
+
+    def test_stejny_den_vyhraje_novejsi_zaznam(self):
+        first = self._row(typ='raiffeisen', label='0630', datum=date(2026, 11, 25), castka='1')
+        second = self._row(typ='raiffeisen', label='0630', datum=date(2026, 11, 25), castka='2')
+        self.assertGreater(second.id, first.id)
+        data = period_zustatky(date(2026, 11, 1), date(2026, 11, 26))
+        self.assertEqual(data['ucty'][0]['konec']['castka'], 2.0)
+
+    def test_chybejici_zacatek_je_prazdny(self):
+        self._row(typ='raiffeisen', label='0649', datum=date(2026, 10, 22), castka='9')
+        data = period_zustatky(date(2026, 10, 1), date(2026, 10, 31))
+        self.assertIsNone(data['ucty'][0]['zacatek'])
+        self.assertEqual(data['ucty'][0]['konec']['castka'], 9.0)

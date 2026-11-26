@@ -21,6 +21,10 @@ if [ ! -f "$SSH_KEY" ]; then
   exit 1
 fi
 
+scp -i "$SSH_KEY" -o StrictHostKeyChecking=accept-new \
+  "$REPO_ROOT/scripts/symplio-poznamka-fix/zaradit-kategorie.js" \
+  "${TARGET}:/opt/scripts/symplio-pokladna-historie/zaradit-kategorie.js"
+
 ssh -i "$SSH_KEY" -o StrictHostKeyChecking=accept-new "$TARGET" bash -s <<EOF
 set -euo pipefail
 APP_PATH="$APP_PATH"
@@ -35,7 +39,7 @@ sudo -u webmajak crontab -l 2>/dev/null | grep -v "\$MARKER" | grep -v 'kategori
 cat >> "\$TMP" <<CRON
 
 \$MARKER
-30 23 * * * /bin/bash -lc 'cd \$APP_PATH && source venv/bin/activate && export DJANGO_SETTINGS_MODULE=webapp.settings_production && python manage.py kategorie_zbozi_kontrola >> logs/kategorie-zbozi.log 2>&1; python manage.py kategorie_zbozi_oprava --zapis >> logs/kategorie-zbozi.log 2>&1'
+30 23 * * * /bin/bash -lc 'cd \$APP_PATH && source venv/bin/activate && export DJANGO_SETTINGS_MODULE=webapp.settings_production && export SYMPLIO_ZARADIT_JS=/opt/scripts/symplio-pokladna-historie/zaradit-kategorie.js && export SYMPLIO_SCRIPTS_DIR=/opt/scripts/symplio-shared && export HEADLESS=0 && export CHROME_BIN=/usr/bin/google-chrome && python manage.py kategorie_zbozi_kontrola >> logs/kategorie-zbozi.log 2>&1; python manage.py kategorie_zbozi_oprava --zapis >> logs/kategorie-zbozi.log 2>&1'
 CRON
 
 sudo -u webmajak crontab "\$TMP"

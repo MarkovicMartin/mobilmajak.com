@@ -27,6 +27,49 @@ const stavRozdiluClass = (stav) => {
 
 const rowKey = (kat) => (kat.id == null ? 'null' : String(kat.id));
 
+const formatDay = (iso) => {
+    if (!iso) return '';
+    const [year, month, day] = iso.split('-');
+    return `${Number(day)}. ${Number(month)}. ${year}`;
+};
+
+const BalanceCell = ({ snap }) => {
+    if (!snap) return '—';
+    return (
+        <span className="naklady-balance__cell">
+            <span>{formatCurrency(snap.castka)}</span>
+            <span className="naklady-balance__day">{formatDay(snap.datum)}</span>
+        </span>
+    );
+};
+
+const BalanceGroup = ({ title, rows, zacatek, konec, empty }) => (
+    <>
+        <tr className="naklady-balance__group">
+            <th colSpan={3}>{title}</th>
+        </tr>
+        {rows.length === 0 && (
+            <tr>
+                <td colSpan={3} className="naklady-balance__empty">{empty}</td>
+            </tr>
+        )}
+        {rows.map((row) => (
+            <tr key={`${row.typ}-${row.label}-${row.prodejna_id || ''}`}>
+                <td>{row.nazev}</td>
+                <td><BalanceCell snap={row.zacatek} /></td>
+                <td><BalanceCell snap={row.konec} /></td>
+            </tr>
+        ))}
+        {rows.length > 0 && (
+            <tr className="naklady-balance__total">
+                <td>Celkem</td>
+                <td>{zacatek == null ? '—' : formatCurrency(zacatek)}</td>
+                <td>{konec == null ? '—' : formatCurrency(konec)}</td>
+            </tr>
+        )}
+    </>
+);
+
 const Naklady = () => {
     const [filters, setFilters] = useState(() => buildInitialCelkovaFilters());
     const [data, setData] = useState(null);
@@ -194,6 +237,36 @@ const Naklady = () => {
                                 </div>
                             </div>
                         </div>
+
+                        {data.zustatky && (
+                            <div className="naklady-table-wrap naklady-balance">
+                                <table className="naklady-table">
+                                    <thead>
+                                        <tr>
+                                            <th />
+                                            <th>Začátek</th>
+                                            <th>Konec</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <BalanceGroup
+                                            title="Účty"
+                                            rows={data.zustatky.ucty || []}
+                                            zacatek={data.zustatky.ucty_zacatek}
+                                            konec={data.zustatky.ucty_konec}
+                                            empty="Za tohle období není uložený zůstatek účtu."
+                                        />
+                                        <BalanceGroup
+                                            title="Pokladny"
+                                            rows={data.zustatky.pokladny || []}
+                                            zacatek={data.zustatky.pokladny_zacatek}
+                                            konec={data.zustatky.pokladny_konec}
+                                            empty="Stav pokladen se zatím neukládá."
+                                        />
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
 
                         <div className="naklady-table-wrap">
                             <table className="naklady-table">

@@ -6,7 +6,6 @@ import logging
 from .bank_accounts import OwnAccount, mark_internal_transfers, own_account
 from .fio_client import (
     FioImportNotAvailable,
-    fetch_all_balances,
     fetch_fio_identities,
     fetch_fio_periods,
 )
@@ -103,6 +102,7 @@ def run_bank_import(
 
     fio_rows: list[dict] = []
     fio_ids: list[dict] = []
+    fio_balances: list[dict] = []
     if want_fio or want_rb:
         fio_status = get_fio_import_status()
         if not fio_status['available']:
@@ -115,7 +115,7 @@ def run_bank_import(
                     logger.warning('Fio identity pro filtr převodů selhala')
         else:
             try:
-                fio_rows, fio_ids = fetch_fio_periods(date_from, date_to)
+                fio_rows, fio_ids, fio_balances = fetch_fio_periods(date_from, date_to)
             except FioImportNotAvailable as exc:
                 if want_fio:
                     result['fio_error'] = exc.message
@@ -155,7 +155,7 @@ def run_bank_import(
         stats['balances'] = 0
         if not dry_run and not skip_balance:
             try:
-                stats['balances'] = _save_balances(fetch_all_balances(), FinanceZustatek.TYP_FIO)
+                stats['balances'] = _save_balances(fio_balances, FinanceZustatek.TYP_FIO)
             except Exception as exc:
                 stats['balance_error'] = str(exc)
         result['fio'] = stats

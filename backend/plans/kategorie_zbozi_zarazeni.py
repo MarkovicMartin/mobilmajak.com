@@ -224,6 +224,11 @@ def _jen_zacatek(text: str, span: str, nalezene, leaf) -> bool:
     return False
 
 
+def je_k_zapisu(rozhod: dict) -> bool:
+    """Do Symplia jdou jen skla a kryty, kde každý model sedí na existující list."""
+    return rozhod.get('stav') == 'jiste' and rozhod.get('duvod') in ('s', 'p')
+
+
 def rozhodni(nazev: str, kod: str = '', katalog=None) -> dict:
     text = _norm(nazev)
     druh = _druh(text, kod)

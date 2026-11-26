@@ -17,9 +17,26 @@ from .ocr_deps import configure_pytesseract, which_ocr_bin
 logger = logging.getLogger(__name__)
 
 _AMOUNT_RE = re.compile(
-    r'(?P<num>\d{1,3}(?:[ \u00a0]\d{3})*(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?)',
+    # Číslo nesmí navazovat na kód modelu (G981) ani na EAN uprostřed tokenu.
+    r'(?<![A-Za-z0-9])(?P<num>\d{1,3}(?:[ \u00a0]\d{3})*(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?)',
 )
-_ICO_RE = re.compile(r'\bI[ČC]O\s*[:.]?\s*(?P<ico>\d{8})\b', re.I)
+_ICO_RE = re.compile(
+    r'\bI[ČC]O?(?:\s*\(\s*CIN\s*\))?\s*[:.]?\s*(?P<ico>\d{8})\b',
+    re.I,
+)
+# Shoptet: „3 508,24 Kč 21 % 736,74 Kč 4 244,98 Kč“ (řádek položky i součet DPH).
+_MONEY_TOKEN = r'\d{1,3}(?:[ \u00a0]\d{3})*[.,]\d{2}|\d+[.,]\d{2}'
+_VAT_RECAP_RE = re.compile(
+    rf'(?P<base>{_MONEY_TOKEN})[ \t\u00a0]*(?:Kč|Kc|CZK)?[ \t\u00a0]+'
+    rf'(?P<rate>21|15|12|10)[ \t\u00a0]*%[ \t\u00a0]+'
+    rf'(?P<vat>{_MONEY_TOKEN})[ \t\u00a0]*(?:Kč|Kc|CZK)?[ \t\u00a0]+'
+    rf'(?P<total>{_MONEY_TOKEN})',
+    re.I,
+)
+_DATUM_VYSTAVENI_RE = re.compile(
+    r'Datum\s+vystaven[ií]\s*[:.]?\s*(?P<d>\d{1,2})\.(?P<m>\d{1,2})\.(?P<y>\d{4})',
+    re.I,
+)
 _DIC_RE = re.compile(
     r'\bDI[ČC]\b[^\n]{0,48}?(?P<dic>CZ\d{8,12})\b',
     re.I,
@@ -424,6 +441,11 @@ def _parse_text_fields(text: str) -> FakturaExtracted:
     dic = _DIC_RE.search(text)
     if dic:
         result.dodavatel_dic = dic.group('dic')
+    datum = _DATUM_VYSTAVENI_RE.search(text)
+    if datum:
+        result.datum_vystaveni = (
+            f"{int(datum.group('y')):04d}-{int(datum.group('m')):02d}-{int(datum.group('d')):02d}"
+        )
 
     result.cislo_faktury = _find_cislo_faktury(text)
     result.vs = _find_vs(text)
@@ -452,6 +474,10 @@ def _parse_text_fields(text: str) -> FakturaExtracted:
         elif re.search(r'\b15\s*%', low):
             result.dph_sazba = 15
 
+    # Součet DPH (největší řádek základ + sazba + daň + celkem). Ne řádek „k zaplacení“,
+    # tam je navíc haléřové zaokrouhlení a to do DPH nepatří.
+    _apply_vat_recap(result, text)
+
     result.dodavatel_nazev = _guess_dodavatel_nazev(text)
     if not result.vs and result.cislo_faktury:
         digits = re.sub(r'\D', '', result.cislo_faktury)
@@ -475,6 +501,32 @@ def _parse_text_fields(text: str) -> FakturaExtracted:
     except InvalidOperation:
         pass
     return result
+
+
+def _apply_vat_recap(result: FakturaExtracted, text: str) -> None:
+    """Největší řádek „základ, sazba %, daň, celkem“. Položky jsou menší než součet."""
+    best = None
+    best_total = None
+    for match in _VAT_RECAP_RE.finditer(text or ''):
+        base = _normalize_amount_str(match.group('base'))
+        vat = _normalize_amount_str(match.group('vat'))
+        total = _normalize_amount_str(match.group('total'))
+        if not base or not vat or not total:
+            continue
+        try:
+            base_d, vat_d, total_d = Decimal(base), Decimal(vat), Decimal(total)
+        except InvalidOperation:
+            continue
+        if base_d <= 0 or vat_d < 0 or total_d <= 0:
+            continue
+        if abs((base_d + vat_d) - total_d) > Decimal('0.05'):
+            continue
+        if best_total is None or total_d > best_total:
+            best_total = total_d
+            best = (base, vat, total, int(match.group('rate')))
+    if not best:
+        return
+    result.castka_bez_dph, result.dph_castka, result.castka_celkem, result.dph_sazba = best
 
 
 def _find_cislo_faktury(text: str) -> str:

@@ -5,9 +5,24 @@
  * stdout: {"zapsano":N,"preskoceno":N}
  * Nejistý kód se sem vůbec nedostane. Když se list nepodaří nastavit, kód se přeskočí.
  */
+const fs = require('fs');
+const path = require('path');
 const { Builder } = require('selenium-webdriver');
 const chrome = require('selenium-webdriver/chrome');
-const { loginSymplio, sleep } = require('./symplio-login');
+
+function sharedDir() {
+  const candidates = [
+    process.env.SYMPLIO_SCRIPTS_DIR,
+    path.join(__dirname, '../symplio-shared'),
+    '/opt/scripts/symplio-shared',
+  ].filter(Boolean);
+  for (const dir of candidates) {
+    if (fs.existsSync(path.join(dir, 'symplio-login.js'))) return dir;
+  }
+  throw new Error(`symplio-login.js nenalezen v: ${candidates.join(', ')}`);
+}
+
+const { loginSymplio, sleep } = require(path.join(sharedDir(), 'symplio-login'));
 
 const PRACOVNI = [
   'Nově naskladněno',
@@ -83,9 +98,8 @@ async function jeden(item) {
     const id = String(input.value || '');
     if (!id || cile.includes(id)) continue;
     const row = input.closest('tr, li, .row') || input.parentElement;
-    const text = plain(row);
-    const segmenty = text.split('/').map(s => s.replace(/^Smazat\\s+/, '').trim());
-    if (!segmenty.some(s => pracovni.includes(s)) && !pracovni.includes(text.replace(/^Smazat\\s+/, '').trim())) continue;
+    const text = plain(row).replace(/^Smazat\\s+/, '').trim();
+    if (!pracovni.includes(text)) continue;
     await post('/admin/w/Zbozi_Kategorie/action/?zbozi=' + zbozi + '&akce=delete', 'kategorie=' + id);
   }
   return { kod, stav: 'zapsano', zbozi };
@@ -116,7 +130,8 @@ async function main() {
     '--window-size=1920,1080',
     '--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36',
   );
-  if (process.env.HEADLESS !== '0') options.addArguments('--headless=new');
+  if (process.env.HEADLESS === '1') options.addArguments('--headless=new');
+  if (process.env.CHROME_BIN) options.setChromeBinaryPath(process.env.CHROME_BIN);
   const driver = await new Builder().forBrowser('chrome').setChromeOptions(options).build();
   try {
     await driver.manage().setTimeouts({ script: 300000 });

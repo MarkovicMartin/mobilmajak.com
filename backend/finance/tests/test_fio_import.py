@@ -158,3 +158,42 @@ class ApplyRulesTests(TestCase):
             bal = fetch_account_balance('fake-token')
         self.assertEqual(bal['castka'], Decimal('12345.67'))
         self.assertEqual(bal['mena'], 'CZK')
+
+
+class FioPeriodBalanceTests(TestCase):
+    def test_balance_from_info_inside_statement(self):
+        from finance.fio_client import balance_from_info
+
+        bal = balance_from_info({
+            'closingBalance': 4321.5,
+            'dateEnd': '2026-11-25+01:00',
+            'currency': 'CZK',
+        }, 'Majak')
+        self.assertEqual(bal['castka'], Decimal('4321.5'))
+        self.assertEqual(bal['datum'], date(2026, 11, 25))
+        self.assertEqual(bal['account_label'], 'Majak')
+
+    @patch('finance.bank_import.get_rb_import_status', return_value={'available': False, 'message': 'off'})
+    @patch('finance.bank_import.get_fio_import_status', return_value={'available': True, 'message': ''})
+    @patch('finance.bank_import.fetch_fio_periods')
+    def test_import_saves_period_closing_without_second_request(self, fetch_periods, _fio, _rb):
+        from finance.bank_import import run_bank_import
+        from finance.models import FinanceZustatek
+
+        fetch_periods.return_value = (
+            [],
+            [{'label': 'Majak', 'account_number': '200', 'bank': '2010'}],
+            [{
+                'datum': date(2026, 11, 25),
+                'castka': Decimal('10.50'),
+                'mena': 'CZK',
+                'account_label': 'Majak',
+            }],
+        )
+        result = run_bank_import(date(2026, 11, 23), date(2026, 11, 25), banks='fio')
+        self.assertEqual(result['fio']['balances'], 1)
+        saved = FinanceZustatek.objects.get()
+        self.assertEqual(saved.typ, FinanceZustatek.TYP_FIO)
+        self.assertEqual(saved.label, 'Majak')
+        self.assertEqual(saved.castka, Decimal('10.50'))
+        self.assertEqual(saved.datum, date(2026, 11, 25))

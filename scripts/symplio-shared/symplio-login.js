@@ -134,6 +134,18 @@ async function waitForUsernameField(driver, timeoutMs = 40000) {
   return driver.findElements(By.name('_username'));
 }
 
+function isCloudflareTitle(title) {
+  return /just a moment|cloudflare|attention required/i.test(title || '');
+}
+
+async function pageTitle(driver) {
+  try {
+    return await driver.getTitle();
+  } catch (_) {
+    return '';
+  }
+}
+
 async function loginSymplio(driver, opts = {}) {
   let store = opts.store;
   if (store === undefined) {
@@ -145,7 +157,13 @@ async function loginSymplio(driver, opts = {}) {
   await driver.get('https://www.mobilmajak.cz/admin');
   await handleWafChallenge(driver);
 
-  const usernameFields = await waitForUsernameField(driver);
+  let usernameFields = await waitForUsernameField(driver);
+  if (!usernameFields.length && isCloudflareTitle(await pageTitle(driver))) {
+    console.log('Cloudflare stále běží, načítám přihlášení znovu...');
+    await driver.navigate().refresh();
+    await handleWafChallenge(driver);
+    usernameFields = await waitForUsernameField(driver, 50000);
+  }
   if (usernameFields.length) {
     const { user, pass } = loadSymplioCredentials();
     await usernameFields[0].sendKeys(user);
